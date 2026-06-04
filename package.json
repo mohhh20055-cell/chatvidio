@@ -1,7 +1,7 @@
 {
   "name": "teaching-platform-algeria",
   "version": "1.0.0",
-  "description": "منصة تعليمية جزائرية مع دفع شارجيلي",
+  "description": "منصة تعليمية جزائرية مع دفع شارجيلي وجميع الفيديو",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
