@@ -6,14 +6,18 @@
     <title>لوحة الأستاذ | منصة التعليم</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Cairo', sans-serif; background: #f0f2f5; }
         .dashboard { max-width: 1200px; margin: 30px auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #1e3c72, #0f5cbf); color: white; padding: 20px; border-radius: 20px; margin-bottom: 30px; }
+        .header { background: linear-gradient(135deg, #1e3c72, #0f5cbf); color: white; padding: 20px; border-radius: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        .logout-btn { background: #ef4444; color: white; border: none; padding: 10px 20px; border-radius: 30px; cursor: pointer; font-family: 'Cairo', sans-serif; }
         .sessions-list { background: white; border-radius: 20px; padding: 20px; margin-top: 20px; }
-        .session-card { border: 1px solid #e2e8f0; border-radius: 15px; padding: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
-        .btn-join { background: #0f5cbf; color: white; border: none; padding: 8px 20px; border-radius: 25px; cursor: pointer; }
-        .logout-btn { background: #ef4444; color: white; border: none; padding: 10px 20px; border-radius: 30px; cursor: pointer; float: left; }
+        .session-card { border: 1px solid #e2e8f0; border-radius: 15px; padding: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .btn-start { background: #10b981; color: white; border: none; padding: 8px 20px; border-radius: 25px; cursor: pointer; margin: 3px; }
+        .btn-copy { background: #0f5cbf; color: white; border: none; padding: 8px 20px; border-radius: 25px; cursor: pointer; margin: 3px; }
+        .badge-warning { background: #f59e0b; color: white; padding: 5px 12px; border-radius: 20px; font-size: 12px; }
+        h2 { margin-bottom: 20px; }
     </style>
 </head>
 <body>
@@ -22,61 +26,38 @@
             <h1><i class="fas fa-chalkboard-user"></i> لوحة الأستاذ</h1>
             <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> تسجيل خروج</button>
         </div>
-
         <div class="sessions-list">
-            <h2><i class="fas fa-calendar"></i> حصصي القادمة</h2>
+            <h2><i class="fas fa-calendar"></i> حصصي المجدولة</h2>
             <div id="sessionsList"></div>
         </div>
     </div>
-
     <script>
         let teacherData = JSON.parse(localStorage.getItem('teacherData') || '{}');
-
-        if (!teacherData.id) {
-            window.location.href = '/';
-        }
+        if (!teacherData.id) window.location.href = '/';
 
         async function loadSessions() {
             const res = await fetch(`/api/teacher/sessions/${teacherData.id}`);
             const sessions = await res.json();
             const container = document.getElementById('sessionsList');
-            
-            if (sessions.length === 0) {
-                container.innerHTML = '<p>لا توجد حصص حالياً</p>';
-                return;
-            }
-
+            if (sessions.length === 0) { container.innerHTML = '<p style="text-align:center">📅 لا توجد حصص مجدولة بعد</p>'; return; }
             let html = '';
-            sessions.forEach(s => {
-                html += `<div class="session-card">
-                    <div>
-                        <strong>${s.student_name || 'طالب'}</strong><br>
-                        <small>التاريخ: ${new Date(s.session_date).toLocaleString('ar')}</small><br>
-                        <small>المدة: ${s.duration} دقيقة | السعر: ${s.price} دج</small><br>
-                        <small>الحالة: ${s.payment_status === 'paid' ? 'مدفوعة ✅' : 'بانتظار الدفع ⏳'}</small>
-                    </div>
-                    ${s.payment_status === 'paid' ? `<button class="btn-join" onclick="joinSession(${s.id})"><i class="fas fa-video"></i> بدء الحصة</button>` : ''}
-                </div>`;
-            });
+            for (const s of sessions) {
+                const sessionDate = new Date(s.session_date);
+                const canStart = sessionDate <= new Date();
+                html += `<div class="session-card"><div><strong>👨‍🎓 الطالب: ${s.student_name || 'لم يتم الحجز بعد'}</strong><br><small>📅 التاريخ: ${sessionDate.toLocaleString('ar')}</small><br><small>⏱️ المدة: ${s.duration} دقيقة | 💰 السعر: ${s.price} دج</small><br><small>💳 حالة الدفع: ${s.payment_status === 'paid' ? '✅ مدفوعة' : '⏳ بانتظار الدفع'}</small><br><small>🔑 معرف الغرفة: ${s.room_name}</small></div><div>${s.payment_status === 'paid' ? `<button class="btn-start" onclick="startSession(${s.id})"><i class="fas fa-chalkboard"></i> ${canStart ? 'ابدأ الحصة الآن' : 'انتظر موعد الحصة'}</button><button class="btn-copy" onclick="copyRoomLink('${s.room_name}')"><i class="fas fa-link"></i> نسخ رابط الغرفة</button>` : `<span class="badge-warning">⏳ في انتظار دفع الطالب</span>`}</div></div>`;
+            }
             container.innerHTML = html;
         }
 
-        async function joinSession(sessionId) {
-            const res = await fetch(`/api/session/${sessionId}/join`);
-            const data = await res.json();
-            if (data.room_url) {
-                window.open(data.room_url, '_blank');
-            } else {
-                alert(data.error || 'لا يمكن الانضمام للحصة');
-            }
+        async function startSession(sessionId) {
+            const verifyRes = await fetch('/api/verify-room-access', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: sessionId, user_id: teacherData.id, user_role: 'teacher' }) });
+            const verifyData = await verifyRes.json();
+            if (verifyData.allowed) { window.open(`/api/join-session/${sessionId}/${teacherData.id}/teacher`, '_blank'); } 
+            else { alert(verifyData.error || 'لا يمكن بدء الحصة'); }
         }
 
-        function logout() {
-            localStorage.removeItem('teacherToken');
-            localStorage.removeItem('teacherData');
-            window.location.href = '/';
-        }
-
+        function copyRoomLink(roomName) { const link = `https://meet.jit.si/${roomName}`; navigator.clipboard.writeText(link); alert(`✅ تم نسخ رابط الغرفة:\n${link}\nشاركه مع الطالب بعد الدفع`); }
+        function logout() { localStorage.removeItem('teacherToken'); localStorage.removeItem('teacherData'); window.location.href = '/'; }
         loadSessions();
     </script>
 </body>
