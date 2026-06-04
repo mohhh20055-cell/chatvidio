@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة تعليمية جزائرية | دروس خصوصية عبر الفيديو</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <i class="fas fa-chalkboard-user"></i>
+                <span>منصة<span class="highlight"> التعليم</span></span>
+            </div>
+            <div class="nav-links">
+                <a href="#" class="active">الرئيسية</a>
+                <a href="#" onclick="showTeachers()">الأساتذة</a>
+                <a href="#" onclick="showLogin()">تسجيل الدخول</a>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <!-- القسم الرئيسي -->
+        <section class="hero">
+            <div class="hero-content">
+                <h1>تعلم مع أفضل الأساتذة <span class="highlight">في الجزائر</span></h1>
+                <p>دروس خصوصية عبر الفيديو مع نخبة من الأساتذة المعتمدين. ادفع عبر شارجيلي بسهولة وأمان</p>
+                <div class="hero-buttons">
+                    <button class="btn-primary" onclick="showTeachers()"><i class="fas fa-search"></i> ابحث عن أستاذ</button>
+                    <button class="btn-outline" onclick="showTeacherRegister()"><i class="fas fa-chalkboard-user"></i> انضم كأستاذ</button>
+                </div>
+            </div>
+            <div class="hero-image">
+                <i class="fas fa-laptop-code"></i>
+            </div>
+        </section>
+
+        <!-- قائمة الأساتذة -->
+        <section id="teachersSection" class="teachers-section" style="display: none;">
+            <h2><i class="fas fa-users"></i> أساتذتنا المتميزون</h2>
+            <div id="teachersList" class="teachers-grid"></div>
+        </section>
+
+        <!-- نماذج التسجيل والدخول -->
+        <section id="loginSection" class="form-section" style="display: none;">
+            <div class="form-tabs">
+                <button class="tab-btn active" onclick="switchTab('login')">تسجيل الدخول</button>
+                <button class="tab-btn" onclick="switchTab('student-register')">تسجيل طالب</button>
+                <button class="tab-btn" onclick="switchTab('teacher-register')">تسجيل أستاذ</button>
+            </div>
+
+            <!-- تسجيل الدخول -->
+            <div id="loginTab" class="form-container">
+                <h3>تسجيل الدخول</h3>
+                <input type="email" id="loginEmail" placeholder="البريد الإلكتروني">
+                <input type="password" id="loginPassword" placeholder="كلمة المرور">
+                <select id="loginRole">
+                    <option value="student">طالب</option>
+                    <option value="teacher">أستاذ</option>
+                </select>
+                <button class="btn-primary" onclick="login()">دخول</button>
+            </div>
+
+            <!-- تسجيل طالب -->
+            <div id="studentRegisterTab" class="form-container" style="display: none;">
+                <h3>تسجيل طالب جديد</h3>
+                <input type="text" id="studentName" placeholder="الاسم الكامل">
+                <input type="email" id="studentEmail" placeholder="البريد الإلكتروني">
+                <input type="password" id="studentPassword" placeholder="كلمة المرور">
+                <input type="tel" id="studentPhone" placeholder="رقم الهاتف">
+                <button class="btn-primary" onclick="registerStudent()">تسجيل</button>
+            </div>
+
+            <!-- تسجيل أستاذ -->
+            <div id="teacherRegisterTab" class="form-container" style="display: none;">
+                <h3>تقديم طلب أستاذ</h3>
+                <input type="text" id="teacherName" placeholder="الاسم الكامل">
+                <input type="email" id="teacherEmail" placeholder="البريد الإلكتروني">
+                <input type="password" id="teacherPassword" placeholder="كلمة المرور">
+                <input type="tel" id="teacherPhone" placeholder="رقم الهاتف">
+                <input type="text" id="teacherSpecialization" placeholder="التخصص (مثال: رياضيات، فيزياء، إنجليزية)">
+                <textarea id="teacherBio" placeholder="نبذة عنك وخبراتك"></textarea>
+                <input type="number" id="teacherRate" placeholder="السعر المقترح لكل حصة (دينار جزائري)">
+                <button class="btn-primary" onclick="registerTeacher()">تقديم الطلب</button>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 منصة التعليم الجزائرية - جميع الحقوق محفوظة</p>
+        <p><i class="fas fa-credit-card"></i> الدفع عبر شارجيلي | EDAHABIA | CCP</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
