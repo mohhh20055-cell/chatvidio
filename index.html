@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>منصة تعليمية - الفصول التفاعلية عبر Jitsi Meet</title>
+    <!-- Font Awesome 6 (Free Icons) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Google Font: Cairo + Poppins -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Cairo', 'Inter', sans-serif;
+            background: linear-gradient(145deg, #f6f9fc 0%, #edf2f7 100%);
+            min-height: 100vh;
+            color: #1e2a3e;
+        }
+
+        /* container */
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px 24px 40px;
+        }
+
+        /* header */
+        .main-header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 16px 28px;
+            border-radius: 48px;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.02);
+            margin-bottom: 32px;
+            backdrop-filter: blur(2px);
+            border: 1px solid rgba(66, 153, 225, 0.15);
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            background: #0f5cbf;
+            width: 44px;
+            height: 44px;
+            border-radius: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+            box-shadow: 0 4px 8px rgba(0, 98, 204, 0.3);
+        }
+
+        .logo-text h1 {
+            font-size: 1.6rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #1e3c72, #0f5cbf);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            letter-spacing: -0.3px;
+        }
+
+        .logo-text p {
+            font-size: 0.8rem;
+            color: #4a6a8b;
+        }
+
+        .class-status {
+            background: #eef2ff;
+            padding: 8px 20px;
+            border-radius: 40px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            background: #22c55e;
+            border-radius: 50%;
+            box-shadow: 0 0 0 2px #bbf7d0;
+            animation: pulse 1.8s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.5; transform: scale(0.9);}
+            100% { opacity: 1; transform: scale(1.2);}
+        }
+
+        /* cards grid */
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 28px;
+            margin-bottom: 28px;
+        }
+
+        @media (max-width: 880px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+                gap: 24px;
+            }
+            .app-container {
+                padding: 16px;
+            }
+        }
+
+        /* meeting card */
+        .meeting-card {
+            background: white;
+            border-radius: 36px;
+            padding: 28px;
+            box-shadow: 0 20px 35px -12px rgba(0,0,0,0.08);
+            transition: all 0.2s;
+            border: 1px solid #e9edf2;
+        }
+
+        .section-title {
+            font-size: 1.7rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #0b355c;
+            border-right: 4px solid #0f5cbf;
+            padding-right: 18px;
+        }
+
+        .room-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 18px;
+            margin-bottom: 28px;
+            background: #f8fafc;
+            padding: 16px 20px;
+            border-radius: 60px;
+        }
+
+        .input-group {
+            flex: 2;
+            min-width: 180px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #2c5282;
+            margin-bottom: 6px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px 18px;
+            border-radius: 48px;
+            border: 1px solid #cbd5e1;
+            background: white;
+            font-family: 'Cairo', monospace;
+            font-size: 1rem;
+            transition: 0.2s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #0f5cbf;
+            box-shadow: 0 0 0 3px rgba(15,92,191,0.2);
+        }
+
+        .btn-primary {
+            background: #0f5cbf;
+            border: none;
+            padding: 0 28px;
+            border-radius: 48px;
+            font-weight: 700;
+            font-size: 1rem;
+            color: white;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            transition: 0.2s;
+            font-family: 'Cairo', sans-serif;
+            height: 48px;
+            margin-top: 22px;
+        }
+
+        .btn-primary:hover {
+            background: #0b4a9c;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 18px rgba(15,92,191,0.3);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid #0f5cbf;
+            color: #0f5cbf;
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-outline:hover {
+            background: #0f5cbf10;
+        }
+
+        .video-container {
+            background: #0a1a2e;
+            border-radius: 28px;
+            overflow: hidden;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            min-height: 480px;
+            transition: 0.2s;
+        }
+
+        #jitsi-meet-frame {
+            width: 100%;
+            height: 520px;
+            border: none;
+            background: #111827;
+        }
+
+        /* info panel */
+        .info-panel {
+            background: white;
+            border-radius: 36px;
+            padding: 24px;
+            box-shadow: 0 20px 35px -12px rgba(0,0,0,0.06);
+            height: fit-content;
+        }
+
+        .teacher-tip {
+            background: #eef2ff;
+            border-radius: 24px;
+            padding: 18px;
+            margin: 20px 0;
+        }
+
+        .feature-list {
+            list-style: none;
+            margin-top: 18px;
+        }
+
+        .feature-list li {
+            padding: 8px 0;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            border-bottom: 1px solid #edf2f7;
+        }
+
+        .badge {
+            background: #e2e8f0;
+            padding: 6px 12px;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 48px;
+            padding-top: 24px;
+            border-top: 1px solid #e2edf7;
+            color: #4b6f8e;
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 560px) {
+            .meeting-card {
+                padding: 18px;
+            }
+            .btn-primary {
+                width: 100%;
+                justify-content: center;
+            }
+            .room-controls {
+                flex-direction: column;
+                border-radius: 32px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <header class="main-header">
+        <div class="logo-area">
+            <div class="logo-icon">
+                <i class="fas fa-chalkboard-user"></i>
+            </div>
+            <div class="logo-text">
+                <h1>مدرستي الافتراضية</h1>
+                <p>تعليم تفاعلي عبر الفيديو | Jitsi Meet</p>
+            </div>
+        </div>
+        <div class="class-status">
+            <span class="status-dot"></span>
+            <span>الفصول مفتوحة 24/7</span>
+            <i class="fas fa-video" style="color:#0f5cbf;"></i>
+        </div>
+    </header>
+
+    <div class="dashboard">
+        <!-- القسم الرئيسي: غرفة الفيديو + التحكم -->
+        <div class="meeting-card">
+            <div class="section-title">
+                <i class="fas fa-person-chalkboard"></i>
+                <span>الغرفة التعليمية المباشرة</span>
+            </div>
+
+            <div class="room-controls">
+                <div class="input-group">
+                    <label><i class="fas fa-tag"></i> اسم الغرفة (رابط الحصة)</label>
+                    <input type="text" id="roomNameInput" placeholder="مثال: math-grade10-alshafei" value="classroom-teacher-demo">
+                </div>
+                <div class="input-group">
+                    <label><i class="fas fa-user-graduate"></i> اسم المستخدم (الطالب/المعلم)</label>
+                    <input type="text" id="userNameInput" placeholder="ادخل اسمك" value="معلم الفصل">
+                </div>
+                <button id="joinRoomBtn" class="btn-primary"><i class="fas fa-video"></i> بدء الحصة / دخول</button>
+            </div>
+
+            <div class="video-container" id="jitsiContainer">
+                <!-- سيتم حقن iframe Jitsi هنا ديناميكياً -->
+                <div style="background:#0a1a2e; height:520px; display: flex; align-items: center; justify-content: center; color:#b9d0f0; font-size:1.2rem; flex-direction:column; gap:12px;">
+                    <i class="fas fa-chalkboard" style="font-size: 56px; opacity:0.5;"></i>
+                    <p>✨ اضغط "بدء الحصة" لفتح فصل الفيديو التفاعلي ✨</p>
+                    <small style="font-size:0.8rem;">يتم تشغيل Jitsi Meet API – تجربة غنية بالتعاون</small>
+                </div>
+            </div>
+            <div style="margin-top: 20px; display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap;">
+                <button id="endCallBtn" class="btn-outline"><i class="fas fa-phone-slash"></i> إنهاء الحصة (إغلاق)</button>
+                <button id="copyRoomLinkBtn" class="btn-outline"><i class="fas fa-link"></i> نسخ رابط الغرفة</button>
+            </div>
+        </div>
+
+        <!-- الشريط الجانبي: معلومات و أدوات مساعدة -->
+        <div class="info-panel">
+            <div style="display: flex; gap: 14px; align-items: center; margin-bottom: 20px;">
+                <i class="fas fa-graduation-cap" style="font-size: 32px; color:#0f5cbf;"></i>
+                <h2 style="font-size: 1.5rem;">إرشادات المعلم</h2>
+            </div>
+            <p>🔹 <strong>كيفية التدريس:</strong> أنشئ غرفة باسم الحصة الدراسية، انضم كمُعلم، ثم شارك الرابط مع طلابك. يمتلك Jitsi Meet أدوات تحكم كاملة (شاشة مشتركة، دردشة، رفع اليد، بث مباشر).</p>
+            <div class="teacher-tip">
+                <i class="fas fa-lightbulb" style="margin-left: 8px;"></i>
+                <strong>نصائح:</strong>
+                <ul style="margin-top: 10px; margin-right: 20px;">
+                    <li>• تأكد من منح الإذن للكاميرا والميكروفون عند الدخول.</li>
+                    <li>• يمكنك تعيين كلمة مرور للغرفة عبر إعدادات Jitsi بعد الدخول (اختياري).</li>
+                    <li>• استخدم خاصية "تسجيل الجلسة" لحفظ الحصص.</li>
+                </ul>
+            </div>
+            <div class="feature-list">
+                <li><i class="fas fa-check-circle" style="color:#16a34a;"></i> جودة فيديو عالية HD</li>
+                <li><i class="fas fa-check-circle" style="color:#16a34a;"></i> مشاركة الشاشة والسبورة التفاعلية</li>
+                <li><i class="fas fa-check-circle" style="color:#16a34a;"></i> دردشة نصية ورفع اليد</li>
+                <li><i class="fas fa-check-circle" style="color:#16a34a;"></i> لا حاجة لتسجيل حساب</li>
+            </div>
+            <hr style="margin: 20px 0; border-color:#e9eef3;">
+            <div style="background: #f1f5f9; border-radius: 28px; padding: 12px;">
+                <i class="fas fa-shield-alt"></i> <strong>خصوصية:</strong> جميع الغرف مشفرة، يمكنك إدارة المشاركين بسهولة.
+            </div>
+        </div>
+    </div>
+    <footer>
+        <i class="fas fa-video"></i> منصة تعليمية بتقنية Jitsi Meet API | تدريس بسلاسة وأمان | جميع الحقوق محفوظة
+    </footer>
+</div>
+
+<!-- Jitsi Meet External API Library -->
+<script src="https://meet.jit.si/external_api.js"></script>
+
+<script>
+    // العناصر
+    const roomInput = document.getElementById('roomNameInput');
+    const userNameInput = document.getElementById('userNameInput');
+    const joinBtn = document.getElementById('joinRoomBtn');
+    const endCallBtn = document.getElementById('endCallBtn');
+    const copyLinkBtn = document.getElementById('copyRoomLinkBtn');
+    const jitsiContainer = document.getElementById('jitsiContainer');
+
+    let jitsiApi = null;      // مرجع API الحالي
+    let isMeetingActive = false;
+
+    // تنظيف iframe الحالي وإعادة الضبط
+    function destroyJitsiIframe() {
+        if (jitsiApi) {
+            try {
+                jitsiApi.dispose();   // تدمير الجلسة بشكل نظيف
+            } catch(e) {
+                console.warn("dispose error", e);
+            }
+            jitsiApi = null;
+        }
+        // إزالة محتوى الحاوية مع الاحتفاظ بplaceHolder
+        while (jitsiContainer.firstChild) {
+            jitsiContainer.removeChild(jitsiContainer.firstChild);
+        }
+        // إضافة رسالة ترحيب مؤقتة
+        const placeholderDiv = document.createElement('div');
+        placeholderDiv.style.cssText = "background:#0a1a2e; height:520px; display: flex; align-items: center; justify-content: center; color:#b9d0f0; font-size:1.2rem; flex-direction:column; gap:12px;";
+        placeholderDiv.innerHTML = `
+            <i class="fas fa-chalkboard" style="font-size: 56px; opacity:0.5;"></i>
+            <p>✨ تم إنهاء الجلسة. اضغط "بدء الحصة" لإنشاء فصل جديد ✨</p>
+            <small style="font-size:0.8rem;">يمكنك تغيير اسم الغرفة واسم المستخدم قبل البدء</small>
+        `;
+        jitsiContainer.appendChild(placeholderDiv);
+        isMeetingActive = false;
+    }
+
+    // إنشاء اتصال Jitsi Meet API
+    function initJitsiMeeting(roomName, userName) {
+        // تأكد من تدمير الجلسة السابقة
+        if (jitsiApi) {
+            destroyJitsiIframe();
+        }
+
+        // تنظيف الحاوية وإعادة بناء iframe
+        while (jitsiContainer.firstChild) {
+            jitsiContainer.removeChild(jitsiContainer.firstChild);
+        }
+
+        // جاهزية domain موثوق – نستخدم الخادم العام meet.jit.si لكن يمكن تغييره لاحقاً
+        const domain = 'meet.jit.si';
+        const options = {
+            roomName: roomName,
+            width: '100%',
+            height: 520,
+            parentNode: jitsiContainer,
+            userInfo: {
+                displayName: userName || 'طالب/معلم',
+                email: undefined
+            },
+            configOverwrite: {
+                startWithVideoMuted: false,
+                startWithAudioMuted: false,
+                disableDeepLinking: true,   // تجربة أفضل داخل iframe
+                enableWelcomePage: false,
+                prejoinPageEnabled: false,   // التوجه مباشرة للغرفة
+                disableInviteFunctions: false,
+                toolbarButtons: ['microphone', 'camera', 'closedcaptions', 'desktop', 'fullscreen', 'fodeviceselection', 'hangup', 'profile', 'chat', 'raisehand', 'videoquality', 'filmstrip', 'security', 'settings', 'tileview', 'download', 'help', 'mute-everyone', 'mute-video-everyone'],
+            },
+            interfaceConfigOverwrite: {
+                SHOW_JITSI_WATERMARK: false,
+                SHOW_WATERMARK_FOR_GUESTS: false,
+                DEFAULT_REMOTE_DISPLAY_NAME: 'طالب',
+                TOOLBAR_BUTTONS: ['microphone', 'camera', 'closedcaptions', 'desktop', 'fullscreen', 'hangup', 'chat', 'raisehand', 'settings', 'tileview', 'security'],
+                // جعل اللغة العربية مفضلة إذا امكن لكن المتصفح يدعمها
+                LANG_DETECTION: true,
+            },
+            // جعل التجربة أكثر احترافية
+            noSSL: false,
+        };
+
+        try {
+            jitsiApi = new JitsiMeetExternalAPI(domain, options);
+            isMeetingActive = true;
+            
+            // أحداث إضافية لتحسين تجربة المستخدم
+            jitsiApi.addListener('videoConferenceJoined', () => {
+                console.log('تم الانضمام إلى المؤتمر');
+                // يمكن إرسال إشعار صغير (اختياري)
+            });
+            
+            jitsiApi.addListener('readyToClose', () => {
+                console.log('الغرفة جاهزة للإغلاق');
+            });
+            
+            jitsiApi.addListener('participantLeft', (event) => {
+                console.log('غادر مشارك:', event);
+            });
+            
+            // في حالة الخروج العادي عبر زر الخروج من الواجهة
+            jitsiApi.addListener('videoConferenceLeft', () => {
+                // المستخدم أنهى الجلسة يدوياً
+                isMeetingActive = false;
+                // إعادة ضبط الوضع إلى الوضع الافتراضي لتفادي الازدواجية
+                setTimeout(() => {
+                    if(!jitsiApi) return;
+                    destroyJitsiIframe();
+                }, 200);
+            });
+
+        } catch (error) {
+            console.error("خطأ في تحميل Jitsi Meet API: ", error);
+            jitsiContainer.innerHTML = `<div style="background:#ffebee; height:520px; display:flex; align-items:center; justify-content:center; color:#b91c1c; flex-direction:column; gap:12px; border-radius:28px;"><i class="fas fa-exclamation-triangle" style="font-size: 48px;"></i><p>⚠️ حدث خطأ أثناء تحميل غرفة الفيديو، تأكد من اتصال الإنترنت وعدم حظر الـ iframe. ⚠️</p><button id="retryBtn" class="btn-primary" style="margin-top:12px;">إعادة المحاولة</button></div>`;
+            const retryBtn = document.getElementById('retryBtn');
+            if(retryBtn) retryBtn.onclick = () => initJitsiMeeting(roomName, userName);
+            isMeetingActive = false;
+        }
+    }
+
+    // بدء الحصة أو الانضمام بناءً على المدخلات
+    function startOrJoinMeeting() {
+        let room = roomInput.value.trim();
+        let userName = userNameInput.value.trim();
+        
+        if (!room) {
+            alert("الرجاء إدخال اسم الغرفة (مثل: math-grade10)");
+            roomInput.focus();
+            return;
+        }
+        if (!userName) {
+            alert("الرجاء إدخال اسم المستخدم (المعلم/الطالب) ليظهر للآخرين");
+            userNameInput.focus();
+            return;
+        }
+        
+        // تنظيف أي غرفة سابقة تماماً
+        if (jitsiApi) {
+            destroyJitsiIframe();
+        }
+        // تأخير بسيط لضمان التدمير الكامل
+        setTimeout(() => {
+            initJitsiMeeting(room, userName);
+        }, 50);
+    }
+
+    // إنهاء الحصة (تدمير الجلسة)
+    function endMeeting() {
+        if (jitsiApi) {
+            // استدعاء الخروج من المؤتمر قبل التدمير لتعطيل الإشارات
+            try {
+                jitsiApi.executeCommand('hangup');
+            } catch(e) { console.warn(e); }
+            destroyJitsiIframe();
+        } else {
+            // إذا لم توجد جلسة، لكن نظف الواجهة فقط
+            destroyJitsiIframe();
+        }
+    }
+
+    // نسخ رابط الغرفة المباشر للطلاب (بناءً على اسم الغرفة الحالي)
+    function copyRoomLink() {
+        let room = roomInput.value.trim();
+        if (!room) {
+            alert("يرجى كتابة اسم الغرفة أولاً ثم نسخ الرابط.");
+            return;
+        }
+        // رابط الدعوة المباشر ل Jitsi Meet العام ولكن مع توجيه طلابك لاستخدام نفس الاسم
+        const inviteUrl = `https://meet.jit.si/${encodeURIComponent(room)}`;
+        navigator.clipboard.writeText(inviteUrl).then(() => {
+            // منبثق لطيف
+            alert(`✅ تم نسخ الرابط: ${inviteUrl}\nيمكنك مشاركته مع طلابك. بعد دخولهم سيظهرون في نفس الغرفة.`);
+        }).catch(() => {
+            alert("تعذر النسخ، لكن الرابط هو: " + inviteUrl);
+        });
+    }
+
+    // التحقق من وجود API جاهز للتعامل مع أخطاء الشبكة
+    window.addEventListener('load', () => {
+        // التحقق من تحميل مكتبة external_api
+        if (typeof JitsiMeetExternalAPI === 'undefined') {
+            console.warn("JitsiMeetExternalAPI لم يتم تحميله؟ تأكد من السكربت");
+            // يمكن إضافة محاولة إعادة تحميل أو توجيه
+            const warnDiv = document.createElement('div');
+            warnDiv.style.position = 'fixed'; warnDiv.style.bottom='20px'; warnDiv.style.right='20px';
+            warnDiv.style.background='#ff9800'; warnDiv.style.padding='10px'; warnDiv.style.borderRadius='12px';
+            warnDiv.innerText = '⚠️ تأكد من اتصال الانترنت لتحميل Jitsi API';
+            document.body.appendChild(warnDiv);
+            setTimeout(()=>warnDiv.remove(), 5000);
+        }
+        
+        // ربط الأزرار
+        joinBtn.addEventListener('click', startOrJoinMeeting);
+        endCallBtn.addEventListener('click', endMeeting);
+        copyLinkBtn.addEventListener('click', copyRoomLink);
+        
+        // ضبط قيم افتراضية معقولة
+        if (!roomInput.value) roomInput.value = "class-" + Math.floor(Date.now() / 1000);
+        if (!userNameInput.value) userNameInput.value = "معلم";
+    });
+
+    // عند الضغط على Enter في الحقول
+    roomInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') startOrJoinMeeting(); });
+    userNameInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') startOrJoinMeeting(); });
+    
+    // إضافة معالجة إذا تم إغلاق الصفحة لتنظيف الجلسة
+    window.addEventListener('beforeunload', () => {
+        if (jitsiApi) {
+            try {
+                jitsiApi.dispose();
+            } catch(e) {}
+        }
+    });
+</script>
+</body>
+</html>
