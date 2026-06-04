@@ -6,7 +6,48 @@
     <title>منصة تعليمية جزائرية | دروس خصوصية عبر الفيديو</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Cairo', sans-serif; background: linear-gradient(135deg, #f5f7fa 0%, #e9edf2 100%); min-height: 100vh; color: #1e2a3e; }
+        .navbar { background: white; padding: 15px 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); position: sticky; top: 0; z-index: 100; }
+        .nav-container { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        .logo { font-size: 1.8rem; font-weight: 800; }
+        .logo i { color: #0f5cbf; margin-left: 10px; }
+        .logo .highlight { background: linear-gradient(135deg, #0f5cbf, #1e3c72); background-clip: text; -webkit-background-clip: text; color: transparent; }
+        .nav-links a { text-decoration: none; color: #4a5568; margin-right: 25px; font-weight: 600; transition: 0.3s; cursor: pointer; }
+        .nav-links a:hover, .nav-links a.active { color: #0f5cbf; }
+        .hero { max-width: 1200px; margin: 50px auto; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 40px; }
+        .hero-content { flex: 1; }
+        .hero-content h1 { font-size: 2.5rem; margin-bottom: 20px; }
+        .hero-content .highlight { color: #0f5cbf; }
+        .hero-content p { font-size: 1.1rem; color: #4a5568; margin-bottom: 30px; line-height: 1.6; }
+        .hero-buttons { display: flex; gap: 15px; flex-wrap: wrap; }
+        .btn-primary { background: #0f5cbf; color: white; border: none; padding: 12px 30px; border-radius: 40px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: 0.3s; font-family: 'Cairo', sans-serif; }
+        .btn-primary:hover { background: #0b4a9c; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(15,92,191,0.3); }
+        .btn-outline { background: transparent; border: 2px solid #0f5cbf; color: #0f5cbf; padding: 10px 28px; border-radius: 40px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: 0.3s; }
+        .btn-outline:hover { background: #0f5cbf10; }
+        .hero-image { flex: 1; text-align: center; }
+        .hero-image i { font-size: 250px; color: #0f5cbf20; }
+        .teachers-section, .form-section { max-width: 1200px; margin: 50px auto; padding: 0 20px; }
+        .teachers-section h2 { font-size: 2rem; margin-bottom: 30px; text-align: center; }
+        .teachers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 25px; }
+        .teacher-card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); transition: 0.3s; }
+        .teacher-card:hover { transform: translateY(-5px); box-shadow: 0 12px 30px rgba(0,0,0,0.12); }
+        .form-tabs { display: flex; gap: 10px; justify-content: center; margin-bottom: 30px; flex-wrap: wrap; }
+        .tab-btn { padding: 12px 25px; background: #e2e8f0; border: none; border-radius: 40px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: 0.3s; }
+        .tab-btn.active { background: #0f5cbf; color: white; }
+        .form-container { background: white; max-width: 500px; margin: 0 auto; padding: 30px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .form-container h3 { margin-bottom: 20px; text-align: center; }
+        .form-container input, .form-container select, .form-container textarea { width: 100%; padding: 12px 15px; margin-bottom: 15px; border: 1px solid #cbd5e1; border-radius: 12px; font-family: 'Cairo', sans-serif; font-size: 1rem; }
+        .form-container textarea { min-height: 100px; resize: vertical; }
+        footer { text-align: center; padding: 30px; background: #1e2a3e; color: #94a3b8; margin-top: 50px; }
+        footer i { margin: 0 5px; }
+        @media (max-width: 768px) {
+            .hero-content h1 { font-size: 1.8rem; }
+            .hero-image i { font-size: 150px; }
+            .nav-links a { margin-right: 15px; font-size: 0.9rem; }
+        }
+    </style>
 </head>
 <body>
     <nav class="navbar">
@@ -16,16 +57,15 @@
                 <span>منصة<span class="highlight"> التعليم</span></span>
             </div>
             <div class="nav-links">
-                <a href="#" class="active">الرئيسية</a>
-                <a href="#" onclick="showTeachers()">الأساتذة</a>
-                <a href="#" onclick="showLogin()">تسجيل الدخول</a>
+                <a class="active" onclick="showHome()">الرئيسية</a>
+                <a onclick="showTeachers()">الأساتذة</a>
+                <a onclick="showLogin()">تسجيل الدخول</a>
             </div>
         </div>
     </nav>
 
     <main>
-        <!-- القسم الرئيسي -->
-        <section class="hero">
+        <section id="homeSection" class="hero">
             <div class="hero-content">
                 <h1>تعلم مع أفضل الأساتذة <span class="highlight">في الجزائر</span></h1>
                 <p>دروس خصوصية عبر الفيديو مع نخبة من الأساتذة المعتمدين. ادفع عبر شارجيلي بسهولة وأمان</p>
@@ -39,13 +79,11 @@
             </div>
         </section>
 
-        <!-- قائمة الأساتذة -->
         <section id="teachersSection" class="teachers-section" style="display: none;">
             <h2><i class="fas fa-users"></i> أساتذتنا المتميزون</h2>
             <div id="teachersList" class="teachers-grid"></div>
         </section>
 
-        <!-- نماذج التسجيل والدخول -->
         <section id="loginSection" class="form-section" style="display: none;">
             <div class="form-tabs">
                 <button class="tab-btn active" onclick="switchTab('login')">تسجيل الدخول</button>
@@ -53,7 +91,6 @@
                 <button class="tab-btn" onclick="switchTab('teacher-register')">تسجيل أستاذ</button>
             </div>
 
-            <!-- تسجيل الدخول -->
             <div id="loginTab" class="form-container">
                 <h3>تسجيل الدخول</h3>
                 <input type="email" id="loginEmail" placeholder="البريد الإلكتروني">
@@ -65,7 +102,6 @@
                 <button class="btn-primary" onclick="login()">دخول</button>
             </div>
 
-            <!-- تسجيل طالب -->
             <div id="studentRegisterTab" class="form-container" style="display: none;">
                 <h3>تسجيل طالب جديد</h3>
                 <input type="text" id="studentName" placeholder="الاسم الكامل">
@@ -75,7 +111,6 @@
                 <button class="btn-primary" onclick="registerStudent()">تسجيل</button>
             </div>
 
-            <!-- تسجيل أستاذ -->
             <div id="teacherRegisterTab" class="form-container" style="display: none;">
                 <h3>تقديم طلب أستاذ</h3>
                 <input type="text" id="teacherName" placeholder="الاسم الكامل">
@@ -95,6 +130,61 @@
         <p><i class="fas fa-credit-card"></i> الدفع عبر شارجيلي | EDAHABIA | CCP</p>
     </footer>
 
-    <script src="script.js"></script>
+    <script>
+        function showHome() { document.getElementById('homeSection').style.display = 'flex'; document.getElementById('teachersSection').style.display = 'none'; document.getElementById('loginSection').style.display = 'none'; }
+        async function showTeachers() { document.getElementById('homeSection').style.display = 'none'; document.getElementById('loginSection').style.display = 'none'; document.getElementById('teachersSection').style.display = 'block'; await loadTeachersList(); }
+        function showLogin() { document.getElementById('homeSection').style.display = 'none'; document.getElementById('teachersSection').style.display = 'none'; document.getElementById('loginSection').style.display = 'block'; switchTab('login'); }
+        function showTeacherRegister() { document.getElementById('homeSection').style.display = 'none'; document.getElementById('teachersSection').style.display = 'none'; document.getElementById('loginSection').style.display = 'block'; switchTab('teacher-register'); }
+
+        async function loadTeachersList() {
+            const res = await fetch('/api/teachers');
+            const teachers = await res.json();
+            const container = document.getElementById('teachersList');
+            if (!teachers.length) { container.innerHTML = '<p style="text-align:center">لا يوجد أساتذة مسجلون حالياً</p>'; return; }
+            let html = '';
+            teachers.forEach(t => { html += `<div class="teacher-card"><h3><i class="fas fa-user-graduate"></i> ${t.full_name}</h3><p><i class="fas fa-book"></i> ${t.specialization || 'تخصص عام'}</p><p>${t.bio || 'أستاذ معتمد على المنصة'}</p><p><strong>${t.hourly_rate} دج</strong> / الحصة</p><button class="btn-outline" onclick="showLogin()">سجل دخولك كطالب</button></div>`; });
+            container.innerHTML = html;
+        }
+
+        function switchTab(tab) {
+            document.getElementById('loginTab').style.display = 'none';
+            document.getElementById('studentRegisterTab').style.display = 'none';
+            document.getElementById('teacherRegisterTab').style.display = 'none';
+            if (tab === 'login') document.getElementById('loginTab').style.display = 'block';
+            else if (tab === 'student-register') document.getElementById('studentRegisterTab').style.display = 'block';
+            else document.getElementById('teacherRegisterTab').style.display = 'block';
+            document.querySelectorAll('.tab-btn').forEach((btn, i) => { btn.classList.remove('active'); if ((tab === 'login' && i === 0) || (tab === 'student-register' && i === 1) || (tab === 'teacher-register' && i === 2)) btn.classList.add('active'); });
+        }
+
+        async function login() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const role = document.getElementById('loginRole').value;
+            if (!email || !password) { alert('يرجى إدخال البريد الإلكتروني وكلمة المرور'); return; }
+            const res = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, role }) });
+            const data = await res.json();
+            if (data.success) {
+                if (email === 'admin@platform.com') { localStorage.setItem('adminToken', data.token); localStorage.setItem('adminData', JSON.stringify(data.user)); window.location.href = '/admin.html'; }
+                else if (role === 'teacher') { localStorage.setItem('teacherToken', data.token); localStorage.setItem('teacherData', JSON.stringify(data.user)); window.location.href = '/teacher-dashboard.html'; }
+                else { localStorage.setItem('studentToken', data.token); localStorage.setItem('studentData', JSON.stringify(data.user)); window.location.href = '/student-dashboard.html'; }
+            } else { alert(data.error || 'فشل تسجيل الدخول'); }
+        }
+
+        async function registerStudent() {
+            const full_name = document.getElementById('studentName').value, email = document.getElementById('studentEmail').value, password = document.getElementById('studentPassword').value, phone = document.getElementById('studentPhone').value;
+            if (!full_name || !email || !password) { alert('يرجى ملء جميع الحقول المطلوبة'); return; }
+            const res = await fetch('/api/student/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ full_name, email, password, phone }) });
+            const data = await res.json();
+            if (data.success) { alert('تم التسجيل بنجاح! يمكنك تسجيل الدخول الآن'); switchTab('login'); } else { alert(data.error || 'حدث خطأ في التسجيل'); }
+        }
+
+        async function registerTeacher() {
+            const full_name = document.getElementById('teacherName').value, email = document.getElementById('teacherEmail').value, password = document.getElementById('teacherPassword').value, phone = document.getElementById('teacherPhone').value, specialization = document.getElementById('teacherSpecialization').value, bio = document.getElementById('teacherBio').value, hourly_rate = document.getElementById('teacherRate').value;
+            if (!full_name || !email || !password) { alert('يرجى ملء الحقول الأساسية'); return; }
+            const res = await fetch('/api/teacher/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ full_name, email, password, phone, specialization, bio, hourly_rate }) });
+            const data = await res.json();
+            if (data.success) { alert('تم إرسال طلبك بنجاح! سيتم إعلامك عند قبول طلبك'); switchTab('login'); } else { alert(data.error || 'حدث خطأ في تقديم الطلب'); }
+        }
+    </script>
 </body>
 </html>
