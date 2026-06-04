@@ -6,18 +6,21 @@
     <title>لوحة الطالب | منصة التعليم</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Cairo', sans-serif; background: #f0f2f5; }
         .dashboard { max-width: 1200px; margin: 30px auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #1e3c72, #0f5cbf); color: white; padding: 20px; border-radius: 20px; margin-bottom: 30px; }
+        .header { background: linear-gradient(135deg, #1e3c72, #0f5cbf); color: white; padding: 20px; border-radius: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        .logout-btn { background: #ef4444; color: white; border: none; padding: 10px 20px; border-radius: 30px; cursor: pointer; font-family: 'Cairo', sans-serif; }
         .teachers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
         .teacher-card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .book-btn { background: #0f5cbf; color: white; border: none; padding: 10px 20px; border-radius: 25px; cursor: pointer; margin-top: 10px; }
+        .book-btn { background: #0f5cbf; color: white; border: none; padding: 10px 20px; border-radius: 25px; cursor: pointer; margin-top: 10px; width: 100%; }
         .sessions-list { background: white; border-radius: 20px; padding: 20px; margin-top: 30px; }
-        .session-card { border: 1px solid #e2e8f0; border-radius: 15px; padding: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
-        .logout-btn { background: #ef4444; color: white; border: none; padding: 10px 20px; border-radius: 30px; cursor: pointer; float: left; }
-        .payment-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); z-index: 1000; display: none; }
+        .session-card { border: 1px solid #e2e8f0; border-radius: 15px; padding: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .btn-join { background: #10b981; color: white; border: none; padding: 8px 20px; border-radius: 25px; cursor: pointer; }
+        .payment-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); z-index: 1000; display: none; width: 90%; max-width: 400px; text-align: center; }
         .overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999; display: none; }
+        h2 { margin: 20px 0 10px 0; }
     </style>
 </head>
 <body>
@@ -26,153 +29,75 @@
             <h1><i class="fas fa-user-graduate"></i> لوحة الطالب</h1>
             <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> تسجيل خروج</button>
         </div>
-
         <h2><i class="fas fa-chalkboard-user"></i> الأساتذة المتاحون</h2>
         <div id="teachersList" class="teachers-grid"></div>
-
-        <div class="sessions-list">
-            <h2><i class="fas fa-calendar"></i> حصصي المحجوزة</h2>
-            <div id="sessionsList"></div>
-        </div>
+        <div class="sessions-list"><h2><i class="fas fa-calendar"></i> حصصي المحجوزة</h2><div id="sessionsList"></div></div>
     </div>
-
     <div id="paymentOverlay" class="overlay"></div>
-    <div id="paymentModal" class="payment-modal">
-        <h3><i class="fas fa-credit-card"></i> الدفع عبر شارجيلي</h3>
-        <p id="paymentInfo"></p>
-        <button id="payNowBtn" class="btn-primary" style="width: 100%; margin-top: 15px;">الدفع الآن</button>
-        <button onclick="closePaymentModal()" class="btn-outline" style="width: 100%; margin-top: 10px;">إلغاء</button>
-    </div>
-
+    <div id="paymentModal" class="payment-modal"><h3><i class="fas fa-credit-card"></i> الدفع عبر شارجيلي</h3><p id="paymentInfo"></p><button id="payNowBtn" class="book-btn" style="margin-top: 15px;">الدفع الآن</button><button onclick="closePaymentModal()" class="book-btn" style="background:#gray; margin-top: 10px;">إلغاء</button></div>
     <script>
         let studentData = JSON.parse(localStorage.getItem('studentData') || '{}');
-        let currentBooking = null;
-
-        if (!studentData.id) {
-            window.location.href = '/';
-        }
+        if (!studentData.id) window.location.href = '/';
 
         async function loadTeachers() {
             const res = await fetch('/api/teachers');
             const teachers = await res.json();
             const container = document.getElementById('teachersList');
-            
             let html = '';
-            teachers.forEach(t => {
-                html += `<div class="teacher-card">
-                    <h3>${t.full_name}</h3>
-                    <p><i class="fas fa-book"></i> ${t.specialization || 'غير محدد'}</p>
-                    <p>${t.bio || 'أستاذ معتمد'}</p>
-                    <p><strong>${t.hourly_rate} دج</strong> / الحصة (60 دقيقة)</p>
-                    <button class="book-btn" onclick="bookSession(${t.id}, ${t.hourly_rate})"><i class="fas fa-calendar-plus"></i> حجز حصة</button>
-                </div>`;
-            });
+            teachers.forEach(t => { html += `<div class="teacher-card"><h3>${t.full_name}</h3><p><i class="fas fa-book"></i> ${t.specialization || 'غير محدد'}</p><p>${t.bio || 'أستاذ معتمد'}</p><p><strong>${t.hourly_rate} دج</strong> / الحصة (60 دقيقة)</p><button class="book-btn" onclick="bookSession(${t.id}, ${t.hourly_rate})"><i class="fas fa-calendar-plus"></i> حجز حصة</button></div>`; });
             container.innerHTML = html;
+        }
+
+        async function bookSession(teacherId, price) {
+            const date = prompt('أدخل تاريخ الحصة (مثال: 2024-12-25 15:00):');
+            if (!date) return;
+            const response = await fetch('/api/session/create-room', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ teacher_id: teacherId, student_id: studentData.id, session_date: date, price: price }) });
+            const data = await response.json();
+            if (data.success) { alert(`تم إنشاء الحصة بنجاح!\nمعرف الغرفة: ${data.room_id}\nيرجى إتمام الدفع للدخول.`); loadSessions(); } 
+            else { alert('حدث خطأ: ' + data.error); }
         }
 
         async function loadSessions() {
             const res = await fetch(`/api/student/sessions/${studentData.id}`);
             const sessions = await res.json();
             const container = document.getElementById('sessionsList');
-            
-            if (sessions.length === 0) {
-                container.innerHTML = '<p>لا توجد حصص محجوزة</p>';
-                return;
-            }
-
+            if (sessions.length === 0) { container.innerHTML = '<p style="text-align:center">📚 لا توجد حصص محجوزة بعد</p>'; return; }
             let html = '';
-            sessions.forEach(s => {
-                html += `<div class="session-card">
-                    <div>
-                        <strong>الأستاذ: ${s.teacher_name}</strong><br>
-                        <small>التاريخ: ${new Date(s.session_date).toLocaleString('ar')}</small><br>
-                        <small>المدة: ${s.duration} دقيقة | السعر: ${s.price} دج</small><br>
-                        <small>حالة الدفع: ${s.payment_status === 'paid' ? 'مدفوعة ✅' : 'بانتظار الدفع ⏳'}</small>
-                    </div>
-                    ${s.payment_status === 'paid' ? `<button class="btn-join" onclick="joinSession(${s.id})"><i class="fas fa-video"></i> انضم للحصة</button>` : 
-                      `<button class="btn-primary" onclick="payForSession(${s.id}, ${s.price})"><i class="fas fa-credit-card"></i> ادفع الآن</button>`}
-                </div>`;
-            });
+            for (const s of sessions) {
+                const sessionDate = new Date(s.session_date);
+                const canJoin = s.payment_status === 'paid' && sessionDate <= new Date();
+                html += `<div class="session-card"><div><strong>👨‍🏫 الأستاذ: ${s.teacher_name}</strong><br><small>📅 التاريخ: ${sessionDate.toLocaleString('ar')}</small><br><small>⏱️ المدة: ${s.duration} دقيقة | 💰 السعر: ${s.price} دج</small><br><small>💳 حالة الدفع: ${s.payment_status === 'paid' ? '✅ مدفوعة' : '⏳ بانتظار الدفع'}</small></div><div>${s.payment_status === 'paid' ? `<button class="btn-join" onclick="joinSession(${s.id})"><i class="fas fa-video"></i> ${canJoin ? 'انضم للحصة الآن' : 'انتظر موعد الحصة'}</button>` : `<button class="book-btn" onclick="payForSession(${s.id}, ${s.price})"><i class="fas fa-credit-card"></i> ادفع الآن (${s.price} دج)</button>`}</div></div>`;
+            }
             container.innerHTML = html;
-        }
-
-        function bookSession(teacherId, price) {
-            const date = prompt('أدخل تاريخ الحصة (مثال: 2024-12-25 15:00):');
-            if (!date) return;
-            
-            currentBooking = { teacher_id: teacherId, student_id: studentData.id, session_date: date, duration: 60, price: price };
-            
-            fetch('/api/create-session', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(currentBooking)
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    alert('تم حجز الحصة بنجاح! يرجى إتمام الدفع.');
-                    loadSessions();
-                } else {
-                    alert('حدث خطأ: ' + data.error);
-                }
-            });
         }
 
         function payForSession(sessionId, amount) {
             document.getElementById('paymentOverlay').style.display = 'block';
             document.getElementById('paymentModal').style.display = 'block';
-            document.getElementById('paymentInfo').innerHTML = `قيمة الحصة: <strong>${amount} دج</strong><br>سيتم تحويلك إلى بوابة شارجيلي الآمنة للدفع.`;
-            
-            document.getElementById('payNowBtn').onclick = () => {
-                fetch('/api/create-chargily-payment', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        session_id: sessionId,
-                        amount: amount,
-                        student_name: studentData.name,
-                        student_email: studentData.email
-                    })
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        if (data.payment_url) {
-                            window.open(data.payment_url, '_blank');
-                        }
-                        alert('تم إنشاء طلب الدفع. بعد إتمام الدفع، سيتم تفعيل الحصة تلقائياً.');
-                        closePaymentModal();
-                        loadSessions();
-                    } else {
-                        alert('حدث خطأ في إنشاء طلب الدفع');
-                    }
-                });
+            document.getElementById('paymentInfo').innerHTML = `💰 قيمة الحصة: <strong>${amount} دج</strong><br>🔐 بعد الدفع، ستحصل على رابط الدخول المباشر للحصة.`;
+            document.getElementById('payNowBtn').onclick = async () => {
+                const paymentRes = await fetch('/api/create-chargily-payment', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: sessionId, amount: amount, student_name: studentData.name, student_email: studentData.email }) });
+                const paymentData = await paymentRes.json();
+                if (paymentData.success) {
+                    alert('✅ تم إنشاء طلب الدفع. جارٍ تأكيد الدفع...');
+                    setTimeout(async () => { await fetch(`/api/payment/confirm/${paymentData.payment_id}`, { method: 'POST' }); alert('تم تأكيد الدفع! يمكنك الآن الانضمام للحصة.'); loadSessions(); }, 2000);
+                }
+                closePaymentModal();
             };
         }
 
-        function closePaymentModal() {
-            document.getElementById('paymentOverlay').style.display = 'none';
-            document.getElementById('paymentModal').style.display = 'none';
-        }
+        function closePaymentModal() { document.getElementById('paymentOverlay').style.display = 'none'; document.getElementById('paymentModal').style.display = 'none'; }
 
         async function joinSession(sessionId) {
-            const res = await fetch(`/api/session/${sessionId}/join`);
-            const data = await res.json();
-            if (data.room_url) {
-                window.open(data.room_url, '_blank');
-            } else {
-                alert(data.error || 'لا يمكن الانضمام للحصة');
-            }
+            const verifyRes = await fetch('/api/verify-room-access', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: sessionId, user_id: studentData.id, user_role: 'student' }) });
+            const verifyData = await verifyRes.json();
+            if (verifyData.allowed) { window.open(`/api/join-session/${sessionId}/${studentData.id}/student`, '_blank'); } 
+            else if (verifyData.payment_required) { alert('⏳ يرجى إتمام الدفع أولاً للانضمام إلى الحصة'); } 
+            else { alert(verifyData.error || 'لا يمكن الانضمام للحصة'); }
         }
 
-        function logout() {
-            localStorage.removeItem('studentToken');
-            localStorage.removeItem('studentData');
-            window.location.href = '/';
-        }
-
-        loadTeachers();
-        loadSessions();
+        function logout() { localStorage.removeItem('studentToken'); localStorage.removeItem('studentData'); window.location.href = '/'; }
+        loadTeachers(); loadSessions();
     </script>
 </body>
 </html>
