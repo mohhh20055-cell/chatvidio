@@ -4,29 +4,50 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
+const multer = require('multer');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// إعداد رفع الملفات
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = './uploads';
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir);
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname);
+    cb(null, uniqueName);
+  }
+});
+const upload = multer({ storage: storage, limits: { fileSize: 5 * 1024 * 1024 } });
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
+app.use('/uploads', express.static('uploads'));
 
 const db = new sqlite3.Database('./platform.db');
 
 // إنشاء الجداول
 db.serialize(() => {
-  // جدول الأساتذة
+  // جدول الأساتذة مع الصورة والشهادات
   db.run(`CREATE TABLE IF NOT EXISTS teachers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     full_name TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
-    phone TEXT,
-    specialization TEXT,
+    phone TEXT NOT NULL,
+    specialization TEXT NOT NULL,
     bio TEXT,
     profile_image TEXT,
+    diploma_image TEXT,
+    id_image TEXT,
+    experience TEXT,
     status TEXT DEFAULT 'pending',
+    rejection_reason TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
@@ -41,7 +62,7 @@ db.serialize(() => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
-  // جدول العروض (المنشورات) التي ينشرها الأستاذ
+  // جدول العروض (المنشورات)
   db.run(`CREATE TABLE IF NOT EXISTS offers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     teacher_id INTEGER,
@@ -56,12 +77,13 @@ db.serialize(() => {
     FOREIGN KEY(teacher_id) REFERENCES teachers(id)
   )`);
 
-  // جدول الحصص (الطلاب المسجلين في العروض)
+  // جدول الحصص (الطلاب المسجلين)
   db.run(`CREATE TABLE IF NOT EXISTS sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     offer_id INTEGER,
     student_id INTEGER,
     payment_status TEXT DEFAULT 'pending',
+    payment_amount INTEGER DEFAULT 0,
     joined_at DATETIME,
     left_at DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -69,7 +91,7 @@ db.serialize(() => {
     FOREIGN KEY(student_id) REFERENCES students(id)
   )`);
 
-  // جدول الطلاب في غرفة الانتظار (قبل بدء البث)
+  // جدول الطلاب في غرفة الانتظار
   db.run(`CREATE TABLE IF NOT EXISTS waiting_room (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     offer_id INTEGER,
@@ -79,7 +101,7 @@ db.serialize(() => {
     FOREIGN KEY(student_id) REFERENCES students(id)
   )`);
 
-  // جدول الطلاب في البث المباشر (أثناء الحصة)
+  // جدول الطلاب في البث المباشر
   db.run(`CREATE TABLE IF NOT EXISTS active_stream (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     offer_id INTEGER,
@@ -112,17 +134,35 @@ db.serialize(() => {
 
 // ============= API Routes =============
 
-// تسجيل أستاذ جديد
-app.post('/api/teacher/register', async (req, res) => {
-  const { full_name, email, password, phone, specialization, bio } = req.body;
-  const hashedPassword = bcrypt.hashSync(password, 10);
+// تسجيل أستاذ جديد مع رفع الصور
+app.post('/api/teacher/register', upload.fields([
+  { name: 'profile_image', maxCount: 1 },
+  { name: 'diploma_image', maxCount: 1 },
+  { name: 'id_image', maxCount: 1 }
+]), async (req, res) => {
+  const { full_name, email, password, phone, specialization, bio, experience } = req.body;
   
-  db.run(`INSERT INTO teachers (full_name, email, password, phone, specialization, bio, status)
-          VALUES (?, ?, ?, ?, ?, ?, 'pending')`,
-    [full_name, email, hashedPassword, phone, specialization, bio],
+  // التحقق من وجود جميع الحقول
+  if (!full_name || !email || !password || !phone || !specialization || !bio || !experience) {
+    return res.json({ success: false, error: 'يرجى ملء جميع الحقول المطلوبة' });
+  }
+  
+  // التحقق من رفع الصور
+  if (!req.files['profile_image'] || !req.files['diploma_image'] || !req.files['id_image']) {
+    return res.json({ success: false, error: 'يرجى رفع الصورة الشخصية، صورة الدبلوم، وصورة بطاقة الهوية' });
+  }
+  
+  const hashedPassword = bcrypt.hashSync(password, 10);
+  const profile_image = req.files['profile_image'][0].filename;
+  const diploma_image = req.files['diploma_image'][0].filename;
+  const id_image = req.files['id_image'][0].filename;
+  
+  db.run(`INSERT INTO teachers (full_name, email, password, phone, specialization, bio, experience, profile_image, diploma_image, id_image, status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+    [full_name, email, hashedPassword, phone, specialization, bio, experience, profile_image, diploma_image, id_image],
     function(err) {
       if (err && err.message.includes('UNIQUE')) return res.json({ success: false, error: 'البريد الإلكتروني مستخدم مسبقاً' });
-      if (err) return res.json({ success: false, error: 'حدث خطأ' });
+      if (err) return res.json({ success: false, error: 'حدث خطأ: ' + err.message });
       res.json({ success: true, message: 'تم إرسال طلبك، سيتم مراجعته من قبل الإدارة' });
     });
 });
@@ -130,6 +170,9 @@ app.post('/api/teacher/register', async (req, res) => {
 // تسجيل طالب
 app.post('/api/student/register', async (req, res) => {
   const { full_name, email, password, phone } = req.body;
+  if (!full_name || !email || !password || !phone) {
+    return res.json({ success: false, error: 'يرجى ملء جميع الحقول' });
+  }
   const hashedPassword = bcrypt.hashSync(password, 10);
   
   db.run(`INSERT INTO students (full_name, email, password, phone, balance)
@@ -162,19 +205,20 @@ app.post('/api/login', (req, res) => {
   });
 });
 
-// ADMIN: عرض الأساتذة المنتظرين
+// ADMIN: عرض الأساتذة المنتظرين مع الصور
 app.get('/api/admin/pending-teachers', (req, res) => {
-  db.all("SELECT id, full_name, email, phone, specialization, bio, created_at FROM teachers WHERE status = 'pending'", [], (err, rows) => {
+  db.all("SELECT id, full_name, email, phone, specialization, bio, experience, profile_image, diploma_image, id_image, created_at FROM teachers WHERE status = 'pending'", [], (err, rows) => {
     res.json(rows || []);
   });
 });
 
 app.get('/api/admin/approved-teachers', (req, res) => {
-  db.all("SELECT id, full_name, email, phone, specialization, bio, created_at FROM teachers WHERE status = 'approved'", [], (err, rows) => {
+  db.all("SELECT id, full_name, email, phone, specialization, bio, experience, profile_image, created_at FROM teachers WHERE status = 'approved'", [], (err, rows) => {
     res.json(rows || []);
   });
 });
 
+// ADMIN: قبول أستاذ
 app.post('/api/admin/approve-teacher/:id', (req, res) => {
   db.run("UPDATE teachers SET status = 'approved' WHERE id = ?", [req.params.id], function(err) {
     if (err) return res.json({ success: false });
@@ -182,15 +226,17 @@ app.post('/api/admin/approve-teacher/:id', (req, res) => {
   });
 });
 
+// ADMIN: رفض أستاذ مع سبب
 app.post('/api/admin/reject-teacher/:id', (req, res) => {
-  db.run("DELETE FROM teachers WHERE id = ?", [req.params.id], function(err) {
+  const { reason } = req.body;
+  db.run("UPDATE teachers SET status = 'rejected', rejection_reason = ? WHERE id = ?", [reason, req.params.id], function(err) {
     res.json({ success: true });
   });
 });
 
-// ============= نظام العروض (منشورات الأساتذة) =============
+// ============= نظام العروض =============
 
-// إنشاء عرض جديد (منشور) من قبل الأستاذ
+// إنشاء عرض جديد
 app.post('/api/offer/create', (req, res) => {
   const { teacher_id, subject_name, duration, offer_date, price, is_free } = req.body;
   const room_name = `stream_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
@@ -206,11 +252,22 @@ app.post('/api/offer/create', (req, res) => {
 
 // جلب جميع العروض المتاحة (للطلاب)
 app.get('/api/offers', (req, res) => {
-  db.all(`SELECT o.*, t.full_name as teacher_name, t.specialization 
+  db.all(`SELECT o.*, t.full_name as teacher_name, t.specialization, t.profile_image 
           FROM offers o 
           JOIN teachers t ON o.teacher_id = t.id 
-          WHERE o.status = 'upcoming' AND o.offer_date > datetime('now')
+          WHERE o.status = 'upcoming' AND o.offer_date > datetime('now') AND t.status = 'approved'
           ORDER BY o.offer_date ASC`, [], (err, rows) => {
+    res.json(rows || []);
+  });
+});
+
+// جلب العروض النشطة (قيد البث حالياً)
+app.get('/api/live-offers', (req, res) => {
+  db.all(`SELECT o.*, t.full_name as teacher_name, t.specialization, t.profile_image 
+          FROM offers o 
+          JOIN teachers t ON o.teacher_id = t.id 
+          WHERE o.status = 'live' AND t.status = 'approved'
+          ORDER BY o.offer_date DESC`, [], (err, rows) => {
     res.json(rows || []);
   });
 });
@@ -222,26 +279,37 @@ app.get('/api/teacher/offers/:teacher_id', (req, res) => {
   });
 });
 
-// ============= نظام الحجز والدفع والانتظار =============
+// ============= نظام الحجز والدفع =============
 
-// حجز عرض (تسجيل طالب في عرض)
+// حجز عرض
 app.post('/api/booking/create', (req, res) => {
   const { offer_id, student_id } = req.body;
   
-  // التحقق إذا كان الطالب مسجل مسبقاً
   db.get(`SELECT * FROM sessions WHERE offer_id = ? AND student_id = ?`, [offer_id, student_id], (err, existing) => {
     if (existing) return res.json({ success: false, error: 'أنت مسجل بالفعل في هذه الحصة' });
     
-    db.run(`INSERT INTO sessions (offer_id, student_id, payment_status) VALUES (?, ?, 'pending')`,
-      [offer_id, student_id],
-      function(err) {
-        if (err) return res.json({ success: false, error: err.message });
-        res.json({ success: true, session_id: this.lastID });
-      });
+    db.get(`SELECT price, is_free FROM offers WHERE id = ?`, [offer_id], (err, offer) => {
+      if (!offer) return res.json({ success: false, error: 'العرض غير موجود' });
+      
+      const payment_status = offer.is_free === 1 ? 'paid' : 'pending';
+      
+      db.run(`INSERT INTO sessions (offer_id, student_id, payment_status, payment_amount) VALUES (?, ?, ?, ?)`,
+        [offer_id, student_id, payment_status, offer.price],
+        function(err) {
+          if (err) return res.json({ success: false, error: err.message });
+          
+          // إذا كان مجاني، أضف إلى غرفة الانتظار مباشرة
+          if (offer.is_free === 1) {
+            db.run(`INSERT INTO waiting_room (offer_id, student_id) VALUES (?, ?)`, [offer_id, student_id]);
+          }
+          
+          res.json({ success: true, session_id: this.lastID, is_free: offer.is_free === 1 });
+        });
+    });
   });
 });
 
-// إنشاء طلب دفع عبر شارجيلي
+// إنشاء طلب دفع
 app.post('/api/create-chargily-payment', (req, res) => {
   const { session_id, amount, student_name, student_email } = req.body;
   
@@ -250,7 +318,6 @@ app.post('/api/create-chargily-payment', (req, res) => {
     function(err) {
       if (err) return res.json({ success: false, error: err.message });
       
-      // محاكاة رابط الدفع (في الإنتاج يتم ربطه بشارجيلي الحقيقي)
       const payment_url = `https://sandbox.chargily.dz/pay/${this.lastID}`;
       res.json({ success: true, payment_url: payment_url, payment_id: this.lastID });
     });
@@ -263,7 +330,6 @@ app.post('/api/payment/confirm/:payment_id', (req, res) => {
       db.run("UPDATE payments SET status = 'completed' WHERE id = ?", [req.params.payment_id]);
       db.run("UPDATE sessions SET payment_status = 'paid' WHERE id = ?", [payment.session_id]);
       
-      // بعد الدفع، إضافة الطالب إلى غرفة الانتظار
       db.get("SELECT offer_id FROM sessions WHERE id = ?", [payment.session_id], (err, session) => {
         if (session) {
           db.get("SELECT student_id FROM sessions WHERE id = ?", [payment.session_id], (err, sess) => {
@@ -280,20 +346,17 @@ app.post('/api/payment/confirm/:payment_id', (req, res) => {
   });
 });
 
-// ============= نظام البث المباشر وغرفة الانتظار =============
+// ============= نظام البث المباشر =============
 
-// بدء البث المباشر (الأستاذ يبدأ الحصة)
+// بدء البث المباشر
 app.post('/api/stream/start/:offer_id', (req, res) => {
   const { offer_id, teacher_id } = req.body;
   
-  // التحقق من ملكية الأستاذ للعرض
   db.get(`SELECT * FROM offers WHERE id = ? AND teacher_id = ?`, [offer_id, teacher_id], (err, offer) => {
     if (!offer) return res.json({ success: false, error: 'غير مصرح لك' });
     
-    // تحديث حالة العرض إلى live
     db.run(`UPDATE offers SET status = 'live' WHERE id = ?`, [offer_id]);
     
-    // نقل جميع الطلاب من غرفة الانتظار إلى البث المباشر
     db.all(`SELECT student_id FROM waiting_room WHERE offer_id = ?`, [offer_id], (err, students) => {
       students.forEach(s => {
         db.run(`INSERT INTO active_stream (offer_id, student_id) VALUES (?, ?)`, [offer_id, s.student_id]);
@@ -320,7 +383,7 @@ app.post('/api/stream/end/:offer_id', (req, res) => {
   });
 });
 
-// التحقق من حالة العرض (هل بدأ البث؟)
+// التحقق من حالة العرض
 app.get('/api/stream/status/:offer_id', (req, res) => {
   db.get(`SELECT status, room_name FROM offers WHERE id = ?`, [req.params.offer_id], (err, offer) => {
     if (!offer) return res.json({ status: 'not_found' });
@@ -328,26 +391,31 @@ app.get('/api/stream/status/:offer_id', (req, res) => {
   });
 });
 
-// التحقق مما إذا كان الطالب في البث المباشر أم في الانتظار
+// التحقق من حالة الطالب
 app.get('/api/student/stream-status/:offer_id/:student_id', (req, res) => {
   const { offer_id, student_id } = req.params;
   
-  // التحقق من حالة العرض أولاً
-  db.get(`SELECT status FROM offers WHERE id = ?`, [offer_id], (err, offer) => {
+  db.get(`SELECT status, is_free FROM offers WHERE id = ?`, [offer_id], (err, offer) => {
     if (!offer) return res.json({ can_join: false, error: 'العرض غير موجود' });
     
     if (offer.status === 'live') {
-      // التحقق مما إذا كان الطالب في البث المباشر
       db.get(`SELECT * FROM active_stream WHERE offer_id = ? AND student_id = ?`, [offer_id, student_id], (err, active) => {
         if (active) {
           return res.json({ can_join: true, is_waiting: false, room_name: offer.room_name });
         } else {
-          return res.json({ can_join: false, is_waiting: false, error: 'لم يتم الدفع أو غير مسجل' });
+          // التحقق من الدفع
+          db.get(`SELECT payment_status FROM sessions WHERE offer_id = ? AND student_id = ?`, [offer_id, student_id], (err, session) => {
+            if (session && session.payment_status === 'paid') {
+              // إضافته إلى البث المباشر
+              db.run(`INSERT INTO active_stream (offer_id, student_id) VALUES (?, ?)`, [offer_id, student_id]);
+              return res.json({ can_join: true, is_waiting: false, room_name: offer.room_name });
+            }
+            return res.json({ can_join: false, is_waiting: false, error: 'غير مسجل أو لم يتم الدفع' });
+          });
         }
       });
     } 
     else if (offer.status === 'upcoming') {
-      // التحقق مما إذا كان الطالب مسجل ومدفوع
       db.get(`SELECT s.*, o.is_free, o.price 
               FROM sessions s 
               JOIN offers o ON s.offer_id = o.id 
@@ -355,10 +423,8 @@ app.get('/api/student/stream-status/:offer_id/:student_id', (req, res) => {
         if (!session) return res.json({ can_join: false, error: 'غير مسجل في هذه الحصة' });
         
         if (session.is_free === 1 || session.payment_status === 'paid') {
-          // التحقق مما إذا كان في غرفة الانتظار
           db.get(`SELECT * FROM waiting_room WHERE offer_id = ? AND student_id = ?`, [offer_id, student_id], (err, waiting) => {
             if (!waiting) {
-              // إضافته إلى غرفة الانتظار
               db.run(`INSERT INTO waiting_room (offer_id, student_id) VALUES (?, ?)`, [offer_id, student_id]);
             }
             return res.json({ can_join: false, is_waiting: true, message: 'بانتظار بدء البث من قبل الأستاذ' });
@@ -374,71 +440,7 @@ app.get('/api/student/stream-status/:offer_id/:student_id', (req, res) => {
   });
 });
 
-// الحصول على قائمة الطلاب المنتظرين (للأستاذ)
-app.get('/api/stream/waiting-list/:offer_id/:teacher_id', (req, res) => {
-  const { offer_id, teacher_id } = req.params;
-  
-  db.get(`SELECT teacher_id FROM offers WHERE id = ?`, [offer_id], (err, offer) => {
-    if (!offer || offer.teacher_id != teacher_id) return res.json({ error: 'غير مصرح' });
-    
-    db.all(`SELECT w.*, s.full_name, s.email 
-            FROM waiting_room w 
-            JOIN students s ON w.student_id = s.id 
-            WHERE w.offer_id = ?`, [offer_id], (err, students) => {
-      res.json(students || []);
-    });
-  });
-});
-
-// الحصول على قائمة الطلاب في البث (للأستاذ)
-app.get('/api/stream/active-list/:offer_id/:teacher_id', (req, res) => {
-  const { offer_id, teacher_id } = req.params;
-  
-  db.get(`SELECT teacher_id FROM offers WHERE id = ?`, [offer_id], (err, offer) => {
-    if (!offer || offer.teacher_id != teacher_id) return res.json({ error: 'غير مصرح' });
-    
-    db.all(`SELECT a.*, s.full_name, s.email 
-            FROM active_stream a 
-            JOIN students s ON a.student_id = s.id 
-            WHERE a.offer_id = ?`, [offer_id], (err, students) => {
-      res.json(students || []);
-    });
-  });
-});
-
-// دخول الطالب إلى الغرفة (بعد التحقق)
-app.get('/api/join-stream/:offer_id/:student_id', (req, res) => {
-  const { offer_id, student_id } = req.params;
-  
-  db.get(`SELECT status, room_name FROM offers WHERE id = ?`, [offer_id], (err, offer) => {
-    if (!offer) return res.redirect('/student-dashboard.html?error=offer_not_found');
-    
-    if (offer.status === 'live') {
-      db.get(`SELECT * FROM active_stream WHERE offer_id = ? AND student_id = ?`, [offer_id, student_id], (err, active) => {
-        if (active) {
-          // صفحة البث المباشر مع Jitsi
-          res.send(generateStreamPage(offer.room_name, student_id, 'student'));
-        } else {
-          res.redirect('/student-dashboard.html?error=not_authorized');
-        }
-      });
-    } else {
-      res.redirect('/student-dashboard.html?error=stream_not_started');
-    }
-  });
-});
-
-// صفحة البث المباشر للأستاذ
-app.get('/api/teacher-stream/:offer_id/:teacher_id', (req, res) => {
-  const { offer_id, teacher_id } = req.params;
-  
-  db.get(`SELECT room_name FROM offers WHERE id = ? AND teacher_id = ?`, [offer_id, teacher_id], (err, offer) => {
-    if (!offer) return res.redirect('/teacher-dashboard.html?error=unauthorized');
-    res.send(generateStreamPage(offer.room_name, teacher_id, 'teacher', offer_id));
-  });
-});
-
-// دوال مساعدة
+// صفحة البث المباشر
 function generateStreamPage(roomName, userId, role, offerId = null) {
   return `
 <!DOCTYPE html>
@@ -446,90 +448,74 @@ function generateStreamPage(roomName, userId, role, offerId = null) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${role === 'teacher' ? 'بث مباشر - أستاذ' : 'حصة مباشرة - طالب'} | منصة التعليم</title>
+    <title>${role === 'teacher' ? 'بث مباشر - أستاذ' : 'حصة مباشرة'} | منصة التعليم</title>
     <script src="https://meet.jit.si/external_api.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Cairo', sans-serif; background: #0a0a1a; }
         .stream-header { background: linear-gradient(135deg, #0f3460, #16213e); color: white; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; position: fixed; top: 0; left: 0; right: 0; z-index: 100; }
-        .stream-info { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
-        .stream-info i { font-size: 24px; color: #0f5cbf; }
-        .stream-info span { font-size: 14px; color: #b9d0f0; }
-        .leave-btn, .end-stream-btn { background: #ef4444; color: white; border: none; padding: 8px 24px; border-radius: 30px; cursor: pointer; font-size: 14px; font-weight: 600; font-family: 'Cairo', sans-serif; margin-left: 10px; }
+        .leave-btn, .end-stream-btn { background: #ef4444; color: white; border: none; padding: 8px 24px; border-radius: 30px; cursor: pointer; margin-left: 10px; }
         .end-stream-btn { background: #dc2626; }
-        .leave-btn:hover, .end-stream-btn:hover { opacity: 0.9; transform: scale(1.02); }
         #jitsi-container { position: fixed; top: 60px; left: 0; right: 0; bottom: 0; }
-        @media (max-width: 768px) {
-            .stream-header { padding: 8px 16px; }
-            .stream-info span { font-size: 10px; }
-            #jitsi-container { top: 55px; }
-        }
     </style>
 </head>
 <body>
     <div class="stream-header">
-        <div class="stream-info">
-            <i class="fas fa-chalkboard-user"></i>
-            <span>🎓 ${role === 'teacher' ? 'بث مباشر - أنت تنشر المعرفة' : 'حصة تعليمية مباشرة'}</span>
-            <span>🔑 ${roomName}</span>
-        </div>
+        <div><i class="fas fa-chalkboard-user"></i> ${role === 'teacher' ? 'بث مباشر - أنت تنشر المعرفة' : 'حصة تعليمية مباشرة'}</div>
         <div>
-            ${role === 'teacher' ? `<button class="end-stream-btn" onclick="endStream()"><i class="fas fa-stop"></i> إنهاء البث</button>` : ''}
-            <button class="leave-btn" onclick="leaveStream()"><i class="fas fa-sign-out-alt"></i> مغادرة</button>
+            ${role === 'teacher' ? `<button class="end-stream-btn" onclick="endStream()">إنهاء البث</button>` : ''}
+            <button class="leave-btn" onclick="leaveStream()">مغادرة</button>
         </div>
     </div>
     <div id="jitsi-container"></div>
     <script>
-        const domain = 'meet.jit.si';
-        const options = {
+        const api = new JitsiMeetExternalAPI('meet.jit.si', {
             roomName: '${roomName}',
             width: '100%',
             height: window.innerHeight - 60,
             parentNode: document.querySelector('#jitsi-container'),
             userInfo: { displayName: '${role === 'teacher' ? 'أستاذ' : 'طالب'}' },
-            configOverwrite: {
-                startWithVideoMuted: false,
-                startWithAudioMuted: false,
-                enableWelcomePage: false,
-                prejoinPageEnabled: false,
-                toolbarButtons: ['microphone', 'camera', 'desktop', 'fullscreen', 'hangup', 'chat', 'raisehand', 'settings']
-            }
-        };
-        const api = new JitsiMeetExternalAPI(domain, options);
-        
-        function leaveStream() {
-            try { api.dispose(); } catch(e) {}
-            window.location.href = '/${role === 'teacher' ? 'teacher-dashboard.html' : 'student-dashboard.html'}';
-        }
-        
+            configOverwrite: { startWithVideoMuted: false, startWithAudioMuted: false, enableWelcomePage: false }
+        });
+        function leaveStream() { try { api.dispose(); } catch(e) {} window.location.href = '/${role === 'teacher' ? 'teacher-dashboard.html' : 'student-dashboard.html'}'; }
         ${role === 'teacher' ? `
         async function endStream() {
-            if (confirm('هل أنت متأكد من إنهاء البث المباشر؟')) {
-                await fetch('/api/stream/end/${offerId}', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ offer_id: ${offerId}, teacher_id: ${userId} })
-                });
+            if (confirm('إنهاء البث المباشر؟')) {
+                await fetch('/api/stream/end/${offerId}', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ offer_id: ${offerId}, teacher_id: ${userId} }) });
                 try { api.dispose(); } catch(e) {}
                 window.location.href = '/teacher-dashboard.html';
             }
-        }
-        ` : ''}
-        
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css';
-        document.head.appendChild(link);
+        }` : ''}
+        document.head.appendChild(Object.assign(document.createElement('link'), { rel: 'stylesheet', href: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css' }));
     </script>
 </body>
 </html>
   `;
 }
 
-// الحصول على حجوزات الطالب
+app.get('/api/join-stream/:offer_id/:student_id', (req, res) => {
+  const { offer_id, student_id } = req.params;
+  db.get(`SELECT room_name, status FROM offers WHERE id = ?`, [offer_id], (err, offer) => {
+    if (!offer || offer.status !== 'live') return res.redirect('/student-dashboard.html?error=stream_not_started');
+    db.get(`SELECT * FROM active_stream WHERE offer_id = ? AND student_id = ?`, [offer_id, student_id], (err, active) => {
+      if (active) return res.send(generateStreamPage(offer.room_name, student_id, 'student'));
+      res.redirect('/student-dashboard.html?error=not_authorized');
+    });
+  });
+});
+
+app.get('/api/teacher-stream/:offer_id/:teacher_id', (req, res) => {
+  const { offer_id, teacher_id } = req.params;
+  db.get(`SELECT room_name FROM offers WHERE id = ? AND teacher_id = ?`, [offer_id, teacher_id], (err, offer) => {
+    if (!offer) return res.redirect('/teacher-dashboard.html');
+    res.send(generateStreamPage(offer.room_name, teacher_id, 'teacher', offer_id));
+  });
+});
+
+// جلب حجوزات الطالب
 app.get('/api/student/bookings/:student_id', (req, res) => {
-  db.all(`SELECT s.*, o.subject_name, o.offer_date, o.duration, o.price, o.is_free, o.status as offer_status, o.room_name, t.full_name as teacher_name
+  db.all(`SELECT s.*, o.subject_name, o.offer_date, o.duration, o.price, o.is_free, o.status as offer_status, o.room_name, t.full_name as teacher_name, t.profile_image
           FROM sessions s
           JOIN offers o ON s.offer_id = o.id
           JOIN teachers t ON o.teacher_id = t.id
@@ -539,6 +525,20 @@ app.get('/api/student/bookings/:student_id', (req, res) => {
   });
 });
 
+// جلب قوائم الانتظار والبث للأستاذ
+app.get('/api/stream/waiting-list/:offer_id/:teacher_id', (req, res) => {
+  db.all(`SELECT w.*, s.full_name, s.email FROM waiting_room w JOIN students s ON w.student_id = s.id WHERE w.offer_id = ?`, [req.params.offer_id], (err, rows) => {
+    res.json(rows || []);
+  });
+});
+
+app.get('/api/stream/active-list/:offer_id/:teacher_id', (req, res) => {
+  db.all(`SELECT a.*, s.full_name, s.email FROM active_stream a JOIN students s ON a.student_id = s.id WHERE a.offer_id = ?`, [req.params.offer_id], (err, rows) => {
+    res.json(rows || []);
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 الخادم يعمل على http://localhost:${PORT}`);
+  console.log(`📁 مجلد رفع الملفات: ./uploads`);
 });
