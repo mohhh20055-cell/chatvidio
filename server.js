@@ -33,19 +33,19 @@ const db = new sqlite3.Database('./platform.db');
 
 // إنشاء الجداول
 db.serialize(() => {
-  // جدول الأساتذة مع الصورة والشهادات
+  // جدول الأساتذة - جعل phone اختيارياً (NULL)
   db.run(`CREATE TABLE IF NOT EXISTS teachers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     full_name TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
-    phone TEXT NOT NULL,
-    specialization TEXT NOT NULL,
+    phone TEXT,
+    specialization TEXT,
     bio TEXT,
+    experience TEXT,
     profile_image TEXT,
     diploma_image TEXT,
     id_image TEXT,
-    experience TEXT,
     status TEXT DEFAULT 'pending',
     rejection_reason TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -62,7 +62,7 @@ db.serialize(() => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
-  // جدول العروض (المنشورات)
+  // جدول العروض
   db.run(`CREATE TABLE IF NOT EXISTS offers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     teacher_id INTEGER,
@@ -77,7 +77,7 @@ db.serialize(() => {
     FOREIGN KEY(teacher_id) REFERENCES teachers(id)
   )`);
 
-  // جدول الحصص (الطلاب المسجلين)
+  // جدول الحصص
   db.run(`CREATE TABLE IF NOT EXISTS sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     offer_id INTEGER,
@@ -91,7 +91,7 @@ db.serialize(() => {
     FOREIGN KEY(student_id) REFERENCES students(id)
   )`);
 
-  // جدول الطلاب في غرفة الانتظار
+  // جدول غرفة الانتظار
   db.run(`CREATE TABLE IF NOT EXISTS waiting_room (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     offer_id INTEGER,
@@ -101,7 +101,7 @@ db.serialize(() => {
     FOREIGN KEY(student_id) REFERENCES students(id)
   )`);
 
-  // جدول الطلاب في البث المباشر
+  // جدول البث المباشر
   db.run(`CREATE TABLE IF NOT EXISTS active_stream (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     offer_id INTEGER,
@@ -122,12 +122,12 @@ db.serialize(() => {
     FOREIGN KEY(session_id) REFERENCES sessions(id)
   )`);
 
-  // إنشاء admin افتراضي
+  // إنشاء admin افتراضي - مع إضافة رقم هاتف افتراضي
   db.get("SELECT * FROM teachers WHERE email = 'admin@platform.com'", [], (err, row) => {
-    if (!row) {
+    if (!row && !err) {
       const hashedPassword = bcrypt.hashSync('admin123', 10);
-      db.run("INSERT INTO teachers (full_name, email, password, status) VALUES (?, ?, ?, 'approved')", 
-        ['مدير المنصة', 'admin@platform.com', hashedPassword]);
+      db.run("INSERT INTO teachers (full_name, email, password, phone, status) VALUES (?, ?, ?, ?, 'approved')", 
+        ['مدير المنصة', 'admin@platform.com', hashedPassword, '00000000']);
     }
   });
 });
@@ -180,7 +180,7 @@ app.post('/api/student/register', async (req, res) => {
     [full_name, email, hashedPassword, phone],
     function(err) {
       if (err && err.message.includes('UNIQUE')) return res.json({ success: false, error: 'البريد الإلكتروني مستخدم' });
-      if (err) return res.json({ success: false, error: 'حدث خطأ' });
+      if (err) return res.json({ success: false, error: 'حدث خطأ: ' + err.message });
       res.json({ success: true, message: 'تم التسجيل بنجاح' });
     });
 });
@@ -205,7 +205,7 @@ app.post('/api/login', (req, res) => {
   });
 });
 
-// ADMIN: عرض الأساتذة المنتظرين مع الصور
+// ADMIN: عرض الأساتذة المنتظرين
 app.get('/api/admin/pending-teachers', (req, res) => {
   db.all("SELECT id, full_name, email, phone, specialization, bio, experience, profile_image, diploma_image, id_image, created_at FROM teachers WHERE status = 'pending'", [], (err, rows) => {
     res.json(rows || []);
@@ -221,12 +221,12 @@ app.get('/api/admin/approved-teachers', (req, res) => {
 // ADMIN: قبول أستاذ
 app.post('/api/admin/approve-teacher/:id', (req, res) => {
   db.run("UPDATE teachers SET status = 'approved' WHERE id = ?", [req.params.id], function(err) {
-    if (err) return res.json({ success: false });
+    if (err) return res.json({ success: false, error: err.message });
     res.json({ success: true });
   });
 });
 
-// ADMIN: رفض أستاذ مع سبب
+// ADMIN: رفض أستاذ
 app.post('/api/admin/reject-teacher/:id', (req, res) => {
   const { reason } = req.body;
   db.run("UPDATE teachers SET status = 'rejected', rejection_reason = ? WHERE id = ?", [reason, req.params.id], function(err) {
@@ -250,7 +250,7 @@ app.post('/api/offer/create', (req, res) => {
     });
 });
 
-// جلب جميع العروض المتاحة (للطلاب)
+// جلب جميع العروض المتاحة
 app.get('/api/offers', (req, res) => {
   db.all(`SELECT o.*, t.full_name as teacher_name, t.specialization, t.profile_image 
           FROM offers o 
@@ -261,7 +261,7 @@ app.get('/api/offers', (req, res) => {
   });
 });
 
-// جلب العروض النشطة (قيد البث حالياً)
+// جلب العروض النشطة (بث مباشر)
 app.get('/api/live-offers', (req, res) => {
   db.all(`SELECT o.*, t.full_name as teacher_name, t.specialization, t.profile_image 
           FROM offers o 
@@ -298,7 +298,6 @@ app.post('/api/booking/create', (req, res) => {
         function(err) {
           if (err) return res.json({ success: false, error: err.message });
           
-          // إذا كان مجاني، أضف إلى غرفة الانتظار مباشرة
           if (offer.is_free === 1) {
             db.run(`INSERT INTO waiting_room (offer_id, student_id) VALUES (?, ?)`, [offer_id, student_id]);
           }
@@ -348,7 +347,7 @@ app.post('/api/payment/confirm/:payment_id', (req, res) => {
 
 // ============= نظام البث المباشر =============
 
-// بدء البث المباشر
+// بدء البث
 app.post('/api/stream/start/:offer_id', (req, res) => {
   const { offer_id, teacher_id } = req.body;
   
@@ -358,17 +357,19 @@ app.post('/api/stream/start/:offer_id', (req, res) => {
     db.run(`UPDATE offers SET status = 'live' WHERE id = ?`, [offer_id]);
     
     db.all(`SELECT student_id FROM waiting_room WHERE offer_id = ?`, [offer_id], (err, students) => {
-      students.forEach(s => {
-        db.run(`INSERT INTO active_stream (offer_id, student_id) VALUES (?, ?)`, [offer_id, s.student_id]);
-        db.run(`DELETE FROM waiting_room WHERE offer_id = ? AND student_id = ?`, [offer_id, s.student_id]);
-      });
+      if (students) {
+        students.forEach(s => {
+          db.run(`INSERT INTO active_stream (offer_id, student_id) VALUES (?, ?)`, [offer_id, s.student_id]);
+          db.run(`DELETE FROM waiting_room WHERE offer_id = ? AND student_id = ?`, [offer_id, s.student_id]);
+        });
+      }
     });
     
     res.json({ success: true, room_name: offer.room_name });
   });
 });
 
-// إنهاء البث المباشر
+// إنهاء البث
 app.post('/api/stream/end/:offer_id', (req, res) => {
   const { offer_id, teacher_id } = req.body;
   
@@ -403,10 +404,8 @@ app.get('/api/student/stream-status/:offer_id/:student_id', (req, res) => {
         if (active) {
           return res.json({ can_join: true, is_waiting: false, room_name: offer.room_name });
         } else {
-          // التحقق من الدفع
           db.get(`SELECT payment_status FROM sessions WHERE offer_id = ? AND student_id = ?`, [offer_id, student_id], (err, session) => {
             if (session && session.payment_status === 'paid') {
-              // إضافته إلى البث المباشر
               db.run(`INSERT INTO active_stream (offer_id, student_id) VALUES (?, ?)`, [offer_id, student_id]);
               return res.json({ can_join: true, is_waiting: false, room_name: offer.room_name });
             }
@@ -525,7 +524,7 @@ app.get('/api/student/bookings/:student_id', (req, res) => {
   });
 });
 
-// جلب قوائم الانتظار والبث للأستاذ
+// جلب قوائم الانتظار للأستاذ
 app.get('/api/stream/waiting-list/:offer_id/:teacher_id', (req, res) => {
   db.all(`SELECT w.*, s.full_name, s.email FROM waiting_room w JOIN students s ON w.student_id = s.id WHERE w.offer_id = ?`, [req.params.offer_id], (err, rows) => {
     res.json(rows || []);
