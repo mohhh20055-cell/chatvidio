@@ -1,7 +1,7 @@
 {
   "name": "teaching-platform-algeria",
-  "version": "1.0.0",
-  "description": "منصة تعليمية جزائرية مع دفع شارجيلي وجميع الفيديو",
+  "version": "2.0.0",
+  "description": "منصة تعليمية جزائرية متكاملة مع بث مباشر ومدفوعات",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -11,6 +11,8 @@
     "sqlite3": "^5.1.6",
     "cors": "^2.8.5",
     "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "fs": "^0.0.1-security"
   }
 }
