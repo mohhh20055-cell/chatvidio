@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>اللوحة الرئيسية للطالب | منصة التعليم للبكلوريا</title>
+    <title>لوحة الطالب - حجز الحصص | منصة التعليم</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -29,6 +29,12 @@
         .status-badge { display: inline-block; padding: 3px 10px; border-radius: 15px; font-size: 12px; }
         .status-paid { background: #d1fae5; color: #065f46; }
         .status-pending { background: #fed7aa; color: #92400e; }
+        .status-waiting { background: #fef3c7; color: #92400e; }
+        .notification-toast { position: fixed; bottom: 30px; right: 30px; background: #10b981; color: white; padding: 15px 25px; border-radius: 15px; z-index: 2000; display: flex; align-items: center; gap: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: slideIn 0.5s ease; cursor: pointer; }
+        .notification-toast.warning { background: #f59e0b; }
+        .notification-toast.error { background: #ef4444; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
     </style>
 </head>
 <body>
@@ -38,7 +44,7 @@
             <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> تسجيل خروج</button>
         </div>
 
-        <h2 class="section-title"><i class="fas fa-calendar-alt"></i> العروض المتاحة (بث مباشر)</h2>
+        <h2 class="section-title"><i class="fas fa-calendar-alt"></i> العروض المتاحة</h2>
         <div id="offersList" class="offers-grid"></div>
 
         <div class="my-sessions">
@@ -55,10 +61,61 @@
         <button onclick="closePaymentModal()" class="book-btn" style="background:#e2e8f0; color:#333; margin-top:10px;">إلغاء</button>
     </div>
 
+    <div id="notificationToast" class="notification-toast" style="display: none;"></div>
+
     <script>
         let studentData = JSON.parse(localStorage.getItem('studentData') || '{}');
         if (!studentData.id) window.location.href = '/';
         let currentPaymentSession = null;
+        let activeStreamChecker = {};
+
+        function showNotification(message, type = 'success') {
+            const toast = document.getElementById('notificationToast');
+            toast.className = `notification-toast ${type === 'warning' ? 'warning' : (type === 'error' ? 'error' : '')}`;
+            toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : (type === 'warning' ? 'fa-clock' : 'fa-exclamation-triangle')}"></i> ${message}`;
+            toast.style.display = 'flex';
+            setTimeout(() => {
+                toast.style.animation = 'slideOut 0.5s ease';
+                setTimeout(() => {
+                    toast.style.display = 'none';
+                    toast.style.animation = '';
+                }, 500);
+            }, 5000);
+        }
+
+        // بدء مراقبة البث للانتظار التلقائي
+        function startWatchingStream(offerId, offerName) {
+            if (activeStreamChecker[offerId]) return;
+            
+            showNotification(`✅ تم تسجيلك في "${offerName}". في انتظار بدء البث...`, 'warning');
+            
+            const checkInterval = setInterval(async () => {
+                try {
+                    const res = await fetch(`/api/student/stream-status/${offerId}/${studentData.id}`);
+                    const data = await res.json();
+                    
+                    if (data.stream_started === true || data.can_join === true) {
+                        clearInterval(activeStreamChecker[offerId]);
+                        delete activeStreamChecker[offerId];
+                        showNotification(`🎉 بدأ البث المباشر للحصة "${offerName}"! جاري نقلك...`, 'success');
+                        
+                        setTimeout(() => {
+                            window.open(`/api/join-stream/${offerId}/${studentData.id}`, '_blank');
+                        }, 1000);
+                    }
+                } catch(e) { console.log(e); }
+            }, 3000);
+            
+            activeStreamChecker[offerId] = checkInterval;
+            
+            // إيقاف المراقبة بعد 30 دقيقة
+            setTimeout(() => {
+                if (activeStreamChecker[offerId]) {
+                    clearInterval(activeStreamChecker[offerId]);
+                    delete activeStreamChecker[offerId];
+                }
+            }, 30 * 60 * 1000);
+        }
 
         async function loadOffers() {
             const res = await fetch('/api/offers');
@@ -75,21 +132,35 @@
                 const offerDate = new Date(offer.offer_date);
                 const isFree = offer.is_free === 1;
                 const priceText = isFree ? 'مجانية' : offer.price + ' دج';
+                const imageUrl = offer.profile_image ? `/uploads/${offer.profile_image}` : 'https://via.placeholder.com/80';
+                
+                // التحقق من تسجيل الطالب بالفعل
+                const checkRes = await fetch(`/api/student/stream-status/${offer.id}/${studentData.id}`);
+                const status = await checkRes.json();
+                const isRegistered = !status.error || status.is_waiting === true;
                 
                 html += `<div class="offer-card">
-                    <h3><i class="fas fa-chalkboard-user"></i> ${offer.teacher_name}</h3>
-                    <p><i class="fas fa-book"></i> <strong>${offer.subject_name}</strong></p>
+                    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                        <img src="${imageUrl}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;">
+                        <div>
+                            <h3 style="margin-bottom: 5px;">${offer.teacher_name}</h3>
+                            <p><i class="fas fa-book"></i> ${offer.specialization || 'تخصص عام'}</p>
+                        </div>
+                    </div>
+                    <p><strong>${offer.subject_name}</strong></p>
                     <p><i class="fas fa-calendar"></i> ${offerDate.toLocaleString('ar')}</p>
                     <p><i class="fas fa-clock"></i> ${offer.duration} دقيقة</p>
                     <p><i class="fas fa-tag"></i> ${priceText}</p>
-                    <button class="book-btn" onclick="bookOffer(${offer.id}, ${isFree ? 0 : offer.price})"><i class="fas fa-calendar-plus"></i> ${isFree ? 'تسجيل مجاني' : 'حجز الحصة'}</button>
+                    ${!isRegistered ? 
+                        `<button class="book-btn" onclick="bookOffer(${offer.id}, ${isFree ? 0 : offer.price}, '${offer.subject_name.replace(/'/g, "\\'")}')"><i class="fas fa-calendar-plus"></i> ${isFree ? 'تسجيل مجاني' : 'حجز الحصة'}</button>` :
+                        `<div class="waiting-message"><i class="fas fa-clock"></i> ${status.is_waiting ? 'في قائمة الانتظار - سيتم نقلك تلقائياً عند بدء البث' : 'تم التسجيل'}</div>`
+                    }
                 </div>`;
             }
             container.innerHTML = html;
         }
 
-        async function bookOffer(offerId, price) {
-            // تسجيل الطالب في العرض
+        async function bookOffer(offerId, price, offerName) {
             const res = await fetch('/api/booking/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -99,24 +170,23 @@
             
             if (data.success) {
                 if (price === 0) {
-                    // حصة مجانية - إضافة مباشرة إلى غرفة الانتظار
-                    alert('تم تسجيلك في الحصة المجانية! سيتم إضافتك إلى غرفة الانتظار.');
+                    showNotification(`✅ تم تسجيلك في "${offerName}" بنجاح! سيتم نقلك تلقائياً عند بدء البث.`, 'success');
+                    startWatchingStream(offerId, offerName);
                     loadMySessions();
-                    checkStreamStatus(offerId);
+                    loadOffers();
                 } else {
-                    // حصة مدفوعة - طلب الدفع
-                    currentPaymentSession = { session_id: data.session_id, offer_id: offerId, amount: price };
-                    showPaymentModal(price);
+                    currentPaymentSession = { session_id: data.session_id, offer_id: offerId, amount: price, offerName: offerName };
+                    showPaymentModal(price, offerName);
                 }
             } else {
-                alert(data.error || 'حدث خطأ');
+                showNotification(data.error || 'حدث خطأ', 'error');
             }
         }
 
-        function showPaymentModal(amount) {
+        function showPaymentModal(amount, offerName) {
             document.getElementById('modalOverlay').style.display = 'block';
             document.getElementById('paymentModal').style.display = 'block';
-            document.getElementById('paymentInfo').innerHTML = `💰 قيمة الحصة: <strong>${amount} دج</strong><br>🔐 بعد الدفع، سيتم إضافتك إلى غرفة الانتظار.`;
+            document.getElementById('paymentInfo').innerHTML = `💰 قيمة الحصة: <strong>${amount} دج</strong><br>📚 الحصة: ${offerName}<br>🔐 بعد الدفع، سيتم إضافتك إلى قائمة الانتظار.`;
             
             document.getElementById('payNowBtn').onclick = async () => {
                 const paymentRes = await fetch('/api/create-chargily-payment', {
@@ -131,13 +201,14 @@
                 });
                 const paymentData = await paymentRes.json();
                 if (paymentData.success) {
-                    alert('✅ تم إنشاء طلب الدفع. جارٍ تأكيد الدفع...');
+                    showNotification('✅ تم إنشاء طلب الدفع. جارٍ تأكيد الدفع...', 'warning');
                     setTimeout(async () => {
                         await fetch(`/api/payment/confirm/${paymentData.payment_id}`, { method: 'POST' });
-                        alert('تم تأكيد الدفع! تم إضافتك إلى غرفة الانتظار.');
+                        showNotification(`✅ تم تأكيد الدفع! تم إضافتك إلى قائمة انتظار "${currentPaymentSession.offerName}"`, 'success');
+                        startWatchingStream(currentPaymentSession.offer_id, currentPaymentSession.offerName);
                         closePaymentModal();
                         loadMySessions();
-                        checkStreamStatus(currentPaymentSession.offer_id);
+                        loadOffers();
                     }, 2000);
                 }
                 closePaymentModal();
@@ -163,8 +234,10 @@
             for (const booking of bookings) {
                 const offerDate = new Date(booking.offer_date);
                 const isPaid = booking.is_free === 1 || booking.payment_status === 'paid';
-                const statusText = isPaid ? 'مدفوع/مؤكد' : 'بانتظار الدفع';
-                const statusClass = isPaid ? 'status-paid' : 'status-pending';
+                const isWaiting = booking.offer_status === 'upcoming' && isPaid;
+                const isLive = booking.offer_status === 'live';
+                const statusText = isLive ? 'بث مباشر' : (isPaid ? (isWaiting ? 'في قائمة الانتظار' : 'مدفوع') : 'بانتظار الدفع');
+                const statusClass = isLive ? 'status-paid' : (isPaid ? 'status-waiting' : 'status-pending');
                 
                 html += `<div class="session-item">
                     <div>
@@ -174,10 +247,16 @@
                     </div>
                     <div>
                         <span class="status-badge ${statusClass}">${statusText}</span>
-                        ${isPaid ? `<button class="join-btn" onclick="checkAndJoin(${booking.offer_id})" style="margin-top:5px; width:auto; padding:5px 15px;"><i class="fas fa-video"></i> انتظر البث</button>` : 
-                                  `<button class="pay-btn" onclick="retryPayment(${booking.id}, ${booking.price})">إتمام الدفع</button>`}
+                        ${isLive ? `<button class="join-btn" onclick="joinLiveStream(${booking.offer_id})" style="margin-top:5px; width:auto; padding:5px 15px;"><i class="fas fa-video"></i> انضم الآن</button>` : ''}
+                        ${isWaiting && !isLive ? `<button class="join-btn" onclick="checkAndJoin(${booking.offer_id})" style="margin-top:5px; width:auto; padding:5px 15px;"><i class="fas fa-clock"></i> انتظر البث</button>` : ''}
+                        ${!isPaid ? `<button class="pay-btn" onclick="retryPayment(${booking.id}, ${booking.price}, '${booking.subject_name.replace(/'/g, "\\'")}')">إتمام الدفع</button>` : ''}
                     </div>
                 </div>`;
+                
+                // إذا كان في الانتظار ولم يتم بدء المراقبة
+                if (isWaiting && !isLive && !activeStreamChecker[booking.offer_id]) {
+                    startWatchingStream(booking.offer_id, booking.subject_name);
+                }
             }
             container.innerHTML = html;
         }
@@ -189,34 +268,25 @@
             if (data.can_join) {
                 window.open(`/api/join-stream/${offerId}/${studentData.id}`, '_blank');
             } else if (data.is_waiting) {
-                alert('⏳ أنت في غرفة الانتظار. يرجى الانتظار حتى يبدأ الأستاذ البث المباشر.');
-            } else if (data.payment_required) {
-                alert('يرجى إتمام الدفع أولاً');
+                showNotification('⏳ أنت في قائمة الانتظار. سيتم نقلك تلقائياً عند بدء البث.', 'warning');
+                startWatchingStream(offerId, 'الحصة');
             } else {
-                alert(data.error || 'لا يمكن الانضمام حالياً');
+                showNotification(data.error || 'لا يمكن الانضمام حالياً', 'error');
             }
         }
 
-        async function checkStreamStatus(offerId) {
-            const checkInterval = setInterval(async () => {
-                const res = await fetch(`/api/student/stream-status/${offerId}/${studentData.id}`);
-                const data = await res.json();
-                if (data.can_join) {
-                    clearInterval(checkInterval);
-                    if (confirm('🎉 بدأ البث المباشر! هل تريد الانضمام الآن؟')) {
-                        window.open(`/api/join-stream/${offerId}/${studentData.id}`, '_blank');
-                    }
-                }
-            }, 5000);
-            setTimeout(() => clearInterval(checkInterval), 30 * 60 * 1000);
+        async function joinLiveStream(offerId) {
+            window.open(`/api/join-stream/${offerId}/${studentData.id}`, '_blank');
         }
 
-        function retryPayment(sessionId, amount) {
-            currentPaymentSession = { session_id: sessionId, amount: amount };
-            showPaymentModal(amount);
+        function retryPayment(sessionId, amount, offerName) {
+            currentPaymentSession = { session_id: sessionId, amount: amount, offerName: offerName };
+            showPaymentModal(amount, offerName);
         }
 
         function logout() {
+            // إيقاف جميع المؤقتات
+            Object.values(activeStreamChecker).forEach(interval => clearInterval(interval));
             localStorage.removeItem('studentToken');
             localStorage.removeItem('studentData');
             window.location.href = '/';
@@ -224,7 +294,7 @@
 
         loadOffers();
         loadMySessions();
-        setInterval(() => { loadMySessions(); }, 10000);
+        setInterval(() => { loadMySessions(); loadOffers(); }, 10000);
     </script>
 </body>
 </html>
