@@ -541,3 +541,45 @@ app.listen(PORT, () => {
   console.log(`🚀 الخادم يعمل على http://localhost:${PORT}`);
   console.log(`📁 مجلد رفع الملفات: ./uploads`);
 });
+// ============= أضف هذه الدوال إلى server.js الموجود =============
+
+// جلب جميع الأساتذة المعتمدين (بدون تسجيل دخول)
+app.get('/api/public/teachers', (req, res) => {
+  db.all(`SELECT id, full_name, email, phone, specialization, bio, experience, profile_image, created_at 
+          FROM teachers 
+          WHERE status = 'approved' 
+          ORDER BY created_at DESC`, [], (err, rows) => {
+    res.json(rows || []);
+  });
+});
+
+// جلب جميع العروض المتاحة للجميع (بدون تسجيل دخول)
+app.get('/api/public/offers', (req, res) => {
+  db.all(`SELECT o.*, t.full_name as teacher_name, t.specialization, t.profile_image 
+          FROM offers o 
+          JOIN teachers t ON o.teacher_id = t.id 
+          WHERE o.status = 'upcoming' AND o.offer_date > datetime('now') AND t.status = 'approved'
+          ORDER BY o.offer_date ASC`, [], (err, rows) => {
+    res.json(rows || []);
+  });
+});
+
+// حذف عرض (للأستاذ فقط)
+app.delete('/api/offer/delete/:offer_id', (req, res) => {
+  const { offer_id } = req.params;
+  const { teacher_id } = req.body;
+  
+  // التحقق من ملكية العرض
+  db.get(`SELECT * FROM offers WHERE id = ? AND teacher_id = ?`, [offer_id, teacher_id], (err, offer) => {
+    if (!offer) return res.json({ success: false, error: 'غير مصرح لك بحذف هذا العرض' });
+    
+    // حذف جميع البيانات المرتبطة بالعرض
+    db.run(`DELETE FROM sessions WHERE offer_id = ?`, [offer_id]);
+    db.run(`DELETE FROM waiting_room WHERE offer_id = ?`, [offer_id]);
+    db.run(`DELETE FROM active_stream WHERE offer_id = ?`, [offer_id]);
+    db.run(`DELETE FROM offers WHERE id = ?`, [offer_id], function(err) {
+      if (err) return res.json({ success: false, error: err.message });
+      res.json({ success: true, message: 'تم حذف العرض بنجاح' });
+    });
+  });
+});
