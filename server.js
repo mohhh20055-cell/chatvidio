@@ -33,7 +33,6 @@ const db = new sqlite3.Database('./platform.db');
 
 // إنشاء الجداول
 db.serialize(() => {
-  // جدول الأساتذة - جعل phone اختيارياً (NULL)
   db.run(`CREATE TABLE IF NOT EXISTS teachers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     full_name TEXT NOT NULL,
@@ -51,7 +50,6 @@ db.serialize(() => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
-  // جدول الطلاب
   db.run(`CREATE TABLE IF NOT EXISTS students (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     full_name TEXT NOT NULL,
@@ -62,7 +60,6 @@ db.serialize(() => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
-  // جدول العروض
   db.run(`CREATE TABLE IF NOT EXISTS offers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     teacher_id INTEGER,
@@ -77,7 +74,6 @@ db.serialize(() => {
     FOREIGN KEY(teacher_id) REFERENCES teachers(id)
   )`);
 
-  // جدول الحصص
   db.run(`CREATE TABLE IF NOT EXISTS sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     offer_id INTEGER,
@@ -91,7 +87,6 @@ db.serialize(() => {
     FOREIGN KEY(student_id) REFERENCES students(id)
   )`);
 
-  // جدول غرفة الانتظار
   db.run(`CREATE TABLE IF NOT EXISTS waiting_room (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     offer_id INTEGER,
@@ -101,7 +96,6 @@ db.serialize(() => {
     FOREIGN KEY(student_id) REFERENCES students(id)
   )`);
 
-  // جدول البث المباشر
   db.run(`CREATE TABLE IF NOT EXISTS active_stream (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     offer_id INTEGER,
@@ -111,7 +105,6 @@ db.serialize(() => {
     FOREIGN KEY(student_id) REFERENCES students(id)
   )`);
 
-  // جدول المدفوعات
   db.run(`CREATE TABLE IF NOT EXISTS payments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     session_id INTEGER,
@@ -122,7 +115,6 @@ db.serialize(() => {
     FOREIGN KEY(session_id) REFERENCES sessions(id)
   )`);
 
-  // إنشاء admin افتراضي - مع إضافة رقم هاتف افتراضي
   db.get("SELECT * FROM teachers WHERE email = 'admin@platform.com'", [], (err, row) => {
     if (!row && !err) {
       const hashedPassword = bcrypt.hashSync('admin123', 10);
@@ -134,7 +126,7 @@ db.serialize(() => {
 
 // ============= API Routes =============
 
-// تسجيل أستاذ جديد مع رفع الصور
+// تسجيل أستاذ جديد
 app.post('/api/teacher/register', upload.fields([
   { name: 'profile_image', maxCount: 1 },
   { name: 'diploma_image', maxCount: 1 },
@@ -142,12 +134,10 @@ app.post('/api/teacher/register', upload.fields([
 ]), async (req, res) => {
   const { full_name, email, password, phone, specialization, bio, experience } = req.body;
   
-  // التحقق من وجود جميع الحقول
   if (!full_name || !email || !password || !phone || !specialization || !bio || !experience) {
     return res.json({ success: false, error: 'يرجى ملء جميع الحقول المطلوبة' });
   }
   
-  // التحقق من رفع الصور
   if (!req.files['profile_image'] || !req.files['diploma_image'] || !req.files['id_image']) {
     return res.json({ success: false, error: 'يرجى رفع الصورة الشخصية، صورة الدبلوم، وصورة بطاقة الهوية' });
   }
@@ -205,7 +195,7 @@ app.post('/api/login', (req, res) => {
   });
 });
 
-// ADMIN: عرض الأساتذة المنتظرين
+// ADMIN Routes
 app.get('/api/admin/pending-teachers', (req, res) => {
   db.all("SELECT id, full_name, email, phone, specialization, bio, experience, profile_image, diploma_image, id_image, created_at FROM teachers WHERE status = 'pending'", [], (err, rows) => {
     res.json(rows || []);
@@ -218,15 +208,13 @@ app.get('/api/admin/approved-teachers', (req, res) => {
   });
 });
 
-// ADMIN: قبول أستاذ
 app.post('/api/admin/approve-teacher/:id', (req, res) => {
   db.run("UPDATE teachers SET status = 'approved' WHERE id = ?", [req.params.id], function(err) {
-    if (err) return res.json({ success: false, error: err.message });
+    if (err) return res.json({ success: false });
     res.json({ success: true });
   });
 });
 
-// ADMIN: رفض أستاذ
 app.post('/api/admin/reject-teacher/:id', (req, res) => {
   const { reason } = req.body;
   db.run("UPDATE teachers SET status = 'rejected', rejection_reason = ? WHERE id = ?", [reason, req.params.id], function(err) {
@@ -234,9 +222,29 @@ app.post('/api/admin/reject-teacher/:id', (req, res) => {
   });
 });
 
+// ============= العروض العامة =============
+
+app.get('/api/public/teachers', (req, res) => {
+  db.all(`SELECT id, full_name, email, phone, specialization, bio, experience, profile_image, created_at 
+          FROM teachers 
+          WHERE status = 'approved' 
+          ORDER BY created_at DESC`, [], (err, rows) => {
+    res.json(rows || []);
+  });
+});
+
+app.get('/api/public/offers', (req, res) => {
+  db.all(`SELECT o.*, t.full_name as teacher_name, t.specialization, t.profile_image 
+          FROM offers o 
+          JOIN teachers t ON o.teacher_id = t.id 
+          WHERE o.status = 'upcoming' AND o.offer_date > datetime('now') AND t.status = 'approved'
+          ORDER BY o.offer_date ASC`, [], (err, rows) => {
+    res.json(rows || []);
+  });
+});
+
 // ============= نظام العروض =============
 
-// إنشاء عرض جديد
 app.post('/api/offer/create', (req, res) => {
   const { teacher_id, subject_name, duration, offer_date, price, is_free } = req.body;
   const room_name = `stream_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
@@ -250,7 +258,6 @@ app.post('/api/offer/create', (req, res) => {
     });
 });
 
-// جلب جميع العروض المتاحة
 app.get('/api/offers', (req, res) => {
   db.all(`SELECT o.*, t.full_name as teacher_name, t.specialization, t.profile_image 
           FROM offers o 
@@ -261,7 +268,6 @@ app.get('/api/offers', (req, res) => {
   });
 });
 
-// جلب العروض النشطة (بث مباشر)
 app.get('/api/live-offers', (req, res) => {
   db.all(`SELECT o.*, t.full_name as teacher_name, t.specialization, t.profile_image 
           FROM offers o 
@@ -272,16 +278,31 @@ app.get('/api/live-offers', (req, res) => {
   });
 });
 
-// جلب عروض أستاذ معين
 app.get('/api/teacher/offers/:teacher_id', (req, res) => {
   db.all(`SELECT * FROM offers WHERE teacher_id = ? ORDER BY offer_date DESC`, [req.params.teacher_id], (err, rows) => {
     res.json(rows || []);
   });
 });
 
+app.delete('/api/offer/delete/:offer_id', (req, res) => {
+  const { offer_id } = req.params;
+  const { teacher_id } = req.body;
+  
+  db.get(`SELECT * FROM offers WHERE id = ? AND teacher_id = ?`, [offer_id, teacher_id], (err, offer) => {
+    if (!offer) return res.json({ success: false, error: 'غير مصرح لك بحذف هذا العرض' });
+    
+    db.run(`DELETE FROM sessions WHERE offer_id = ?`, [offer_id]);
+    db.run(`DELETE FROM waiting_room WHERE offer_id = ?`, [offer_id]);
+    db.run(`DELETE FROM active_stream WHERE offer_id = ?`, [offer_id]);
+    db.run(`DELETE FROM offers WHERE id = ?`, [offer_id], function(err) {
+      if (err) return res.json({ success: false, error: err.message });
+      res.json({ success: true, message: 'تم حذف العرض بنجاح' });
+    });
+  });
+});
+
 // ============= نظام الحجز والدفع =============
 
-// حجز عرض
 app.post('/api/booking/create', (req, res) => {
   const { offer_id, student_id } = req.body;
   
@@ -308,7 +329,6 @@ app.post('/api/booking/create', (req, res) => {
   });
 });
 
-// إنشاء طلب دفع
 app.post('/api/create-chargily-payment', (req, res) => {
   const { session_id, amount, student_name, student_email } = req.body;
   
@@ -322,7 +342,6 @@ app.post('/api/create-chargily-payment', (req, res) => {
     });
 });
 
-// تأكيد الدفع
 app.post('/api/payment/confirm/:payment_id', (req, res) => {
   db.get("SELECT session_id FROM payments WHERE id = ?", [req.params.payment_id], (err, payment) => {
     if (payment) {
@@ -345,9 +364,9 @@ app.post('/api/payment/confirm/:payment_id', (req, res) => {
   });
 });
 
-// ============= نظام البث المباشر =============
+// ============= نظام البث المباشر مع الإشعارات =============
 
-// بدء البث
+// بدء البث - ينقل الطلاب تلقائياً
 app.post('/api/stream/start/:offer_id', (req, res) => {
   const { offer_id, teacher_id } = req.body;
   
@@ -357,15 +376,15 @@ app.post('/api/stream/start/:offer_id', (req, res) => {
     db.run(`UPDATE offers SET status = 'live' WHERE id = ?`, [offer_id]);
     
     db.all(`SELECT student_id FROM waiting_room WHERE offer_id = ?`, [offer_id], (err, students) => {
-      if (students) {
-        students.forEach(s => {
-          db.run(`INSERT INTO active_stream (offer_id, student_id) VALUES (?, ?)`, [offer_id, s.student_id]);
-          db.run(`DELETE FROM waiting_room WHERE offer_id = ? AND student_id = ?`, [offer_id, s.student_id]);
-        });
-      }
+      const studentIds = students || [];
+      
+      studentIds.forEach(s => {
+        db.run(`INSERT INTO active_stream (offer_id, student_id) VALUES (?, ?)`, [offer_id, s.student_id]);
+        db.run(`DELETE FROM waiting_room WHERE offer_id = ? AND student_id = ?`, [offer_id, s.student_id]);
+      });
+      
+      res.json({ success: true, room_name: offer.room_name, students_count: studentIds.length });
     });
-    
-    res.json({ success: true, room_name: offer.room_name });
   });
 });
 
@@ -392,22 +411,22 @@ app.get('/api/stream/status/:offer_id', (req, res) => {
   });
 });
 
-// التحقق من حالة الطالب
+// التحقق من حالة الطالب (مع إعادة التوجيه التلقائي)
 app.get('/api/student/stream-status/:offer_id/:student_id', (req, res) => {
   const { offer_id, student_id } = req.params;
   
-  db.get(`SELECT status, is_free FROM offers WHERE id = ?`, [offer_id], (err, offer) => {
+  db.get(`SELECT status, room_name FROM offers WHERE id = ?`, [offer_id], (err, offer) => {
     if (!offer) return res.json({ can_join: false, error: 'العرض غير موجود' });
     
     if (offer.status === 'live') {
       db.get(`SELECT * FROM active_stream WHERE offer_id = ? AND student_id = ?`, [offer_id, student_id], (err, active) => {
         if (active) {
-          return res.json({ can_join: true, is_waiting: false, room_name: offer.room_name });
+          return res.json({ can_join: true, is_waiting: false, room_name: offer.room_name, stream_started: true });
         } else {
           db.get(`SELECT payment_status FROM sessions WHERE offer_id = ? AND student_id = ?`, [offer_id, student_id], (err, session) => {
             if (session && session.payment_status === 'paid') {
               db.run(`INSERT INTO active_stream (offer_id, student_id) VALUES (?, ?)`, [offer_id, student_id]);
-              return res.json({ can_join: true, is_waiting: false, room_name: offer.room_name });
+              return res.json({ can_join: true, is_waiting: false, room_name: offer.room_name, stream_started: true });
             }
             return res.json({ can_join: false, is_waiting: false, error: 'غير مسجل أو لم يتم الدفع' });
           });
@@ -426,10 +445,10 @@ app.get('/api/student/stream-status/:offer_id/:student_id', (req, res) => {
             if (!waiting) {
               db.run(`INSERT INTO waiting_room (offer_id, student_id) VALUES (?, ?)`, [offer_id, student_id]);
             }
-            return res.json({ can_join: false, is_waiting: true, message: 'بانتظار بدء البث من قبل الأستاذ' });
+            return res.json({ can_join: false, is_waiting: true, message: 'بانتظار بدء البث', stream_started: false });
           });
         } else {
-          return res.json({ can_join: false, is_waiting: false, error: 'يرجى إتمام الدفع أولاً', payment_required: true, session_id: session.id });
+          return res.json({ can_join: false, is_waiting: false, error: 'يرجى إتمام الدفع أولاً', payment_required: true });
         }
       });
     }
@@ -457,6 +476,8 @@ function generateStreamPage(roomName, userId, role, offerId = null) {
         .leave-btn, .end-stream-btn { background: #ef4444; color: white; border: none; padding: 8px 24px; border-radius: 30px; cursor: pointer; margin-left: 10px; }
         .end-stream-btn { background: #dc2626; }
         #jitsi-container { position: fixed; top: 60px; left: 0; right: 0; bottom: 0; }
+        .notification { position: fixed; bottom: 20px; right: 20px; background: #10b981; color: white; padding: 15px 25px; border-radius: 15px; z-index: 1000; animation: slideIn 0.5s ease; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     </style>
 </head>
 <body>
@@ -512,7 +533,7 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', (req, res) => {
   });
 });
 
-// جلب حجوزات الطالب
+// جلب الحجوزات
 app.get('/api/student/bookings/:student_id', (req, res) => {
   db.all(`SELECT s.*, o.subject_name, o.offer_date, o.duration, o.price, o.is_free, o.status as offer_status, o.room_name, t.full_name as teacher_name, t.profile_image
           FROM sessions s
@@ -524,7 +545,6 @@ app.get('/api/student/bookings/:student_id', (req, res) => {
   });
 });
 
-// جلب قوائم الانتظار للأستاذ
 app.get('/api/stream/waiting-list/:offer_id/:teacher_id', (req, res) => {
   db.all(`SELECT w.*, s.full_name, s.email FROM waiting_room w JOIN students s ON w.student_id = s.id WHERE w.offer_id = ?`, [req.params.offer_id], (err, rows) => {
     res.json(rows || []);
@@ -540,46 +560,4 @@ app.get('/api/stream/active-list/:offer_id/:teacher_id', (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 الخادم يعمل على http://localhost:${PORT}`);
   console.log(`📁 مجلد رفع الملفات: ./uploads`);
-});
-// ============= أضف هذه الدوال إلى server.js الموجود =============
-
-// جلب جميع الأساتذة المعتمدين (بدون تسجيل دخول)
-app.get('/api/public/teachers', (req, res) => {
-  db.all(`SELECT id, full_name, email, phone, specialization, bio, experience, profile_image, created_at 
-          FROM teachers 
-          WHERE status = 'approved' 
-          ORDER BY created_at DESC`, [], (err, rows) => {
-    res.json(rows || []);
-  });
-});
-
-// جلب جميع العروض المتاحة للجميع (بدون تسجيل دخول)
-app.get('/api/public/offers', (req, res) => {
-  db.all(`SELECT o.*, t.full_name as teacher_name, t.specialization, t.profile_image 
-          FROM offers o 
-          JOIN teachers t ON o.teacher_id = t.id 
-          WHERE o.status = 'upcoming' AND o.offer_date > datetime('now') AND t.status = 'approved'
-          ORDER BY o.offer_date ASC`, [], (err, rows) => {
-    res.json(rows || []);
-  });
-});
-
-// حذف عرض (للأستاذ فقط)
-app.delete('/api/offer/delete/:offer_id', (req, res) => {
-  const { offer_id } = req.params;
-  const { teacher_id } = req.body;
-  
-  // التحقق من ملكية العرض
-  db.get(`SELECT * FROM offers WHERE id = ? AND teacher_id = ?`, [offer_id, teacher_id], (err, offer) => {
-    if (!offer) return res.json({ success: false, error: 'غير مصرح لك بحذف هذا العرض' });
-    
-    // حذف جميع البيانات المرتبطة بالعرض
-    db.run(`DELETE FROM sessions WHERE offer_id = ?`, [offer_id]);
-    db.run(`DELETE FROM waiting_room WHERE offer_id = ?`, [offer_id]);
-    db.run(`DELETE FROM active_stream WHERE offer_id = ?`, [offer_id]);
-    db.run(`DELETE FROM offers WHERE id = ?`, [offer_id], function(err) {
-      if (err) return res.json({ success: false, error: err.message });
-      res.json({ success: true, message: 'تم حذف العرض بنجاح' });
-    });
-  });
 });
