@@ -14,7 +14,7 @@
         .logout-btn { background: #ef4444; color: white; border: none; padding: 10px 20px; border-radius: 30px; cursor: pointer; }
         .create-offer-btn { background: #10b981; color: white; border: none; padding: 12px 25px; border-radius: 30px; cursor: pointer; font-size: 1rem; margin-bottom: 20px; }
         .offers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; margin-top: 20px; }
-        .offer-card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px; position: relative; }
+        .offer-card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px; }
         .offer-card h3 { color: #0f5cbf; margin-bottom: 15px; }
         .offer-status { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 12px; margin-top: 10px; }
         .status-upcoming { background: #f59e0b; color: white; }
@@ -36,6 +36,8 @@
         .nav-tab.active { background: #0f5cbf; color: white; }
         .btn-group { display: flex; gap: 10px; margin-top: 15px; }
         .btn-group button { margin-top: 0; width: 50%; }
+        .notification-toast { position: fixed; bottom: 30px; right: 30px; background: #10b981; color: white; padding: 15px 25px; border-radius: 15px; z-index: 2000; display: flex; align-items: center; gap: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: slideIn 0.5s ease; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     </style>
 </head>
 <body>
@@ -83,9 +85,21 @@
         <button onclick="closeModal()" style="background:#e2e8f0; color:#333;">إلغاء</button>
     </div>
 
+    <div id="notificationToast" class="notification-toast" style="display: none;"></div>
+
     <script>
         let teacherData = JSON.parse(localStorage.getItem('teacherData') || '{}');
         if (!teacherData.id) window.location.href = '/';
+
+        function showNotification(message, type = 'success') {
+            const toast = document.getElementById('notificationToast');
+            toast.style.background = type === 'success' ? '#10b981' : (type === 'warning' ? '#f59e0b' : '#ef4444');
+            toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : (type === 'warning' ? 'fa-clock' : 'fa-exclamation-triangle')}"></i> ${message}`;
+            toast.style.display = 'flex';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 4000);
+        }
 
         function showTab(tabName) {
             document.getElementById('myOffersTab').style.display = 'none';
@@ -144,7 +158,7 @@
             });
             const data = await res.json();
             if (data.success) {
-                alert('تم إنشاء العرض بنجاح!');
+                showNotification('✅ تم إنشاء العرض بنجاح!', 'success');
                 closeModal();
                 loadOffers();
                 document.getElementById('subjectName').value = '';
@@ -209,7 +223,7 @@
                     ${waitingHtml}
                     ${activeHtml}
                     <div class="btn-group">
-                        ${offer.status === 'upcoming' ? `<button class="start-stream-btn" onclick="startStream(${offer.id})"><i class="fas fa-play"></i> بدء البث</button>` : ''}
+                        ${offer.status === 'upcoming' ? `<button class="start-stream-btn" onclick="startStream(${offer.id}, '${offer.subject_name.replace(/'/g, "\\'")}')"><i class="fas fa-play"></i> بدء البث (${waitingHtml ? (waitingStudents?.length || 0) + ' طالب ينتظرون' : 'لا يوجد طلاب'})</button>` : ''}
                         ${offer.status === 'live' ? `<button class="start-stream-btn" onclick="joinTeacherStream(${offer.id})" style="background:#0f5cbf"><i class="fas fa-video"></i> دخول البث</button>` : ''}
                         ${offer.status === 'upcoming' ? `<button class="delete-offer-btn" onclick="deleteOffer(${offer.id})"><i class="fas fa-trash"></i> حذف العرض</button>` : ''}
                     </div>
@@ -275,8 +289,12 @@
             container.innerHTML = html;
         }
 
-        async function startStream(offerId) {
-            if (confirm('هل أنت متأكد من بدء البث المباشر؟ سيتم إضافة جميع الطلاب المنتظرين تلقائياً.')) {
+        async function startStream(offerId, offerName) {
+            const waitingRes = await fetch(`/api/stream/waiting-list/${offerId}/${teacherData.id}`);
+            const waitingStudents = await waitingRes.json();
+            const count = waitingStudents?.length || 0;
+            
+            if (confirm(`هل أنت متأكد من بدء البث المباشر للحصة "${offerName}"؟\nسيتم نقل ${count} طالب من غرفة الانتظار إلى البث تلقائياً وسيتلقون إشعاراً فورياً.`)) {
                 const res = await fetch(`/api/stream/start/${offerId}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -284,6 +302,7 @@
                 });
                 const data = await res.json();
                 if (data.success) {
+                    showNotification(`✅ بدأ البث المباشر! تم نقل ${data.students_count} طالب إلى الغرفة.`, 'success');
                     window.open(`/api/teacher-stream/${offerId}/${teacherData.id}`, '_blank');
                     loadOffers();
                 } else {
@@ -301,7 +320,7 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    alert('✅ تم حذف العرض بنجاح');
+                    showNotification('✅ تم حذف العرض بنجاح', 'success');
                     loadOffers();
                 } else {
                     alert('خطأ: ' + data.error);
