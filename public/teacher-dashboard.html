@@ -14,7 +14,7 @@
         .logout-btn { background: #ef4444; color: white; border: none; padding: 10px 20px; border-radius: 30px; cursor: pointer; }
         .create-offer-btn { background: #10b981; color: white; border: none; padding: 12px 25px; border-radius: 30px; cursor: pointer; font-size: 1rem; margin-bottom: 20px; }
         .offers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; margin-top: 20px; }
-        .offer-card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .offer-card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px; position: relative; }
         .offer-card h3 { color: #0f5cbf; margin-bottom: 15px; }
         .offer-status { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 12px; margin-top: 10px; }
         .status-upcoming { background: #f59e0b; color: white; }
@@ -24,12 +24,18 @@
         .waiting-list h4, .active-list h4 { margin-bottom: 10px; }
         .student-item { padding: 8px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; }
         .start-stream-btn { background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 25px; cursor: pointer; margin-top: 15px; width: 100%; }
+        .delete-offer-btn { background: #ef4444; color: white; border: none; padding: 10px 20px; border-radius: 25px; cursor: pointer; margin-top: 10px; width: 100%; }
         .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 20px; z-index: 1000; width: 90%; max-width: 500px; }
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999; }
         .modal input, .modal select, .modal textarea { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #cbd5e1; border-radius: 10px; }
         .modal button { width: 100%; padding: 12px; margin-top: 10px; }
         .free-checkbox { display: flex; align-items: center; gap: 10px; margin: 10px 0; }
         .free-checkbox input { width: auto; }
+        .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
+        .nav-tab { padding: 10px 20px; background: #e2e8f0; border: none; border-radius: 30px; cursor: pointer; font-weight: 600; transition: 0.3s; }
+        .nav-tab.active { background: #0f5cbf; color: white; }
+        .btn-group { display: flex; gap: 10px; margin-top: 15px; }
+        .btn-group button { margin-top: 0; width: 50%; }
     </style>
 </head>
 <body>
@@ -39,9 +45,27 @@
             <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> تسجيل خروج</button>
         </div>
         
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showTab('myOffers')"><i class="fas fa-calendar-alt"></i> عروضي</button>
+            <button class="nav-tab" onclick="showTab('allOffers')"><i class="fas fa-globe"></i> جميع العروض</button>
+            <button class="nav-tab" onclick="showTab('allTeachers')"><i class="fas fa-users"></i> الأساتذة المعتمدون</button>
+        </div>
+        
         <button class="create-offer-btn" onclick="showCreateOfferModal()"><i class="fas fa-plus"></i> إنشاء عرض جديد (بث مباشر)</button>
         
-        <div id="offersList"></div>
+        <div id="myOffersTab">
+            <div id="offersList"></div>
+        </div>
+        
+        <div id="allOffersTab" style="display: none;">
+            <h2 style="margin-bottom: 20px;"><i class="fas fa-calendar-alt"></i> جميع عروض الأساتذة</h2>
+            <div id="allOffersList" class="offers-grid"></div>
+        </div>
+        
+        <div id="allTeachersTab" style="display: none;">
+            <h2 style="margin-bottom: 20px;"><i class="fas fa-users"></i> الأساتذة المعتمدون</h2>
+            <div id="allTeachersList" class="offers-grid"></div>
+        </div>
     </div>
 
     <div id="modalOverlay" class="modal-overlay"></div>
@@ -62,6 +86,28 @@
     <script>
         let teacherData = JSON.parse(localStorage.getItem('teacherData') || '{}');
         if (!teacherData.id) window.location.href = '/';
+
+        function showTab(tabName) {
+            document.getElementById('myOffersTab').style.display = 'none';
+            document.getElementById('allOffersTab').style.display = 'none';
+            document.getElementById('allTeachersTab').style.display = 'none';
+            
+            document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+            
+            if (tabName === 'myOffers') {
+                document.getElementById('myOffersTab').style.display = 'block';
+                document.querySelector('.nav-tab:first-child').classList.add('active');
+                loadOffers();
+            } else if (tabName === 'allOffers') {
+                document.getElementById('allOffersTab').style.display = 'block';
+                document.querySelector('.nav-tab:nth-child(2)').classList.add('active');
+                loadAllOffers();
+            } else {
+                document.getElementById('allTeachersTab').style.display = 'block';
+                document.querySelector('.nav-tab:nth-child(3)').classList.add('active');
+                loadAllTeachers();
+            }
+        }
 
         function togglePrice() {
             const isFree = document.getElementById('isFree').checked;
@@ -101,6 +147,11 @@
                 alert('تم إنشاء العرض بنجاح!');
                 closeModal();
                 loadOffers();
+                document.getElementById('subjectName').value = '';
+                document.getElementById('offerDate').value = '';
+                document.getElementById('isFree').checked = false;
+                document.getElementById('price').disabled = false;
+                document.getElementById('price').value = '1000';
             } else {
                 alert('حدث خطأ: ' + data.error);
             }
@@ -122,28 +173,31 @@
                 const statusClass = offer.status === 'upcoming' ? 'status-upcoming' : (offer.status === 'live' ? 'status-live' : 'status-completed');
                 const statusText = offer.status === 'upcoming' ? 'قادم' : (offer.status === 'live' ? 'بث مباشر الآن' : 'منتهية');
                 
-                // جلب قائمة الانتظار والطلاب النشطين
                 let waitingHtml = '';
                 let activeHtml = '';
                 
                 if (offer.status === 'upcoming') {
-                    const waitingRes = await fetch(`/api/stream/waiting-list/${offer.id}/${teacherData.id}`);
-                    const waitingStudents = await waitingRes.json();
-                    if (waitingStudents.length > 0) {
-                        waitingHtml = `<div class="waiting-list"><h4>⏳ غرفة الانتظار (${waitingStudents.length})</h4>`;
-                        waitingStudents.forEach(s => { waitingHtml += `<div class="student-item">${s.full_name} <small>${s.email}</small></div>`; });
-                        waitingHtml += `</div>`;
-                    }
+                    try {
+                        const waitingRes = await fetch(`/api/stream/waiting-list/${offer.id}/${teacherData.id}`);
+                        const waitingStudents = await waitingRes.json();
+                        if (waitingStudents && waitingStudents.length > 0) {
+                            waitingHtml = `<div class="waiting-list"><h4>⏳ غرفة الانتظار (${waitingStudents.length})</h4>`;
+                            waitingStudents.forEach(s => { waitingHtml += `<div class="student-item">${s.full_name} <small>${s.email}</small></div>`; });
+                            waitingHtml += `</div>`;
+                        }
+                    } catch(e) { console.log(e); }
                 }
                 
                 if (offer.status === 'live') {
-                    const activeRes = await fetch(`/api/stream/active-list/${offer.id}/${teacherData.id}`);
-                    const activeStudents = await activeRes.json();
-                    if (activeStudents.length > 0) {
-                        activeHtml = `<div class="active-list"><h4>🎥 في البث المباشر (${activeStudents.length})</h4>`;
-                        activeStudents.forEach(s => { activeHtml += `<div class="student-item">${s.full_name} <small>${s.email}</small></div>`; });
-                        activeHtml += `</div>`;
-                    }
+                    try {
+                        const activeRes = await fetch(`/api/stream/active-list/${offer.id}/${teacherData.id}`);
+                        const activeStudents = await activeRes.json();
+                        if (activeStudents && activeStudents.length > 0) {
+                            activeHtml = `<div class="active-list"><h4>🎥 في البث المباشر (${activeStudents.length})</h4>`;
+                            activeStudents.forEach(s => { activeHtml += `<div class="student-item">${s.full_name} <small>${s.email}</small></div>`; });
+                            activeHtml += `</div>`;
+                        }
+                    } catch(e) { console.log(e); }
                 }
                 
                 html += `<div class="offer-card">
@@ -154,11 +208,70 @@
                     <span class="offer-status ${statusClass}">${statusText}</span>
                     ${waitingHtml}
                     ${activeHtml}
-                    ${offer.status === 'upcoming' ? `<button class="start-stream-btn" onclick="startStream(${offer.id})"><i class="fas fa-play"></i> بدء البث المباشر الآن</button>` : ''}
-                    ${offer.status === 'live' ? `<button class="start-stream-btn" onclick="joinTeacherStream(${offer.id})" style="background:#0f5cbf"><i class="fas fa-video"></i> الدخول إلى البث</button>` : ''}
+                    <div class="btn-group">
+                        ${offer.status === 'upcoming' ? `<button class="start-stream-btn" onclick="startStream(${offer.id})"><i class="fas fa-play"></i> بدء البث</button>` : ''}
+                        ${offer.status === 'live' ? `<button class="start-stream-btn" onclick="joinTeacherStream(${offer.id})" style="background:#0f5cbf"><i class="fas fa-video"></i> دخول البث</button>` : ''}
+                        ${offer.status === 'upcoming' ? `<button class="delete-offer-btn" onclick="deleteOffer(${offer.id})"><i class="fas fa-trash"></i> حذف العرض</button>` : ''}
+                    </div>
                 </div>`;
             }
             html += '</div>';
+            container.innerHTML = html;
+        }
+
+        async function loadAllOffers() {
+            const res = await fetch('/api/public/offers');
+            const offers = await res.json();
+            const container = document.getElementById('allOffersList');
+            
+            if (offers.length === 0) {
+                container.innerHTML = '<p style="text-align:center">لا توجد عروض متاحة حالياً</p>';
+                return;
+            }
+            
+            let html = '';
+            for (const offer of offers) {
+                const offerDate = new Date(offer.offer_date);
+                const imageUrl = offer.profile_image ? `/uploads/${offer.profile_image}` : 'https://via.placeholder.com/80';
+                html += `<div class="offer-card">
+                    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                        <img src="${imageUrl}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;">
+                        <div>
+                            <h3 style="margin-bottom: 5px;">${offer.teacher_name}</h3>
+                            <p><i class="fas fa-book"></i> ${offer.specialization || 'تخصص عام'}</p>
+                        </div>
+                    </div>
+                    <p><strong>${offer.subject_name}</strong></p>
+                    <p><i class="fas fa-calendar"></i> ${offerDate.toLocaleString('ar')}</p>
+                    <p><i class="fas fa-clock"></i> ${offer.duration} دقيقة</p>
+                    <p><i class="fas fa-tag"></i> ${offer.is_free ? 'مجانية' : offer.price + ' دج'}</p>
+                </div>`;
+            }
+            container.innerHTML = html;
+        }
+
+        async function loadAllTeachers() {
+            const res = await fetch('/api/public/teachers');
+            const teachers = await res.json();
+            const container = document.getElementById('allTeachersList');
+            
+            if (teachers.length === 0) {
+                container.innerHTML = '<p style="text-align:center">لا يوجد أساتذة معتمدون حالياً</p>';
+                return;
+            }
+            
+            let html = '';
+            for (const teacher of teachers) {
+                const imageUrl = teacher.profile_image ? `/uploads/${teacher.profile_image}` : 'https://via.placeholder.com/100';
+                html += `<div class="offer-card" style="text-align: center;">
+                    <img src="${imageUrl}" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 15px;">
+                    <h3>${teacher.full_name}</h3>
+                    <p><i class="fas fa-book"></i> ${teacher.specialization || 'تخصص عام'}</p>
+                    <p><i class="fas fa-briefcase"></i> ${teacher.experience || 'خبرة'} سنة</p>
+                    <p><i class="fas fa-align-left"></i> ${teacher.bio ? teacher.bio.substring(0, 80) + '...' : ''}</p>
+                    <span style="background:#10b981; color:white; padding:5px 12px; border-radius:20px; display:inline-block; margin-top:10px;">✅ معتمد</span>
+                </div>`;
+            }
             container.innerHTML = html;
         }
 
@@ -172,6 +285,23 @@
                 const data = await res.json();
                 if (data.success) {
                     window.open(`/api/teacher-stream/${offerId}/${teacherData.id}`, '_blank');
+                    loadOffers();
+                } else {
+                    alert('خطأ: ' + data.error);
+                }
+            }
+        }
+
+        async function deleteOffer(offerId) {
+            if (confirm('⚠️ هل أنت متأكد من حذف هذا العرض؟\nسيتم حذف جميع الحجوزات المرتبطة به ولا يمكن التراجع.')) {
+                const res = await fetch(`/api/offer/delete/${offerId}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ teacher_id: teacherData.id })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('✅ تم حذف العرض بنجاح');
                     loadOffers();
                 } else {
                     alert('خطأ: ' + data.error);
