@@ -1,7 +1,7 @@
 {
   "name": "teaching-platform-algeria",
   "version": "3.0.0",
-  "description": "منصة تعليمية جزائرية متكاملة",
+  "description": "منصة تعليمية جزائرية متكاملة مع Chargily",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -12,6 +12,7 @@
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.2",
     "cors": "^2.8.5",
-    "multer": "^1.4.5-lts.1"
+    "multer": "^1.4.5-lts.1",
+    "node-fetch": "^2.6.7"
   }
 }
