@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 3000;
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const dir = './uploads';
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     cb(null, dir);
   },
   filename: (req, file, cb) => {
@@ -22,15 +22,15 @@ const storage = multer.diskStorage({
     cb(null, uniqueName);
   }
 });
-const upload = multer({ storage: storage, limits: { fileSize: 5 * 1024 * 1024 } });
+const upload = multer({ storage: storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 app.use('/uploads', express.static('uploads'));
 
-// ============= قاعدة بيانات دائمة (حفظ على القرص) =============
-// استخدام ملف محدد للتخزين الدائم
+// ============= قاعدة بيانات دائمة =============
 const DB_PATH = path.join(__dirname, 'platform.db');
 const db = new sqlite3.Database(DB_PATH);
 
@@ -127,18 +127,19 @@ function initDatabase() {
       FOREIGN KEY(session_id) REFERENCES sessions(id)
     )`);
 
-    // إنشاء admin افتراضي إذا لم يكن موجوداً
+    // إنشاء admin افتراضي
     db.get("SELECT * FROM teachers WHERE email = 'admin@platform.com'", [], (err, row) => {
       if (!row && !err) {
         const hashedPassword = bcrypt.hashSync('admin123', 10);
         db.run("INSERT INTO teachers (full_name, email, password, phone, status) VALUES (?, ?, ?, ?, 'approved')", 
           ['مدير المنصة', 'admin@platform.com', hashedPassword, '00000000']);
+        console.log('✅ تم إنشاء حساب admin بنجاح');
       }
     });
   });
 }
 
-// تهيئة قاعدة البيانات عند بدء التشغيل
+// تهيئة قاعدة البيانات
 initDatabase();
 
 // ============= API Routes =============
@@ -149,70 +150,86 @@ app.post('/api/teacher/register', upload.fields([
   { name: 'diploma_image', maxCount: 1 },
   { name: 'id_image', maxCount: 1 }
 ]), async (req, res) => {
-  const { full_name, email, password, phone, specialization, bio, experience } = req.body;
-  
-  if (!full_name || !email || !password || !phone || !specialization || !bio || !experience) {
-    return res.json({ success: false, error: 'يرجى ملء جميع الحقول المطلوبة' });
+  try {
+    const { full_name, email, password, phone, specialization, bio, experience } = req.body;
+    
+    if (!full_name || !email || !password || !phone || !specialization || !bio || !experience) {
+      return res.json({ success: false, error: 'يرجى ملء جميع الحقول المطلوبة' });
+    }
+    
+    if (!req.files || !req.files['profile_image'] || !req.files['diploma_image'] || !req.files['id_image']) {
+      return res.json({ success: false, error: 'يرجى رفع جميع الصور المطلوبة' });
+    }
+    
+    const hashedPassword = bcrypt.hashSync(password, 10);
+    const profile_image = req.files['profile_image'][0].filename;
+    const diploma_image = req.files['diploma_image'][0].filename;
+    const id_image = req.files['id_image'][0].filename;
+    
+    db.run(`INSERT INTO teachers (full_name, email, password, phone, specialization, bio, experience, profile_image, diploma_image, id_image, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+      [full_name, email, hashedPassword, phone, specialization, bio, experience, profile_image, diploma_image, id_image],
+      function(err) {
+        if (err) {
+          if (err.message.includes('UNIQUE')) return res.json({ success: false, error: 'البريد الإلكتروني مستخدم مسبقاً' });
+          return res.json({ success: false, error: 'حدث خطأ: ' + err.message });
+        }
+        res.json({ success: true, message: 'تم إرسال طلبك، سيتم مراجعته من قبل الإدارة' });
+      });
+  } catch(error) {
+    res.json({ success: false, error: 'خطأ في الخادم: ' + error.message });
   }
-  
-  if (!req.files['profile_image'] || !req.files['diploma_image'] || !req.files['id_image']) {
-    return res.json({ success: false, error: 'يرجى رفع الصورة الشخصية، صورة الدبلوم، وصورة بطاقة الهوية' });
-  }
-  
-  const hashedPassword = bcrypt.hashSync(password, 10);
-  const profile_image = req.files['profile_image'][0].filename;
-  const diploma_image = req.files['diploma_image'][0].filename;
-  const id_image = req.files['id_image'][0].filename;
-  
-  db.run(`INSERT INTO teachers (full_name, email, password, phone, specialization, bio, experience, profile_image, diploma_image, id_image, status)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
-    [full_name, email, hashedPassword, phone, specialization, bio, experience, profile_image, diploma_image, id_image],
-    function(err) {
-      if (err && err.message.includes('UNIQUE')) return res.json({ success: false, error: 'البريد الإلكتروني مستخدم مسبقاً' });
-      if (err) return res.json({ success: false, error: 'حدث خطأ: ' + err.message });
-      res.json({ success: true, message: 'تم إرسال طلبك، سيتم مراجعته من قبل الإدارة' });
-    });
 });
 
 // تسجيل طالب
 app.post('/api/student/register', async (req, res) => {
-  const { full_name, email, password, phone } = req.body;
-  if (!full_name || !email || !password || !phone) {
-    return res.json({ success: false, error: 'يرجى ملء جميع الحقول' });
+  try {
+    const { full_name, email, password, phone } = req.body;
+    if (!full_name || !email || !password || !phone) {
+      return res.json({ success: false, error: 'يرجى ملء جميع الحقول' });
+    }
+    const hashedPassword = bcrypt.hashSync(password, 10);
+    
+    db.run(`INSERT INTO students (full_name, email, password, phone, balance)
+            VALUES (?, ?, ?, ?, 0)`,
+      [full_name, email, hashedPassword, phone],
+      function(err) {
+        if (err) {
+          if (err.message.includes('UNIQUE')) return res.json({ success: false, error: 'البريد الإلكتروني مستخدم' });
+          return res.json({ success: false, error: 'حدث خطأ: ' + err.message });
+        }
+        res.json({ success: true, message: 'تم التسجيل بنجاح' });
+      });
+  } catch(error) {
+    res.json({ success: false, error: 'خطأ في الخادم' });
   }
-  const hashedPassword = bcrypt.hashSync(password, 10);
-  
-  db.run(`INSERT INTO students (full_name, email, password, phone, balance)
-          VALUES (?, ?, ?, ?, 0)`,
-    [full_name, email, hashedPassword, phone],
-    function(err) {
-      if (err && err.message.includes('UNIQUE')) return res.json({ success: false, error: 'البريد الإلكتروني مستخدم' });
-      if (err) return res.json({ success: false, error: 'حدث خطأ: ' + err.message });
-      res.json({ success: true, message: 'تم التسجيل بنجاح' });
-    });
 });
 
 // تسجيل الدخول
 app.post('/api/login', (req, res) => {
-  const { email, password, role } = req.body;
-  const table = role === 'teacher' ? 'teachers' : 'students';
-  
-  db.get(`SELECT * FROM ${table} WHERE email = ?`, [email], async (err, user) => {
-    if (err || !user) return res.json({ success: false, error: 'البريد الإلكتروني غير موجود' });
+  try {
+    const { email, password, role } = req.body;
+    const table = role === 'teacher' ? 'teachers' : 'students';
     
-    const validPassword = bcrypt.compareSync(password, user.password);
-    if (!validPassword) return res.json({ success: false, error: 'كلمة المرور خاطئة' });
-    
-    if (role === 'teacher' && user.status !== 'approved' && user.email !== 'admin@platform.com') {
-      return res.json({ success: false, error: 'حسابك قيد المراجعة من قبل الإدارة' });
-    }
-    
-    const token = jwt.sign({ id: user.id, email: user.email, role, name: user.full_name }, 'secret_key', { expiresIn: '7d' });
-    res.json({ success: true, token, user: { id: user.id, name: user.full_name, email: user.email, role, status: user.status } });
-  });
+    db.get(`SELECT * FROM ${table} WHERE email = ?`, [email], (err, user) => {
+      if (err || !user) return res.json({ success: false, error: 'البريد الإلكتروني غير موجود' });
+      
+      const validPassword = bcrypt.compareSync(password, user.password);
+      if (!validPassword) return res.json({ success: false, error: 'كلمة المرور خاطئة' });
+      
+      if (role === 'teacher' && user.status !== 'approved' && user.email !== 'admin@platform.com') {
+        return res.json({ success: false, error: 'حسابك قيد المراجعة من قبل الإدارة' });
+      }
+      
+      const token = jwt.sign({ id: user.id, email: user.email, role, name: user.full_name }, 'secret_key', { expiresIn: '7d' });
+      res.json({ success: true, token, user: { id: user.id, name: user.full_name, email: user.email, role, status: user.status } });
+    });
+  } catch(error) {
+    res.json({ success: false, error: 'خطأ في الخادم' });
+  }
 });
 
-// ADMIN Routes
+// ADMIN: عرض الأساتذة المنتظرين
 app.get('/api/admin/pending-teachers', (req, res) => {
   db.all("SELECT id, full_name, email, phone, specialization, bio, experience, profile_image, diploma_image, id_image, created_at FROM teachers WHERE status = 'pending'", [], (err, rows) => {
     res.json(rows || []);
@@ -242,10 +259,7 @@ app.post('/api/admin/reject-teacher/:id', (req, res) => {
 // ============= العروض العامة =============
 
 app.get('/api/public/teachers', (req, res) => {
-  db.all(`SELECT id, full_name, email, phone, specialization, bio, experience, profile_image, created_at 
-          FROM teachers 
-          WHERE status = 'approved' 
-          ORDER BY created_at DESC`, [], (err, rows) => {
+  db.all(`SELECT id, full_name, specialization, bio, experience, profile_image FROM teachers WHERE status = 'approved' ORDER BY created_at DESC`, [], (err, rows) => {
     res.json(rows || []);
   });
 });
@@ -306,14 +320,13 @@ app.delete('/api/offer/delete/:offer_id', (req, res) => {
   const { teacher_id } = req.body;
   
   db.get(`SELECT * FROM offers WHERE id = ? AND teacher_id = ?`, [offer_id, teacher_id], (err, offer) => {
-    if (!offer) return res.json({ success: false, error: 'غير مصرح لك بحذف هذا العرض' });
+    if (!offer) return res.json({ success: false, error: 'غير مصرح لك' });
     
     db.run(`DELETE FROM sessions WHERE offer_id = ?`, [offer_id]);
     db.run(`DELETE FROM waiting_room WHERE offer_id = ?`, [offer_id]);
     db.run(`DELETE FROM active_stream WHERE offer_id = ?`, [offer_id]);
     db.run(`DELETE FROM offers WHERE id = ?`, [offer_id], function(err) {
-      if (err) return res.json({ success: false, error: err.message });
-      res.json({ success: true, message: 'تم حذف العرض بنجاح' });
+      res.json({ success: true });
     });
   });
 });
@@ -324,7 +337,7 @@ app.post('/api/booking/create', (req, res) => {
   const { offer_id, student_id } = req.body;
   
   db.get(`SELECT * FROM sessions WHERE offer_id = ? AND student_id = ?`, [offer_id, student_id], (err, existing) => {
-    if (existing) return res.json({ success: false, error: 'أنت مسجل بالفعل في هذه الحصة' });
+    if (existing) return res.json({ success: false, error: 'أنت مسجل بالفعل' });
     
     db.get(`SELECT price, is_free FROM offers WHERE id = ?`, [offer_id], (err, offer) => {
       if (!offer) return res.json({ success: false, error: 'العرض غير موجود' });
@@ -347,15 +360,13 @@ app.post('/api/booking/create', (req, res) => {
 });
 
 app.post('/api/create-chargily-payment', (req, res) => {
-  const { session_id, amount, student_name, student_email } = req.body;
+  const { session_id, amount } = req.body;
   
   db.run(`INSERT INTO payments (session_id, amount, status) VALUES (?, ?, 'pending')`,
     [session_id, amount],
     function(err) {
       if (err) return res.json({ success: false, error: err.message });
-      
-      const payment_url = `https://sandbox.chargily.dz/pay/${this.lastID}`;
-      res.json({ success: true, payment_url: payment_url, payment_id: this.lastID });
+      res.json({ success: true, payment_id: this.lastID });
     });
 });
 
@@ -381,46 +392,35 @@ app.post('/api/payment/confirm/:payment_id', (req, res) => {
   });
 });
 
-// ============= نظام البث المباشر (الأستاذ يدخل أولاً ثم يضيف الطلاب) =============
+// ============= نظام البث المباشر =============
 
-// الأستاذ يدخل البث أولاً (بدون طلاب)
+// الأستاذ يدخل البث أولاً
 app.post('/api/stream/enter-teacher/:offer_id', (req, res) => {
   const { offer_id, teacher_id } = req.body;
   
   db.get(`SELECT * FROM offers WHERE id = ? AND teacher_id = ?`, [offer_id, teacher_id], (err, offer) => {
     if (!offer) return res.json({ success: false, error: 'غير مصرح لك' });
-    
-    // تغيير حالة العرض إلى "teacher_ready" (الأستاذ جاهز ولكن البث لم يبدأ للطلاب بعد)
     db.run(`UPDATE offers SET status = 'teacher_ready' WHERE id = ?`, [offer_id]);
-    
     res.json({ success: true, room_name: offer.room_name });
   });
 });
 
-// إضافة الطلاب المنتظرين إلى البث (بعد أن يكون الأستاذ جاهزاً)
+// إضافة الطلاب المنتظرين إلى البث
 app.post('/api/stream/add-students/:offer_id', (req, res) => {
   const { offer_id, teacher_id } = req.body;
   
   db.get(`SELECT * FROM offers WHERE id = ? AND teacher_id = ?`, [offer_id, teacher_id], (err, offer) => {
     if (!offer) return res.json({ success: false, error: 'غير مصرح لك' });
     
-    // تغيير حالة العرض إلى live (البث بدأ للطلاب)
     db.run(`UPDATE offers SET status = 'live' WHERE id = ?`, [offer_id]);
     
-    // نقل جميع الطلاب من غرفة الانتظار إلى البث المباشر
     db.all(`SELECT student_id FROM waiting_room WHERE offer_id = ?`, [offer_id], (err, students) => {
       const studentIds = students || [];
-      
       studentIds.forEach(s => {
         db.run(`INSERT INTO active_stream (offer_id, student_id) VALUES (?, ?)`, [offer_id, s.student_id]);
         db.run(`DELETE FROM waiting_room WHERE offer_id = ? AND student_id = ?`, [offer_id, s.student_id]);
       });
-      
-      res.json({ 
-        success: true, 
-        room_name: offer.room_name,
-        students_count: studentIds.length 
-      });
+      res.json({ success: true, students_count: studentIds.length });
     });
   });
 });
@@ -428,16 +428,10 @@ app.post('/api/stream/add-students/:offer_id', (req, res) => {
 // إنهاء البث
 app.post('/api/stream/end/:offer_id', (req, res) => {
   const { offer_id, teacher_id } = req.body;
-  
-  db.get(`SELECT * FROM offers WHERE id = ? AND teacher_id = ?`, [offer_id, teacher_id], (err, offer) => {
-    if (!offer) return res.json({ success: false });
-    
-    db.run(`UPDATE offers SET status = 'completed' WHERE id = ?`, [offer_id]);
-    db.run(`DELETE FROM active_stream WHERE offer_id = ?`, [offer_id]);
-    db.run(`DELETE FROM waiting_room WHERE offer_id = ?`, [offer_id]);
-    
-    res.json({ success: true });
-  });
+  db.run(`UPDATE offers SET status = 'completed' WHERE id = ?`, [offer_id]);
+  db.run(`DELETE FROM active_stream WHERE offer_id = ?`, [offer_id]);
+  db.run(`DELETE FROM waiting_room WHERE offer_id = ?`, [offer_id]);
+  res.json({ success: true });
 });
 
 // التحقق من حالة العرض
@@ -458,285 +452,32 @@ app.get('/api/student/stream-status/:offer_id/:student_id', (req, res) => {
     if (offer.status === 'live') {
       db.get(`SELECT * FROM active_stream WHERE offer_id = ? AND student_id = ?`, [offer_id, student_id], (err, active) => {
         if (active) {
-          return res.json({ can_join: true, is_waiting: false, room_name: offer.room_name, stream_started: true });
-        } else {
-          db.get(`SELECT payment_status FROM sessions WHERE offer_id = ? AND student_id = ?`, [offer_id, student_id], (err, session) => {
-            if (session && session.payment_status === 'paid') {
-              db.run(`INSERT INTO active_stream (offer_id, student_id) VALUES (?, ?)`, [offer_id, student_id]);
-              return res.json({ can_join: true, is_waiting: false, room_name: offer.room_name, stream_started: true });
-            }
-            return res.json({ can_join: false, is_waiting: false, error: 'غير مسجل أو لم يتم الدفع' });
-          });
+          return res.json({ can_join: true, room_name: offer.room_name });
         }
+        return res.json({ can_join: false, error: 'غير مصرح لك' });
       });
-    } 
-    else if (offer.status === 'upcoming' || offer.status === 'teacher_ready') {
-      db.get(`SELECT s.*, o.is_free, o.price 
-              FROM sessions s 
-              JOIN offers o ON s.offer_id = o.id 
-              WHERE s.offer_id = ? AND s.student_id = ?`, [offer_id, student_id], (err, session) => {
-        if (!session) return res.json({ can_join: false, error: 'غير مسجل في هذه الحصة' });
+    } else if (offer.status === 'upcoming' || offer.status === 'teacher_ready') {
+      db.get(`SELECT * FROM sessions WHERE offer_id = ? AND student_id = ?`, [offer_id, student_id], (err, session) => {
+        if (!session) return res.json({ can_join: false, error: 'غير مسجل' });
         
-        if (session.is_free === 1 || session.payment_status === 'paid') {
+        if (session.payment_status === 'paid') {
           db.get(`SELECT * FROM waiting_room WHERE offer_id = ? AND student_id = ?`, [offer_id, student_id], (err, waiting) => {
             if (!waiting) {
               db.run(`INSERT INTO waiting_room (offer_id, student_id) VALUES (?, ?)`, [offer_id, student_id]);
             }
-            let message = offer.status === 'teacher_ready' ? 'الأستاذ جاهز، سيبدأ البث قريباً' : 'بانتظار بدء البث';
-            return res.json({ can_join: false, is_waiting: true, message: message, stream_started: false, teacher_ready: offer.status === 'teacher_ready' });
+            return res.json({ can_join: false, is_waiting: true, teacher_ready: offer.status === 'teacher_ready' });
           });
         } else {
-          return res.json({ can_join: false, is_waiting: false, error: 'يرجى إتمام الدفع أولاً', payment_required: true });
+          return res.json({ can_join: false, payment_required: true });
         }
       });
-    }
-    else {
+    } else {
       return res.json({ can_join: false, error: 'انتهت الحصة' });
     }
   });
 });
 
-// ============= صفحات البث =============
-
-// صفحة البث للأستاذ (مع صلاحيات المضيف الكاملة)
-function generateTeacherStreamPage(roomName, teacherId, offerId) {
-  return `
-<!DOCTYPE html>
-<html lang="ar">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>بث مباشر - الأستاذ | منصة التعليم الجزائرية</title>
-    <script src="https://meet.jit.si/external_api.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Cairo', sans-serif; background: #0a0a1a; }
-        .stream-header { background: linear-gradient(135deg, #0f3460, #16213e); color: white; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; position: fixed; top: 0; left: 0; right: 0; z-index: 100; }
-        .leave-btn, .end-stream-btn, .add-students-btn { background: #ef4444; color: white; border: none; padding: 8px 24px; border-radius: 30px; cursor: pointer; margin-left: 10px; }
-        .add-students-btn { background: #10b981; }
-        .teacher-badge { background: #10b981; padding: 5px 15px; border-radius: 30px; font-size: 14px; }
-        #jitsi-container { position: fixed; top: 60px; left: 0; right: 0; bottom: 0; }
-        .waiting-info { background: #f59e0b; color: white; padding: 8px 16px; border-radius: 30px; font-size: 14px; margin-right: 15px; }
-    </style>
-</head>
-<body>
-    <div class="stream-header">
-        <div><i class="fas fa-chalkboard-user"></i> <span class="teacher-badge"><i class="fas fa-crown"></i> أنت المضيف</span></div>
-        <div>
-            <span id="waitingCount" class="waiting-info">⏳ جاري تحميل عدد المنتظرين...</span>
-            <button id="addStudentsBtn" class="add-students-btn" onclick="addStudentsToStream()" style="display:none"><i class="fas fa-users"></i> إضافة الطلاب المنتظرين</button>
-            <button class="end-stream-btn" onclick="endStream()"><i class="fas fa-stop"></i> إنهاء البث</button>
-            <button class="leave-btn" onclick="leaveStream()"><i class="fas fa-sign-out-alt"></i> مغادرة</button>
-        </div>
-    </div>
-    <div id="jitsi-container"></div>
-    <script>
-        let studentsAdded = false;
-        
-        const domain = 'meet.jit.si';
-        const options = {
-            roomName: '${roomName}',
-            width: '100%',
-            height: window.innerHeight - 60,
-            parentNode: document.querySelector('#jitsi-container'),
-            userInfo: { displayName: '👨‍🏫 الأستاذ (المضيف)' },
-            configOverwrite: {
-                startWithVideoMuted: false,
-                startWithAudioMuted: false,
-                enableWelcomePage: false,
-                prejoinPageEnabled: false,
-                disableDeepLinking: true,
-            },
-            interfaceConfigOverwrite: {
-                SHOW_JITSI_WATERMARK: false,
-                SHOW_WATERMARK_FOR_GUESTS: false,
-                TOOLBAR_BUTTONS: ['microphone', 'camera', 'closedcaptions', 'desktop', 'fullscreen', 'hangup', 'chat', 'raisehand', 'settings', 'tileview', 'security', 'mute-everyone', 'mute-video-everyone'],
-                HIDE_INVITE_MORE_HEADER: true,
-            }
-        };
-        
-        const api = new JitsiMeetExternalAPI(domain, options);
-        
-        // جلب عدد الطلاب المنتظرين
-        async function loadWaitingCount() {
-            try {
-                const res = await fetch('/api/stream/waiting-list/${offerId}/${teacherId}');
-                const students = await res.json();
-                const count = students?.length || 0;
-                document.getElementById('waitingCount').innerHTML = \`⏳ ${count} طالب في الانتظار\`;
-                if (count > 0 && !studentsAdded) {
-                    document.getElementById('addStudentsBtn').style.display = 'inline-block';
-                } else {
-                    document.getElementById('addStudentsBtn').style.display = 'none';
-                }
-            } catch(e) { console.log(e); }
-        }
-        
-        // إضافة الطلاب إلى البث
-        async function addStudentsToStream() {
-            if (confirm('هل أنت متأكد من إضافة جميع الطلاب المنتظرين إلى البث؟')) {
-                const res = await fetch('/api/stream/add-students/${offerId}', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ offer_id: ${offerId}, teacher_id: ${teacherId} })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    studentsAdded = true;
-                    document.getElementById('addStudentsBtn').style.display = 'none';
-                    document.getElementById('waitingCount').innerHTML = \`✅ تم إضافة ${data.students_count} طالب\`;
-                    alert(\`✅ تم إضافة \${data.students_count} طالب إلى البث!\`);
-                } else {
-                    alert('خطأ: ' + data.error);
-                }
-            }
-        }
-        
-        function leaveStream() { 
-            try { api.dispose(); } catch(e) {} 
-            window.location.href = '/teacher-dashboard.html'; 
-        }
-        
-        async function endStream() {
-            if (confirm('إنهاء البث المباشر؟')) {
-                await fetch('/api/stream/end/${offerId}', { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify({ offer_id: ${offerId}, teacher_id: ${teacherId} }) 
-                });
-                try { api.dispose(); } catch(e) {}
-                window.location.href = '/teacher-dashboard.html';
-            }
-        }
-        
-        // تحميل عدد المنتظرين كل 3 ثوانٍ
-        loadWaitingCount();
-        setInterval(loadWaitingCount, 3000);
-        
-        document.head.appendChild(Object.assign(document.createElement('link'), { 
-            rel: 'stylesheet', 
-            href: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css' 
-        }));
-    </script>
-</body>
-</html>
-  `;
-}
-
-// صفحة البث للطالب (بدون صلاحيات - مشاهد فقط)
-function generateStudentStreamPage(roomName, studentId) {
-  return `
-<!DOCTYPE html>
-<html lang="ar">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>حصة مباشرة - طالب | منصة التعليم الجزائرية</title>
-    <script src="https://meet.jit.si/external_api.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Cairo', sans-serif; background: #0a0a1a; }
-        .stream-header { background: linear-gradient(135deg, #0f3460, #16213e); color: white; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; position: fixed; top: 0; left: 0; right: 0; z-index: 100; }
-        .leave-btn { background: #ef4444; color: white; border: none; padding: 8px 24px; border-radius: 30px; cursor: pointer; margin-left: 10px; }
-        .student-badge { background: #f59e0b; padding: 5px 15px; border-radius: 30px; font-size: 14px; }
-        #jitsi-container { position: fixed; top: 60px; left: 0; right: 0; bottom: 0; }
-    </style>
-</head>
-<body>
-    <div class="stream-header">
-        <div><i class="fas fa-user-graduate"></i> <span class="student-badge"><i class="fas fa-eye"></i> أنت طالب - صلاحية مشاهدة فقط</span></div>
-        <div><button class="leave-btn" onclick="leaveStream()"><i class="fas fa-sign-out-alt"></i> مغادرة الحصة</button></div>
-    </div>
-    <div id="jitsi-container"></div>
-    <script>
-        const domain = 'meet.jit.si';
-        const options = {
-            roomName: '${roomName}',
-            width: '100%',
-            height: window.innerHeight - 60,
-            parentNode: document.querySelector('#jitsi-container'),
-            userInfo: { displayName: '👨‍🎓 طالب' },
-            configOverwrite: {
-                startWithVideoMuted: true,
-                startWithAudioMuted: true,
-                enableWelcomePage: false,
-                prejoinPageEnabled: false,
-                disableDeepLinking: true,
-            },
-            interfaceConfigOverwrite: {
-                SHOW_JITSI_WATERMARK: false,
-                SHOW_WATERMARK_FOR_GUESTS: false,
-                TOOLBAR_BUTTONS: ['microphone', 'camera', 'closedcaptions', 'fullscreen', 'hangup', 'chat', 'raisehand', 'settings', 'tileview'],
-                HIDE_INVITE_MORE_HEADER: true,
-            }
-        };
-        const api = new JitsiMeetExternalAPI(domain, options);
-        function leaveStream() { try { api.dispose(); } catch(e) {} window.location.href = '/student-dashboard.html'; }
-        document.head.appendChild(Object.assign(document.createElement('link'), { rel: 'stylesheet', href: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css' }));
-    </script>
-</body>
-</html>
-  `;
-}
-
-// مسارات البث
-app.get('/api/teacher-stream/:offer_id/:teacher_id', (req, res) => {
-  const { offer_id, teacher_id } = req.params;
-  
-  db.get(`SELECT room_name FROM offers WHERE id = ? AND teacher_id = ?`, [offer_id, teacher_id], (err, offer) => {
-    if (!offer) return res.redirect('/teacher-dashboard.html');
-    res.send(generateTeacherStreamPage(offer.room_name, teacher_id, offer_id));
-  });
-});
-
-app.get('/api/join-stream/:offer_id/:student_id', (req, res) => {
-  const { offer_id, student_id } = req.params;
-  
-  db.get(`SELECT room_name, status FROM offers WHERE id = ?`, [offer_id], (err, offer) => {
-    if (!offer || offer.status !== 'live') return res.redirect('/student-dashboard.html?error=stream_not_started');
-    
-    db.get(`SELECT * FROM active_stream WHERE offer_id = ? AND student_id = ?`, [offer_id, student_id], (err, active) => {
-      if (active) {
-        res.send(generateStudentStreamPage(offer.room_name, student_id));
-      } else {
-        res.redirect('/student-dashboard.html?error=not_authorized');
-      }
-    });
-  });
-});
-
-// الأستاذ يدخل البث (يدخل أولاً بدون طلاب)
-app.get('/api/enter-teacher-stream/:offer_id/:teacher_id', (req, res) => {
-  const { offer_id, teacher_id } = req.params;
-  
-  db.get(`SELECT room_name FROM offers WHERE id = ? AND teacher_id = ?`, [offer_id, teacher_id], async (err, offer) => {
-    if (!offer) return res.redirect('/teacher-dashboard.html');
-    
-    // تسجيل دخول الأستاذ إلى البث
-    await fetch(`http://localhost:${PORT}/api/stream/enter-teacher/${offer_id}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ offer_id: parseInt(offer_id), teacher_id: parseInt(teacher_id) })
-    });
-    
-    res.send(generateTeacherStreamPage(offer.room_name, teacher_id, offer_id));
-  });
-});
-
-// جلب الحجوزات
-app.get('/api/student/bookings/:student_id', (req, res) => {
-  db.all(`SELECT s.*, o.subject_name, o.offer_date, o.duration, o.price, o.is_free, o.status as offer_status, o.room_name, t.full_name as teacher_name, t.profile_image
-          FROM sessions s
-          JOIN offers o ON s.offer_id = o.id
-          JOIN teachers t ON o.teacher_id = t.id
-          WHERE s.student_id = ?
-          ORDER BY o.offer_date DESC`, [req.params.student_id], (err, rows) => {
-    res.json(rows || []);
-  });
-});
-
+// جلب قوائم الانتظار
 app.get('/api/stream/waiting-list/:offer_id/:teacher_id', (req, res) => {
   db.all(`SELECT w.*, s.full_name, s.email FROM waiting_room w JOIN students s ON w.student_id = s.id WHERE w.offer_id = ?`, [req.params.offer_id], (err, rows) => {
     res.json(rows || []);
@@ -749,8 +490,193 @@ app.get('/api/stream/active-list/:offer_id/:teacher_id', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
+app.get('/api/student/bookings/:student_id', (req, res) => {
+  db.all(`SELECT s.*, o.subject_name, o.offer_date, o.duration, o.price, o.is_free, o.status as offer_status, t.full_name as teacher_name
+          FROM sessions s
+          JOIN offers o ON s.offer_id = o.id
+          JOIN teachers t ON o.teacher_id = t.id
+          WHERE s.student_id = ?
+          ORDER BY o.offer_date DESC`, [req.params.student_id], (err, rows) => {
+    res.json(rows || []);
+  });
+});
+
+// ============= صفحات البث المباشر =============
+
+// صفحة بث الأستاذ
+app.get('/api/teacher-stream/:offer_id/:teacher_id', (req, res) => {
+  const { offer_id, teacher_id } = req.params;
+  
+  db.get(`SELECT room_name, status FROM offers WHERE id = ? AND teacher_id = ?`, [offer_id, teacher_id], (err, offer) => {
+    if (!offer) return res.send(`
+      <html><body style="text-align:center;padding:50px"><h1>❌ البث غير موجود</h1><a href="/teacher-dashboard.html">العودة</a></body></html>
+    `);
+    
+    res.send(`
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>بث مباشر - الأستاذ</title>
+    <script src="https://meet.jit.si/external_api.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Cairo',sans-serif;background:#0a0a1a}
+        .header{background:linear-gradient(135deg,#0f3460,#16213e);color:white;padding:12px 24px;display:flex;justify-content:space-between;align-items:center;position:fixed;top:0;left:0;right:0;z-index:100}
+        .btn{background:#ef4444;color:white;border:none;padding:8px 20px;border-radius:30px;cursor:pointer;margin-left:10px}
+        .btn-green{background:#10b981}
+        #jitsi-container{position:fixed;top:60px;left:0;right:0;bottom:0}
+        .info{background:#f59e0b;padding:8px 16px;border-radius:30px}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div><i class="fas fa-chalkboard-user"></i> <span class="info">👨‍🏫 أنت المضيف - لديك التحكم الكامل</span></div>
+        <div>
+            <span id="waitingCount" class="info" style="background:#8b5cf6">⏳ جاري التحميل...</span>
+            <button id="addBtn" class="btn btn-green" style="display:none" onclick="addStudents()"><i class="fas fa-users"></i> إضافة الطلاب</button>
+            <button class="btn" onclick="endStream()"><i class="fas fa-stop"></i> إنهاء البث</button>
+            <button class="btn" onclick="leaveStream()"><i class="fas fa-sign-out-alt"></i> مغادرة</button>
+        </div>
+    </div>
+    <div id="jitsi-container"></div>
+    <script>
+        let studentsAdded = false;
+        
+        const api = new JitsiMeetExternalAPI('meet.jit.si', {
+            roomName: '${offer.room_name}',
+            width: '100%',
+            height: window.innerHeight - 60,
+            parentNode: document.querySelector('#jitsi-container'),
+            userInfo: { displayName: '👨‍🏫 الأستاذ' },
+            configOverwrite: { startWithVideoMuted: false, startWithAudioMuted: false, enableWelcomePage: false, prejoinPageEnabled: false }
+        });
+        
+        async function loadWaitingCount() {
+            try {
+                const res = await fetch('/api/stream/waiting-list/${offer_id}/${teacher_id}');
+                const students = await res.json();
+                const count = students?.length || 0;
+                document.getElementById('waitingCount').innerHTML = \`⏳ \${count} طالب ينتظرون\`;
+                if (count > 0 && !studentsAdded && '${offer.status}' === 'teacher_ready') {
+                    document.getElementById('addBtn').style.display = 'inline-block';
+                }
+            } catch(e) { console.log(e); }
+        }
+        
+        async function addStudents() {
+            if (confirm('إضافة جميع الطلاب المنتظرين إلى البث؟')) {
+                const res = await fetch('/api/stream/add-students/${offer_id}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ offer_id: ${offer_id}, teacher_id: ${teacher_id} })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    studentsAdded = true;
+                    document.getElementById('addBtn').style.display = 'none';
+                    alert(\`✅ تم إضافة \${data.students_count} طالب\`);
+                }
+            }
+        }
+        
+        function leaveStream() { try { api.dispose(); } catch(e) {} window.location.href = '/teacher-dashboard.html'; }
+        
+        async function endStream() {
+            if (confirm('إنهاء البث؟')) {
+                await fetch('/api/stream/end/${offer_id}', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ offer_id: ${offer_id}, teacher_id: ${teacher_id} }) });
+                try { api.dispose(); } catch(e) {}
+                window.location.href = '/teacher-dashboard.html';
+            }
+        }
+        
+        loadWaitingCount();
+        setInterval(loadWaitingCount, 3000);
+        
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css';
+        document.head.appendChild(link);
+    </script>
+</body>
+</html>
+    `);
+  });
+});
+
+// صفحة دخول الأستاذ أولاً
+app.get('/api/enter-teacher-stream/:offer_id/:teacher_id', async (req, res) => {
+  const { offer_id, teacher_id } = req.params;
+  
+  await fetch(`http://localhost:${PORT}/api/stream/enter-teacher/${offer_id}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ offer_id: parseInt(offer_id), teacher_id: parseInt(teacher_id) })
+  }).catch(e => console.log(e));
+  
+  res.redirect(`/api/teacher-stream/${offer_id}/${teacher_id}`);
+});
+
+// صفحة بث الطالب
+app.get('/api/join-stream/:offer_id/:student_id', (req, res) => {
+  const { offer_id, student_id } = req.params;
+  
+  db.get(`SELECT room_name FROM offers WHERE id = ? AND status = 'live'`, [offer_id], (err, offer) => {
+    if (!offer) return res.redirect('/student-dashboard.html?error=stream_not_started');
+    
+    db.get(`SELECT * FROM active_stream WHERE offer_id = ? AND student_id = ?`, [offer_id, student_id], (err, active) => {
+      if (!active) return res.redirect('/student-dashboard.html?error=not_authorized');
+      
+      res.send(`
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>حصة مباشرة - طالب</title>
+    <script src="https://meet.jit.si/external_api.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Cairo',sans-serif;background:#0a0a1a}
+        .header{background:linear-gradient(135deg,#0f3460,#16213e);color:white;padding:12px 24px;display:flex;justify-content:space-between;align-items:center;position:fixed;top:0;left:0;right:0;z-index:100}
+        .btn{background:#ef4444;color:white;border:none;padding:8px 20px;border-radius:30px;cursor:pointer}
+        #jitsi-container{position:fixed;top:60px;left:0;right:0;bottom:0}
+        .badge{background:#f59e0b;padding:5px 15px;border-radius:30px}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div><i class="fas fa-user-graduate"></i> <span class="badge">👨‍🎓 أنت طالب - مشاهدة فقط</span></div>
+        <button class="btn" onclick="leaveStream()"><i class="fas fa-sign-out-alt"></i> مغادرة</button>
+    </div>
+    <div id="jitsi-container"></div>
+    <script>
+        const api = new JitsiMeetExternalAPI('meet.jit.si', {
+            roomName: '${offer.room_name}',
+            width: '100%',
+            height: window.innerHeight - 60,
+            parentNode: document.querySelector('#jitsi-container'),
+            userInfo: { displayName: '👨‍🎓 طالب' },
+            configOverwrite: { startWithVideoMuted: true, startWithAudioMuted: true, enableWelcomePage: false }
+        });
+        function leaveStream() { try { api.dispose(); } catch(e) {} window.location.href = '/student-dashboard.html'; }
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css';
+        document.head.appendChild(link);
+    </script>
+</body>
+</html>
+      `);
+    });
+  });
+});
+
+// ============= تشغيل الخادم =============
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 الخادم يعمل على http://localhost:${PORT}`);
-  console.log(`📁 مجلد رفع الملفات: ./uploads`);
   console.log(`📁 قاعدة البيانات: ${DB_PATH}`);
 });
