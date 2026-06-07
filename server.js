@@ -29,101 +29,117 @@ app.use(express.json());
 app.use(express.static('public'));
 app.use('/uploads', express.static('uploads'));
 
-const db = new sqlite3.Database('./platform.db');
+// ============= قاعدة بيانات دائمة (حفظ على القرص) =============
+// استخدام ملف محدد للتخزين الدائم
+const DB_PATH = path.join(__dirname, 'platform.db');
+const db = new sqlite3.Database(DB_PATH);
 
-// إنشاء الجداول
-db.serialize(() => {
-  db.run(`CREATE TABLE IF NOT EXISTS teachers (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    full_name TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    phone TEXT,
-    specialization TEXT,
-    bio TEXT,
-    experience TEXT,
-    profile_image TEXT,
-    diploma_image TEXT,
-    id_image TEXT,
-    status TEXT DEFAULT 'pending',
-    rejection_reason TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
+// دالة لتهيئة قاعدة البيانات
+function initDatabase() {
+  db.serialize(() => {
+    // جدول الأساتذة
+    db.run(`CREATE TABLE IF NOT EXISTS teachers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      full_name TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      phone TEXT,
+      specialization TEXT,
+      bio TEXT,
+      experience TEXT,
+      profile_image TEXT,
+      diploma_image TEXT,
+      id_image TEXT,
+      status TEXT DEFAULT 'pending',
+      rejection_reason TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
 
-  db.run(`CREATE TABLE IF NOT EXISTS students (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    full_name TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    phone TEXT,
-    balance INTEGER DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
+    // جدول الطلاب
+    db.run(`CREATE TABLE IF NOT EXISTS students (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      full_name TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      phone TEXT,
+      balance INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
 
-  db.run(`CREATE TABLE IF NOT EXISTS offers (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    teacher_id INTEGER,
-    subject_name TEXT NOT NULL,
-    duration INTEGER DEFAULT 60,
-    offer_date DATETIME NOT NULL,
-    price INTEGER DEFAULT 0,
-    is_free BOOLEAN DEFAULT 0,
-    status TEXT DEFAULT 'upcoming',
-    room_name TEXT UNIQUE,
-    room_password TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(teacher_id) REFERENCES teachers(id)
-  )`);
+    // جدول العروض
+    db.run(`CREATE TABLE IF NOT EXISTS offers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      teacher_id INTEGER,
+      subject_name TEXT NOT NULL,
+      duration INTEGER DEFAULT 60,
+      offer_date DATETIME NOT NULL,
+      price INTEGER DEFAULT 0,
+      is_free BOOLEAN DEFAULT 0,
+      status TEXT DEFAULT 'upcoming',
+      room_name TEXT UNIQUE,
+      room_password TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(teacher_id) REFERENCES teachers(id)
+    )`);
 
-  db.run(`CREATE TABLE IF NOT EXISTS sessions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    offer_id INTEGER,
-    student_id INTEGER,
-    payment_status TEXT DEFAULT 'pending',
-    payment_amount INTEGER DEFAULT 0,
-    joined_at DATETIME,
-    left_at DATETIME,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(offer_id) REFERENCES offers(id),
-    FOREIGN KEY(student_id) REFERENCES students(id)
-  )`);
+    // جدول الحصص
+    db.run(`CREATE TABLE IF NOT EXISTS sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      offer_id INTEGER,
+      student_id INTEGER,
+      payment_status TEXT DEFAULT 'pending',
+      payment_amount INTEGER DEFAULT 0,
+      joined_at DATETIME,
+      left_at DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(offer_id) REFERENCES offers(id),
+      FOREIGN KEY(student_id) REFERENCES students(id)
+    )`);
 
-  db.run(`CREATE TABLE IF NOT EXISTS waiting_room (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    offer_id INTEGER,
-    student_id INTEGER,
-    added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(offer_id) REFERENCES offers(id),
-    FOREIGN KEY(student_id) REFERENCES students(id)
-  )`);
+    // جدول غرفة الانتظار
+    db.run(`CREATE TABLE IF NOT EXISTS waiting_room (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      offer_id INTEGER,
+      student_id INTEGER,
+      added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(offer_id) REFERENCES offers(id),
+      FOREIGN KEY(student_id) REFERENCES students(id)
+    )`);
 
-  db.run(`CREATE TABLE IF NOT EXISTS active_stream (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    offer_id INTEGER,
-    student_id INTEGER,
-    joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(offer_id) REFERENCES offers(id),
-    FOREIGN KEY(student_id) REFERENCES students(id)
-  )`);
+    // جدول البث المباشر
+    db.run(`CREATE TABLE IF NOT EXISTS active_stream (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      offer_id INTEGER,
+      student_id INTEGER,
+      joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(offer_id) REFERENCES offers(id),
+      FOREIGN KEY(student_id) REFERENCES students(id)
+    )`);
 
-  db.run(`CREATE TABLE IF NOT EXISTS payments (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id INTEGER,
-    amount INTEGER,
-    chargily_id TEXT,
-    status TEXT DEFAULT 'pending',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(session_id) REFERENCES sessions(id)
-  )`);
+    // جدول المدفوعات
+    db.run(`CREATE TABLE IF NOT EXISTS payments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id INTEGER,
+      amount INTEGER,
+      chargily_id TEXT,
+      status TEXT DEFAULT 'pending',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(session_id) REFERENCES sessions(id)
+    )`);
 
-  db.get("SELECT * FROM teachers WHERE email = 'admin@platform.com'", [], (err, row) => {
-    if (!row && !err) {
-      const hashedPassword = bcrypt.hashSync('admin123', 10);
-      db.run("INSERT INTO teachers (full_name, email, password, phone, status) VALUES (?, ?, ?, ?, 'approved')", 
-        ['مدير المنصة', 'admin@platform.com', hashedPassword, '00000000']);
-    }
+    // إنشاء admin افتراضي إذا لم يكن موجوداً
+    db.get("SELECT * FROM teachers WHERE email = 'admin@platform.com'", [], (err, row) => {
+      if (!row && !err) {
+        const hashedPassword = bcrypt.hashSync('admin123', 10);
+        db.run("INSERT INTO teachers (full_name, email, password, phone, status) VALUES (?, ?, ?, ?, 'approved')", 
+          ['مدير المنصة', 'admin@platform.com', hashedPassword, '00000000']);
+      }
+    });
   });
-});
+}
+
+// تهيئة قاعدة البيانات عند بدء التشغيل
+initDatabase();
 
 // ============= API Routes =============
 
@@ -365,19 +381,31 @@ app.post('/api/payment/confirm/:payment_id', (req, res) => {
   });
 });
 
-// ============= نظام البث المباشر مع صلاحيات المضيف =============
+// ============= نظام البث المباشر (الأستاذ يدخل أولاً ثم يضيف الطلاب) =============
 
-// بدء البث مع تعيين الأستاذ كمالك وحيد
-app.post('/api/stream/start/:offer_id', (req, res) => {
+// الأستاذ يدخل البث أولاً (بدون طلاب)
+app.post('/api/stream/enter-teacher/:offer_id', (req, res) => {
   const { offer_id, teacher_id } = req.body;
   
   db.get(`SELECT * FROM offers WHERE id = ? AND teacher_id = ?`, [offer_id, teacher_id], (err, offer) => {
     if (!offer) return res.json({ success: false, error: 'غير مصرح لك' });
     
-    // إنشاء كلمة مرور للمضيف
-    const moderatorPassword = Math.random().toString(36).substr(2, 12);
+    // تغيير حالة العرض إلى "teacher_ready" (الأستاذ جاهز ولكن البث لم يبدأ للطلاب بعد)
+    db.run(`UPDATE offers SET status = 'teacher_ready' WHERE id = ?`, [offer_id]);
     
-    db.run(`UPDATE offers SET status = 'live', room_password = ? WHERE id = ?`, [moderatorPassword, offer_id]);
+    res.json({ success: true, room_name: offer.room_name });
+  });
+});
+
+// إضافة الطلاب المنتظرين إلى البث (بعد أن يكون الأستاذ جاهزاً)
+app.post('/api/stream/add-students/:offer_id', (req, res) => {
+  const { offer_id, teacher_id } = req.body;
+  
+  db.get(`SELECT * FROM offers WHERE id = ? AND teacher_id = ?`, [offer_id, teacher_id], (err, offer) => {
+    if (!offer) return res.json({ success: false, error: 'غير مصرح لك' });
+    
+    // تغيير حالة العرض إلى live (البث بدأ للطلاب)
+    db.run(`UPDATE offers SET status = 'live' WHERE id = ?`, [offer_id]);
     
     // نقل جميع الطلاب من غرفة الانتظار إلى البث المباشر
     db.all(`SELECT student_id FROM waiting_room WHERE offer_id = ?`, [offer_id], (err, students) => {
@@ -391,7 +419,6 @@ app.post('/api/stream/start/:offer_id', (req, res) => {
       res.json({ 
         success: true, 
         room_name: offer.room_name,
-        moderator_password: moderatorPassword,
         students_count: studentIds.length 
       });
     });
@@ -443,7 +470,7 @@ app.get('/api/student/stream-status/:offer_id/:student_id', (req, res) => {
         }
       });
     } 
-    else if (offer.status === 'upcoming') {
+    else if (offer.status === 'upcoming' || offer.status === 'teacher_ready') {
       db.get(`SELECT s.*, o.is_free, o.price 
               FROM sessions s 
               JOIN offers o ON s.offer_id = o.id 
@@ -455,7 +482,8 @@ app.get('/api/student/stream-status/:offer_id/:student_id', (req, res) => {
             if (!waiting) {
               db.run(`INSERT INTO waiting_room (offer_id, student_id) VALUES (?, ?)`, [offer_id, student_id]);
             }
-            return res.json({ can_join: false, is_waiting: true, message: 'بانتظار بدء البث', stream_started: false });
+            let message = offer.status === 'teacher_ready' ? 'الأستاذ جاهز، سيبدأ البث قريباً' : 'بانتظار بدء البث';
+            return res.json({ can_join: false, is_waiting: true, message: message, stream_started: false, teacher_ready: offer.status === 'teacher_ready' });
           });
         } else {
           return res.json({ can_join: false, is_waiting: false, error: 'يرجى إتمام الدفع أولاً', payment_required: true });
@@ -485,42 +513,40 @@ function generateTeacherStreamPage(roomName, teacherId, offerId) {
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Cairo', sans-serif; background: #0a0a1a; }
         .stream-header { background: linear-gradient(135deg, #0f3460, #16213e); color: white; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; position: fixed; top: 0; left: 0; right: 0; z-index: 100; }
-        .leave-btn, .end-stream-btn { background: #ef4444; color: white; border: none; padding: 8px 24px; border-radius: 30px; cursor: pointer; margin-left: 10px; }
-        .end-stream-btn { background: #dc2626; }
+        .leave-btn, .end-stream-btn, .add-students-btn { background: #ef4444; color: white; border: none; padding: 8px 24px; border-radius: 30px; cursor: pointer; margin-left: 10px; }
+        .add-students-btn { background: #10b981; }
         .teacher-badge { background: #10b981; padding: 5px 15px; border-radius: 30px; font-size: 14px; }
         #jitsi-container { position: fixed; top: 60px; left: 0; right: 0; bottom: 0; }
+        .waiting-info { background: #f59e0b; color: white; padding: 8px 16px; border-radius: 30px; font-size: 14px; margin-right: 15px; }
     </style>
 </head>
 <body>
     <div class="stream-header">
-        <div><i class="fas fa-chalkboard-user"></i> <span class="teacher-badge"><i class="fas fa-crown"></i> أنت المضيف - لديك صلاحية التحكم الكاملة</span></div>
+        <div><i class="fas fa-chalkboard-user"></i> <span class="teacher-badge"><i class="fas fa-crown"></i> أنت المضيف</span></div>
         <div>
+            <span id="waitingCount" class="waiting-info">⏳ جاري تحميل عدد المنتظرين...</span>
+            <button id="addStudentsBtn" class="add-students-btn" onclick="addStudentsToStream()" style="display:none"><i class="fas fa-users"></i> إضافة الطلاب المنتظرين</button>
             <button class="end-stream-btn" onclick="endStream()"><i class="fas fa-stop"></i> إنهاء البث</button>
             <button class="leave-btn" onclick="leaveStream()"><i class="fas fa-sign-out-alt"></i> مغادرة</button>
         </div>
     </div>
     <div id="jitsi-container"></div>
     <script>
+        let studentsAdded = false;
+        
         const domain = 'meet.jit.si';
         const options = {
             roomName: '${roomName}',
             width: '100%',
             height: window.innerHeight - 60,
             parentNode: document.querySelector('#jitsi-container'),
-            userInfo: {
-                displayName: '👨‍🏫 الأستاذ (المضيف)',
-            },
+            userInfo: { displayName: '👨‍🏫 الأستاذ (المضيف)' },
             configOverwrite: {
                 startWithVideoMuted: false,
                 startWithAudioMuted: false,
                 enableWelcomePage: false,
                 prejoinPageEnabled: false,
                 disableDeepLinking: true,
-                channelLastN: -1,
-                disableSimulcast: false,
-                enableTalkWhileMuted: false,
-                disableModeratorIndicator: false,
-                doNotStoreRoom: true,
             },
             interfaceConfigOverwrite: {
                 SHOW_JITSI_WATERMARK: false,
@@ -531,6 +557,41 @@ function generateTeacherStreamPage(roomName, teacherId, offerId) {
         };
         
         const api = new JitsiMeetExternalAPI(domain, options);
+        
+        // جلب عدد الطلاب المنتظرين
+        async function loadWaitingCount() {
+            try {
+                const res = await fetch('/api/stream/waiting-list/${offerId}/${teacherId}');
+                const students = await res.json();
+                const count = students?.length || 0;
+                document.getElementById('waitingCount').innerHTML = \`⏳ ${count} طالب في الانتظار\`;
+                if (count > 0 && !studentsAdded) {
+                    document.getElementById('addStudentsBtn').style.display = 'inline-block';
+                } else {
+                    document.getElementById('addStudentsBtn').style.display = 'none';
+                }
+            } catch(e) { console.log(e); }
+        }
+        
+        // إضافة الطلاب إلى البث
+        async function addStudentsToStream() {
+            if (confirm('هل أنت متأكد من إضافة جميع الطلاب المنتظرين إلى البث؟')) {
+                const res = await fetch('/api/stream/add-students/${offerId}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ offer_id: ${offerId}, teacher_id: ${teacherId} })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    studentsAdded = true;
+                    document.getElementById('addStudentsBtn').style.display = 'none';
+                    document.getElementById('waitingCount').innerHTML = \`✅ تم إضافة ${data.students_count} طالب\`;
+                    alert(\`✅ تم إضافة \${data.students_count} طالب إلى البث!\`);
+                } else {
+                    alert('خطأ: ' + data.error);
+                }
+            }
+        }
         
         function leaveStream() { 
             try { api.dispose(); } catch(e) {} 
@@ -548,6 +609,10 @@ function generateTeacherStreamPage(roomName, teacherId, offerId) {
                 window.location.href = '/teacher-dashboard.html';
             }
         }
+        
+        // تحميل عدد المنتظرين كل 3 ثوانٍ
+        loadWaitingCount();
+        setInterval(loadWaitingCount, 3000);
         
         document.head.appendChild(Object.assign(document.createElement('link'), { 
             rel: 'stylesheet', 
@@ -576,16 +641,13 @@ function generateStudentStreamPage(roomName, studentId) {
         .stream-header { background: linear-gradient(135deg, #0f3460, #16213e); color: white; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; position: fixed; top: 0; left: 0; right: 0; z-index: 100; }
         .leave-btn { background: #ef4444; color: white; border: none; padding: 8px 24px; border-radius: 30px; cursor: pointer; margin-left: 10px; }
         .student-badge { background: #f59e0b; padding: 5px 15px; border-radius: 30px; font-size: 14px; }
-        .warning-note { background: #fef3c7; color: #92400e; padding: 8px 15px; border-radius: 10px; font-size: 12px; margin-top: 5px; }
         #jitsi-container { position: fixed; top: 60px; left: 0; right: 0; bottom: 0; }
     </style>
 </head>
 <body>
     <div class="stream-header">
         <div><i class="fas fa-user-graduate"></i> <span class="student-badge"><i class="fas fa-eye"></i> أنت طالب - صلاحية مشاهدة فقط</span></div>
-        <div>
-            <button class="leave-btn" onclick="leaveStream()"><i class="fas fa-sign-out-alt"></i> مغادرة الحصة</button>
-        </div>
+        <div><button class="leave-btn" onclick="leaveStream()"><i class="fas fa-sign-out-alt"></i> مغادرة الحصة</button></div>
     </div>
     <div id="jitsi-container"></div>
     <script>
@@ -595,37 +657,24 @@ function generateStudentStreamPage(roomName, studentId) {
             width: '100%',
             height: window.innerHeight - 60,
             parentNode: document.querySelector('#jitsi-container'),
-            userInfo: {
-                displayName: '👨‍🎓 طالب',
-            },
+            userInfo: { displayName: '👨‍🎓 طالب' },
             configOverwrite: {
                 startWithVideoMuted: true,
                 startWithAudioMuted: true,
                 enableWelcomePage: false,
                 prejoinPageEnabled: false,
                 disableDeepLinking: true,
-                disableModeratorIndicator: true,
             },
             interfaceConfigOverwrite: {
                 SHOW_JITSI_WATERMARK: false,
                 SHOW_WATERMARK_FOR_GUESTS: false,
                 TOOLBAR_BUTTONS: ['microphone', 'camera', 'closedcaptions', 'fullscreen', 'hangup', 'chat', 'raisehand', 'settings', 'tileview'],
                 HIDE_INVITE_MORE_HEADER: true,
-                DISABLE_JOIN_LEAVE_NOTIFICATIONS: false,
             }
         };
-        
         const api = new JitsiMeetExternalAPI(domain, options);
-        
-        function leaveStream() { 
-            try { api.dispose(); } catch(e) {} 
-            window.location.href = '/student-dashboard.html'; 
-        }
-        
-        document.head.appendChild(Object.assign(document.createElement('link'), { 
-            rel: 'stylesheet', 
-            href: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css' 
-        }));
+        function leaveStream() { try { api.dispose(); } catch(e) {} window.location.href = '/student-dashboard.html'; }
+        document.head.appendChild(Object.assign(document.createElement('link'), { rel: 'stylesheet', href: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css' }));
     </script>
 </body>
 </html>
@@ -658,6 +707,24 @@ app.get('/api/join-stream/:offer_id/:student_id', (req, res) => {
   });
 });
 
+// الأستاذ يدخل البث (يدخل أولاً بدون طلاب)
+app.get('/api/enter-teacher-stream/:offer_id/:teacher_id', (req, res) => {
+  const { offer_id, teacher_id } = req.params;
+  
+  db.get(`SELECT room_name FROM offers WHERE id = ? AND teacher_id = ?`, [offer_id, teacher_id], async (err, offer) => {
+    if (!offer) return res.redirect('/teacher-dashboard.html');
+    
+    // تسجيل دخول الأستاذ إلى البث
+    await fetch(`http://localhost:${PORT}/api/stream/enter-teacher/${offer_id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ offer_id: parseInt(offer_id), teacher_id: parseInt(teacher_id) })
+    });
+    
+    res.send(generateTeacherStreamPage(offer.room_name, teacher_id, offer_id));
+  });
+});
+
 // جلب الحجوزات
 app.get('/api/student/bookings/:student_id', (req, res) => {
   db.all(`SELECT s.*, o.subject_name, o.offer_date, o.duration, o.price, o.is_free, o.status as offer_status, o.room_name, t.full_name as teacher_name, t.profile_image
@@ -685,4 +752,5 @@ app.get('/api/stream/active-list/:offer_id/:teacher_id', (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 الخادم يعمل على http://localhost:${PORT}`);
   console.log(`📁 مجلد رفع الملفات: ./uploads`);
+  console.log(`📁 قاعدة البيانات: ${DB_PATH}`);
 });
