@@ -18,12 +18,14 @@
         .offer-card h3 { color: #0f5cbf; margin-bottom: 15px; }
         .offer-status { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 12px; margin-top: 10px; }
         .status-upcoming { background: #f59e0b; color: white; }
+        .status-teacher_ready { background: #8b5cf6; color: white; }
         .status-live { background: #10b981; color: white; }
         .status-completed { background: #6b7280; color: white; }
         .waiting-list, .active-list { background: #f8fafc; border-radius: 15px; padding: 15px; margin-top: 15px; }
         .waiting-list h4, .active-list h4 { margin-bottom: 10px; }
         .student-item { padding: 8px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; }
-        .start-stream-btn { background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 25px; cursor: pointer; margin-top: 15px; width: 100%; }
+        .start-stream-btn, .enter-stream-btn { background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 25px; cursor: pointer; margin-top: 15px; width: 100%; }
+        .enter-stream-btn { background: #8b5cf6; }
         .delete-offer-btn { background: #ef4444; color: white; border: none; padding: 10px 20px; border-radius: 25px; cursor: pointer; margin-top: 10px; width: 100%; }
         .join-stream-btn { background: #0f5cbf; color: white; border: none; padding: 10px 20px; border-radius: 25px; cursor: pointer; margin-top: 15px; width: 100%; }
         .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 20px; z-index: 1000; width: 90%; max-width: 500px; }
@@ -35,8 +37,8 @@
         .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
         .nav-tab { padding: 10px 20px; background: #e2e8f0; border: none; border-radius: 30px; cursor: pointer; font-weight: 600; transition: 0.3s; }
         .nav-tab.active { background: #0f5cbf; color: white; }
-        .btn-group { display: flex; gap: 10px; margin-top: 15px; }
-        .btn-group button { margin-top: 0; width: 50%; }
+        .btn-group { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
+        .btn-group button { margin-top: 0; flex: 1; }
         .notification-toast { position: fixed; bottom: 30px; right: 30px; background: #10b981; color: white; padding: 15px 25px; border-radius: 15px; z-index: 2000; display: flex; align-items: center; gap: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: slideIn 0.5s ease; }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         .security-badge { background: #1e3c72; color: white; padding: 5px 10px; border-radius: 15px; font-size: 10px; margin-left: 10px; }
@@ -170,11 +172,15 @@
             let html = '<div class="offers-grid">';
             for (const offer of offers) {
                 const offerDate = new Date(offer.offer_date);
-                const statusClass = offer.status === 'upcoming' ? 'status-upcoming' : (offer.status === 'live' ? 'status-live' : 'status-completed');
-                const statusText = offer.status === 'upcoming' ? 'قادم' : (offer.status === 'live' ? 'بث مباشر الآن' : 'منتهية');
+                let statusClass = 'status-upcoming';
+                let statusText = 'قادم';
+                if (offer.status === 'teacher_ready') { statusClass = 'status-teacher_ready'; statusText = 'الأستاذ جاهز'; }
+                else if (offer.status === 'live') { statusClass = 'status-live'; statusText = 'بث مباشر'; }
+                else if (offer.status === 'completed') { statusClass = 'status-completed'; statusText = 'منتهية'; }
+                
                 let waitingHtml = '', activeHtml = '';
                 let waitingCount = 0;
-                if (offer.status === 'upcoming') {
+                if (offer.status === 'upcoming' || offer.status === 'teacher_ready') {
                     try {
                         const waitingRes = await fetch(`/api/stream/waiting-list/${offer.id}/${teacherData.id}`);
                         const waitingStudents = await waitingRes.json();
@@ -206,10 +212,12 @@
                     ${waitingHtml}
                     ${activeHtml}
                     <div class="btn-group">
-                        ${offer.status === 'upcoming' ? `<button class="start-stream-btn" onclick="startStream(${offer.id}, '${offer.subject_name.replace(/'/g, "\\'")}', ${waitingCount})"><i class="fas fa-play"></i> بدء البث (${waitingCount} ينتظرون)</button>` : ''}
-                        ${offer.status === 'live' ? `<button class="join-stream-btn" onclick="joinTeacherStream(${offer.id})"><i class="fas fa-video"></i> دخول البث (كمضيف)</button>` : ''}
+                        ${offer.status === 'upcoming' ? `<button class="enter-stream-btn" onclick="enterStreamAsTeacher(${offer.id})"><i class="fas fa-sign-in-alt"></i> دخول البث (أولاً)</button>` : ''}
+                        ${offer.status === 'teacher_ready' ? `<button class="join-stream-btn" onclick="joinTeacherStream(${offer.id})"><i class="fas fa-video"></i> متابعة البث (كمضيف)</button>` : ''}
+                        ${offer.status === 'live' ? `<button class="join-stream-btn" onclick="joinTeacherStream(${offer.id})"><i class="fas fa-video"></i> دخول البث (مستمر)</button>` : ''}
                         ${offer.status === 'upcoming' ? `<button class="delete-offer-btn" onclick="deleteOffer(${offer.id})"><i class="fas fa-trash"></i> حذف العرض</button>` : ''}
                     </div>
+                    ${offer.status === 'upcoming' && waitingCount > 0 ? `<small style="display:block; margin-top:10px; color:#f59e0b;"><i class="fas fa-info-circle"></i> سيتم إضافة ${waitingCount} طالب تلقائياً بعد دخولك البث</small>` : ''}
                 </div>`;
             }
             html += '</div>';
@@ -243,22 +251,17 @@
             container.innerHTML = html;
         }
 
-        async function startStream(offerId, offerName, waitingCount) {
-            if (confirm(`⚠️ هل أنت متأكد من بدء البث المباشر للحصة "${offerName}"؟\n\n📌 مهم: كأستاذ، أنت فقط من سيكون لديه صلاحية التحكم بالبث.\n📌 الطلاب سيكونون مشاهدين فقط ولا يمكنهم التحكم.\n📌 سيتم نقل ${waitingCount} طالب من غرفة الانتظار إلى البث تلقائياً.`)) {
-                const res = await fetch(`/api/stream/start/${offerId}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ offer_id: offerId, teacher_id: teacherData.id })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    showNotification(`✅ بدأ البث المباشر! تم نقل ${data.students_count} طالب إلى الغرفة. أنت فقط من يتحكم بالبث.`, 'success');
-                    setTimeout(() => {
-                        window.open(`/api/teacher-stream/${offerId}/${teacherData.id}`, '_blank');
-                    }, 1000);
-                    loadOffers();
-                } else { alert('خطأ: ' + data.error); }
+        // الأستاذ يدخل البث أولاً
+        async function enterStreamAsTeacher(offerId) {
+            if (confirm(`⚠️ هل تريد الدخول إلى البث كأستاذ؟\n\n📌 ستدخل إلى غرفة البث وحدك أولاً.\n📌 بعد تجهيز البث، سيكون لديك زر لإضافة الطلاب المنتظرين.\n📌 الطلاب لن يتمكنوا من الدخول إلا بعد أن تضغط "إضافة الطلاب".`)) {
+                window.open(`/api/enter-teacher-stream/${offerId}/${teacherData.id}`, '_blank');
+                // تحديث حالة العرض بعد 2 ثانية
+                setTimeout(() => loadOffers(), 2000);
             }
+        }
+
+        function joinTeacherStream(offerId) { 
+            window.open(`/api/teacher-stream/${offerId}/${teacherData.id}`, '_blank'); 
         }
 
         async function deleteOffer(offerId) {
@@ -270,7 +273,6 @@
             }
         }
 
-        function joinTeacherStream(offerId) { window.open(`/api/teacher-stream/${offerId}/${teacherData.id}`, '_blank'); }
         function logout() { localStorage.removeItem('teacherToken'); localStorage.removeItem('teacherData'); window.location.href = '/'; }
         loadOffers();
         setInterval(loadOffers, 5000);
