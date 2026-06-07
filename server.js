@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 3000;
 // ============= مفاتيح Chargily API =============
 const CHARGILY_API_KEY = 'test_sk_2vm1gIkToN70ERrg4SUE1j65gkZcexbPFjHzLUT7';
 const CHARGILY_PUBLIC_KEY = 'test_pk_GPW4qFJrOq2qoYaz2BXNfVEJUC2ScvpwQ5jgVYf2';
-const CHARGILY_API_URL = 'https://api.preprod.chargily.com.dz/api/invoices'; // بيئة الاختبار
+const CHARGILY_API_URL = 'https://api.preprod.chargily.com.dz/api/invoices';
 
 // إعداد رفع الملفات
 const storage = multer.diskStorage({
@@ -43,7 +43,6 @@ const db = new sqlite3.Database(DB_PATH);
 // دالة لتهيئة قاعدة البيانات
 function initDatabase() {
   db.serialize(() => {
-    // جدول الأساتذة
     db.run(`CREATE TABLE IF NOT EXISTS teachers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       full_name TEXT NOT NULL,
@@ -61,7 +60,6 @@ function initDatabase() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
-    // جدول الطلاب
     db.run(`CREATE TABLE IF NOT EXISTS students (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       full_name TEXT NOT NULL,
@@ -72,7 +70,6 @@ function initDatabase() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
-    // جدول العروض
     db.run(`CREATE TABLE IF NOT EXISTS offers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       teacher_id INTEGER,
@@ -88,7 +85,6 @@ function initDatabase() {
       FOREIGN KEY(teacher_id) REFERENCES teachers(id)
     )`);
 
-    // جدول الحصص
     db.run(`CREATE TABLE IF NOT EXISTS sessions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       offer_id INTEGER,
@@ -103,7 +99,6 @@ function initDatabase() {
       FOREIGN KEY(student_id) REFERENCES students(id)
     )`);
 
-    // جدول غرفة الانتظار
     db.run(`CREATE TABLE IF NOT EXISTS waiting_room (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       offer_id INTEGER,
@@ -113,7 +108,6 @@ function initDatabase() {
       FOREIGN KEY(student_id) REFERENCES students(id)
     )`);
 
-    // جدول البث المباشر
     db.run(`CREATE TABLE IF NOT EXISTS active_stream (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       offer_id INTEGER,
@@ -123,7 +117,6 @@ function initDatabase() {
       FOREIGN KEY(student_id) REFERENCES students(id)
     )`);
 
-    // جدول المدفوعات
     db.run(`CREATE TABLE IF NOT EXISTS payments (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       session_id INTEGER,
@@ -135,7 +128,6 @@ function initDatabase() {
       FOREIGN KEY(session_id) REFERENCES sessions(id)
     )`);
 
-    // إنشاء admin افتراضي
     db.get("SELECT * FROM teachers WHERE email = 'admin@platform.com'", [], (err, row) => {
       if (!row && !err) {
         const hashedPassword = bcrypt.hashSync('admin123', 10);
@@ -147,20 +139,15 @@ function initDatabase() {
   });
 }
 
-// تهيئة قاعدة البيانات
 initDatabase();
 
-// ============= دوال مساعدة للدفع عبر Chargily =============
+// ============= دوال مساعدة للدفع =============
 async function createChargilyInvoice(sessionId, amount, studentName, studentEmail, studentPhone, offerName) {
-  return new Promise((resolve, reject) => {
-    // إنشاء معرف فريد للفاتورة
-    const invoiceId = crypto.randomBytes(16).toString('hex');
+  return new Promise((resolve) => {
+    const baseUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+    const successUrl = `${baseUrl}/api/payment/success/${sessionId}`;
+    const webhookUrl = `${baseUrl}/api/chargily-webhook`;
     
-    // رابط العودة بعد الدفع
-    const successUrl = `https://${process.env.HOSTNAME || 'localhost'}/api/payment/success/${sessionId}`;
-    const webhookUrl = `https://${process.env.HOSTNAME || 'localhost'}/api/chargily-webhook`;
-    
-    // بيانات الفاتورة حسب متطلبات Chargily API
     const invoiceData = {
       amount: amount,
       currency: 'DZD',
@@ -174,9 +161,7 @@ async function createChargilyInvoice(sessionId, amount, studentName, studentEmai
       webhook_url: webhookUrl
     };
     
-    // استخدام مكتبة Chargily عبر fetch
-    const fetch = require('node-fetch');
-    
+    // محاولة الاتصال بـ Chargily API
     fetch(CHARGILY_API_URL, {
       method: 'POST',
       headers: {
@@ -194,8 +179,6 @@ async function createChargilyInvoice(sessionId, amount, studentName, studentEmai
           invoice_id: data.id
         });
       } else {
-        // في حالة فشل الاتصال بـ Chargily، نستخدم محاكاة الدفع للتجربة
-        console.log('⚠️ Chargily API غير متاح، استخدام وضع المحاكاة');
         resolve({
           success: true,
           checkout_url: `/api/mock-payment/${sessionId}`,
@@ -205,8 +188,7 @@ async function createChargilyInvoice(sessionId, amount, studentName, studentEmai
       }
     })
     .catch(error => {
-      console.error('Chargily API Error:', error);
-      // وضع محاكاة الدفع عند فشل الاتصال
+      console.error('Chargily API Error:', error.message);
       resolve({
         success: true,
         checkout_url: `/api/mock-payment/${sessionId}`,
@@ -319,7 +301,6 @@ app.get('/api/admin/approved-teachers', (req, res) => {
 
 app.post('/api/admin/approve-teacher/:id', (req, res) => {
   db.run("UPDATE teachers SET status = 'approved' WHERE id = ?", [req.params.id], function(err) {
-    if (err) return res.json({ success: false });
     res.json({ success: true });
   });
 });
@@ -406,15 +387,17 @@ app.delete('/api/offer/delete/:offer_id', (req, res) => {
   });
 });
 
-// ============= نظام الحجز والدفع عبر Chargily =============
+// ============= نظام الحجز والدفع =============
 
-app.post('/api/booking/create', (req, res) => {
+app.post('/api/booking/create', async (req, res) => {
   const { offer_id, student_id } = req.body;
   
   db.get(`SELECT * FROM sessions WHERE offer_id = ? AND student_id = ?`, [offer_id, student_id], (err, existing) => {
-    if (existing) return res.json({ success: false, error: 'أنت مسجل بالفعل' });
+    if (existing) {
+      return res.json({ success: false, error: 'أنت مسجل بالفعل في هذه الحصة' });
+    }
     
-    db.get(`SELECT price, is_free, subject_name FROM offers o JOIN teachers t ON o.teacher_id = t.id WHERE o.id = ?`, [offer_id], (err, offer) => {
+    db.get(`SELECT o.*, t.full_name as teacher_name FROM offers o JOIN teachers t ON o.teacher_id = t.id WHERE o.id = ?`, [offer_id], async (err, offer) => {
       if (!offer) return res.json({ success: false, error: 'العرض غير موجود' });
       
       const payment_status = offer.is_free === 1 ? 'paid' : 'pending';
@@ -428,13 +411,7 @@ app.post('/api/booking/create', (req, res) => {
             db.run(`INSERT INTO waiting_room (offer_id, student_id) VALUES (?, ?)`, [offer_id, student_id]);
             return res.json({ success: true, session_id: this.lastID, is_free: true });
           } else {
-            // الحصول على بيانات الطالب لإنشاء فاتورة Chargily
             db.get(`SELECT full_name, email, phone FROM students WHERE id = ?`, [student_id], async (err, student) => {
-              if (err || !student) {
-                return res.json({ success: true, session_id: this.lastID, requires_payment: true, amount: offer.price });
-              }
-              
-              // إنشاء فاتورة Chargily
               const invoice = await createChargilyInvoice(
                 this.lastID, 
                 offer.price, 
@@ -444,26 +421,17 @@ app.post('/api/booking/create', (req, res) => {
                 offer.subject_name
               );
               
-              if (invoice.success) {
-                // حفظ معلومات الفاتورة
-                db.run(`INSERT INTO payments (session_id, amount, chargily_invoice_id, chargily_checkout_url, status)
-                        VALUES (?, ?, ?, ?, 'pending')`,
-                  [this.lastID, offer.price, invoice.invoice_id, invoice.checkout_url],
-                  (err) => {
-                    if (err) console.error('Error saving payment:', err);
-                  });
-                
-                res.json({ 
-                  success: true, 
-                  session_id: this.lastID, 
-                  requires_payment: true, 
-                  amount: offer.price,
-                  checkout_url: invoice.checkout_url,
-                  is_mock: invoice.is_mock || false
-                });
-              } else {
-                res.json({ success: true, session_id: this.lastID, requires_payment: true, amount: offer.price });
-              }
+              db.run(`INSERT INTO payments (session_id, amount, chargily_invoice_id, chargily_checkout_url, status)
+                      VALUES (?, ?, ?, ?, 'pending')`,
+                [this.lastID, offer.price, invoice.invoice_id, invoice.checkout_url]);
+              
+              res.json({ 
+                success: true, 
+                session_id: this.lastID,
+                checkout_url: invoice.checkout_url,
+                amount: offer.price,
+                is_mock: invoice.is_mock || false
+              });
             });
           }
         });
@@ -475,14 +443,12 @@ app.post('/api/booking/create', (req, res) => {
 app.get('/api/payment/success/:session_id', (req, res) => {
   const { session_id } = req.params;
   
-  // تحديث حالة الدفع
   db.run(`UPDATE sessions SET payment_status = 'paid' WHERE id = ?`, [session_id]);
   db.run(`UPDATE payments SET status = 'completed' WHERE session_id = ?`, [session_id]);
   
-  // الحصول على offer_id لإضافة الطالب إلى غرفة الانتظار
   db.get(`SELECT offer_id, student_id FROM sessions WHERE id = ?`, [session_id], (err, session) => {
     if (session) {
-      db.run(`INSERT INTO waiting_room (offer_id, student_id) VALUES (?, ?)`, [session.offer_id, session.student_id]);
+      db.run(`INSERT OR IGNORE INTO waiting_room (offer_id, student_id) VALUES (?, ?)`, [session.offer_id, session.student_id]);
     }
   });
   
@@ -512,28 +478,7 @@ app.get('/api/payment/success/:session_id', (req, res) => {
   `);
 });
 
-// Webhook من Chargily
-app.post('/api/chargily-webhook', (req, res) => {
-  const { id, status, metadata } = req.body;
-  
-  if (status === 'paid') {
-    db.run(`UPDATE payments SET status = 'completed' WHERE chargily_invoice_id = ?`, [id]);
-    db.get(`SELECT session_id FROM payments WHERE chargily_invoice_id = ?`, [id], (err, payment) => {
-      if (payment) {
-        db.run(`UPDATE sessions SET payment_status = 'paid' WHERE id = ?`, [payment.session_id]);
-        db.get(`SELECT offer_id, student_id FROM sessions WHERE id = ?`, [payment.session_id], (err, session) => {
-          if (session) {
-            db.run(`INSERT INTO waiting_room (offer_id, student_id) VALUES (?, ?)`, [session.offer_id, session.student_id]);
-          }
-        });
-      }
-    });
-  }
-  
-  res.json({ received: true });
-});
-
-// محاكاة الدفع للتجربة (عند عدم توفر Chargily)
+// محاكاة الدفع
 app.get('/api/mock-payment/:session_id', (req, res) => {
   const { session_id } = req.params;
   
@@ -543,34 +488,24 @@ app.get('/api/mock-payment/:session_id', (req, res) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>محاكاة الدفع - وضع التجربة</title>
+        <title>محاكاة الدفع</title>
         <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
         <style>
             body { font-family: 'Cairo', sans-serif; background: linear-gradient(135deg, #1e3c72, #0f5cbf); min-height: 100vh; display: flex; justify-content: center; align-items: center; }
             .card { background: white; padding: 40px; border-radius: 30px; text-align: center; max-width: 500px; margin: 20px; }
             .btn { background: #10b981; color: white; padding: 12px 30px; border-radius: 30px; text-decoration: none; display: inline-block; margin-top: 20px; cursor: pointer; border: none; font-size: 16px; }
-            .btn-secondary { background: #f59e0b; margin-top: 10px; }
-            input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 10px; }
             .warning { background: #fef3c7; color: #92400e; padding: 15px; border-radius: 15px; margin-bottom: 20px; }
         </style>
     </head>
     <body>
         <div class="card">
-            <h1>💳 محاكاة الدفع (وضع التجربة)</h1>
-            <div class="warning">
-                ⚠️ هذا وضع تجريبي للدفع. في الإنتاج سيتم التكامل مع Chargily.
-            </div>
-            <p>قيمة الدفع: <strong>محاكاة</strong></p>
+            <h1>💳 محاكاة الدفع</h1>
+            <div class="warning">⚠️ هذا وضع تجريبي للدفع</div>
             <button class="btn" onclick="confirmPayment()">تأكيد الدفع (تجريبي)</button>
-            <button class="btn btn-secondary" onclick="cancel()">إلغاء</button>
         </div>
         <script>
             async function confirmPayment() {
-                const res = await fetch('/api/payment/success/${session_id}', { method: 'GET' });
-                window.location.href = '/student-dashboard.html';
-            }
-            function cancel() {
-                window.location.href = '/student-dashboard.html';
+                window.location.href = '/api/payment/success/${session_id}';
             }
         </script>
     </body>
@@ -578,9 +513,12 @@ app.get('/api/mock-payment/:session_id', (req, res) => {
   `);
 });
 
+app.post('/api/chargily-webhook', (req, res) => {
+  res.json({ received: true });
+});
+
 // ============= نظام البث المباشر =============
 
-// الأستاذ يدخل البث أولاً
 app.post('/api/stream/enter-teacher/:offer_id', (req, res) => {
   const { offer_id, teacher_id } = req.body;
   
@@ -591,7 +529,6 @@ app.post('/api/stream/enter-teacher/:offer_id', (req, res) => {
   });
 });
 
-// إضافة الطلاب المنتظرين إلى البث
 app.post('/api/stream/add-students/:offer_id', (req, res) => {
   const { offer_id, teacher_id } = req.body;
   
@@ -611,7 +548,6 @@ app.post('/api/stream/add-students/:offer_id', (req, res) => {
   });
 });
 
-// إنهاء البث
 app.post('/api/stream/end/:offer_id', (req, res) => {
   const { offer_id, teacher_id } = req.body;
   db.run(`UPDATE offers SET status = 'completed' WHERE id = ?`, [offer_id]);
@@ -620,7 +556,6 @@ app.post('/api/stream/end/:offer_id', (req, res) => {
   res.json({ success: true });
 });
 
-// التحقق من حالة العرض
 app.get('/api/stream/status/:offer_id', (req, res) => {
   db.get(`SELECT status, room_name FROM offers WHERE id = ?`, [req.params.offer_id], (err, offer) => {
     if (!offer) return res.json({ status: 'not_found' });
@@ -628,7 +563,6 @@ app.get('/api/stream/status/:offer_id', (req, res) => {
   });
 });
 
-// التحقق من حالة الطالب
 app.get('/api/student/stream-status/:offer_id/:student_id', (req, res) => {
   const { offer_id, student_id } = req.params;
   
@@ -663,7 +597,6 @@ app.get('/api/student/stream-status/:offer_id/:student_id', (req, res) => {
   });
 });
 
-// جلب قوائم الانتظار
 app.get('/api/stream/waiting-list/:offer_id/:teacher_id', (req, res) => {
   db.all(`SELECT w.*, s.full_name, s.email FROM waiting_room w JOIN students s ON w.student_id = s.id WHERE w.offer_id = ?`, [req.params.offer_id], (err, rows) => {
     res.json(rows || []);
@@ -687,16 +620,13 @@ app.get('/api/student/bookings/:student_id', (req, res) => {
   });
 });
 
-// ============= صفحات البث المباشر =============
+// ============= صفحات البث =============
 
-// صفحة بث الأستاذ
 app.get('/api/teacher-stream/:offer_id/:teacher_id', (req, res) => {
   const { offer_id, teacher_id } = req.params;
   
   db.get(`SELECT room_name, status FROM offers WHERE id = ? AND teacher_id = ?`, [offer_id, teacher_id], (err, offer) => {
-    if (!offer) return res.send(`
-      <html><body style="text-align:center;padding:50px"><h1>❌ البث غير موجود</h1><a href="/teacher-dashboard.html">العودة</a></body></html>
-    `);
+    if (!offer) return res.redirect('/teacher-dashboard.html');
     
     res.send(`
 <!DOCTYPE html>
@@ -706,11 +636,10 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', (req, res) => {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>بث مباشر - الأستاذ</title>
     <script src="https://meet.jit.si/external_api.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
         body{font-family:'Cairo',sans-serif;background:#0a0a1a}
-        .header{background:linear-gradient(135deg,#0f3460,#16213e);color:white;padding:12px 24px;display:flex;justify-content:space-between;align-items:center;position:fixed;top:0;left:0;right:0;z-index:100;flex-wrap:wrap}
+        .header{background:#0f3460;color:white;padding:12px 24px;display:flex;justify-content:space-between;align-items:center;position:fixed;top:0;left:0;right:0;z-index:100;flex-wrap:wrap}
         .btn{background:#ef4444;color:white;border:none;padding:8px 20px;border-radius:30px;cursor:pointer;margin-left:10px}
         .btn-green{background:#10b981}
         #jitsi-container{position:fixed;top:60px;left:0;right:0;bottom:0}
@@ -719,25 +648,23 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', (req, res) => {
 </head>
 <body>
     <div class="header">
-        <div><i class="fas fa-chalkboard-user"></i> <span class="info">👨‍🏫 أنت المضيف - لديك التحكم الكامل</span></div>
+        <div><span class="info">👨‍🏫 أنت المضيف</span></div>
         <div>
-            <span id="waitingCount" class="info" style="background:#8b5cf6">⏳ جاري التحميل...</span>
-            <button id="addBtn" class="btn btn-green" style="display:none" onclick="addStudents()"><i class="fas fa-users"></i> إضافة الطلاب</button>
-            <button class="btn" onclick="endStream()"><i class="fas fa-stop"></i> إنهاء البث</button>
-            <button class="btn" onclick="leaveStream()"><i class="fas fa-sign-out-alt"></i> مغادرة</button>
+            <span id="waitingCount" class="info">⏳ جاري التحميل...</span>
+            <button id="addBtn" class="btn btn-green" style="display:none" onclick="addStudents()">➕ إضافة الطلاب</button>
+            <button class="btn" onclick="endStream()">⏹️ إنهاء البث</button>
+            <button class="btn" onclick="leaveStream()">🚪 مغادرة</button>
         </div>
     </div>
     <div id="jitsi-container"></div>
     <script>
         let studentsAdded = false;
-        
         const api = new JitsiMeetExternalAPI('meet.jit.si', {
             roomName: '${offer.room_name}',
             width: '100%',
             height: window.innerHeight - 60,
             parentNode: document.querySelector('#jitsi-container'),
-            userInfo: { displayName: '👨‍🏫 الأستاذ' },
-            configOverwrite: { startWithVideoMuted: false, startWithAudioMuted: false, enableWelcomePage: false, prejoinPageEnabled: false }
+            userInfo: { displayName: '👨‍🏫 الأستاذ' }
         });
         
         async function loadWaitingCount() {
@@ -746,12 +673,10 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', (req, res) => {
                 const students = await res.json();
                 const count = students?.length || 0;
                 document.getElementById('waitingCount').innerHTML = \`⏳ \${count} طالب ينتظرون\`;
-                if (count > 0 && !studentsAdded && '${offer.status}' === 'teacher_ready') {
+                if (count > 0 && !studentsAdded) {
                     document.getElementById('addBtn').style.display = 'inline-block';
-                } else {
-                    document.getElementById('addBtn').style.display = 'none';
                 }
-            } catch(e) { console.log(e); }
+            } catch(e) {}
         }
         
         async function addStudents() {
@@ -770,23 +695,16 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', (req, res) => {
             }
         }
         
-        function leaveStream() { try { api.dispose(); } catch(e) {} window.location.href = '/teacher-dashboard.html'; }
-        
+        function leaveStream() { api.dispose(); window.location.href = '/teacher-dashboard.html'; }
         async function endStream() {
             if (confirm('إنهاء البث؟')) {
                 await fetch('/api/stream/end/${offer_id}', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ offer_id: ${offer_id}, teacher_id: ${teacher_id} }) });
-                try { api.dispose(); } catch(e) {}
+                api.dispose();
                 window.location.href = '/teacher-dashboard.html';
             }
         }
-        
         loadWaitingCount();
         setInterval(loadWaitingCount, 3000);
-        
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css';
-        document.head.appendChild(link);
     </script>
 </body>
 </html>
@@ -794,7 +712,6 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', (req, res) => {
   });
 });
 
-// صفحة دخول الأستاذ أولاً
 app.get('/api/enter-teacher-stream/:offer_id/:teacher_id', async (req, res) => {
   const { offer_id, teacher_id } = req.params;
   
@@ -807,7 +724,6 @@ app.get('/api/enter-teacher-stream/:offer_id/:teacher_id', async (req, res) => {
   res.redirect(`/api/teacher-stream/${offer_id}/${teacher_id}`);
 });
 
-// صفحة بث الطالب
 app.get('/api/join-stream/:offer_id/:student_id', (req, res) => {
   const { offer_id, student_id } = req.params;
   
@@ -825,11 +741,10 @@ app.get('/api/join-stream/:offer_id/:student_id', (req, res) => {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>حصة مباشرة - طالب</title>
     <script src="https://meet.jit.si/external_api.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
         body{font-family:'Cairo',sans-serif;background:#0a0a1a}
-        .header{background:linear-gradient(135deg,#0f3460,#16213e);color:white;padding:12px 24px;display:flex;justify-content:space-between;align-items:center;position:fixed;top:0;left:0;right:0;z-index:100}
+        .header{background:#0f3460;color:white;padding:12px 24px;display:flex;justify-content:space-between;align-items:center;position:fixed;top:0;left:0;right:0;z-index:100}
         .btn{background:#ef4444;color:white;border:none;padding:8px 20px;border-radius:30px;cursor:pointer}
         #jitsi-container{position:fixed;top:60px;left:0;right:0;bottom:0}
         .badge{background:#f59e0b;padding:5px 15px;border-radius:30px}
@@ -837,8 +752,8 @@ app.get('/api/join-stream/:offer_id/:student_id', (req, res) => {
 </head>
 <body>
     <div class="header">
-        <div><i class="fas fa-user-graduate"></i> <span class="badge">👨‍🎓 أنت طالب - مشاهدة فقط</span></div>
-        <button class="btn" onclick="leaveStream()"><i class="fas fa-sign-out-alt"></i> مغادرة</button>
+        <div><span class="badge">👨‍🎓 أنت طالب - مشاهدة فقط</span></div>
+        <button class="btn" onclick="leaveStream()">🚪 مغادرة</button>
     </div>
     <div id="jitsi-container"></div>
     <script>
@@ -848,13 +763,9 @@ app.get('/api/join-stream/:offer_id/:student_id', (req, res) => {
             height: window.innerHeight - 60,
             parentNode: document.querySelector('#jitsi-container'),
             userInfo: { displayName: '👨‍🎓 طالب' },
-            configOverwrite: { startWithVideoMuted: true, startWithAudioMuted: true, enableWelcomePage: false }
+            configOverwrite: { startWithVideoMuted: true, startWithAudioMuted: true }
         });
-        function leaveStream() { try { api.dispose(); } catch(e) {} window.location.href = '/student-dashboard.html'; }
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css';
-        document.head.appendChild(link);
+        function leaveStream() { api.dispose(); window.location.href = '/student-dashboard.html'; }
     </script>
 </body>
 </html>
@@ -863,9 +774,6 @@ app.get('/api/join-stream/:offer_id/:student_id', (req, res) => {
   });
 });
 
-// ============= تشغيل الخادم =============
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 الخادم يعمل على http://localhost:${PORT}`);
-  console.log(`📁 قاعدة البيانات: ${DB_PATH}`);
-  console.log(`💳 نظام الدفع عبر Chargily: ${CHARGILY_API_URL}`);
 });
