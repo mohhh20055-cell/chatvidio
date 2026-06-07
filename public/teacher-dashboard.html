@@ -25,6 +25,7 @@
         .student-item { padding: 8px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; }
         .start-stream-btn { background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 25px; cursor: pointer; margin-top: 15px; width: 100%; }
         .delete-offer-btn { background: #ef4444; color: white; border: none; padding: 10px 20px; border-radius: 25px; cursor: pointer; margin-top: 10px; width: 100%; }
+        .join-stream-btn { background: #0f5cbf; color: white; border: none; padding: 10px 20px; border-radius: 25px; cursor: pointer; margin-top: 15px; width: 100%; }
         .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 20px; z-index: 1000; width: 90%; max-width: 500px; }
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999; }
         .modal input, .modal select, .modal textarea { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #cbd5e1; border-radius: 10px; }
@@ -38,12 +39,13 @@
         .btn-group button { margin-top: 0; width: 50%; }
         .notification-toast { position: fixed; bottom: 30px; right: 30px; background: #10b981; color: white; padding: 15px 25px; border-radius: 15px; z-index: 2000; display: flex; align-items: center; gap: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: slideIn 0.5s ease; }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .security-badge { background: #1e3c72; color: white; padding: 5px 10px; border-radius: 15px; font-size: 10px; margin-left: 10px; }
     </style>
 </head>
 <body>
     <div class="dashboard">
         <div class="header">
-            <h1><i class="fas fa-chalkboard-user"></i> لوحة الأستاذ - البث المباشر</h1>
+            <h1><i class="fas fa-chalkboard-user"></i> لوحة الأستاذ - البث المباشر <span class="security-badge"><i class="fas fa-shield-alt"></i> أنت فقط من يتحكم بالبث</span></h1>
             <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> تسجيل خروج</button>
         </div>
         
@@ -96,18 +98,14 @@
             toast.style.background = type === 'success' ? '#10b981' : (type === 'warning' ? '#f59e0b' : '#ef4444');
             toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : (type === 'warning' ? 'fa-clock' : 'fa-exclamation-triangle')}"></i> ${message}`;
             toast.style.display = 'flex';
-            setTimeout(() => {
-                toast.style.display = 'none';
-            }, 4000);
+            setTimeout(() => { toast.style.display = 'none'; }, 4000);
         }
 
         function showTab(tabName) {
             document.getElementById('myOffersTab').style.display = 'none';
             document.getElementById('allOffersTab').style.display = 'none';
             document.getElementById('allTeachersTab').style.display = 'none';
-            
             document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
-            
             if (tabName === 'myOffers') {
                 document.getElementById('myOffersTab').style.display = 'block';
                 document.querySelector('.nav-tab:first-child').classList.add('active');
@@ -145,12 +143,7 @@
             const offer_date = document.getElementById('offerDate').value;
             const is_free = document.getElementById('isFree').checked;
             const price = is_free ? 0 : document.getElementById('price').value;
-            
-            if (!subject_name || !offer_date) {
-                alert('يرجى ملء جميع الحقول');
-                return;
-            }
-            
+            if (!subject_name || !offer_date) { alert('يرجى ملء جميع الحقول'); return; }
             const res = await fetch('/api/offer/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -166,54 +159,44 @@
                 document.getElementById('isFree').checked = false;
                 document.getElementById('price').disabled = false;
                 document.getElementById('price').value = '1000';
-            } else {
-                alert('حدث خطأ: ' + data.error);
-            }
+            } else { alert('حدث خطأ: ' + data.error); }
         }
 
         async function loadOffers() {
             const res = await fetch(`/api/teacher/offers/${teacherData.id}`);
             const offers = await res.json();
             const container = document.getElementById('offersList');
-            
-            if (offers.length === 0) {
-                container.innerHTML = '<p style="text-align:center">لا توجد عروض حالياً. قم بإنشاء عرض جديد!</p>';
-                return;
-            }
-            
+            if (offers.length === 0) { container.innerHTML = '<p style="text-align:center">لا توجد عروض حالياً. قم بإنشاء عرض جديد!</p>'; return; }
             let html = '<div class="offers-grid">';
             for (const offer of offers) {
                 const offerDate = new Date(offer.offer_date);
                 const statusClass = offer.status === 'upcoming' ? 'status-upcoming' : (offer.status === 'live' ? 'status-live' : 'status-completed');
                 const statusText = offer.status === 'upcoming' ? 'قادم' : (offer.status === 'live' ? 'بث مباشر الآن' : 'منتهية');
-                
-                let waitingHtml = '';
-                let activeHtml = '';
-                
+                let waitingHtml = '', activeHtml = '';
+                let waitingCount = 0;
                 if (offer.status === 'upcoming') {
                     try {
                         const waitingRes = await fetch(`/api/stream/waiting-list/${offer.id}/${teacherData.id}`);
                         const waitingStudents = await waitingRes.json();
-                        if (waitingStudents && waitingStudents.length > 0) {
-                            waitingHtml = `<div class="waiting-list"><h4>⏳ غرفة الانتظار (${waitingStudents.length})</h4>`;
+                        waitingCount = waitingStudents?.length || 0;
+                        if (waitingCount > 0) {
+                            waitingHtml = `<div class="waiting-list"><h4>⏳ غرفة الانتظار (${waitingCount})</h4>`;
                             waitingStudents.forEach(s => { waitingHtml += `<div class="student-item">${s.full_name} <small>${s.email}</small></div>`; });
                             waitingHtml += `</div>`;
                         }
                     } catch(e) { console.log(e); }
                 }
-                
                 if (offer.status === 'live') {
                     try {
                         const activeRes = await fetch(`/api/stream/active-list/${offer.id}/${teacherData.id}`);
                         const activeStudents = await activeRes.json();
-                        if (activeStudents && activeStudents.length > 0) {
+                        if (activeStudents?.length > 0) {
                             activeHtml = `<div class="active-list"><h4>🎥 في البث المباشر (${activeStudents.length})</h4>`;
                             activeStudents.forEach(s => { activeHtml += `<div class="student-item">${s.full_name} <small>${s.email}</small></div>`; });
                             activeHtml += `</div>`;
                         }
                     } catch(e) { console.log(e); }
                 }
-                
                 html += `<div class="offer-card">
                     <h3><i class="fas fa-book"></i> ${offer.subject_name}</h3>
                     <p><i class="fas fa-calendar"></i> التاريخ: ${offerDate.toLocaleString('ar')}</p>
@@ -223,8 +206,8 @@
                     ${waitingHtml}
                     ${activeHtml}
                     <div class="btn-group">
-                        ${offer.status === 'upcoming' ? `<button class="start-stream-btn" onclick="startStream(${offer.id}, '${offer.subject_name.replace(/'/g, "\\'")}')"><i class="fas fa-play"></i> بدء البث (${waitingHtml ? (waitingStudents?.length || 0) + ' طالب ينتظرون' : 'لا يوجد طلاب'})</button>` : ''}
-                        ${offer.status === 'live' ? `<button class="start-stream-btn" onclick="joinTeacherStream(${offer.id})" style="background:#0f5cbf"><i class="fas fa-video"></i> دخول البث</button>` : ''}
+                        ${offer.status === 'upcoming' ? `<button class="start-stream-btn" onclick="startStream(${offer.id}, '${offer.subject_name.replace(/'/g, "\\'")}', ${waitingCount})"><i class="fas fa-play"></i> بدء البث (${waitingCount} ينتظرون)</button>` : ''}
+                        ${offer.status === 'live' ? `<button class="join-stream-btn" onclick="joinTeacherStream(${offer.id})"><i class="fas fa-video"></i> دخول البث (كمضيف)</button>` : ''}
                         ${offer.status === 'upcoming' ? `<button class="delete-offer-btn" onclick="deleteOffer(${offer.id})"><i class="fas fa-trash"></i> حذف العرض</button>` : ''}
                     </div>
                 </div>`;
@@ -237,29 +220,12 @@
             const res = await fetch('/api/public/offers');
             const offers = await res.json();
             const container = document.getElementById('allOffersList');
-            
-            if (offers.length === 0) {
-                container.innerHTML = '<p style="text-align:center">لا توجد عروض متاحة حالياً</p>';
-                return;
-            }
-            
+            if (offers.length === 0) { container.innerHTML = '<p style="text-align:center">لا توجد عروض متاحة حالياً</p>'; return; }
             let html = '';
             for (const offer of offers) {
                 const offerDate = new Date(offer.offer_date);
                 const imageUrl = offer.profile_image ? `/uploads/${offer.profile_image}` : 'https://via.placeholder.com/80';
-                html += `<div class="offer-card">
-                    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
-                        <img src="${imageUrl}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;">
-                        <div>
-                            <h3 style="margin-bottom: 5px;">${offer.teacher_name}</h3>
-                            <p><i class="fas fa-book"></i> ${offer.specialization || 'تخصص عام'}</p>
-                        </div>
-                    </div>
-                    <p><strong>${offer.subject_name}</strong></p>
-                    <p><i class="fas fa-calendar"></i> ${offerDate.toLocaleString('ar')}</p>
-                    <p><i class="fas fa-clock"></i> ${offer.duration} دقيقة</p>
-                    <p><i class="fas fa-tag"></i> ${offer.is_free ? 'مجانية' : offer.price + ' دج'}</p>
-                </div>`;
+                html += `<div class="offer-card"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;"><img src="${imageUrl}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;"><div><h3 style="margin-bottom: 5px;">${offer.teacher_name}</h3><p><i class="fas fa-book"></i> ${offer.specialization || 'تخصص عام'}</p></div></div><p><strong>${offer.subject_name}</strong></p><p><i class="fas fa-calendar"></i> ${offerDate.toLocaleString('ar')}</p><p><i class="fas fa-clock"></i> ${offer.duration} دقيقة</p><p><i class="fas fa-tag"></i> ${offer.is_free ? 'مجانية' : offer.price + ' دج'}</p></div>`;
             }
             container.innerHTML = html;
         }
@@ -268,33 +234,17 @@
             const res = await fetch('/api/public/teachers');
             const teachers = await res.json();
             const container = document.getElementById('allTeachersList');
-            
-            if (teachers.length === 0) {
-                container.innerHTML = '<p style="text-align:center">لا يوجد أساتذة معتمدون حالياً</p>';
-                return;
-            }
-            
+            if (teachers.length === 0) { container.innerHTML = '<p style="text-align:center">لا يوجد أساتذة معتمدون حالياً</p>'; return; }
             let html = '';
             for (const teacher of teachers) {
                 const imageUrl = teacher.profile_image ? `/uploads/${teacher.profile_image}` : 'https://via.placeholder.com/100';
-                html += `<div class="offer-card" style="text-align: center;">
-                    <img src="${imageUrl}" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 15px;">
-                    <h3>${teacher.full_name}</h3>
-                    <p><i class="fas fa-book"></i> ${teacher.specialization || 'تخصص عام'}</p>
-                    <p><i class="fas fa-briefcase"></i> ${teacher.experience || 'خبرة'} سنة</p>
-                    <p><i class="fas fa-align-left"></i> ${teacher.bio ? teacher.bio.substring(0, 80) + '...' : ''}</p>
-                    <span style="background:#10b981; color:white; padding:5px 12px; border-radius:20px; display:inline-block; margin-top:10px;">✅ معتمد</span>
-                </div>`;
+                html += `<div class="offer-card" style="text-align: center;"><img src="${imageUrl}" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 15px;"><h3>${teacher.full_name}</h3><p><i class="fas fa-book"></i> ${teacher.specialization || 'تخصص عام'}</p><p><i class="fas fa-briefcase"></i> ${teacher.experience || 'خبرة'} سنة</p><p><i class="fas fa-align-left"></i> ${teacher.bio ? teacher.bio.substring(0, 80) + '...' : ''}</p><span style="background:#10b981; color:white; padding:5px 12px; border-radius:20px; display:inline-block; margin-top:10px;">✅ معتمد</span></div>`;
             }
             container.innerHTML = html;
         }
 
-        async function startStream(offerId, offerName) {
-            const waitingRes = await fetch(`/api/stream/waiting-list/${offerId}/${teacherData.id}`);
-            const waitingStudents = await waitingRes.json();
-            const count = waitingStudents?.length || 0;
-            
-            if (confirm(`هل أنت متأكد من بدء البث المباشر للحصة "${offerName}"؟\nسيتم نقل ${count} طالب من غرفة الانتظار إلى البث تلقائياً وسيتلقون إشعاراً فورياً.`)) {
+        async function startStream(offerId, offerName, waitingCount) {
+            if (confirm(`⚠️ هل أنت متأكد من بدء البث المباشر للحصة "${offerName}"؟\n\n📌 مهم: كأستاذ، أنت فقط من سيكون لديه صلاحية التحكم بالبث.\n📌 الطلاب سيكونون مشاهدين فقط ولا يمكنهم التحكم.\n📌 سيتم نقل ${waitingCount} طالب من غرفة الانتظار إلى البث تلقائياً.`)) {
                 const res = await fetch(`/api/stream/start/${offerId}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -302,42 +252,26 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    showNotification(`✅ بدأ البث المباشر! تم نقل ${data.students_count} طالب إلى الغرفة.`, 'success');
-                    window.open(`/api/teacher-stream/${offerId}/${teacherData.id}`, '_blank');
+                    showNotification(`✅ بدأ البث المباشر! تم نقل ${data.students_count} طالب إلى الغرفة. أنت فقط من يتحكم بالبث.`, 'success');
+                    setTimeout(() => {
+                        window.open(`/api/teacher-stream/${offerId}/${teacherData.id}`, '_blank');
+                    }, 1000);
                     loadOffers();
-                } else {
-                    alert('خطأ: ' + data.error);
-                }
+                } else { alert('خطأ: ' + data.error); }
             }
         }
 
         async function deleteOffer(offerId) {
             if (confirm('⚠️ هل أنت متأكد من حذف هذا العرض؟\nسيتم حذف جميع الحجوزات المرتبطة به ولا يمكن التراجع.')) {
-                const res = await fetch(`/api/offer/delete/${offerId}`, {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ teacher_id: teacherData.id })
-                });
+                const res = await fetch(`/api/offer/delete/${offerId}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ teacher_id: teacherData.id }) });
                 const data = await res.json();
-                if (data.success) {
-                    showNotification('✅ تم حذف العرض بنجاح', 'success');
-                    loadOffers();
-                } else {
-                    alert('خطأ: ' + data.error);
-                }
+                if (data.success) { showNotification('✅ تم حذف العرض بنجاح', 'success'); loadOffers(); } 
+                else { alert('خطأ: ' + data.error); }
             }
         }
 
-        function joinTeacherStream(offerId) {
-            window.open(`/api/teacher-stream/${offerId}/${teacherData.id}`, '_blank');
-        }
-
-        function logout() {
-            localStorage.removeItem('teacherToken');
-            localStorage.removeItem('teacherData');
-            window.location.href = '/';
-        }
-
+        function joinTeacherStream(offerId) { window.open(`/api/teacher-stream/${offerId}/${teacherData.id}`, '_blank'); }
+        function logout() { localStorage.removeItem('teacherToken'); localStorage.removeItem('teacherData'); window.location.href = '/'; }
         loadOffers();
         setInterval(loadOffers, 5000);
     </script>
