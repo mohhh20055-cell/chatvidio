@@ -7,6 +7,7 @@ const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs');
 const axios = require('axios');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,7 +15,7 @@ const PORT = process.env.PORT || 3000;
 // ============= مفاتيح Chargily API (وضع التجربة/test mode) =============
 const CHARGILY_API_KEY = 'test_sk_2vm1gIkToN70ERrg4SUE1j65gkZcexbPFjHzLUT7';
 const CHARGILY_PUBLIC_KEY = 'test_pk_GPW4qFJrOq2qoYaz2BXNfVEJUC2ScvpwQ5jgVYf2';
-const CHARGILY_API_URL = 'https://api.preprod.chargily.com.dz/api/invoices'; // بيئة الاختبار
+const CHARGILY_API_URL = 'https://api.preprod.chargily.com.dz/api/invoices';
 
 // إعداد رفع الملفات
 const storage = multer.diskStorage({
@@ -140,36 +141,33 @@ function initDatabase() {
 
 initDatabase();
 
-// ============= دالة إنشاء فاتورة Chargily الحقيقية =============
+// ============= دالة إنشاء فاتورة Chargily =============
 async function createChargilyInvoice(sessionId, amount, studentName, studentEmail, studentPhone, offerName) {
   try {
     const baseUrl = process.env.RENDER_EXTERNAL_URL || `https://chatvidio-api.onrender.com`;
     const successUrl = `${baseUrl}/api/payment/success/${sessionId}`;
     const webhookUrl = `${baseUrl}/api/chargily-webhook`;
     
-    console.log(`🔵 محاولة إنشاء فاتورة Chargily للمبلغ: ${amount} DZD`);
-    console.log(`🔵 رابط النجاح: ${successUrl}`);
+    console.log(`📝 إنشاء فاتورة للمبلغ: ${amount} DZD`);
+    console.log(`📝 الطالب: ${studentName} (${studentEmail})`);
     
     const invoiceData = {
       amount: amount,
       currency: 'DZD',
       description: `دفع قيمة الحصة: ${offerName}`,
-      client: {
-        name: studentName,
-        email: studentEmail,
-        phone: studentPhone || '00000000'
-      },
+      client_name: studentName,
+      client_email: studentEmail,
+      client_phone: studentPhone || '00000000',
       success_url: successUrl,
-      webhook_url: webhookUrl,
-      back_url: baseUrl
+      webhook_url: webhookUrl
     };
     
-    console.log(`🔵 البيانات المرسلة:`, JSON.stringify(invoiceData, null, 2));
+    console.log(`📝 البيانات المرسلة:`, JSON.stringify(invoiceData, null, 2));
     
     const response = await axios.post(CHARGILY_API_URL, invoiceData, {
       headers: {
         'Content-Type': 'application/json',
-        'X-Authorization': CHARGILY_API_KEY
+        'Authorization': `Bearer ${CHARGILY_API_KEY}`
       },
       timeout: 30000
     });
@@ -183,14 +181,13 @@ async function createChargilyInvoice(sessionId, amount, studentName, studentEmai
         invoice_id: response.data.id
       };
     } else {
-      console.error('❌ لم يتم استلام checkout_url من Chargily');
       return {
         success: false,
         error: 'لم يتم استلام رابط الدفع'
       };
     }
   } catch (error) {
-    console.error('❌ خطأ في Chargily API:', error.response?.data || error.message);
+    console.error('❌ خطأ Chargily API:', error.response?.data || error.message);
     return {
       success: false,
       error: error.response?.data?.message || error.message
@@ -386,7 +383,7 @@ app.delete('/api/offer/delete/:offer_id', (req, res) => {
   });
 });
 
-// ============= نظام الحجز والدفع مع Chargily =============
+// ============= نظام الحجز والدفع =============
 
 app.post('/api/booking/create', async (req, res) => {
   const { offer_id, student_id } = req.body;
@@ -410,13 +407,11 @@ app.post('/api/booking/create', async (req, res) => {
             db.run(`INSERT INTO waiting_room (offer_id, student_id) VALUES (?, ?)`, [offer_id, student_id]);
             return res.json({ success: true, session_id: this.lastID, is_free: true });
           } else {
-            // الحصول على بيانات الطالب
             db.get(`SELECT full_name, email, phone FROM students WHERE id = ?`, [student_id], async (err, student) => {
               if (err || !student) {
                 return res.json({ success: false, error: 'بيانات الطالب غير مكتملة' });
               }
               
-              // إنشاء فاتورة Chargily
               const invoice = await createChargilyInvoice(
                 this.lastID, 
                 offer.price, 
@@ -427,7 +422,6 @@ app.post('/api/booking/create', async (req, res) => {
               );
               
               if (invoice.success && invoice.checkout_url) {
-                // حفظ معلومات الدفع
                 db.run(`INSERT INTO payments (session_id, amount, chargily_invoice_id, chargily_checkout_url, status)
                         VALUES (?, ?, ?, ?, 'pending')`,
                   [this.lastID, offer.price, invoice.invoice_id, invoice.checkout_url]);
@@ -493,23 +487,34 @@ app.get('/api/payment/success/:session_id', (req, res) => {
 // Webhook من Chargily
 app.post('/api/chargily-webhook', (req, res) => {
   console.log('Webhook received:', req.body);
-  const { id, status } = req.body;
-  
-  if (status === 'paid') {
-    db.run(`UPDATE payments SET status = 'completed' WHERE chargily_invoice_id = ?`, [id]);
-    db.get(`SELECT session_id FROM payments WHERE chargily_invoice_id = ?`, [id], (err, payment) => {
-      if (payment) {
-        db.run(`UPDATE sessions SET payment_status = 'paid' WHERE id = ?`, [payment.session_id]);
-        db.get(`SELECT offer_id, student_id FROM sessions WHERE id = ?`, [payment.session_id], (err, session) => {
-          if (session) {
-            db.run(`INSERT OR IGNORE INTO waiting_room (offer_id, student_id) VALUES (?, ?)`, [session.offer_id, session.student_id]);
-          }
-        });
-      }
-    });
-  }
-  
   res.json({ received: true });
+});
+
+// اختبار اتصال Chargily
+app.get('/api/test-chargily', async (req, res) => {
+  try {
+    const testData = {
+      amount: 1000,
+      currency: 'DZD',
+      description: 'Test payment',
+      client_name: 'Test User',
+      client_email: 'test@example.com',
+      success_url: 'https://example.com/success',
+      webhook_url: 'https://example.com/webhook'
+    };
+    
+    const response = await axios.post(CHARGILY_API_URL, testData, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${CHARGILY_API_KEY}`
+      },
+      timeout: 30000
+    });
+    
+    res.json({ success: true, data: response.data });
+  } catch (error) {
+    res.json({ success: false, error: error.response?.data || error.message });
+  }
 });
 
 // ============= نظام البث المباشر =============
@@ -710,11 +715,14 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', (req, res) => {
 app.get('/api/enter-teacher-stream/:offer_id/:teacher_id', async (req, res) => {
   const { offer_id, teacher_id } = req.params;
   
-  await fetch(`http://localhost:${PORT}/api/stream/enter-teacher/${offer_id}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ offer_id: parseInt(offer_id), teacher_id: parseInt(teacher_id) })
-  }).catch(e => console.log(e));
+  try {
+    await axios.post(`http://localhost:${PORT}/api/stream/enter-teacher/${offer_id}`, {
+      offer_id: parseInt(offer_id),
+      teacher_id: parseInt(teacher_id)
+    });
+  } catch(e) {
+    console.log(e);
+  }
   
   res.redirect(`/api/teacher-stream/${offer_id}/${teacher_id}`);
 });
@@ -773,4 +781,5 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 الخادم يعمل على http://localhost:${PORT}`);
   console.log(`💳 Chargily API (Test Mode): ${CHARGILY_API_URL}`);
   console.log(`🔑 Chargily Public Key: ${CHARGILY_PUBLIC_KEY}`);
+  console.log(`📡 رابط اختبار Chargily: http://localhost:${PORT}/api/test-chargily`);
 });
