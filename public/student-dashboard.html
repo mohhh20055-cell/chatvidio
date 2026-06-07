@@ -16,7 +16,6 @@
         .offers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
         .offer-card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: 0.3s; }
         .offer-card:hover { transform: translateY(-3px); }
-        .offer-card h3 { color: #0f5cbf; margin-bottom: 10px; }
         .book-btn, .join-btn, .pay-btn { padding: 10px 20px; border: none; border-radius: 25px; cursor: pointer; margin-top: 15px; width: 100%; font-weight: 600; }
         .book-btn { background: #0f5cbf; color: white; }
         .join-btn { background: #10b981; color: white; }
@@ -34,35 +33,22 @@
         .notification-toast.warning { background: #f59e0b; }
         .notification-toast.error { background: #ef4444; }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+        .viewer-badge { background: #f59e0b; padding: 3px 8px; border-radius: 12px; font-size: 10px; margin-left: 10px; }
     </style>
 </head>
 <body>
     <div class="dashboard">
         <div class="header">
-            <h1><i class="fas fa-user-graduate"></i> لوحة الطالب</h1>
+            <h1><i class="fas fa-user-graduate"></i> لوحة الطالب <span class="viewer-badge"><i class="fas fa-eye"></i> مشاهد فقط</span></h1>
             <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> تسجيل خروج</button>
         </div>
-
         <h2 class="section-title"><i class="fas fa-calendar-alt"></i> العروض المتاحة</h2>
         <div id="offersList" class="offers-grid"></div>
-
-        <div class="my-sessions">
-            <h2 class="section-title"><i class="fas fa-clock"></i> حصصي المسجلة</h2>
-            <div id="mySessions"></div>
-        </div>
+        <div class="my-sessions"><h2 class="section-title"><i class="fas fa-clock"></i> حصصي المسجلة</h2><div id="mySessions"></div></div>
     </div>
-
     <div id="modalOverlay" class="modal-overlay"></div>
-    <div id="paymentModal" class="payment-modal">
-        <h3><i class="fas fa-credit-card"></i> الدفع عبر شارجيلي</h3>
-        <p id="paymentInfo"></p>
-        <button id="payNowBtn" class="book-btn" style="background:#f59e0b">الدفع الآن</button>
-        <button onclick="closePaymentModal()" class="book-btn" style="background:#e2e8f0; color:#333; margin-top:10px;">إلغاء</button>
-    </div>
-
+    <div id="paymentModal" class="payment-modal"><h3><i class="fas fa-credit-card"></i> الدفع عبر شارجيلي</h3><p id="paymentInfo"></p><button id="payNowBtn" class="book-btn" style="background:#f59e0b">الدفع الآن</button><button onclick="closePaymentModal()" class="book-btn" style="background:#e2e8f0; color:#333; margin-top:10px;">إلغاء</button></div>
     <div id="notificationToast" class="notification-toast" style="display: none;"></div>
-
     <script>
         let studentData = JSON.parse(localStorage.getItem('studentData') || '{}');
         if (!studentData.id) window.location.href = '/';
@@ -74,131 +60,62 @@
             toast.className = `notification-toast ${type === 'warning' ? 'warning' : (type === 'error' ? 'error' : '')}`;
             toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : (type === 'warning' ? 'fa-clock' : 'fa-exclamation-triangle')}"></i> ${message}`;
             toast.style.display = 'flex';
-            setTimeout(() => {
-                toast.style.animation = 'slideOut 0.5s ease';
-                setTimeout(() => {
-                    toast.style.display = 'none';
-                    toast.style.animation = '';
-                }, 500);
-            }, 5000);
+            setTimeout(() => { toast.style.display = 'none'; }, 5000);
         }
 
-        // بدء مراقبة البث للانتظار التلقائي
         function startWatchingStream(offerId, offerName) {
             if (activeStreamChecker[offerId]) return;
-            
             showNotification(`✅ تم تسجيلك في "${offerName}". في انتظار بدء البث...`, 'warning');
-            
             const checkInterval = setInterval(async () => {
                 try {
                     const res = await fetch(`/api/student/stream-status/${offerId}/${studentData.id}`);
                     const data = await res.json();
-                    
                     if (data.stream_started === true || data.can_join === true) {
                         clearInterval(activeStreamChecker[offerId]);
                         delete activeStreamChecker[offerId];
-                        showNotification(`🎉 بدأ البث المباشر للحصة "${offerName}"! جاري نقلك...`, 'success');
-                        
-                        setTimeout(() => {
-                            window.open(`/api/join-stream/${offerId}/${studentData.id}`, '_blank');
-                        }, 1000);
+                        showNotification(`🎉 بدأ البث المباشر للحصة "${offerName}"! جاري نقلك... (أنت مشاهد فقط)`, 'success');
+                        setTimeout(() => { window.open(`/api/join-stream/${offerId}/${studentData.id}`, '_blank'); }, 1000);
                     }
                 } catch(e) { console.log(e); }
             }, 3000);
-            
             activeStreamChecker[offerId] = checkInterval;
-            
-            // إيقاف المراقبة بعد 30 دقيقة
-            setTimeout(() => {
-                if (activeStreamChecker[offerId]) {
-                    clearInterval(activeStreamChecker[offerId]);
-                    delete activeStreamChecker[offerId];
-                }
-            }, 30 * 60 * 1000);
+            setTimeout(() => { if (activeStreamChecker[offerId]) { clearInterval(activeStreamChecker[offerId]); delete activeStreamChecker[offerId]; } }, 30 * 60 * 1000);
         }
 
         async function loadOffers() {
             const res = await fetch('/api/offers');
             const offers = await res.json();
             const container = document.getElementById('offersList');
-            
-            if (offers.length === 0) {
-                container.innerHTML = '<p style="text-align:center">لا توجد عروض متاحة حالياً</p>';
-                return;
-            }
-            
+            if (offers.length === 0) { container.innerHTML = '<p style="text-align:center">لا توجد عروض متاحة حالياً</p>'; return; }
             let html = '';
             for (const offer of offers) {
                 const offerDate = new Date(offer.offer_date);
                 const isFree = offer.is_free === 1;
                 const priceText = isFree ? 'مجانية' : offer.price + ' دج';
                 const imageUrl = offer.profile_image ? `/uploads/${offer.profile_image}` : 'https://via.placeholder.com/80';
-                
-                // التحقق من تسجيل الطالب بالفعل
                 const checkRes = await fetch(`/api/student/stream-status/${offer.id}/${studentData.id}`);
                 const status = await checkRes.json();
                 const isRegistered = !status.error || status.is_waiting === true;
-                
-                html += `<div class="offer-card">
-                    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
-                        <img src="${imageUrl}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;">
-                        <div>
-                            <h3 style="margin-bottom: 5px;">${offer.teacher_name}</h3>
-                            <p><i class="fas fa-book"></i> ${offer.specialization || 'تخصص عام'}</p>
-                        </div>
-                    </div>
-                    <p><strong>${offer.subject_name}</strong></p>
-                    <p><i class="fas fa-calendar"></i> ${offerDate.toLocaleString('ar')}</p>
-                    <p><i class="fas fa-clock"></i> ${offer.duration} دقيقة</p>
-                    <p><i class="fas fa-tag"></i> ${priceText}</p>
-                    ${!isRegistered ? 
-                        `<button class="book-btn" onclick="bookOffer(${offer.id}, ${isFree ? 0 : offer.price}, '${offer.subject_name.replace(/'/g, "\\'")}')"><i class="fas fa-calendar-plus"></i> ${isFree ? 'تسجيل مجاني' : 'حجز الحصة'}</button>` :
-                        `<div class="waiting-message"><i class="fas fa-clock"></i> ${status.is_waiting ? 'في قائمة الانتظار - سيتم نقلك تلقائياً عند بدء البث' : 'تم التسجيل'}</div>`
-                    }
-                </div>`;
+                html += `<div class="offer-card"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;"><img src="${imageUrl}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;"><div><h3 style="margin-bottom: 5px;">${offer.teacher_name}</h3><p><i class="fas fa-book"></i> ${offer.specialization || 'تخصص عام'}</p></div></div><p><strong>${offer.subject_name}</strong></p><p><i class="fas fa-calendar"></i> ${offerDate.toLocaleString('ar')}</p><p><i class="fas fa-clock"></i> ${offer.duration} دقيقة</p><p><i class="fas fa-tag"></i> ${priceText}</p>${!isRegistered ? `<button class="book-btn" onclick="bookOffer(${offer.id}, ${isFree ? 0 : offer.price}, '${offer.subject_name.replace(/'/g, "\\'")}')"><i class="fas fa-calendar-plus"></i> ${isFree ? 'تسجيل مجاني' : 'حجز الحصة'}</button>` : `<div class="waiting-message"><i class="fas fa-clock"></i> ${status.is_waiting ? 'في قائمة الانتظار - سيتم نقلك تلقائياً عند بدء البث' : 'تم التسجيل'}</div>`}</div>`;
             }
             container.innerHTML = html;
         }
 
         async function bookOffer(offerId, price, offerName) {
-            const res = await fetch('/api/booking/create', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ offer_id: offerId, student_id: studentData.id })
-            });
+            const res = await fetch('/api/booking/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ offer_id: offerId, student_id: studentData.id }) });
             const data = await res.json();
-            
             if (data.success) {
-                if (price === 0) {
-                    showNotification(`✅ تم تسجيلك في "${offerName}" بنجاح! سيتم نقلك تلقائياً عند بدء البث.`, 'success');
-                    startWatchingStream(offerId, offerName);
-                    loadMySessions();
-                    loadOffers();
-                } else {
-                    currentPaymentSession = { session_id: data.session_id, offer_id: offerId, amount: price, offerName: offerName };
-                    showPaymentModal(price, offerName);
-                }
-            } else {
-                showNotification(data.error || 'حدث خطأ', 'error');
-            }
+                if (price === 0) { showNotification(`✅ تم تسجيلك في "${offerName}" بنجاح!`, 'success'); startWatchingStream(offerId, offerName); loadMySessions(); loadOffers(); } 
+                else { currentPaymentSession = { session_id: data.session_id, offer_id: offerId, amount: price, offerName: offerName }; showPaymentModal(price, offerName); }
+            } else { showNotification(data.error || 'حدث خطأ', 'error'); }
         }
 
         function showPaymentModal(amount, offerName) {
             document.getElementById('modalOverlay').style.display = 'block';
             document.getElementById('paymentModal').style.display = 'block';
             document.getElementById('paymentInfo').innerHTML = `💰 قيمة الحصة: <strong>${amount} دج</strong><br>📚 الحصة: ${offerName}<br>🔐 بعد الدفع، سيتم إضافتك إلى قائمة الانتظار.`;
-            
             document.getElementById('payNowBtn').onclick = async () => {
-                const paymentRes = await fetch('/api/create-chargily-payment', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        session_id: currentPaymentSession.session_id,
-                        amount: currentPaymentSession.amount,
-                        student_name: studentData.name,
-                        student_email: studentData.email
-                    })
-                });
+                const paymentRes = await fetch('/api/create-chargily-payment', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: currentPaymentSession.session_id, amount: currentPaymentSession.amount, student_name: studentData.name, student_email: studentData.email }) });
                 const paymentData = await paymentRes.json();
                 if (paymentData.success) {
                     showNotification('✅ تم إنشاء طلب الدفع. جارٍ تأكيد الدفع...', 'warning');
@@ -215,21 +132,13 @@
             };
         }
 
-        function closePaymentModal() {
-            document.getElementById('modalOverlay').style.display = 'none';
-            document.getElementById('paymentModal').style.display = 'none';
-        }
+        function closePaymentModal() { document.getElementById('modalOverlay').style.display = 'none'; document.getElementById('paymentModal').style.display = 'none'; }
 
         async function loadMySessions() {
             const res = await fetch(`/api/student/bookings/${studentData.id}`);
             const bookings = await res.json();
             const container = document.getElementById('mySessions');
-            
-            if (bookings.length === 0) {
-                container.innerHTML = '<p>لا توجد حصص مسجلة</p>';
-                return;
-            }
-            
+            if (bookings.length === 0) { container.innerHTML = '<p>لا توجد حصص مسجلة</p>'; return; }
             let html = '';
             for (const booking of bookings) {
                 const offerDate = new Date(booking.offer_date);
@@ -238,25 +147,8 @@
                 const isLive = booking.offer_status === 'live';
                 const statusText = isLive ? 'بث مباشر' : (isPaid ? (isWaiting ? 'في قائمة الانتظار' : 'مدفوع') : 'بانتظار الدفع');
                 const statusClass = isLive ? 'status-paid' : (isPaid ? 'status-waiting' : 'status-pending');
-                
-                html += `<div class="session-item">
-                    <div>
-                        <strong>${booking.subject_name}</strong><br>
-                        <small>الأستاذ: ${booking.teacher_name}</small><br>
-                        <small>${offerDate.toLocaleString('ar')}</small>
-                    </div>
-                    <div>
-                        <span class="status-badge ${statusClass}">${statusText}</span>
-                        ${isLive ? `<button class="join-btn" onclick="joinLiveStream(${booking.offer_id})" style="margin-top:5px; width:auto; padding:5px 15px;"><i class="fas fa-video"></i> انضم الآن</button>` : ''}
-                        ${isWaiting && !isLive ? `<button class="join-btn" onclick="checkAndJoin(${booking.offer_id})" style="margin-top:5px; width:auto; padding:5px 15px;"><i class="fas fa-clock"></i> انتظر البث</button>` : ''}
-                        ${!isPaid ? `<button class="pay-btn" onclick="retryPayment(${booking.id}, ${booking.price}, '${booking.subject_name.replace(/'/g, "\\'")}')">إتمام الدفع</button>` : ''}
-                    </div>
-                </div>`;
-                
-                // إذا كان في الانتظار ولم يتم بدء المراقبة
-                if (isWaiting && !isLive && !activeStreamChecker[booking.offer_id]) {
-                    startWatchingStream(booking.offer_id, booking.subject_name);
-                }
+                html += `<div class="session-item"><div><strong>${booking.subject_name}</strong><br><small>الأستاذ: ${booking.teacher_name}</small><br><small>${offerDate.toLocaleString('ar')}</small></div><div><span class="status-badge ${statusClass}">${statusText}</span>${isLive ? `<button class="join-btn" onclick="joinLiveStream(${booking.offer_id})" style="margin-top:5px; width:auto; padding:5px 15px;"><i class="fas fa-video"></i> انضم (مشاهد)</button>` : ''}${isWaiting && !isLive ? `<button class="join-btn" onclick="checkAndJoin(${booking.offer_id})" style="margin-top:5px; width:auto; padding:5px 15px;"><i class="fas fa-clock"></i> انتظر البث</button>` : ''}${!isPaid ? `<button class="pay-btn" onclick="retryPayment(${booking.id}, ${booking.price}, '${booking.subject_name.replace(/'/g, "\\'")}')">إتمام الدفع</button>` : ''}</div></div>`;
+                if (isWaiting && !isLive && !activeStreamChecker[booking.offer_id]) { startWatchingStream(booking.offer_id, booking.subject_name); }
             }
             container.innerHTML = html;
         }
@@ -264,37 +156,15 @@
         async function checkAndJoin(offerId) {
             const res = await fetch(`/api/student/stream-status/${offerId}/${studentData.id}`);
             const data = await res.json();
-            
-            if (data.can_join) {
-                window.open(`/api/join-stream/${offerId}/${studentData.id}`, '_blank');
-            } else if (data.is_waiting) {
-                showNotification('⏳ أنت في قائمة الانتظار. سيتم نقلك تلقائياً عند بدء البث.', 'warning');
-                startWatchingStream(offerId, 'الحصة');
-            } else {
-                showNotification(data.error || 'لا يمكن الانضمام حالياً', 'error');
-            }
+            if (data.can_join) { window.open(`/api/join-stream/${offerId}/${studentData.id}`, '_blank'); } 
+            else if (data.is_waiting) { showNotification('⏳ أنت في قائمة الانتظار. سيتم نقلك تلقائياً عند بدء البث.', 'warning'); startWatchingStream(offerId, 'الحصة'); } 
+            else { showNotification(data.error || 'لا يمكن الانضمام حالياً', 'error'); }
         }
 
-        async function joinLiveStream(offerId) {
-            window.open(`/api/join-stream/${offerId}/${studentData.id}`, '_blank');
-        }
-
-        function retryPayment(sessionId, amount, offerName) {
-            currentPaymentSession = { session_id: sessionId, amount: amount, offerName: offerName };
-            showPaymentModal(amount, offerName);
-        }
-
-        function logout() {
-            // إيقاف جميع المؤقتات
-            Object.values(activeStreamChecker).forEach(interval => clearInterval(interval));
-            localStorage.removeItem('studentToken');
-            localStorage.removeItem('studentData');
-            window.location.href = '/';
-        }
-
-        loadOffers();
-        loadMySessions();
-        setInterval(() => { loadMySessions(); loadOffers(); }, 10000);
+        async function joinLiveStream(offerId) { window.open(`/api/join-stream/${offerId}/${studentData.id}`, '_blank'); }
+        function retryPayment(sessionId, amount, offerName) { currentPaymentSession = { session_id: sessionId, amount: amount, offerName: offerName }; showPaymentModal(amount, offerName); }
+        function logout() { Object.values(activeStreamChecker).forEach(interval => clearInterval(interval)); localStorage.removeItem('studentToken'); localStorage.removeItem('studentData'); window.location.href = '/'; }
+        loadOffers(); loadMySessions(); setInterval(() => { loadMySessions(); loadOffers(); }, 10000);
     </script>
 </body>
 </html>
