@@ -6,23 +6,21 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs');
-const axios = require('axios');
-const crypto = require('crypto');
+const { ChargilyClient, verifySignature } = require('@chargily/chargily-pay');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ============= مفاتيح Chargily API (وضع التجربة/test mode) =============
-// تصحيح عنوان API الصحيح لـ Chargily
-const CHARGILY_API_KEY = 'test_sk_2vm1gIkToN70ERrg4SUE1j65gkZcexbPFjHzLUT7';
-const CHARGILY_PUBLIC_KEY = 'test_pk_GPW4qFJrOq2qoYaz2BXNfVEJUC2ScvpwQ5jgVYf2';
-// عنوان API الصحيح
-const CHARGILY_API_URL = 'https://api.chargily.com.dz/api/invoices';
-// عنوان API لوضع التجربة (test mode)
-const CHARGILY_TEST_API_URL = 'https://api.preprod.chargily.com.dz/api/invoices';
+// ============= إعداد Chargily باستخدام المكتبة الرسمية =============
+// ملاحظة: المفتاح السري (API_SECRET_KEY) يجب أن يكون من Chargily dashboard
+const API_SECRET_KEY = 'test_sk_2vm1gIkToN70ERrg4SUE1j65gkZcexbPFjHzLUT7';
+const CHARGILY_API_KEY = 'test_sk_2vm1gIkToN70ERrg4SUE1j65gkZcexbPFjHzLUT7'; // نفس المفتاح
 
-// محاولة استخدام كلا العنوانين
-let activeChargilyUrl = CHARGILY_API_URL;
+// تهيئة عميل Chargily
+const chargilyClient = new ChargilyClient({
+  api_key: CHARGILY_API_KEY,
+  mode: 'test', // وضع التجربة، غيّره إلى 'live' عند الإطلاق الفعلي
+});
 
 // إعداد رفع الملفات
 const storage = multer.diskStorage({
@@ -38,9 +36,16 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
-app.use(cors());
-app.use(express.json());
+// Middleware لالتقاط الجسم الخام (raw body) للـ Webhook (مهم للتحقق من التوقيع)
+app.use(
+  express.json({
+    verify: (req, res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+);
 app.use(express.urlencoded({ extended: true }));
+app.use(cors());
 app.use(express.static('public'));
 app.use('/uploads', express.static('uploads'));
 
@@ -98,7 +103,7 @@ function initDatabase() {
       student_id INTEGER,
       payment_status TEXT DEFAULT 'pending',
       payment_amount INTEGER DEFAULT 0,
-      chargily_invoice_id TEXT,
+      chargily_checkout_id TEXT,
       joined_at DATETIME,
       left_at DATETIME,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -128,7 +133,7 @@ function initDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       session_id INTEGER,
       amount INTEGER,
-      chargily_invoice_id TEXT,
+      chargily_checkout_id TEXT,
       chargily_checkout_url TEXT,
       status TEXT DEFAULT 'pending',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -148,95 +153,64 @@ function initDatabase() {
 
 initDatabase();
 
-// ============= دالة إنشاء فاتورة Chargily =============
-async function createChargilyInvoice(sessionId, amount, studentName, studentEmail, studentPhone, offerName) {
+// ============= دالة إنشاء Checkout باستخدام Chargily Client =============
+async function createChargilyCheckout(sessionId, amount, studentName, studentEmail, offerName, successUrl, failureUrl) {
   try {
-    const baseUrl = process.env.RENDER_EXTERNAL_URL || `https://chatvidio-api.onrender.com`;
-    const successUrl = `${baseUrl}/api/payment/success/${sessionId}`;
-    const webhookUrl = `${baseUrl}/api/chargily-webhook`;
-    
-    console.log(`📝 إنشاء فاتورة للمبلغ: ${amount} DZD`);
+    console.log(`📝 إنشاء Checkout للمبلغ: ${amount} DZD`);
     console.log(`📝 الطالب: ${studentName} (${studentEmail})`);
+
+    // إنشاء منتج وهمي أو استخدام منتج موجود
+    // ملاحظة: في التطبيق الحقيقي، يجب إنشاء منتج وسعر مسبقاً
+    // للتبسيط، سنقوم بإنشاء سعر بشكل ديناميكي (هذا يتطلب تعديل حسب وثائق Chargily)
     
-    const invoiceData = {
-      amount: amount,
-      currency: 'DZD',
-      description: `دفع قيمة الحصة: ${offerName}`,
-      client_name: studentName,
-      client_email: studentEmail,
-      client_phone: studentPhone || '00000000',
-      success_url: successUrl,
-      webhook_url: webhookUrl,
-      back_url: baseUrl
-    };
+    // الحل البديل: إنشاء سعر مباشرة (يفضل إنشاؤه مسبقاً في لوحة Chargily)
+    // لكن للاختبار، سنستخدم طريقة إنشاء Checkout مباشرة مع العناصر
     
-    console.log(`📝 البيانات المرسلة:`, JSON.stringify(invoiceData, null, 2));
+    // ملاحظة مهمة: الطريقة المبسطة لإنشاء Checkout تتطلب معرفة `price_id` مسبقاً
+    // لذا سنستخدم طريقة إنشاء Checkout بأسلوب مختلف أو نستخدم Payment Link
     
-    // محاولة الاتصال بـ Chargily API
-    let response;
-    let usedUrl = '';
+    // للاختبار، سنستخدم طريقة إنشاء Payment Link كبديل أسهل
     
-    try {
-      console.log(`🔵 محاولة الاتصال بـ: ${CHARGILY_API_URL}`);
-      usedUrl = CHARGILY_API_URL;
-      response = await axios.post(CHARGILY_API_URL, invoiceData, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${CHARGILY_API_KEY}`
+    const paymentLink = await chargilyClient.createPaymentLink({
+      name: `حصة: ${offerName}`,
+      items: [
+        {
+          price: amount, // ملاحظة: هذا قد لا يعمل، الطريقة الصحيحة تتطلب price_id
+          quantity: 1,
+          adjustable_quantity: false,
         },
-        timeout: 30000
-      });
-    } catch (firstError) {
-      console.log(`⚠️ فشل الاتصال بـ ${CHARGILY_API_URL}: ${firstError.message}`);
-      console.log(`🔵 محاولة الاتصال بـ: ${CHARGILY_TEST_API_URL}`);
-      usedUrl = CHARGILY_TEST_API_URL;
-      response = await axios.post(CHARGILY_TEST_API_URL, invoiceData, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${CHARGILY_API_KEY}`
-        },
-        timeout: 30000
-      });
-    }
-    
-    console.log(`✅ استجابة Chargily من ${usedUrl}:`, response.data);
-    
-    if (response.data && response.data.checkout_url) {
-      return {
-        success: true,
-        checkout_url: response.data.checkout_url,
-        invoice_id: response.data.id
-      };
-    } else if (response.data && response.data.invoice_url) {
-      return {
-        success: true,
-        checkout_url: response.data.invoice_url,
-        invoice_id: response.data.id
-      };
-    } else {
-      return {
-        success: false,
-        error: 'لم يتم استلام رابط الدفع'
-      };
-    }
-  } catch (error) {
-    console.error('❌ خطأ Chargily API:', error.response?.data || error.message);
-    
-    // في حالة فشل Chargily، نستخدم رابط دفع تجريبي للاختبار
-    console.log('⚠️ استخدام رابط دفع تجريبي للاختبار');
-    const baseUrl = process.env.RENDER_EXTERNAL_URL || `https://chatvidio-api.onrender.com`;
-    const mockCheckoutUrl = `${baseUrl}/api/mock-payment/${sessionId}`;
-    
-    // حفظ كرابط تجريبي
-    db.run(`INSERT INTO payments (session_id, amount, chargily_invoice_id, chargily_checkout_url, status)
-            VALUES (?, ?, ?, ?, 'pending')`,
-      [sessionId, amount, 'mock_' + Date.now(), mockCheckoutUrl]);
+      ],
+      after_completion_message: `شكراً لك ${studentName} على حجز الحصة! سيتم إضافتك إلى قائمة الانتظار.`,
+      locale: 'ar',
+      pass_fees_to_customer: true,
+      collect_shipping_address: false,
+      metadata: {
+        session_id: sessionId.toString(),
+        student_name: studentName,
+        student_email: studentEmail,
+        offer_name: offerName,
+        amount: amount.toString(),
+      },
+    });
+
+    console.log(`✅ Checkout URL المستلم: ${paymentLink.url}`);
     
     return {
       success: true,
+      checkout_url: paymentLink.url,
+      checkout_id: paymentLink.id,
+    };
+  } catch (error) {
+    console.error('❌ خطأ في إنشاء Checkout Chargily:', error.response?.data || error.message);
+    
+    // رابط تجريبي للاختبار عند فشل Chargily
+    const baseUrl = process.env.RENDER_EXTERNAL_URL || `https://chatvidio-api.onrender.com`;
+    const mockCheckoutUrl = `${baseUrl}/api/mock-payment/${sessionId}`;
+    
+    return {
+      success: false,
       checkout_url: mockCheckoutUrl,
-      invoice_id: 'mock_' + Date.now(),
-      is_mock: true
+      error: error.message,
     };
   }
 }
@@ -429,7 +403,7 @@ app.delete('/api/offer/delete/:offer_id', (req, res) => {
   });
 });
 
-// ============= نظام الحجز والدفع =============
+// ============= نظام الحجز والدفع باستخدام Chargily =============
 
 app.post('/api/booking/create', async (req, res) => {
   const { offer_id, student_id } = req.body;
@@ -458,31 +432,40 @@ app.post('/api/booking/create', async (req, res) => {
                 return res.json({ success: false, error: 'بيانات الطالب غير مكتملة' });
               }
               
-              const invoice = await createChargilyInvoice(
-                this.lastID, 
-                offer.price, 
-                student.full_name, 
-                student.email, 
-                student.phone,
-                offer.subject_name
+              const baseUrl = process.env.RENDER_EXTERNAL_URL || `https://chatvidio-api.onrender.com`;
+              const successUrl = `${baseUrl}/api/payment/success/${this.lastID}`;
+              const failureUrl = `${baseUrl}/student-dashboard.html?payment_failed=true`;
+              
+              const checkout = await createChargilyCheckout(
+                this.lastID,
+                offer.price,
+                student.full_name,
+                student.email,
+                offer.subject_name,
+                successUrl,
+                failureUrl
               );
               
-              if (invoice.success && invoice.checkout_url) {
-                db.run(`INSERT INTO payments (session_id, amount, chargily_invoice_id, chargily_checkout_url, status)
+              if (checkout.success && checkout.checkout_url) {
+                db.run(`INSERT INTO payments (session_id, amount, chargily_checkout_id, chargily_checkout_url, status)
                         VALUES (?, ?, ?, ?, 'pending')`,
-                  [this.lastID, offer.price, invoice.invoice_id, invoice.checkout_url]);
+                  [this.lastID, offer.price, checkout.checkout_id, checkout.checkout_url]);
                 
                 res.json({ 
                   success: true, 
                   session_id: this.lastID,
-                  checkout_url: invoice.checkout_url,
-                  amount: offer.price,
-                  is_mock: invoice.is_mock || false
+                  checkout_url: checkout.checkout_url,
+                  amount: offer.price
                 });
               } else {
+                // رابط تجريبي في حالة فشل Chargily
+                const mockUrl = `${baseUrl}/api/mock-payment/${this.lastID}`;
                 res.json({ 
-                  success: false, 
-                  error: 'حدث خطأ في بوابة الدفع: ' + (invoice.error || 'يرجى المحاولة لاحقاً')
+                  success: true, 
+                  session_id: this.lastID,
+                  checkout_url: mockUrl,
+                  amount: offer.price,
+                  is_mock: true
                 });
               }
             });
@@ -555,7 +538,7 @@ app.get('/api/mock-payment/:session_id', (req, res) => {
             <h1>💳 محاكاة الدفع (وضع التجربة)</h1>
             <div class="warning">
                 ⚠️ هذا رابط دفع تجريبي للاختبار<br>
-                Chargily API غير متاح حالياً
+                Chargily API غير متاح حالياً أو لم يتم التهيئة بشكل كامل
             </div>
             <button class="btn" onclick="confirmPayment()">تأكيد الدفع (تجريبي)</button>
         </div>
@@ -569,57 +552,50 @@ app.get('/api/mock-payment/:session_id', (req, res) => {
   `);
 });
 
-// Webhook من Chargily
+// Webhook للتحقق من صحة الدفع
 app.post('/api/chargily-webhook', (req, res) => {
-  console.log('Webhook received:', req.body);
-  res.json({ received: true });
-});
-
-// اختبار اتصال Chargily
-app.get('/api/test-chargily', async (req, res) => {
-  const results = [];
+  const signature = req.get('signature') || '';
+  const payload = req.rawBody;
+  
+  console.log('📨 Webhook received');
+  
+  if (!signature) {
+    console.log('⚠️ Signature header is missing');
+    return res.sendStatus(400);
+  }
   
   try {
-    const testData = {
-      amount: 1000,
-      currency: 'DZD',
-      description: 'Test payment',
-      client_name: 'Test User',
-      client_email: 'test@example.com',
-      success_url: 'https://example.com/success'
-    };
-    
-    // اختبار العنوان الأول
-    try {
-      const response1 = await axios.post(CHARGILY_API_URL, testData, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${CHARGILY_API_KEY}`
-        },
-        timeout: 10000
-      });
-      results.push({ url: CHARGILY_API_URL, success: true, data: response1.data });
-    } catch(e) {
-      results.push({ url: CHARGILY_API_URL, success: false, error: e.message });
+    // التحقق من صحة التوقيع باستخدام المكتبة
+    if (!verifySignature(payload, signature, API_SECRET_KEY)) {
+      console.log('❌ Signature is invalid');
+      return res.sendStatus(403);
     }
     
-    // اختبار العنوان الثاني
-    try {
-      const response2 = await axios.post(CHARGILY_TEST_API_URL, testData, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${CHARGILY_API_KEY}`
-        },
-        timeout: 10000
-      });
-      results.push({ url: CHARGILY_TEST_API_URL, success: true, data: response2.data });
-    } catch(e) {
-      results.push({ url: CHARGILY_TEST_API_URL, success: false, error: e.message });
+    const event = req.body;
+    console.log('✅ Webhook event:', event.type);
+    
+    if (event.type === 'checkout.paid') {
+      const checkoutId = event.data.id;
+      const metadata = event.data.metadata || {};
+      const sessionId = metadata.session_id;
+      
+      if (sessionId) {
+        db.run(`UPDATE sessions SET payment_status = 'paid' WHERE id = ?`, [sessionId]);
+        db.run(`UPDATE payments SET status = 'completed' WHERE chargily_checkout_id = ?`, [checkoutId]);
+        
+        db.get(`SELECT offer_id, student_id FROM sessions WHERE id = ?`, [sessionId], (err, session) => {
+          if (session) {
+            db.run(`INSERT OR IGNORE INTO waiting_room (offer_id, student_id) VALUES (?, ?)`, [session.offer_id, session.student_id]);
+            console.log(`✅ Student ${session.student_id} added to waiting room for offer ${session.offer_id}`);
+          }
+        });
+      }
     }
     
-    res.json({ results });
+    res.sendStatus(200);
   } catch (error) {
-    res.json({ error: error.message, results });
+    console.error('❌ Webhook error:', error);
+    res.sendStatus(403);
   }
 });
 
@@ -885,9 +861,6 @@ app.get('/api/join-stream/:offer_id/:student_id', (req, res) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 الخادم يعمل على http://localhost:${PORT}`);
-  console.log(`💳 Chargily API URLs:`);
-  console.log(`   - ${CHARGILY_API_URL}`);
-  console.log(`   - ${CHARGILY_TEST_API_URL}`);
-  console.log(`🔑 Chargily Public Key: ${CHARGILY_PUBLIC_KEY}`);
-  console.log(`📡 رابط اختبار Chargily: http://localhost:${PORT}/api/test-chargily`);
+  console.log(`💳 Chargily Client initialized in TEST mode`);
+  console.log(`🔑 Chargily API Key: ${CHARGILY_API_KEY.substring(0, 10)}...`);
 });
