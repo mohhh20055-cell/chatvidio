@@ -7,14 +7,13 @@ const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs');
 const crypto = require('crypto');
-const axios = require('axios'); // ✅ FIX 1: moved to top-level import
+const axios = require('axios');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ============= مفاتيح Chargily API (وضع التجربة) =============
 const CHARGILY_API_KEY = 'test_sk_2vm1gIkToN70ERrg4SUE1j65gkZcexbPFjHzLUT7';
-// ✅ FIX 2: Correct Chargily Pay v2 test API base URL
 const CHARGILY_API_URL = 'https://pay.chargily.net/test/api/v2';
 
 // إعداد رفع الملفات
@@ -138,14 +137,13 @@ function initDatabase() {
 
 initDatabase();
 
-// ============= دالة إنشاء Checkout في Chargily (Pay v2) =============
+// ============= دالة إنشاء Checkout في Chargily =============
 async function createChargilyCheckout(amount, studentName, studentEmail, studentPhone, offerName, successUrl, failureUrl) {
   try {
     console.log(`💰 إنشاء دفع للمبلغ: ${amount} DZD`);
     console.log(`👤 الطالب: ${studentName} - ${studentEmail}`);
+    console.log(`🌐 عنوان Chargily: ${CHARGILY_API_URL}/checkouts`);
 
-    // ✅ FIX 3: Correct Chargily Pay v2 checkout payload
-    // The API expects: amount (in DZD), currency, success_url, and optionally failure_url
     const checkoutData = {
       amount: amount,
       currency: 'dzd',
@@ -160,10 +158,8 @@ async function createChargilyCheckout(amount, studentName, studentEmail, student
       }
     };
 
-    console.log(`📤 إرسال طلب إلى Chargily Pay v2...`);
-    console.log(`🌐 URL: ${CHARGILY_API_URL}/checkouts`);
+    console.log(`📤 إرسال طلب إلى Chargily...`);
 
-    // ✅ FIX 4: Correct endpoint path /checkouts (not /api/checkouts)
     const response = await axios.post(`${CHARGILY_API_URL}/checkouts`, checkoutData, {
       headers: {
         'Content-Type': 'application/json',
@@ -172,7 +168,7 @@ async function createChargilyCheckout(amount, studentName, studentEmail, student
       timeout: 30000
     });
 
-    console.log(`✅ استجابة Chargily:`, response.status, JSON.stringify(response.data));
+    console.log(`✅ استجابة Chargily:`, response.status);
 
     if (response.data && response.data.checkout_url) {
       return {
@@ -401,7 +397,6 @@ app.post('/api/booking/create', async (req, res) => {
         function (err) {
           if (err) return res.json({ success: false, error: err.message });
 
-          // ✅ FIX 5: capture lastID immediately before any async call loses the context
           const sessionId = this.lastID;
 
           if (offer.is_free === 1) {
@@ -409,7 +404,6 @@ app.post('/api/booking/create', async (req, res) => {
             return res.json({ success: true, session_id: sessionId, is_free: true });
           }
 
-          // Paid offer — create Chargily checkout
           db.get(`SELECT full_name, email, phone FROM students WHERE id = ?`, [student_id], async (err, student) => {
             if (err || !student) {
               return res.json({ success: false, error: 'بيانات الطالب غير مكتملة' });
@@ -446,7 +440,6 @@ app.post('/api/booking/create', async (req, res) => {
               });
             } else {
               console.error(`❌ فشل إنشاء الدفع: ${checkout.error}`);
-              // Roll back the session so the student can retry
               db.run(`DELETE FROM sessions WHERE id = ?`, [sessionId]);
               return res.json({
                 success: false,
