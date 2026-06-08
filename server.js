@@ -7,14 +7,15 @@ const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs');
 const crypto = require('crypto');
+const axios = require('axios'); // ✅ FIX 1: moved to top-level import
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ============= مفاتيح Chargily API (وضع التجربة) =============
 const CHARGILY_API_KEY = 'test_sk_2vm1gIkToN70ERrg4SUE1j65gkZcexbPFjHzLUT7';
-const CHARGILY_PUBLIC_KEY = 'test_pk_GPW4qFJrOq2qoYaz2BXNfVEJUC2ScvpwQ5jgVYf2';
-const CHARGILY_API_URL = 'https://api.preprod.chargily.com.dz';
+// ✅ FIX 2: Correct Chargily Pay v2 test API base URL
+const CHARGILY_API_URL = 'https://pay.chargily.net/test/api/v2';
 
 // إعداد رفع الملفات
 const storage = multer.diskStorage({
@@ -127,7 +128,7 @@ function initDatabase() {
     db.get("SELECT * FROM teachers WHERE email = 'admin@platform.com'", [], (err, row) => {
       if (!row && !err) {
         const hashedPassword = bcrypt.hashSync('admin123', 10);
-        db.run("INSERT INTO teachers (full_name, email, password, phone, status) VALUES (?, ?, ?, ?, 'approved')", 
+        db.run("INSERT INTO teachers (full_name, email, password, phone, status) VALUES (?, ?, ?, ?, 'approved')",
           ['مدير المنصة', 'admin@platform.com', hashedPassword, '00000000']);
         console.log('✅ تم إنشاء حساب admin بنجاح');
       }
@@ -137,39 +138,42 @@ function initDatabase() {
 
 initDatabase();
 
-// ============= دالة إنشاء Checkout في Chargily مباشرة =============
+// ============= دالة إنشاء Checkout في Chargily (Pay v2) =============
 async function createChargilyCheckout(amount, studentName, studentEmail, studentPhone, offerName, successUrl, failureUrl) {
   try {
     console.log(`💰 إنشاء دفع للمبلغ: ${amount} DZD`);
     console.log(`👤 الطالب: ${studentName} - ${studentEmail}`);
-    
-    // استخدام API المباشر لـ Chargily لإنشاء Checkout
-    const axios = require('axios');
-    
+
+    // ✅ FIX 3: Correct Chargily Pay v2 checkout payload
+    // The API expects: amount (in DZD), currency, success_url, and optionally failure_url
     const checkoutData = {
       amount: amount,
       currency: 'dzd',
       success_url: successUrl,
       failure_url: failureUrl,
+      locale: 'ar',
+      description: offerName,
       metadata: {
         student_name: studentName,
         student_email: studentEmail,
         offer_name: offerName
       }
     };
-    
-    console.log(`📤 إرسال طلب إلى Chargily...`);
-    
-    const response = await axios.post(`${CHARGILY_API_URL}/api/checkouts`, checkoutData, {
+
+    console.log(`📤 إرسال طلب إلى Chargily Pay v2...`);
+    console.log(`🌐 URL: ${CHARGILY_API_URL}/checkouts`);
+
+    // ✅ FIX 4: Correct endpoint path /checkouts (not /api/checkouts)
+    const response = await axios.post(`${CHARGILY_API_URL}/checkouts`, checkoutData, {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${CHARGILY_API_KEY}`
       },
       timeout: 30000
     });
-    
-    console.log(`✅ استجابة Chargily:`, response.status);
-    
+
+    console.log(`✅ استجابة Chargily:`, response.status, JSON.stringify(response.data));
+
     if (response.data && response.data.checkout_url) {
       return {
         success: true,
@@ -177,10 +181,11 @@ async function createChargilyCheckout(amount, studentName, studentEmail, student
         checkout_id: response.data.id
       };
     } else {
-      throw new Error('لم يتم استلام رابط الدفع');
+      throw new Error('لم يتم استلام رابط الدفع من Chargily');
     }
   } catch (error) {
-    console.error('❌ خطأ Chargily:', error.response?.data || error.message);
+    const errDetail = error.response?.data || error.message;
+    console.error('❌ خطأ Chargily:', JSON.stringify(errDetail));
     return {
       success: false,
       error: error.response?.data?.message || error.message
@@ -198,31 +203,31 @@ app.post('/api/teacher/register', upload.fields([
 ]), async (req, res) => {
   try {
     const { full_name, email, password, phone, specialization, bio, experience } = req.body;
-    
+
     if (!full_name || !email || !password || !phone || !specialization || !bio || !experience) {
       return res.json({ success: false, error: 'يرجى ملء جميع الحقول المطلوبة' });
     }
-    
+
     if (!req.files || !req.files['profile_image'] || !req.files['diploma_image'] || !req.files['id_image']) {
       return res.json({ success: false, error: 'يرجى رفع جميع الصور المطلوبة' });
     }
-    
+
     const hashedPassword = bcrypt.hashSync(password, 10);
     const profile_image = req.files['profile_image'][0].filename;
     const diploma_image = req.files['diploma_image'][0].filename;
     const id_image = req.files['id_image'][0].filename;
-    
+
     db.run(`INSERT INTO teachers (full_name, email, password, phone, specialization, bio, experience, profile_image, diploma_image, id_image, status)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
       [full_name, email, hashedPassword, phone, specialization, bio, experience, profile_image, diploma_image, id_image],
-      function(err) {
+      function (err) {
         if (err) {
           if (err.message.includes('UNIQUE')) return res.json({ success: false, error: 'البريد الإلكتروني مستخدم مسبقاً' });
           return res.json({ success: false, error: 'حدث خطأ: ' + err.message });
         }
         res.json({ success: true, message: 'تم إرسال طلبك، سيتم مراجعته من قبل الإدارة' });
       });
-  } catch(error) {
+  } catch (error) {
     res.json({ success: false, error: 'خطأ في الخادم: ' + error.message });
   }
 });
@@ -235,18 +240,18 @@ app.post('/api/student/register', async (req, res) => {
       return res.json({ success: false, error: 'يرجى ملء جميع الحقول' });
     }
     const hashedPassword = bcrypt.hashSync(password, 10);
-    
+
     db.run(`INSERT INTO students (full_name, email, password, phone, balance)
             VALUES (?, ?, ?, ?, 0)`,
       [full_name, email, hashedPassword, phone],
-      function(err) {
+      function (err) {
         if (err) {
           if (err.message.includes('UNIQUE')) return res.json({ success: false, error: 'البريد الإلكتروني مستخدم' });
           return res.json({ success: false, error: 'حدث خطأ: ' + err.message });
         }
         res.json({ success: true, message: 'تم التسجيل بنجاح' });
       });
-  } catch(error) {
+  } catch (error) {
     res.json({ success: false, error: 'خطأ في الخادم' });
   }
 });
@@ -256,21 +261,21 @@ app.post('/api/login', (req, res) => {
   try {
     const { email, password, role } = req.body;
     const table = role === 'teacher' ? 'teachers' : 'students';
-    
+
     db.get(`SELECT * FROM ${table} WHERE email = ?`, [email], (err, user) => {
       if (err || !user) return res.json({ success: false, error: 'البريد الإلكتروني غير موجود' });
-      
+
       const validPassword = bcrypt.compareSync(password, user.password);
       if (!validPassword) return res.json({ success: false, error: 'كلمة المرور خاطئة' });
-      
+
       if (role === 'teacher' && user.status !== 'approved' && user.email !== 'admin@platform.com') {
         return res.json({ success: false, error: 'حسابك قيد المراجعة من قبل الإدارة' });
       }
-      
+
       const token = jwt.sign({ id: user.id, email: user.email, role, name: user.full_name }, 'secret_key', { expiresIn: '7d' });
       res.json({ success: true, token, user: { id: user.id, name: user.full_name, email: user.email, role, status: user.status } });
     });
-  } catch(error) {
+  } catch (error) {
     res.json({ success: false, error: 'خطأ في الخادم' });
   }
 });
@@ -289,14 +294,14 @@ app.get('/api/admin/approved-teachers', (req, res) => {
 });
 
 app.post('/api/admin/approve-teacher/:id', (req, res) => {
-  db.run("UPDATE teachers SET status = 'approved' WHERE id = ?", [req.params.id], function(err) {
+  db.run("UPDATE teachers SET status = 'approved' WHERE id = ?", [req.params.id], function (err) {
     res.json({ success: true });
   });
 });
 
 app.post('/api/admin/reject-teacher/:id', (req, res) => {
   const { reason } = req.body;
-  db.run("UPDATE teachers SET status = 'rejected', rejection_reason = ? WHERE id = ?", [reason, req.params.id], function(err) {
+  db.run("UPDATE teachers SET status = 'rejected', rejection_reason = ? WHERE id = ?", [reason, req.params.id], function (err) {
     res.json({ success: true });
   });
 });
@@ -310,9 +315,9 @@ app.get('/api/public/teachers', (req, res) => {
 });
 
 app.get('/api/public/offers', (req, res) => {
-  db.all(`SELECT o.*, t.full_name as teacher_name, t.specialization, t.profile_image 
-          FROM offers o 
-          JOIN teachers t ON o.teacher_id = t.id 
+  db.all(`SELECT o.*, t.full_name as teacher_name, t.specialization, t.profile_image
+          FROM offers o
+          JOIN teachers t ON o.teacher_id = t.id
           WHERE o.status = 'upcoming' AND o.offer_date > datetime('now') AND t.status = 'approved'
           ORDER BY o.offer_date ASC`, [], (err, rows) => {
     res.json(rows || []);
@@ -324,20 +329,20 @@ app.get('/api/public/offers', (req, res) => {
 app.post('/api/offer/create', (req, res) => {
   const { teacher_id, subject_name, duration, offer_date, price, is_free } = req.body;
   const room_name = `stream_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
-  
+
   db.run(`INSERT INTO offers (teacher_id, subject_name, duration, offer_date, price, is_free, room_name, status)
           VALUES (?, ?, ?, ?, ?, ?, ?, 'upcoming')`,
     [teacher_id, subject_name, duration, offer_date, price, is_free ? 1 : 0, room_name],
-    function(err) {
+    function (err) {
       if (err) return res.json({ success: false, error: err.message });
       res.json({ success: true, offer_id: this.lastID, room_name });
     });
 });
 
 app.get('/api/offers', (req, res) => {
-  db.all(`SELECT o.*, t.full_name as teacher_name, t.specialization, t.profile_image 
-          FROM offers o 
-          JOIN teachers t ON o.teacher_id = t.id 
+  db.all(`SELECT o.*, t.full_name as teacher_name, t.specialization, t.profile_image
+          FROM offers o
+          JOIN teachers t ON o.teacher_id = t.id
           WHERE o.status = 'upcoming' AND o.offer_date > datetime('now') AND t.status = 'approved'
           ORDER BY o.offer_date ASC`, [], (err, rows) => {
     res.json(rows || []);
@@ -345,9 +350,9 @@ app.get('/api/offers', (req, res) => {
 });
 
 app.get('/api/live-offers', (req, res) => {
-  db.all(`SELECT o.*, t.full_name as teacher_name, t.specialization, t.profile_image 
-          FROM offers o 
-          JOIN teachers t ON o.teacher_id = t.id 
+  db.all(`SELECT o.*, t.full_name as teacher_name, t.specialization, t.profile_image
+          FROM offers o
+          JOIN teachers t ON o.teacher_id = t.id
           WHERE o.status = 'live' AND t.status = 'approved'
           ORDER BY o.offer_date DESC`, [], (err, rows) => {
     res.json(rows || []);
@@ -363,14 +368,14 @@ app.get('/api/teacher/offers/:teacher_id', (req, res) => {
 app.delete('/api/offer/delete/:offer_id', (req, res) => {
   const { offer_id } = req.params;
   const { teacher_id } = req.body;
-  
+
   db.get(`SELECT * FROM offers WHERE id = ? AND teacher_id = ?`, [offer_id, teacher_id], (err, offer) => {
     if (!offer) return res.json({ success: false, error: 'غير مصرح لك' });
-    
+
     db.run(`DELETE FROM sessions WHERE offer_id = ?`, [offer_id]);
     db.run(`DELETE FROM waiting_room WHERE offer_id = ?`, [offer_id]);
     db.run(`DELETE FROM active_stream WHERE offer_id = ?`, [offer_id]);
-    db.run(`DELETE FROM offers WHERE id = ?`, [offer_id], function(err) {
+    db.run(`DELETE FROM offers WHERE id = ?`, [offer_id], function (err) {
       res.json({ success: true });
     });
   });
@@ -380,69 +385,75 @@ app.delete('/api/offer/delete/:offer_id', (req, res) => {
 
 app.post('/api/booking/create', async (req, res) => {
   const { offer_id, student_id } = req.body;
-  
+
   db.get(`SELECT * FROM sessions WHERE offer_id = ? AND student_id = ?`, [offer_id, student_id], (err, existing) => {
     if (existing) {
       return res.json({ success: false, error: 'أنت مسجل بالفعل في هذه الحصة' });
     }
-    
+
     db.get(`SELECT o.*, t.full_name as teacher_name FROM offers o JOIN teachers t ON o.teacher_id = t.id WHERE o.id = ?`, [offer_id], async (err, offer) => {
       if (!offer) return res.json({ success: false, error: 'العرض غير موجود' });
-      
+
       const payment_status = offer.is_free === 1 ? 'paid' : 'pending';
-      
+
       db.run(`INSERT INTO sessions (offer_id, student_id, payment_status, payment_amount) VALUES (?, ?, ?, ?)`,
         [offer_id, student_id, payment_status, offer.price],
-        async function(err) {
+        function (err) {
           if (err) return res.json({ success: false, error: err.message });
-          
+
+          // ✅ FIX 5: capture lastID immediately before any async call loses the context
+          const sessionId = this.lastID;
+
           if (offer.is_free === 1) {
             db.run(`INSERT INTO waiting_room (offer_id, student_id) VALUES (?, ?)`, [offer_id, student_id]);
-            return res.json({ success: true, session_id: this.lastID, is_free: true });
-          } else {
-            db.get(`SELECT full_name, email, phone FROM students WHERE id = ?`, [student_id], async (err, student) => {
-              if (err || !student) {
-                return res.json({ success: false, error: 'بيانات الطالب غير مكتملة' });
-              }
-              
-              const baseUrl = process.env.RENDER_EXTERNAL_URL || `https://chatvidio-api.onrender.com`;
-              const successUrl = `${baseUrl}/api/payment/success/${this.lastID}`;
-              const failureUrl = `${baseUrl}/student-dashboard.html?payment_failed=true`;
-              
-              console.log(`🌐 رابط النجاح: ${successUrl}`);
-              
-              const checkout = await createChargilyCheckout(
-                offer.price,
-                student.full_name,
-                student.email,
-                student.phone,
-                offer.subject_name,
-                successUrl,
-                failureUrl
-              );
-              
-              if (checkout.success && checkout.checkout_url) {
-                db.run(`UPDATE sessions SET chargily_checkout_url = ? WHERE id = ?`, [checkout.checkout_url, this.lastID]);
-                db.run(`INSERT INTO payments (session_id, amount, checkout_url, status) VALUES (?, ?, ?, 'pending')`,
-                  [this.lastID, offer.price, checkout.checkout_url]);
-                
-                console.log(`✅ رابط الدفع: ${checkout.checkout_url}`);
-                
-                res.json({ 
-                  success: true, 
-                  session_id: this.lastID,
-                  checkout_url: checkout.checkout_url,
-                  amount: offer.price
-                });
-              } else {
-                console.error(`❌ فشل إنشاء الدفع: ${checkout.error}`);
-                res.json({ 
-                  success: false, 
-                  error: 'فشل الاتصال ببوابة الدفع. يرجى المحاولة مرة أخرى.'
-                });
-              }
-            });
+            return res.json({ success: true, session_id: sessionId, is_free: true });
           }
+
+          // Paid offer — create Chargily checkout
+          db.get(`SELECT full_name, email, phone FROM students WHERE id = ?`, [student_id], async (err, student) => {
+            if (err || !student) {
+              return res.json({ success: false, error: 'بيانات الطالب غير مكتملة' });
+            }
+
+            const baseUrl = process.env.RENDER_EXTERNAL_URL || `https://chatvidio-api.onrender.com`;
+            const successUrl = `${baseUrl}/api/payment/success/${sessionId}`;
+            const failureUrl = `${baseUrl}/student-dashboard.html?payment_failed=true`;
+
+            console.log(`🌐 رابط النجاح: ${successUrl}`);
+
+            const checkout = await createChargilyCheckout(
+              offer.price,
+              student.full_name,
+              student.email,
+              student.phone,
+              offer.subject_name,
+              successUrl,
+              failureUrl
+            );
+
+            if (checkout.success && checkout.checkout_url) {
+              db.run(`UPDATE sessions SET chargily_checkout_url = ? WHERE id = ?`, [checkout.checkout_url, sessionId]);
+              db.run(`INSERT INTO payments (session_id, amount, checkout_url, status) VALUES (?, ?, ?, 'pending')`,
+                [sessionId, offer.price, checkout.checkout_url]);
+
+              console.log(`✅ رابط الدفع: ${checkout.checkout_url}`);
+
+              return res.json({
+                success: true,
+                session_id: sessionId,
+                checkout_url: checkout.checkout_url,
+                amount: offer.price
+              });
+            } else {
+              console.error(`❌ فشل إنشاء الدفع: ${checkout.error}`);
+              // Roll back the session so the student can retry
+              db.run(`DELETE FROM sessions WHERE id = ?`, [sessionId]);
+              return res.json({
+                success: false,
+                error: `فشل الاتصال ببوابة الدفع: ${checkout.error || 'حاول مرة أخرى'}`
+              });
+            }
+          });
         });
     });
   });
@@ -451,19 +462,19 @@ app.post('/api/booking/create', async (req, res) => {
 // صفحة نجاح الدفع
 app.get('/api/payment/success/:session_id', (req, res) => {
   const { session_id } = req.params;
-  
+
   console.log(`✅ دفع ناجح للحصة: ${session_id}`);
-  
+
   db.run(`UPDATE sessions SET payment_status = 'paid' WHERE id = ?`, [session_id]);
   db.run(`UPDATE payments SET status = 'completed' WHERE session_id = ?`, [session_id]);
-  
+
   db.get(`SELECT offer_id, student_id FROM sessions WHERE id = ?`, [session_id], (err, session) => {
     if (session) {
       db.run(`INSERT OR IGNORE INTO waiting_room (offer_id, student_id) VALUES (?, ?)`, [session.offer_id, session.student_id]);
       console.log(`✅ تمت إضافة الطالب ${session.student_id} إلى غرفة الانتظار`);
     }
   });
-  
+
   res.send(`
     <!DOCTYPE html>
     <html lang="ar">
@@ -494,7 +505,7 @@ app.get('/api/payment/success/:session_id', (req, res) => {
 
 app.post('/api/stream/enter-teacher/:offer_id', (req, res) => {
   const { offer_id, teacher_id } = req.body;
-  
+
   db.get(`SELECT * FROM offers WHERE id = ? AND teacher_id = ?`, [offer_id, teacher_id], (err, offer) => {
     if (!offer) return res.json({ success: false, error: 'غير مصرح لك' });
     db.run(`UPDATE offers SET status = 'teacher_ready' WHERE id = ?`, [offer_id]);
@@ -504,12 +515,12 @@ app.post('/api/stream/enter-teacher/:offer_id', (req, res) => {
 
 app.post('/api/stream/add-students/:offer_id', (req, res) => {
   const { offer_id, teacher_id } = req.body;
-  
+
   db.get(`SELECT * FROM offers WHERE id = ? AND teacher_id = ?`, [offer_id, teacher_id], (err, offer) => {
     if (!offer) return res.json({ success: false, error: 'غير مصرح لك' });
-    
+
     db.run(`UPDATE offers SET status = 'live' WHERE id = ?`, [offer_id]);
-    
+
     db.all(`SELECT student_id FROM waiting_room WHERE offer_id = ?`, [offer_id], (err, students) => {
       const studentIds = students || [];
       studentIds.forEach(s => {
@@ -538,10 +549,10 @@ app.get('/api/stream/status/:offer_id', (req, res) => {
 
 app.get('/api/student/stream-status/:offer_id/:student_id', (req, res) => {
   const { offer_id, student_id } = req.params;
-  
+
   db.get(`SELECT status, room_name FROM offers WHERE id = ?`, [offer_id], (err, offer) => {
     if (!offer) return res.json({ can_join: false, error: 'العرض غير موجود' });
-    
+
     if (offer.status === 'live') {
       db.get(`SELECT * FROM active_stream WHERE offer_id = ? AND student_id = ?`, [offer_id, student_id], (err, active) => {
         if (active) {
@@ -552,7 +563,7 @@ app.get('/api/student/stream-status/:offer_id/:student_id', (req, res) => {
     } else if (offer.status === 'upcoming' || offer.status === 'teacher_ready') {
       db.get(`SELECT * FROM sessions WHERE offer_id = ? AND student_id = ?`, [offer_id, student_id], (err, session) => {
         if (!session) return res.json({ can_join: false, error: 'غير مسجل' });
-        
+
         if (session.payment_status === 'paid') {
           db.get(`SELECT * FROM waiting_room WHERE offer_id = ? AND student_id = ?`, [offer_id, student_id], (err, waiting) => {
             if (!waiting) {
@@ -597,10 +608,10 @@ app.get('/api/student/bookings/:student_id', (req, res) => {
 
 app.get('/api/teacher-stream/:offer_id/:teacher_id', (req, res) => {
   const { offer_id, teacher_id } = req.params;
-  
+
   db.get(`SELECT room_name, status FROM offers WHERE id = ? AND teacher_id = ?`, [offer_id, teacher_id], (err, offer) => {
     if (!offer) return res.redirect('/teacher-dashboard.html');
-    
+
     res.send(`
 <!DOCTYPE html>
 <html lang="ar">
@@ -639,7 +650,7 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', (req, res) => {
             parentNode: document.querySelector('#jitsi-container'),
             userInfo: { displayName: '👨‍🏫 الأستاذ' }
         });
-        
+
         async function loadWaitingCount() {
             try {
                 const res = await fetch('/api/stream/waiting-list/${offer_id}/${teacher_id}');
@@ -651,7 +662,7 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', (req, res) => {
                 }
             } catch(e) {}
         }
-        
+
         async function addStudents() {
             if (confirm('إضافة جميع الطلاب المنتظرين إلى البث؟')) {
                 const res = await fetch('/api/stream/add-students/${offer_id}', {
@@ -667,7 +678,7 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', (req, res) => {
                 }
             }
         }
-        
+
         function leaveStream() { api.dispose(); window.location.href = '/teacher-dashboard.html'; }
         async function endStream() {
             if (confirm('إنهاء البث؟')) {
@@ -687,29 +698,28 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', (req, res) => {
 
 app.get('/api/enter-teacher-stream/:offer_id/:teacher_id', async (req, res) => {
   const { offer_id, teacher_id } = req.params;
-  
-  const axios = require('axios');
+
   try {
     await axios.post(`http://localhost:${PORT}/api/stream/enter-teacher/${offer_id}`, {
       offer_id: parseInt(offer_id),
       teacher_id: parseInt(teacher_id)
     });
-  } catch(e) {
+  } catch (e) {
     console.log(e);
   }
-  
+
   res.redirect(`/api/teacher-stream/${offer_id}/${teacher_id}`);
 });
 
 app.get('/api/join-stream/:offer_id/:student_id', (req, res) => {
   const { offer_id, student_id } = req.params;
-  
+
   db.get(`SELECT room_name FROM offers WHERE id = ? AND status = 'live'`, [offer_id], (err, offer) => {
     if (!offer) return res.redirect('/student-dashboard.html?error=stream_not_started');
-    
+
     db.get(`SELECT * FROM active_stream WHERE offer_id = ? AND student_id = ?`, [offer_id, student_id], (err, active) => {
       if (!active) return res.redirect('/student-dashboard.html?error=not_authorized');
-      
+
       res.send(`
 <!DOCTYPE html>
 <html lang="ar">
@@ -753,5 +763,5 @@ app.get('/api/join-stream/:offer_id/:student_id', (req, res) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 الخادم يعمل على http://localhost:${PORT}`);
-  console.log(`💳 Chargily API: ${CHARGILY_API_URL}`);
+  console.log(`💳 Chargily Pay v2 API: ${CHARGILY_API_URL}`);
 });
