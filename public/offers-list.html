@@ -10,17 +10,14 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Cairo', sans-serif; background: #f0f2f5; }
         
-        /* Navbar */
         .navbar { background: white; padding: 12px 24px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; }
         .nav-container { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
         .logo { font-size: 1.5rem; font-weight: 800; color: #0f5cbf; cursor: pointer; }
         .back-btn { background: #0f5cbf; color: white; border: none; padding: 8px 20px; border-radius: 30px; cursor: pointer; }
         
-        /* Main Container */
         .container { max-width: 1200px; margin: 30px auto; padding: 0 20px; }
         .page-title { font-size: 1.8rem; margin-bottom: 20px; color: #1e3c72; display: flex; align-items: center; gap: 10px; }
         
-        /* Filters */
         .filters { background: white; border-radius: 15px; padding: 20px; margin-bottom: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; }
         .filter-group { flex: 1; min-width: 150px; }
         .filter-group label { display: block; font-size: 0.8rem; color: #718096; margin-bottom: 5px; }
@@ -28,15 +25,14 @@
         .filter-btn { background: #0f5cbf; color: white; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer; }
         .filter-btn.reset { background: #e2e8f0; color: #4a5568; }
         
-        /* Offers Grid */
         .offers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 25px; margin-top: 20px; }
         .offer-card { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.08); transition: 0.3s; }
-        .offer-card:hover { transform: translateY(-5px); box-shadow: 0 12px 30px rgba(0,0,0,0.12); }
+        .offer-card:hover { transform: translateY(-5px); }
         
         .offer-header { background: linear-gradient(135deg, #1e3c72, #0f5cbf); padding: 15px; color: white; position: relative; }
-        .offer-price { position: absolute; top: 15px; left: 15px; background: rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; }
+        .offer-price { position: absolute; top: 15px; left: 15px; background: rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 20px; font-weight: bold; }
         .offer-free { background: #10b981; }
-        .offer-teacher { display: flex; align-items: center; gap: 12px; }
+        .offer-teacher { display: flex; align-items: center; gap: 12px; cursor: pointer; }
         .teacher-avatar { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid white; }
         .teacher-name { font-weight: 700; font-size: 1.1rem; cursor: pointer; }
         .teacher-name:hover { text-decoration: underline; }
@@ -59,7 +55,6 @@
         
         .empty-state { text-align: center; padding: 60px; background: white; border-radius: 20px; color: #718096; }
         .empty-state i { font-size: 60px; margin-bottom: 20px; color: #cbd5e1; }
-        
         .loading { text-align: center; padding: 50px; }
         
         @media (max-width: 768px) {
@@ -86,7 +81,6 @@
             <span>جميع العروض المتاحة</span>
         </div>
 
-        <!-- Filters -->
         <div class="filters">
             <div class="filter-group">
                 <label><i class="fas fa-search"></i> بحث</label>
@@ -112,7 +106,6 @@
             <button class="filter-btn" onclick="resetFilters()">إعادة تعيين</button>
         </div>
 
-        <!-- Offers List -->
         <div id="offersContainer">
             <div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>
         </div>
@@ -121,14 +114,18 @@
     <div id="notificationToast" class="notification-toast"></div>
 
     <script>
-        let studentData = JSON.parse(localStorage.getItem('studentData') || '{}');
+        // جلب بيانات المستخدم من localStorage
+        let studentData = JSON.parse(localStorage.getItem('userData') || '{}');
+        let studentToken = localStorage.getItem('studentToken');
+        let token = localStorage.getItem('token');
+        
+        // التحقق من تسجيل الدخول بأي من التوكنات
+        let isLoggedIn = !!(studentToken || token || studentData.id);
+        
+        console.log('🔍 حالة تسجيل الدخول:', { isLoggedIn, studentData, studentToken: !!studentToken, token: !!token });
+        
         let allOffers = [];
         let filteredOffers = [];
-
-        if (!studentData.id) {
-            // إذا لم يكن طالب مسجل، يمكنه فقط مشاهدة العروض
-            studentData = { id: null };
-        }
 
         function showNotification(message, type = 'success') {
             const toast = document.getElementById('notificationToast');
@@ -156,7 +153,6 @@
 
             filteredOffers = [...allOffers];
 
-            // Filter by search
             if (searchTerm) {
                 filteredOffers = filteredOffers.filter(offer => 
                     offer.subject_name.toLowerCase().includes(searchTerm) || 
@@ -164,14 +160,12 @@
                 );
             }
 
-            // Filter by price
             if (priceFilter === 'free') {
                 filteredOffers = filteredOffers.filter(offer => offer.is_free === 1);
             } else if (priceFilter === 'paid') {
                 filteredOffers = filteredOffers.filter(offer => offer.is_free === 0);
             }
 
-            // Sort
             if (sortFilter === 'date_asc') {
                 filteredOffers.sort((a, b) => new Date(b.offer_date) - new Date(a.offer_date));
             } else if (sortFilter === 'date_desc') {
@@ -217,10 +211,10 @@
                             <div class="offer-price ${isFree ? 'offer-free' : ''}">
                                 ${isFree ? '<i class="fas fa-gift"></i> مجانية' : `<i class="fas fa-money-bill"></i> ${offer.price} دج`}
                             </div>
-                            <div class="offer-teacher">
+                            <div class="offer-teacher" onclick="viewTeacherProfile(${offer.teacher_id})">
                                 <img src="${imageUrl}" class="teacher-avatar" onerror="this.src='https://via.placeholder.com/50'">
                                 <div>
-                                    <div class="teacher-name" onclick="viewTeacherProfile(${offer.teacher_id})">${escapeHtml(offer.teacher_name)}</div>
+                                    <div class="teacher-name">${escapeHtml(offer.teacher_name)}</div>
                                     <div class="teacher-specialty"><i class="fas fa-book"></i> ${offer.specialization || 'تخصص عام'}</div>
                                 </div>
                             </div>
@@ -249,7 +243,22 @@
         }
 
         async function bookOffer(offerId, price, isFree) {
-            if (!studentData.id) {
+            // استخدام studentData من localStorage
+            let studentId = studentData.id;
+            
+            // إذا لم يكن هناك studentData، حاول جلبها من localStorage مرة أخرى
+            if (!studentId) {
+                const storedData = localStorage.getItem('userData');
+                if (storedData) {
+                    const parsedData = JSON.parse(storedData);
+                    studentId = parsedData.id;
+                    studentData = parsedData;
+                }
+            }
+            
+            console.log('📝 محاولة حجز:', { offerId, price, isFree, studentId, studentData });
+            
+            if (!studentId) {
                 if (confirm('يجب تسجيل الدخول أولاً لحجز الحصة. هل تريد تسجيل الدخول الآن؟')) {
                     window.location.href = '/';
                 }
@@ -262,7 +271,7 @@
                 const res = await fetch('/api/booking/create', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ offer_id: offerId, student_id: studentData.id })
+                    body: JSON.stringify({ offer_id: offerId, student_id: studentId })
                 });
                 const data = await res.json();
 
@@ -282,6 +291,7 @@
                     showNotification(data.error || 'حدث خطأ', 'error');
                 }
             } catch(e) {
+                console.error('خطأ في الحجز:', e);
                 showNotification('حدث خطأ في الاتصال بالخادم', 'error');
             }
         }
