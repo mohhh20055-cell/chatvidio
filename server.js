@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const bcrypt = require('bcryptjs');
 const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs');
@@ -11,13 +12,9 @@ const PORT = process.env.PORT || 3000;
 
 // ============= تهيئة Supabase =============
 const supabaseUrl = 'https://pvtphjcnfawphuzmzihe.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2dHBoamNuYWZ3cGh1em16aWhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTA0ODgsImV4cCI6MjA5NjU2NjQ4OH0.iyDo5UnNM7mAFFjZfNSr2Z8tpdI4FiHAfabJU1uAVEk';
 const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2dHBoamNuYWZ3cGh1em16aWhlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDk5MDQ4OCwiZXhwIjoyMDk2NTY2NDg4fQ.0NdMZrmGEE8JW1ZCi3WNF1CbrQMIpN_fXnpnwMOALpk';
 
-// إنشاء عميل Supabase (للعمليات العامة)
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
-// عميل للعمليات الإدارية (بصلاحية service_role)
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // إعداد رفع الملفات
 const storage = multer.diskStorage({
@@ -41,45 +38,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 app.use('/uploads', express.static('uploads'));
-
-// ============= دوال مساعدة Supabase =============
-async function getOne(table, column, value) {
-  const { data, error } = await supabase
-    .from(table)
-    .select('*')
-    .eq(column, value)
-    .single();
-  if (error && error.code !== 'PGRST116') throw error;
-  return data;
-}
-
-async function insert(table, data) {
-  const { data: result, error } = await supabaseAdmin
-    .from(table)
-    .insert(data)
-    .select();
-  if (error) throw error;
-  return result[0];
-}
-
-async function update(table, id, data) {
-  const { data: result, error } = await supabaseAdmin
-    .from(table)
-    .update(data)
-    .eq('id', id)
-    .select();
-  if (error) throw error;
-  return result[0];
-}
-
-async function remove(table, column, value) {
-  const { error } = await supabaseAdmin
-    .from(table)
-    .delete()
-    .eq(column, value);
-  if (error) throw error;
-  return true;
-}
 
 // ============= Chargily API =============
 const CHARGILY_API_KEY = 'test_sk_2vm1gIkToN70ERrg4SUE1j65gkZcexbPFjHzLUT7';
@@ -110,101 +68,184 @@ async function createChargilyCheckout(amount, studentName, studentEmail, student
   }
 }
 
-// ============= إنشاء الجداول في Supabase (يتم مرة واحدة) =============
-async function initDatabase() {
-  console.log('✅ استخدام Supabase كقاعدة بيانات رئيسية');
-  console.log('📦 الرجاء إنشاء الجداول يدوياً في SQL Editor في Supabase');
+// ============= دوال مساعدة Supabase =============
+async function getOne(table, column, value) {
+  const { data, error } = await supabase
+    .from(table)
+    .select('*')
+    .eq(column, value)
+    .single();
+  if (error && error.code !== 'PGRST116') return null;
+  return data;
 }
 
-initDatabase();
+async function insert(table, data) {
+  const { data: result, error } = await supabase
+    .from(table)
+    .insert(data)
+    .select();
+  if (error) throw error;
+  return result[0];
+}
+
+async function update(table, id, data) {
+  const { data: result, error } = await supabase
+    .from(table)
+    .update(data)
+    .eq('id', id)
+    .select();
+  if (error) throw error;
+  return result[0];
+}
+
+async function remove(table, column, value) {
+  const { error } = await supabase
+    .from(table)
+    .delete()
+    .eq(column, value);
+  if (error) throw error;
+  return true;
+}
+
+async function getAll(table, conditions = {}) {
+  let query = supabase.from(table).select('*');
+  for (const [key, value] of Object.entries(conditions)) {
+    query = query.eq(key, value);
+  }
+  const { data, error } = await query;
+  if (error) throw error;
+  return data;
+}
+
+// ============= إنشاء الجداول (يتم مرة واحدة في Supabase SQL Editor) =============
+console.log('📦 استخدام Supabase كقاعدة بيانات');
+console.log('⚠️ تأكد من إنشاء الجداول في SQL Editor في Supabase');
 
 // ============= API Routes =============
 
-// ============= مصادقة Supabase (بدون bcrypt/jwt يدوي) =============
-
-// تسجيل مستخدم جديد (طالب أو أستاذ)
-app.post('/api/register', async (req, res) => {
-  const { email, password, full_name, phone, role, specialization, bio, experience } = req.body;
-  
+// تسجيل أستاذ جديد
+app.post('/api/teacher/register', upload.fields([
+  { name: 'profile_image', maxCount: 1 },
+  { name: 'diploma_image', maxCount: 1 },
+  { name: 'id_image', maxCount: 1 }
+]), async (req, res) => {
   try {
-    // إنشاء المستخدم في Supabase Auth
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { full_name, role, phone, specialization, bio, experience }
-    });
-    
-    if (authError) throw authError;
-    
-    // إضافة بيانات إضافية إلى الجدول المناسب
-    const table = role === 'teacher' ? 'teachers' : 'students';
-    await insert(table, {
-      id: authData.user.id,
+    const { full_name, email, password, phone, specialization, bio, experience } = req.body;
+    if (!full_name || !email || !password || !phone || !specialization || !bio || !experience) {
+      return res.json({ success: false, error: 'يرجى ملء جميع الحقول المطلوبة' });
+    }
+
+    const existingTeacher = await getOne('teachers', 'email', email);
+    if (existingTeacher) {
+      return res.json({ success: false, error: 'البريد الإلكتروني مستخدم مسبقاً' });
+    }
+
+    const hashedPassword = bcrypt.hashSync(password, 10);
+    const profile_image = req.files['profile_image'] ? req.files['profile_image'][0].filename : null;
+    const diploma_image = req.files['diploma_image'] ? req.files['diploma_image'][0].filename : null;
+    const id_image = req.files['id_image'] ? req.files['id_image'][0].filename : null;
+
+    await insert('teachers', {
       full_name,
       email,
+      password: hashedPassword,
       phone,
-      specialization: specialization || null,
-      bio: bio || null,
-      experience: experience || null,
-      status: role === 'teacher' ? 'pending' : 'approved'
+      specialization,
+      bio,
+      experience,
+      profile_image,
+      diploma_image,
+      id_image,
+      status: 'pending'
     });
-    
-    res.json({ success: true, message: 'تم التسجيل بنجاح', user: authData.user });
+
+    res.json({ success: true, message: 'تم إرسال طلبك، سيتم مراجعته من قبل الإدارة' });
   } catch (error) {
-    res.json({ success: false, error: error.message });
+    console.error(error);
+    res.json({ success: false, error: 'خطأ في الخادم: ' + error.message });
   }
 });
 
-// تسجيل الدخول
-app.post('/api/login', async (req, res) => {
-  const { email, password } = req.body;
-  
+// تسجيل طالب
+app.post('/api/student/register', async (req, res) => {
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    
-    // جلب معلومات إضافية من الجدول المناسب
-    const { data: userData, error: userError } = await supabase
-      .from('teachers')
-      .select('*')
-      .eq('id', data.user.id)
-      .single();
-    
-    const role = userData ? 'teacher' : 'student';
-    const extraData = userData || await supabase.from('students').select('*').eq('id', data.user.id).single();
-    
-    res.json({
-      success: true,
-      token: data.session.access_token,
-      user: {
-        id: data.user.id,
-        name: data.user.user_metadata?.full_name || extraData?.data?.full_name,
-        email: data.user.email,
-        role: role,
-        status: extraData?.data?.status || 'approved'
-      }
+    const { full_name, email, password, phone } = req.body;
+    if (!full_name || !email || !password || !phone) {
+      return res.json({ success: false, error: 'يرجى ملء جميع الحقول' });
+    }
+
+    const existingStudent = await getOne('students', 'email', email);
+    if (existingStudent) {
+      return res.json({ success: false, error: 'البريد الإلكتروني مستخدم' });
+    }
+
+    const hashedPassword = bcrypt.hashSync(password, 10);
+    await insert('students', {
+      full_name,
+      email,
+      password: hashedPassword,
+      phone,
+      balance: 0
     });
+
+    res.json({ success: true, message: 'تم التسجيل بنجاح' });
   } catch (error) {
-    res.json({ success: false, error: error.message });
+    console.error(error);
+    res.json({ success: false, error: 'خطأ في الخادم' });
   }
 });
 
-// ============= ADMIN Routes =============
+// تسجيل الدخول الموحد
+app.post('/api/login', async (req, res) => {
+  try {
+    const { email, password, role } = req.body;
+    
+    // البحث في الأساتذة أولاً
+    let user = await getOne('teachers', 'email', email);
+    let userRole = 'teacher';
+    
+    if (!user) {
+      user = await getOne('students', 'email', email);
+      userRole = 'student';
+    }
+    
+    if (!user) return res.json({ success: false, error: 'البريد الإلكتروني غير موجود' });
+    
+    const validPassword = bcrypt.compareSync(password, user.password);
+    if (!validPassword) return res.json({ success: false, error: 'كلمة المرور خاطئة' });
+    
+    if (userRole === 'teacher' && user.status !== 'approved' && email !== 'admin@platform.com') {
+      return res.json({ success: false, error: 'حسابك قيد المراجعة من قبل الإدارة' });
+    }
+    
+    const token = Buffer.from(`${user.id}:${Date.now()}`).toString('base64');
+    res.json({ 
+      success: true, 
+      token, 
+      user: { 
+        id: user.id, 
+        name: user.full_name, 
+        email: user.email, 
+        role: userRole, 
+        status: user.status,
+        profile_image: user.profile_image
+      } 
+    });
+  } catch (error) {
+    console.error(error);
+    res.json({ success: false, error: 'خطأ في الخادم' });
+  }
+});
+
+// ADMIN Routes
 app.get('/api/admin/pending-teachers', async (req, res) => {
-  const { data, error } = await supabase
-    .from('teachers')
-    .select('*')
-    .eq('status', 'pending');
-  res.json(data || []);
+  const teachers = await getAll('teachers', { status: 'pending' });
+  res.json(teachers || []);
 });
 
 app.get('/api/admin/approved-teachers', async (req, res) => {
-  const { data, error } = await supabase
-    .from('teachers')
-    .select('*')
-    .eq('status', 'approved');
-  res.json(data || []);
+  const teachers = await getAll('teachers', { status: 'approved' });
+  res.json(teachers || []);
 });
 
 app.post('/api/admin/approve-teacher/:id', async (req, res) => {
@@ -222,7 +263,6 @@ app.delete('/api/admin/delete-teacher/:id', async (req, res) => {
   await remove('posts', 'teacher_id', req.params.id);
   await remove('offers', 'teacher_id', req.params.id);
   await remove('follows', 'teacher_id', req.params.id);
-  await supabaseAdmin.auth.admin.deleteUser(req.params.id);
   await remove('teachers', 'id', req.params.id);
   res.json({ success: true });
 });
@@ -243,71 +283,30 @@ app.get('/api/teacher/:teacher_id', async (req, res) => {
   res.json(teacher);
 });
 
-app.get('/api/public/offers', async (req, res) => {
-  const { data, error } = await supabase
-    .from('offers')
-    .select(`
-      *,
-      teachers:teacher_id (full_name, specialization, profile_image, id)
-    `)
-    .eq('status', 'upcoming')
-    .gt('offer_date', new Date().toISOString())
-    .order('offer_date', { ascending: true });
+// تحديث بيانات الأستاذ
+app.post('/api/teacher/update-profile', upload.single('profile_image'), async (req, res) => {
+  const { teacher_id, full_name, bio, specialization, experience, phone, facebook_url, instagram_url, linkedin_url, website_url } = req.body;
+  let profile_image = req.body.profile_image;
   
-  const formatted = (data || []).map(o => ({
-    ...o,
-    teacher_name: o.teachers?.full_name,
-    teacher_specialization: o.teachers?.specialization,
-    teacher_profile_image: o.teachers?.profile_image,
-    teacher_id: o.teachers?.id
-  }));
-  res.json(formatted);
-});
-
-app.get('/api/live-offers', async (req, res) => {
-  const { data, error } = await supabase
-    .from('offers')
-    .select(`
-      *,
-      teachers:teacher_id (full_name, specialization, profile_image, id)
-    `)
-    .eq('status', 'live')
-    .order('offer_date', { ascending: false });
+  if (req.file) {
+    profile_image = req.file.filename;
+  }
   
-  const formatted = (data || []).map(o => ({
-    ...o,
-    teacher_name: o.teachers?.full_name,
-    teacher_specialization: o.teachers?.specialization,
-    teacher_profile_image: o.teachers?.profile_image,
-    teacher_id: o.teachers?.id
-  }));
-  res.json(formatted);
-});
+  const updateData = {
+    full_name,
+    bio,
+    specialization,
+    experience,
+    phone,
+    facebook_url,
+    instagram_url,
+    linkedin_url,
+    website_url
+  };
+  if (profile_image) updateData.profile_image = profile_image;
 
-// ============= نظام المتابعات =============
-app.post('/api/follow', async (req, res) => {
-  const { student_id, teacher_id } = req.body;
-  await insert('follows', { student_id, teacher_id });
-  res.json({ success: true });
-});
-
-app.post('/api/unfollow', async (req, res) => {
-  await supabase
-    .from('follows')
-    .delete()
-    .eq('student_id', req.body.student_id)
-    .eq('teacher_id', req.body.teacher_id);
-  res.json({ success: true });
-});
-
-app.get('/api/check-follow/:student_id/:teacher_id', async (req, res) => {
-  const { data, error } = await supabase
-    .from('follows')
-    .select('*')
-    .eq('student_id', req.params.student_id)
-    .eq('teacher_id', req.params.teacher_id)
-    .single();
-  res.json({ following: !!data });
+  await update('teachers', teacher_id, updateData);
+  res.json({ success: true, message: 'تم تحديث الملف الشخصي بنجاح' });
 });
 
 // ============= نظام المنشورات =============
@@ -335,29 +334,29 @@ app.post('/api/post/create', upload.fields([
 app.get('/api/posts/:teacher_id', async (req, res) => {
   const { data, error } = await supabase
     .from('posts')
-    .select(`
-      *,
-      post_likes:post_likes(count),
-      post_comments:post_comments(count)
-    `)
+    .select('*')
     .eq('teacher_id', req.params.teacher_id)
     .order('created_at', { ascending: false });
   
-  const formatted = (data || []).map(p => ({
-    ...p,
-    likes_count: p.post_likes?.[0]?.count || 0,
-    comments_count: p.post_comments?.[0]?.count || 0
+  // جلب عدد الإعجابات لكل منشور
+  const postsWithCounts = await Promise.all((data || []).map(async (post) => {
+    const { count: likesCount } = await supabase
+      .from('post_likes')
+      .select('*', { count: 'exact', head: true })
+      .eq('post_id', post.id);
+    const { count: commentsCount } = await supabase
+      .from('post_comments')
+      .select('*', { count: 'exact', head: true })
+      .eq('post_id', post.id);
+    return { ...post, likes_count: likesCount || 0, comments_count: commentsCount || 0 };
   }));
-  res.json(formatted);
+  res.json(postsWithCounts);
 });
 
 app.get('/api/post/:post_id', async (req, res) => {
   const { data: post, error } = await supabase
     .from('posts')
-    .select(`
-      *,
-      teachers:teacher_id (full_name, profile_image)
-    `)
+    .select('*, teachers:teacher_id (full_name, profile_image)')
     .eq('id', req.params.post_id)
     .single();
   
@@ -365,10 +364,7 @@ app.get('/api/post/:post_id', async (req, res) => {
   
   const { data: comments, error: commentsError } = await supabase
     .from('post_comments')
-    .select(`
-      *,
-      students:student_id (full_name, profile_image)
-    `)
+    .select('*, students:student_id (full_name, profile_image)')
     .eq('post_id', req.params.post_id)
     .order('created_at', { ascending: true });
   
@@ -454,50 +450,98 @@ app.get('/api/post/check-like/:post_id/:student_id', async (req, res) => {
   res.json({ liked: !!data });
 });
 
+// ============= نظام المتابعات =============
+app.post('/api/follow', async (req, res) => {
+  const { student_id, teacher_id } = req.body;
+  await insert('follows', { student_id, teacher_id });
+  res.json({ success: true });
+});
+
+app.post('/api/unfollow', async (req, res) => {
+  await supabase
+    .from('follows')
+    .delete()
+    .eq('student_id', req.body.student_id)
+    .eq('teacher_id', req.body.teacher_id);
+  res.json({ success: true });
+});
+
+app.get('/api/check-follow/:student_id/:teacher_id', async (req, res) => {
+  const { data, error } = await supabase
+    .from('follows')
+    .select('*')
+    .eq('student_id', req.params.student_id)
+    .eq('teacher_id', req.params.teacher_id)
+    .single();
+  res.json({ following: !!data });
+});
+
 // ============= التغذية الرئيسية =============
 app.get('/api/feed/:student_id', async (req, res) => {
+  // جلب IDs الأساتذة الذين يتابعهم الطالب
+  const { data: follows, error: followError } = await supabase
+    .from('follows')
+    .select('teacher_id')
+    .eq('student_id', req.params.student_id);
+  
+  const teacherIds = (follows || []).map(f => f.teacher_id);
+  
+  if (teacherIds.length === 0) {
+    return res.json([]);
+  }
+  
   const { data, error } = await supabase
     .from('posts')
-    .select(`
-      *,
-      teachers:teacher_id (id, full_name, profile_image),
-      post_likes:post_likes(count),
-      post_comments:post_comments(count)
-    `)
-    .in('teacher_id', supabase.from('follows').select('teacher_id').eq('student_id', req.params.student_id))
+    .select('*, teachers:teacher_id (id, full_name, profile_image)')
+    .in('teacher_id', teacherIds)
     .order('created_at', { ascending: false });
   
-  const formatted = (data || []).map(p => ({
-    ...p,
-    teacher_id: p.teachers?.id,
-    teacher_name: p.teachers?.full_name,
-    teacher_image: p.teachers?.profile_image,
-    likes_count: p.post_likes?.[0]?.count || 0,
-    comments_count: p.post_comments?.[0]?.count || 0
+  const postsWithCounts = await Promise.all((data || []).map(async (post) => {
+    const { count: likesCount } = await supabase
+      .from('post_likes')
+      .select('*', { count: 'exact', head: true })
+      .eq('post_id', post.id);
+    const { count: commentsCount } = await supabase
+      .from('post_comments')
+      .select('*', { count: 'exact', head: true })
+      .eq('post_id', post.id);
+    return {
+      ...post,
+      teacher_id: post.teachers?.id,
+      teacher_name: post.teachers?.full_name,
+      teacher_image: post.teachers?.profile_image,
+      likes_count: likesCount || 0,
+      comments_count: commentsCount || 0
+    };
   }));
-  res.json(formatted);
+  res.json(postsWithCounts);
 });
 
 app.get('/api/all-posts', async (req, res) => {
   const { data, error } = await supabase
     .from('posts')
-    .select(`
-      *,
-      teachers:teacher_id (id, full_name, profile_image),
-      post_likes:post_likes(count),
-      post_comments:post_comments(count)
-    `)
+    .select('*, teachers:teacher_id (id, full_name, profile_image)')
     .order('created_at', { ascending: false });
   
-  const formatted = (data || []).map(p => ({
-    ...p,
-    teacher_id: p.teachers?.id,
-    teacher_name: p.teachers?.full_name,
-    teacher_image: p.teachers?.profile_image,
-    likes_count: p.post_likes?.[0]?.count || 0,
-    comments_count: p.post_comments?.[0]?.count || 0
+  const postsWithCounts = await Promise.all((data || []).map(async (post) => {
+    const { count: likesCount } = await supabase
+      .from('post_likes')
+      .select('*', { count: 'exact', head: true })
+      .eq('post_id', post.id);
+    const { count: commentsCount } = await supabase
+      .from('post_comments')
+      .select('*', { count: 'exact', head: true })
+      .eq('post_id', post.id);
+    return {
+      ...post,
+      teacher_id: post.teachers?.id,
+      teacher_name: post.teachers?.full_name,
+      teacher_image: post.teachers?.profile_image,
+      likes_count: likesCount || 0,
+      comments_count: commentsCount || 0
+    };
   }));
-  res.json(formatted);
+  res.json(postsWithCounts);
 });
 
 app.get('/api/suggested-teachers/:student_id', async (req, res) => {
@@ -720,8 +764,13 @@ app.get('/api/student/stream-status/:offer_id/:student_id', async (req, res) => 
   if (!offer) return res.json({ can_join: false });
   
   if (offer.status === 'live') {
-    const active = await getOne('active_stream', 'offer_id', req.params.offer_id);
-    if (active && active.student_id == req.params.student_id) {
+    const { data: active, error } = await supabase
+      .from('active_stream')
+      .select('*')
+      .eq('offer_id', req.params.offer_id)
+      .eq('student_id', req.params.student_id)
+      .single();
+    if (active) {
       return res.json({ can_join: true, room_name: offer.room_name });
     }
     return res.json({ can_join: false });
@@ -790,8 +839,13 @@ app.get('/api/join-stream/:offer_id/:student_id', async (req, res) => {
   const offer = await getOne('offers', 'id', req.params.offer_id);
   if (!offer || offer.status !== 'live') return res.redirect('/student-dashboard.html');
   
-  const active = await getOne('active_stream', 'offer_id', req.params.offer_id);
-  if (!active || active.student_id != req.params.student_id) return res.redirect('/student-dashboard.html');
+  const { data: active, error } = await supabase
+    .from('active_stream')
+    .select('*')
+    .eq('offer_id', req.params.offer_id)
+    .eq('student_id', req.params.student_id)
+    .single();
+  if (!active) return res.redirect('/student-dashboard.html');
   
   res.send(`<!DOCTYPE html><html><head><title>حصة مباشرة</title><script src="https://meet.jit.si/external_api.js"></script><style>*{margin:0;padding:0}body{font-family:'Cairo',sans-serif;background:#0a0a1a}.header{background:#0f3460;color:white;padding:12px 24px;display:flex;justify-content:space-between;position:fixed;top:0;left:0;right:0;z-index:100}.btn{background:#ef4444;color:white;border:none;padding:8px 20px;border-radius:30px;cursor:pointer}#jitsi-container{position:fixed;top:60px;left:0;right:0;bottom:0}.badge{background:#f59e0b;padding:5px 15px;border-radius:30px}</style></head><body><div class="header"><div><span class="badge">👨‍🎓 أنت طالب - مشاهدة فقط</span></div><button class="btn" onclick="leaveStream()">🚪 مغادرة</button></div><div id="jitsi-container"></div><script>const api=new JitsiMeetExternalAPI('meet.jit.si',{roomName:'${offer.room_name}',width:'100%',height:window.innerHeight-60,parentNode:document.querySelector('#jitsi-container'),userInfo:{displayName:'👨‍🎓 طالب'},configOverwrite:{startWithVideoMuted:true,startWithAudioMuted:true}});function leaveStream(){api.dispose();window.location.href='/student-dashboard.html';}</script></body></html>`);
 });
@@ -799,6 +853,6 @@ app.get('/api/join-stream/:offer_id/:student_id', async (req, res) => {
 // ============= تشغيل الخادم =============
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 الخادم يعمل على http://localhost:${PORT}`);
-  console.log(`📦 قاعدة البيانات: Supabase (PostgreSQL) - بدون SQLite`);
-  console.log(`🔐 نظام المصادقة: Supabase Auth (بدون bcrypt/jwt يدوي)`);
+  console.log(`📦 قاعدة البيانات: Supabase (PostgreSQL)`);
+  console.log(`🔐 نظام المصادقة: bcrypt (يدوي)`);
 });
