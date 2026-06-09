@@ -668,15 +668,55 @@ app.delete('/api/offer/delete/:offer_id', async (req, res) => {
   res.json({ success: true });
 });
 
-// ============= نظام الحجز (المجاني يذهب مباشرة للانتظار) =============
+// ============= نظام الحجز - إصلاح جذري للعروض المجانية =============
 app.post('/api/booking/create', async (req, res) => {
   const { offer_id, student_id } = req.body;
   
-  // التحقق من العرض
-  const offer = await getOne('offers', 'id', offer_id);
-  if (!offer) return res.json({ success: false, error: 'العرض غير موجود' });
+  console.log(`📝 [حجز] محاولة حجز العرض: ${offer_id} للطالب: ${student_id}`);
   
-  console.log(`📝 محاولة حجز: العرض ${offer_id}, الطالب ${student_id}, مجاني: ${offer.is_free === 1}`);
+  // جلب معلومات العرض
+  const offer = await getOne('offers', 'id', offer_id);
+  if (!offer) {
+    console.log(`❌ [حجز] العرض ${offer_id} غير موجود`);
+    return res.json({ success: false, error: 'العرض غير موجود' });
+  }
+  
+  console.log(`📝 [حجز] معلومات العرض: اسم=${offer.subject_name}, مجاني=${offer.is_free === 1}, سعر=${offer.price}`);
+  
+  // ✅✅✅ العرض المجاني: حجز مباشر 100% بدون أي دفع ✅✅✅
+  if (offer.is_free === 1) {
+    console.log(`🎉 [حجز] عرض مجاني - حجز مباشر للطالب ${student_id}`);
+    
+    // التحقق من التسجيل المسبق
+    const existing = await getOne('sessions', 'offer_id', offer_id);
+    if (existing && existing.student_id === student_id) {
+      console.log(`⚠️ [حجز] الطالب ${student_id} مسجل بالفعل في العرض ${offer_id}`);
+      return res.json({ success: false, error: 'أنت مسجل بالفعل في هذه الحصة' });
+    }
+    
+    // إنشاء جلسة جديدة
+    const session = await insert('sessions', {
+      offer_id,
+      student_id,
+      payment_status: 'paid',
+      payment_amount: 0
+    });
+    console.log(`✅ [حجز] تم إنشاء الجلسة: ${session.id}`);
+    
+    // إضافة الطالب مباشرة إلى غرفة الانتظار
+    await insert('waiting_room', { offer_id, student_id });
+    console.log(`✅ [حجز] تم إضافة الطالب ${student_id} إلى غرفة الانتظار للعرض ${offer_id}`);
+    
+    return res.json({ 
+      success: true, 
+      session_id: session.id, 
+      is_free: true,
+      message: 'تم الحجز بنجاح في الحصة المجانية'
+    });
+  }
+  
+  // ========== العرض المدفوع ==========
+  console.log(`💰 [حجز] عرض مدفوع - إنشاء رابط دفع للطالب ${student_id}`);
   
   // التحقق من التسجيل المسبق
   const existing = await getOne('sessions', 'offer_id', offer_id);
@@ -688,18 +728,12 @@ app.post('/api/booking/create', async (req, res) => {
   const session = await insert('sessions', {
     offer_id,
     student_id,
-    payment_status: offer.is_free === 1 ? 'paid' : 'pending',
+    payment_status: 'pending',
     payment_amount: offer.price
   });
+  console.log(`✅ [حجز] تم إنشاء الجلسة: ${session.id}`);
   
-  // ✅✅✅ العرض المجاني: حجز مباشر دون أي دفع ✅✅✅
-  if (offer.is_free === 1) {
-    await insert('waiting_room', { offer_id, student_id });
-    console.log(`✅✅✅ حجز مجاني مباشر: الطالب ${student_id} - العرض ${offer_id} ✅✅✅`);
-    return res.json({ success: true, session_id: session.id, is_free: true, message: 'تم الحجز بنجاح' });
-  }
-  
-  // العرض المدفوع: يتم إنشاء رابط دفع
+  // الحصول على بيانات الطالب
   const student = await getOne('students', 'id', student_id);
   const baseUrl = process.env.RENDER_EXTERNAL_URL || `https://chatvidio.onrender.com`;
   const successUrl = `${baseUrl}/api/payment/success/${session.id}`;
@@ -717,6 +751,7 @@ app.post('/api/booking/create', async (req, res) => {
   
   if (checkout.success && checkout.checkout_url) {
     await update('sessions', session.id, { chargily_checkout_url: checkout.checkout_url });
+    console.log(`✅ [حجز] تم إنشاء رابط الدفع: ${checkout.checkout_url}`);
     res.json({ 
       success: true, 
       session_id: session.id, 
@@ -724,6 +759,7 @@ app.post('/api/booking/create', async (req, res) => {
       amount: offer.price 
     });
   } else {
+    console.log(`❌ [حجز] فشل إنشاء رابط الدفع: ${checkout.error}`);
     res.json({ 
       success: false, 
       error: checkout.error || 'فشل الاتصال ببوابة الدفع',
@@ -736,11 +772,13 @@ app.post('/api/booking/create', async (req, res) => {
 // صفحة نجاح الدفع
 app.get('/api/payment/success/:session_id', async (req, res) => {
   const { session_id } = req.params;
+  console.log(`✅ [دفع] نجاح الدفع للجلسة: ${session_id}`);
   await update('sessions', session_id, { payment_status: 'paid' });
   
   const session = await getOne('sessions', 'id', session_id);
   if (session) {
     await insert('waiting_room', { offer_id: session.offer_id, student_id: session.student_id });
+    console.log(`✅ [دفع] تم إضافة الطالب ${session.student_id} إلى غرفة الانتظار`);
   }
   
   res.send(`
@@ -772,6 +810,7 @@ app.get('/api/payment/success/:session_id', async (req, res) => {
 // صفحة فشل الدفع
 app.get('/api/payment/failure/:session_id', async (req, res) => {
   const { session_id } = req.params;
+  console.log(`❌ [دفع] فشل الدفع للجلسة: ${session_id}`);
   
   res.send(`
     <!DOCTYPE html>
@@ -1010,5 +1049,6 @@ app.get('/api/join-stream/:offer_id/:student_id', async (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 الخادم يعمل على http://localhost:${PORT}`);
   console.log(`📦 قاعدة البيانات: Supabase (${supabaseUrl})`);
-  console.log(`✅ العروض المجانية: يتم حجزها مباشرة دون دفع`);
+  console.log(`✅ العروض المجانية: حجز مباشر (بدون دفع)`);
+  console.log(`💰 العروض المدفوعة: عبر Chargily (الحد الأدنى 50 دج)`);
 });
