@@ -668,7 +668,10 @@ app.delete('/api/offer/delete/:offer_id', async (req, res) => {
   res.json({ success: true });
 });
 
-// ============= نظام الحجز - إصلاح جذري للعروض المجانية =============
+// ============= نظام الحجز - العروض المجانية بدون بوابة دفع =============
+// ملاحظة مهمة: العروض المجانية (is_free = 1) يتم حجزها فوراً دون المرور بأي بوابة دفع
+// يتم إنشاء الجلسة وإضافة الطالب إلى غرفة الانتظار مباشرة
+
 app.post('/api/booking/create', async (req, res) => {
   const { offer_id, student_id } = req.body;
   
@@ -683,62 +686,80 @@ app.post('/api/booking/create', async (req, res) => {
   
   console.log(`📝 [حجز] معلومات العرض: اسم=${offer.subject_name}, مجاني=${offer.is_free === 1}, سعر=${offer.price}`);
   
-  // ✅✅✅ العرض المجاني: حجز مباشر 100% بدون أي دفع ✅✅✅
+  // التحقق من وجود حجز مسبق للطالب في هذا العرض
+  const existingSession = await supabase
+    .from('sessions')
+    .select('*')
+    .eq('offer_id', offer_id)
+    .eq('student_id', student_id)
+    .single();
+  
+  if (existingSession.data) {
+    console.log(`⚠️ [حجز] الطالب ${student_id} مسجل بالفعل في العرض ${offer_id}`);
+    return res.json({ success: false, error: 'أنت مسجل بالفعل في هذه الحصة' });
+  }
+  
+  // ========== العرض المجاني ==========
   if (offer.is_free === 1) {
-    console.log(`🎉 [حجز] عرض مجاني - حجز مباشر للطالب ${student_id}`);
+    console.log(`🎉 [حجز] عرض مجاني - حجز مباشر فوري بدون بوابة دفع للطالب ${student_id}`);
     
-    // التحقق من التسجيل المسبق
-    const existing = await getOne('sessions', 'offer_id', offer_id);
-    if (existing && existing.student_id === student_id) {
-      console.log(`⚠️ [حجز] الطالب ${student_id} مسجل بالفعل في العرض ${offer_id}`);
-      return res.json({ success: false, error: 'أنت مسجل بالفعل في هذه الحصة' });
-    }
-    
-    // إنشاء جلسة جديدة
+    // 1. إنشاء جلسة جديدة بحالة مدفوعة (لأنها مجانية)
     const session = await insert('sessions', {
-      offer_id,
-      student_id,
+      offer_id: offer_id,
+      student_id: student_id,
       payment_status: 'paid',
-      payment_amount: 0
+      payment_amount: 0,
+      payment_method: 'free',
+      created_at: new Date().toISOString()
     });
-    console.log(`✅ [حجز] تم إنشاء الجلسة: ${session.id}`);
+    console.log(`✅ [حجز] تم إنشاء الجلسة المجانية: ${session.id}`);
     
-    // إضافة الطالب مباشرة إلى غرفة الانتظار
-    await insert('waiting_room', { offer_id, student_id });
+    // 2. إضافة الطالب مباشرة إلى غرفة الانتظار (waiting_room)
+    //    هذا يضمن أن الطالب سيتمكن من حضور الحصة عند بدء البث
+    const waitingEntry = await insert('waiting_room', { 
+      offer_id: offer_id, 
+      student_id: student_id,
+      joined_at: new Date().toISOString()
+    });
     console.log(`✅ [حجز] تم إضافة الطالب ${student_id} إلى غرفة الانتظار للعرض ${offer_id}`);
     
+    // 3. إرجاع استجابة نجاح مع بيانات الجلسة
     return res.json({ 
       success: true, 
       session_id: session.id, 
       is_free: true,
-      message: 'تم الحجز بنجاح في الحصة المجانية'
+      waiting_room_id: waitingEntry.id,
+      message: 'تم حجز مكانك في الحصة المجانية بنجاح! تم إضافتك إلى قائمة الانتظار.',
+      offer: {
+        id: offer.id,
+        subject_name: offer.subject_name,
+        offer_date: offer.offer_date,
+        room_name: offer.room_name
+      }
     });
   }
   
   // ========== العرض المدفوع ==========
   console.log(`💰 [حجز] عرض مدفوع - إنشاء رابط دفع للطالب ${student_id}`);
   
-  // التحقق من التسجيل المسبق
-  const existing = await getOne('sessions', 'offer_id', offer_id);
-  if (existing && existing.student_id === student_id) {
-    return res.json({ success: false, error: 'أنت مسجل بالفعل في هذه الحصة' });
-  }
-  
-  // إنشاء جلسة جديدة
+  // إنشاء جلسة جديدة بحالة انتظار الدفع
   const session = await insert('sessions', {
-    offer_id,
-    student_id,
+    offer_id: offer_id,
+    student_id: student_id,
     payment_status: 'pending',
-    payment_amount: offer.price
+    payment_amount: offer.price,
+    payment_method: null,
+    created_at: new Date().toISOString()
   });
-  console.log(`✅ [حجز] تم إنشاء الجلسة: ${session.id}`);
+  console.log(`✅ [حجز] تم إنشاء الجلسة المدفوعة: ${session.id}`);
   
   // الحصول على بيانات الطالب
   const student = await getOne('students', 'id', student_id);
-  const baseUrl = process.env.RENDER_EXTERNAL_URL || `https://chatvidio.onrender.com`;
+  const baseUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
   const successUrl = `${baseUrl}/api/payment/success/${session.id}`;
   const failureUrl = `${baseUrl}/api/payment/failure/${session.id}`;
   
+  // إنشاء رابط دفع عبر Chargily
   const checkout = await createChargilyCheckout(
     offer.price,
     student.full_name,
@@ -750,17 +771,20 @@ app.post('/api/booking/create', async (req, res) => {
   );
   
   if (checkout.success && checkout.checkout_url) {
+    // تحديث الجلسة برابط الدفع
     await update('sessions', session.id, { chargily_checkout_url: checkout.checkout_url });
     console.log(`✅ [حجز] تم إنشاء رابط الدفع: ${checkout.checkout_url}`);
-    res.json({ 
+    
+    return res.json({ 
       success: true, 
       session_id: session.id, 
       checkout_url: checkout.checkout_url, 
-      amount: offer.price 
+      amount: offer.price,
+      is_free: false
     });
   } else {
     console.log(`❌ [حجز] فشل إنشاء رابط الدفع: ${checkout.error}`);
-    res.json({ 
+    return res.json({ 
       success: false, 
       error: checkout.error || 'فشل الاتصال ببوابة الدفع',
       session_id: session.id,
@@ -773,14 +797,23 @@ app.post('/api/booking/create', async (req, res) => {
 app.get('/api/payment/success/:session_id', async (req, res) => {
   const { session_id } = req.params;
   console.log(`✅ [دفع] نجاح الدفع للجلسة: ${session_id}`);
+  
+  // تحديث حالة الدفع إلى مدفوعة
   await update('sessions', session_id, { payment_status: 'paid' });
   
+  // جلب معلومات الجلسة
   const session = await getOne('sessions', 'id', session_id);
   if (session) {
-    await insert('waiting_room', { offer_id: session.offer_id, student_id: session.student_id });
-    console.log(`✅ [دفع] تم إضافة الطالب ${session.student_id} إلى غرفة الانتظار`);
+    // إضافة الطالب إلى غرفة الانتظار بعد تأكيد الدفع
+    await insert('waiting_room', { 
+      offer_id: session.offer_id, 
+      student_id: session.student_id,
+      joined_at: new Date().toISOString()
+    });
+    console.log(`✅ [دفع] تم إضافة الطالب ${session.student_id} إلى غرفة الانتظار بعد الدفع`);
   }
   
+  // صفحة نجاح جميلة
   res.send(`
     <!DOCTYPE html>
     <html lang="ar">
@@ -790,17 +823,35 @@ app.get('/api/payment/success/:session_id', async (req, res) => {
         <title>تم الدفع بنجاح</title>
         <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
         <style>
-            body { font-family: 'Cairo', sans-serif; background: linear-gradient(135deg, #1e3c72, #0f5cbf); min-height: 100vh; display: flex; justify-content: center; align-items: center; }
-            .card { background: white; padding: 40px; border-radius: 30px; text-align: center; max-width: 500px; margin: 20px; }
-            .btn { background: #10b981; color: white; padding: 12px 30px; border-radius: 30px; text-decoration: none; display: inline-block; margin-top: 20px; }
-            h1 { color: #10b981; margin-bottom: 20px; }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: 'Cairo', sans-serif; background: linear-gradient(135deg, #1e3c72 0%, #0f5cbf 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
+            .card { background: white; padding: 50px 40px; border-radius: 30px; text-align: center; max-width: 500px; width: 100%; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+            .success-icon { width: 80px; height: 80px; background: #10b981; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 25px; }
+            .success-icon svg { width: 50px; height: 50px; color: white; }
+            h1 { color: #10b981; margin-bottom: 15px; font-size: 28px; }
+            p { color: #4b5563; margin-bottom: 10px; line-height: 1.6; }
+            .btn { background: #10b981; color: white; padding: 14px 35px; border-radius: 40px; text-decoration: none; display: inline-block; margin-top: 25px; font-weight: 600; transition: transform 0.2s, background 0.2s; }
+            .btn:hover { background: #059669; transform: translateY(-2px); }
+            .btn-secondary { background: #0f5cbf; margin-left: 10px; }
+            .btn-secondary:hover { background: #1e3c72; }
+            .buttons { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
         </style>
     </head>
     <body>
         <div class="card">
+            <div class="success-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </div>
             <h1>✅ تم الدفع بنجاح!</h1>
-            <p>شكراً لك! تم إضافتك إلى قائمة الانتظار.</p>
-            <a href="/student-dashboard.html" class="btn">العودة إلى لوحة التحكم</a>
+            <p>شكراً لك على ثقتك!</p>
+            <p style="color: #10b981; font-weight: 600;">تم تأكيد حجزك وإضافتك إلى قائمة الانتظار.</p>
+            <p style="font-size: 14px; color: #6b7280; margin-top: 15px;">ستتمكن من حضور الحصة في الوقت المحدد</p>
+            <div class="buttons">
+                <a href="/student-dashboard.html" class="btn">📋 لوحة التحكم</a>
+                <a href="/" class="btn btn-secondary">🏠 الصفحة الرئيسية</a>
+            </div>
         </div>
     </body>
     </html>
@@ -821,28 +872,47 @@ app.get('/api/payment/failure/:session_id', async (req, res) => {
         <title>فشل الدفع</title>
         <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
         <style>
-            body { font-family: 'Cairo', sans-serif; background: linear-gradient(135deg, #1e3c72, #0f5cbf); min-height: 100vh; display: flex; justify-content: center; align-items: center; }
-            .card { background: white; padding: 40px; border-radius: 30px; text-align: center; max-width: 500px; margin: 20px; }
-            .btn { background: #f59e0b; color: white; padding: 12px 30px; border-radius: 30px; text-decoration: none; display: inline-block; margin-top: 20px; }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: 'Cairo', sans-serif; background: linear-gradient(135deg, #1e3c72 0%, #0f5cbf 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
+            .card { background: white; padding: 50px 40px; border-radius: 30px; text-align: center; max-width: 500px; width: 100%; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+            .error-icon { width: 80px; height: 80px; background: #ef4444; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 25px; }
+            .error-icon svg { width: 50px; height: 50px; color: white; }
+            h1 { color: #ef4444; margin-bottom: 15px; font-size: 28px; }
+            p { color: #4b5563; margin-bottom: 10px; line-height: 1.6; }
+            .btn { background: #f59e0b; color: white; padding: 14px 35px; border-radius: 40px; text-decoration: none; display: inline-block; margin-top: 15px; font-weight: 600; cursor: pointer; border: none; transition: transform 0.2s; }
+            .btn:hover { background: #d97706; transform: translateY(-2px); }
             .btn-primary { background: #0f5cbf; margin-top: 10px; }
-            h1 { color: #ef4444; margin-bottom: 20px; }
+            .btn-primary:hover { background: #1e3c72; }
+            .buttons { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
         </style>
     </head>
     <body>
         <div class="card">
+            <div class="error-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </div>
             <h1>❌ فشل الدفع!</h1>
-            <p>حدث خطأ أثناء معالجة الدفع. يرجى المحاولة مرة أخرى.</p>
-            <button class="btn" onclick="retryPayment(${session_id})">محاولة الدفع مرة أخرى</button>
-            <a href="/student-dashboard.html" class="btn btn-primary">العودة إلى لوحة التحكم</a>
+            <p>حدث خطأ أثناء معالجة الدفع.</p>
+            <p style="color: #6b7280; font-size: 14px;">يرجى المحاولة مرة أخرى أو استخدام طريقة دفع أخرى.</p>
+            <div class="buttons">
+                <button class="btn" onclick="retryPayment(${session_id})">🔄 محاولة الدفع مرة أخرى</button>
+                <a href="/student-dashboard.html" class="btn btn-primary">📋 لوحة التحكم</a>
+            </div>
         </div>
         <script>
             async function retryPayment(sessionId) {
-                const res = await fetch('/api/retry-payment/' + sessionId, { method: 'POST' });
-                const data = await res.json();
-                if (data.checkout_url) {
-                    window.location.href = data.checkout_url;
-                } else {
-                    alert('حدث خطأ، يرجى المحاولة لاحقاً');
+                try {
+                    const res = await fetch('/api/retry-payment/' + sessionId, { method: 'POST' });
+                    const data = await res.json();
+                    if (data.checkout_url) {
+                        window.location.href = data.checkout_url;
+                    } else {
+                        alert('حدث خطأ: ' + (data.error || 'يرجى المحاولة لاحقاً'));
+                    }
+                } catch(e) {
+                    alert('خطأ في الاتصال: ' + e.message);
                 }
             }
         </script>
@@ -854,13 +924,16 @@ app.get('/api/payment/failure/:session_id', async (req, res) => {
 // إعادة محاولة الدفع
 app.post('/api/retry-payment/:session_id', async (req, res) => {
   const { session_id } = req.params;
+  console.log(`🔄 [دفع] إعادة محاولة الدفع للجلسة: ${session_id}`);
   
   const session = await getOne('sessions', 'id', session_id);
-  if (!session) return res.json({ success: false, error: 'الجلسة غير موجودة' });
+  if (!session) {
+    return res.json({ success: false, error: 'الجلسة غير موجودة' });
+  }
   
   const offer = await getOne('offers', 'id', session.offer_id);
   const student = await getOne('students', 'id', session.student_id);
-  const baseUrl = process.env.RENDER_EXTERNAL_URL || `https://chatvidio.onrender.com`;
+  const baseUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
   const successUrl = `${baseUrl}/api/payment/success/${session_id}`;
   const failureUrl = `${baseUrl}/api/payment/failure/${session_id}`;
   
@@ -882,14 +955,19 @@ app.post('/api/retry-payment/:session_id', async (req, res) => {
   }
 });
 
+// جلب حجوزات الطالب
 app.get('/api/student/bookings/:student_id', async (req, res) => {
-  const { data } = await supabase.from('sessions').select(`
-    *,
-    offers:offer_id (
-      id, subject_name, offer_date, duration, price, is_free, status, room_name,
-      teachers:teacher_id (id, full_name, profile_image)
-    )
-  `).eq('student_id', req.params.student_id).order('created_at', { ascending: false });
+  const { data } = await supabase
+    .from('sessions')
+    .select(`
+      *,
+      offers:offer_id (
+        id, subject_name, offer_date, duration, price, is_free, status, room_name,
+        teachers:teacher_id (id, full_name, profile_image)
+      )
+    `)
+    .eq('student_id', req.params.student_id)
+    .order('created_at', { ascending: false });
   
   const formatted = await Promise.all((data || []).map(async (s) => {
     const { count: waitingCount } = await supabase
@@ -903,6 +981,7 @@ app.get('/api/student/bookings/:student_id', async (req, res) => {
       student_id: s.student_id,
       payment_status: s.payment_status,
       payment_amount: s.payment_amount,
+      payment_method: s.payment_method,
       chargily_checkout_url: s.chargily_checkout_url,
       created_at: s.created_at,
       subject_name: s.offers?.subject_name,
@@ -922,6 +1001,7 @@ app.get('/api/student/bookings/:student_id', async (req, res) => {
   res.json(formatted);
 });
 
+// عدد المنتظرين في غرفة الانتظار
 app.get('/api/waiting-count/:offer_id', async (req, res) => {
   const { count } = await supabase
     .from('waiting_room')
@@ -1049,6 +1129,9 @@ app.get('/api/join-stream/:offer_id/:student_id', async (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 الخادم يعمل على http://localhost:${PORT}`);
   console.log(`📦 قاعدة البيانات: Supabase (${supabaseUrl})`);
-  console.log(`✅ العروض المجانية: حجز مباشر (بدون دفع)`);
+  console.log(`✅ العروض المجانية: حجز مباشر فوري بدون بوابة دفع`);
+  console.log(`   - يتم إنشاء الجلسة تلقائياً بحالة مدفوعة`);
+  console.log(`   - يتم إضافة الطالب إلى غرفة الانتظار فوراً`);
+  console.log(`   - لا يتم توجيه الطالب إلى أي بوابة دفع`);
   console.log(`💰 العروض المدفوعة: عبر Chargily (الحد الأدنى 50 دج)`);
 });
