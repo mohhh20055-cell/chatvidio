@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الأساتذة - منصة التعليم</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Cairo', sans-serif; background: #f0f2f5; }
+        .navbar { background: white; padding: 12px 24px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; }
+        .nav-container { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 1.5rem; font-weight: 800; color: #0f5cbf; cursor: pointer; }
+        .back-btn { background: #0f5cbf; color: white; border: none; padding: 8px 20px; border-radius: 30px; cursor: pointer; }
+        .container { max-width: 1200px; margin: 30px auto; padding: 0 20px; }
+        .teachers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 25px; margin-top: 20px; }
+        .teacher-card { background: white; border-radius: 20px; padding: 25px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.08); transition: 0.3s; cursor: pointer; }
+        .teacher-card:hover { transform: translateY(-5px); }
+        .teacher-image { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 15px; border: 3px solid #0f5cbf; }
+        .teacher-name { font-size: 1.2rem; font-weight: 700; color: #1e3c72; margin-bottom: 5px; }
+        .teacher-specialty { color: #718096; margin-bottom: 10px; }
+        .follow-btn { background: #0f5cbf; color: white; border: none; padding: 8px 25px; border-radius: 25px; cursor: pointer; margin-top: 15px; transition: 0.3s; }
+        .follow-btn.following { background: #e2e8f0; color: #4a5568; }
+        .follow-btn:hover { transform: scale(1.02); }
+        .loading { text-align: center; padding: 50px; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo" onclick="window.location.href='/student-dashboard.html'"><i class="fas fa-chalkboard-user"></i> منصة التعليم</div>
+            <button class="back-btn" onclick="window.location.href='/student-dashboard.html'"><i class="fas fa-arrow-right"></i> العودة للرئيسية</button>
+        </div>
+    </nav>
+    <div class="container">
+        <h2><i class="fas fa-users"></i> جميع الأساتذة المعتمدون</h2>
+        <div id="teachersList" class="teachers-grid">
+            <div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>
+        </div>
+    </div>
+    <script>
+        let studentData = JSON.parse(localStorage.getItem('studentData') || '{}');
+        let followingStatus = {};
+
+        async function loadTeachers() {
+            const res = await fetch('/api/public/teachers');
+            const teachers = await res.json();
+            const container = document.getElementById('teachersList');
+            
+            // جلب حالة المتابعة لكل أستاذ
+            for (const t of teachers) {
+                const followRes = await fetch(`/api/check-follow/${studentData.id}/${t.id}`);
+                const followData = await followRes.json();
+                followingStatus[t.id] = followData.following;
+            }
+            
+            let html = '';
+            teachers.forEach(t => {
+                const imageUrl = t.profile_image ? `/uploads/${t.profile_image}` : 'https://via.placeholder.com/100';
+                html += `
+                    <div class="teacher-card" onclick="viewProfile(${t.id})">
+                        <img src="${imageUrl}" class="teacher-image">
+                        <div class="teacher-name">${t.full_name}</div>
+                        <div class="teacher-specialty"><i class="fas fa-book"></i> ${t.specialization || 'تخصص عام'}</div>
+                        <div class="teacher-specialty"><i class="fas fa-briefcase"></i> ${t.experience || '0'} سنة خبرة</div>
+                        <button class="follow-btn ${followingStatus[t.id] ? 'following' : ''}" onclick="event.stopPropagation(); toggleFollow(${t.id}, this)">
+                            ${followingStatus[t.id] ? '✅ متابع' : '➕ متابعة'}
+                        </button>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        async function toggleFollow(teacherId, btn) {
+            const isFollowing = btn.classList.contains('following');
+            const url = isFollowing ? '/api/unfollow' : '/api/follow';
+            await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ student_id: studentData.id, teacher_id: teacherId })
+            });
+            if (isFollowing) {
+                btn.classList.remove('following');
+                btn.innerHTML = '➕ متابعة';
+            } else {
+                btn.classList.add('following');
+                btn.innerHTML = '✅ متابع';
+            }
+        }
+
+        function viewProfile(teacherId) {
+            window.open(`/teacher-profile.html?id=${teacherId}`, '_blank');
+        }
+
+        loadTeachers();
+    </script>
+</body>
+</html>
