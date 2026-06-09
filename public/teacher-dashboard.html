@@ -23,15 +23,15 @@
         .edit-profile-btn { background: #0f5cbf; color: white; border: none; padding: 8px 20px; border-radius: 25px; cursor: pointer; margin-top: 10px; }
         .social-links { display: flex; justify-content: center; gap: 15px; margin-top: 15px; }
         .social-links a { color: #0f5cbf; font-size: 24px; transition: 0.3s; }
+        .social-links a:hover { transform: scale(1.1); }
         .post-image { max-width: 100%; border-radius: 15px; margin: 10px 0; }
-        .post-file { background: #e2e8f0; padding: 8px 15px; border-radius: 20px; text-decoration: none; color: #0f5cbf; display: inline-block; margin: 5px; }
+        .post-file { background: #e2e8f0; padding: 10px; border-radius: 10px; display: inline-block; margin-top: 10px; text-decoration: none; color: #0f5cbf; }
         .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 20px; z-index: 1000; width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; }
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999; }
         .modal input, .modal textarea { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #cbd5e1; border-radius: 10px; }
         .delete-btn { background: #ef4444; color: white; border: none; padding: 8px 15px; border-radius: 20px; cursor: pointer; margin-top: 10px; }
         .comment-item { background: #f8fafc; padding: 10px; border-radius: 10px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center; }
         .delete-comment { background: none; border: none; color: #ef4444; cursor: pointer; }
-        .status-badge { display: inline-block; padding: 3px 10px; border-radius: 15px; font-size: 12px; background: #f59e0b; color: white; }
     </style>
 </head>
 <body>
@@ -64,6 +64,7 @@
 
     <div id="modalOverlay" class="modal-overlay"></div>
     
+    <!-- مودال تعديل الملف الشخصي -->
     <div id="editProfileModal" class="modal">
         <h3><i class="fas fa-user-edit"></i> تعديل الملف الشخصي</h3>
         <input type="text" id="editFullName" placeholder="الاسم الكامل">
@@ -80,6 +81,7 @@
         <button onclick="closeModal()" style="background:#e2e8f0; color:#333; padding:10px; border:none; border-radius:10px; margin-top:10px; width:100%">إلغاء</button>
     </div>
 
+    <!-- مودال إنشاء منشور -->
     <div id="createPostModal" class="modal">
         <h3><i class="fas fa-newspaper"></i> نشر درس جديد</h3>
         <input type="text" id="postTitle" placeholder="عنوان الدرس">
@@ -91,6 +93,7 @@
         <button onclick="closeModal()" style="background:#e2e8f0; color:#333; padding:10px; border:none; border-radius:10px; margin-top:10px; width:100%">إلغاء</button>
     </div>
 
+    <!-- مودال إنشاء عرض -->
     <div id="createOfferModal" class="modal">
         <h3><i class="fas fa-video"></i> إنشاء عرض جديد</h3>
         <input type="text" id="subjectName" placeholder="اسم المادة">
