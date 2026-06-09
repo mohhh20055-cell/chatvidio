@@ -81,6 +81,10 @@
         .empty-feed { text-align: center; padding: 50px; background: white; border-radius: 15px; color: #718096; }
         .empty-feed i { font-size: 50px; margin-bottom: 15px; color: #cbd5e1; }
         .loading { text-align: center; padding: 50px; }
+        
+        .offer-card-small { background: white; border-radius: 15px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); cursor: pointer; transition: 0.2s; }
+        .offer-card-small:hover { background: #f8fafc; }
+        .free-badge { background: #10b981; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; margin-left: 10px; }
     </style>
 </head>
 <body>
@@ -127,6 +131,10 @@
             <div class="upcoming-sessions">
                 <div class="sidebar-title"><i class="fas fa-clock"></i> حصصي القادمة</div>
                 <div id="upcomingSessions"></div>
+            </div>
+            <div class="upcoming-sessions">
+                <div class="sidebar-title"><i class="fas fa-tag"></i> عروض مجانية</div>
+                <div id="freeOffers"></div>
             </div>
         </div>
     </div>
@@ -175,6 +183,7 @@
                 loadSuggestedTeachers();
                 loadUpcomingSessions();
                 loadUserStats();
+                loadFreeOffers();
             } catch(e) { console.log(e); }
         }
 
@@ -224,6 +233,55 @@
                 checkLikeStatus(post.id);
             }
             container.innerHTML = html;
+        }
+
+        async function loadFreeOffers() {
+            try {
+                const res = await fetch('/api/offers');
+                const offers = await res.json();
+                const freeOffers = offers.filter(o => o.is_free === 1);
+                const container = document.getElementById('freeOffers');
+                
+                if (freeOffers.length === 0) {
+                    container.innerHTML = '<p style="color:#718096; font-size:0.8rem;">لا توجد عروض مجانية حالياً</p>';
+                    return;
+                }
+                
+                let html = '';
+                freeOffers.slice(0, 5).forEach(offer => {
+                    const offerDate = new Date(offer.offer_date);
+                    html += `
+                        <div class="offer-card-small" onclick="quickBookFreeOffer(${offer.id})">
+                            <div>
+                                <strong>${escapeHtml(offer.subject_name)}</strong>
+                                <span class="free-badge">مجاني</span>
+                            </div>
+                            <small>${offer.teacher_name} | ${offerDate.toLocaleDateString('ar')}</small>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            } catch(e) { console.log(e); }
+        }
+
+        async function quickBookFreeOffer(offerId) {
+            showNotification('جاري التسجيل في الحصة المجانية...', 'warning');
+            try {
+                const res = await fetch('/api/booking/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ offer_id: offerId, student_id: studentData.id })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showNotification('✅ تم تسجيلك بنجاح في الحصة المجانية!', 'success');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showNotification(data.error || 'حدث خطأ', 'error');
+                }
+            } catch(e) {
+                showNotification('حدث خطأ', 'error');
+            }
         }
 
         async function checkLikeStatus(postId) {
@@ -429,7 +487,7 @@
         }
 
         loadFeed();
-        setInterval(() => { loadUpcomingSessions(); }, 30000);
+        setInterval(() => { loadUpcomingSessions(); loadFreeOffers(); }, 30000);
     </script>
 </body>
 </html>
