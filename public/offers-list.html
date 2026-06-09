@@ -49,6 +49,8 @@
         .book-btn:hover { background: #0b4a9c; }
         .profile-btn { flex: 1; background: #e2e8f0; color: #4a5568; border: none; padding: 10px; border-radius: 25px; cursor: pointer; font-weight: 600; transition: 0.3s; }
         .profile-btn:hover { background: #cbd5e1; }
+        .book-btn.free { background: #10b981; }
+        .book-btn.free:hover { background: #059669; }
         
         .badge-live { background: #ef4444; color: white; padding: 3px 10px; border-radius: 20px; font-size: 0.7rem; display: inline-block; margin-left: 10px; animation: pulse 1s infinite; }
         @keyframes pulse { 0% { opacity: 0.7; } 50% { opacity: 1; } 100% { opacity: 0.7; } }
@@ -115,14 +117,15 @@
 
     <script>
         // جلب بيانات المستخدم من localStorage
-        let studentData = JSON.parse(localStorage.getItem('userData') || '{}');
+        let userData = JSON.parse(localStorage.getItem('userData') || '{}');
         let studentToken = localStorage.getItem('studentToken');
         let token = localStorage.getItem('token');
         
-        // التحقق من تسجيل الدخول بأي من التوكنات
-        let isLoggedIn = !!(studentToken || token || studentData.id);
+        // التحقق من تسجيل الدخول
+        let isLoggedIn = !!(studentToken || token || userData.id);
+        let studentId = userData.id;
         
-        console.log('🔍 حالة تسجيل الدخول:', { isLoggedIn, studentData, studentToken: !!studentToken, token: !!token });
+        console.log('🔍 حالة تسجيل الدخول:', { isLoggedIn, studentId, userData });
         
         let allOffers = [];
         let filteredOffers = [];
@@ -203,7 +206,6 @@
                 const offerDate = new Date(offer.offer_date);
                 const isFree = offer.is_free === 1;
                 const imageUrl = offer.profile_image ? `/uploads/${offer.profile_image}` : 'https://via.placeholder.com/50';
-                const isPast = offerDate < new Date();
                 
                 html += `
                     <div class="offer-card">
@@ -228,7 +230,7 @@
                             </div>
                         </div>
                         <div class="offer-footer">
-                            <button class="book-btn" onclick="bookOffer(${offer.id}, ${offer.price}, ${isFree})">
+                            <button class="book-btn ${isFree ? 'free' : ''}" onclick="bookOffer(${offer.id}, ${offer.price}, ${isFree})">
                                 <i class="fas ${isFree ? 'fa-check-circle' : 'fa-credit-card'}"></i> ${isFree ? 'تسجيل مجاني' : 'حجز الحصة'}
                             </button>
                             <button class="profile-btn" onclick="viewTeacherProfile(${offer.teacher_id})">
@@ -243,22 +245,20 @@
         }
 
         async function bookOffer(offerId, price, isFree) {
-            // استخدام studentData من localStorage
-            let studentId = studentData.id;
-            
-            // إذا لم يكن هناك studentData، حاول جلبها من localStorage مرة أخرى
-            if (!studentId) {
+            // التأكد من وجود studentId
+            let currentStudentId = studentId;
+            if (!currentStudentId) {
                 const storedData = localStorage.getItem('userData');
                 if (storedData) {
                     const parsedData = JSON.parse(storedData);
-                    studentId = parsedData.id;
-                    studentData = parsedData;
+                    currentStudentId = parsedData.id;
+                    studentId = currentStudentId;
                 }
             }
             
-            console.log('📝 محاولة حجز:', { offerId, price, isFree, studentId, studentData });
+            console.log('📝 محاولة حجز:', { offerId, price, isFree, studentId: currentStudentId });
             
-            if (!studentId) {
+            if (!currentStudentId) {
                 if (confirm('يجب تسجيل الدخول أولاً لحجز الحصة. هل تريد تسجيل الدخول الآن؟')) {
                     window.location.href = '/';
                 }
@@ -271,21 +271,28 @@
                 const res = await fetch('/api/booking/create', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ offer_id: offerId, student_id: studentId })
+                    body: JSON.stringify({ offer_id: offerId, student_id: currentStudentId })
                 });
                 const data = await res.json();
 
+                console.log('📝 استجابة الحجز:', data);
+
                 if (data.success) {
-                    if (isFree || data.is_free) {
-                        showNotification('✅ تم تسجيلك بنجاح! سيتم إضافتك إلى غرفة الانتظار.', 'success');
+                    // إذا كان العرض مجاني أو الحصة مجانية
+                    if (isFree || data.is_free === true) {
+                        showNotification('✅ تم تسجيلك بنجاح في الحصة المجانية! سيتم إضافتك إلى غرفة الانتظار.', 'success');
                         setTimeout(() => {
                             window.location.href = '/student-dashboard.html';
                         }, 2000);
-                    } else if (data.checkout_url) {
+                    } 
+                    // إذا كان العرض مدفوع ويوجد رابط دفع
+                    else if (data.checkout_url) {
                         showNotification('جاري تحويلك إلى بوابة الدفع...', 'warning');
                         window.location.href = data.checkout_url;
-                    } else {
-                        showNotification('حدث خطأ في عملية الحجز', 'error');
+                    } 
+                    // إذا كان العرض مدفوع ولكن لا يوجد رابط دفع (خطأ)
+                    else {
+                        showNotification('حدث خطأ في عملية الدفع', 'error');
                     }
                 } else {
                     showNotification(data.error || 'حدث خطأ', 'error');
