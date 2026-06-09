@@ -12,13 +12,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ============= تهيئة Supabase =============
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-  console.error('❌ خطأ: متغيرات البيئة SUPABASE_URL و SUPABASE_KEY غير معرفة.');
-  process.exit(1);
-}
+const supabaseUrl = process.env.SUPABASE_URL || 'https://pvtphjcnafwphuzmzihe.supabase.co';
+const supabaseKey = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2dHBoamNuYWZ3cGh1em16aWhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTA0ODgsImV4cCI6MjA5NjU2NjQ4OH0.iyDo5UnNM7mAFFjZfNSr2Z8tpdI4FiHAfabJU1uAVEk';
 
 console.log('🔌 الاتصال بـ Supabase:', supabaseUrl);
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -52,20 +47,37 @@ const CHARGILY_API_URL = 'https://pay.chargily.net/test/api/v2';
 
 async function createChargilyCheckout(amount, studentName, studentEmail, studentPhone, offerName, successUrl, failureUrl) {
   try {
+    // التأكد من أن المبلغ لا يقل عن 50 دج (الحد الأدنى لـ Chargily)
+    let finalAmount = amount;
+    if (finalAmount < 50) {
+      finalAmount = 50;
+      console.log(`⚠️ تم تعديل المبلغ من ${amount} إلى ${finalAmount} (الحد الأدنى لـ Chargily هو 50 دج)`);
+    }
+    
     const checkoutData = {
-      amount: amount,
+      amount: finalAmount,
       currency: 'dzd',
       success_url: successUrl,
       failure_url: failureUrl,
       locale: 'ar',
       description: offerName,
-      metadata: { student_name: studentName, student_email: studentEmail, offer_name: offerName }
+      metadata: { 
+        student_name: studentName, 
+        student_email: studentEmail, 
+        offer_name: offerName,
+        original_amount: amount
+      }
     };
+    
+    console.log(`💰 إنشاء دفع للمبلغ: ${finalAmount} DZD`);
+    
     const response = await axios.post(`${CHARGILY_API_URL}/checkouts`, checkoutData, {
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${CHARGILY_API_KEY}` },
       timeout: 30000
     });
+    
     if (response.data && response.data.checkout_url) {
+      console.log(`✅ تم إنشاء رابط الدفع: ${response.data.checkout_url}`);
       return { success: true, checkout_url: response.data.checkout_url, checkout_id: response.data.id };
     }
     throw new Error('لم يتم استلام رابط الدفع');
@@ -232,7 +244,6 @@ app.post('/api/login', async (req, res) => {
     
     console.log(`📝 محاولة تسجيل دخول: ${email} كـ ${role}`);
     
-    // Admin
     if (email === 'admin@platform.com' && password === 'admin123') {
       console.log('✅ تم تسجيل دخول Admin بنجاح');
       return res.json({ 
@@ -248,7 +259,6 @@ app.post('/api/login', async (req, res) => {
       });
     }
     
-    // البحث في الأساتذة
     let user = await getOne('teachers', 'email', email);
     let userRole = 'teacher';
     
@@ -513,7 +523,7 @@ app.get('/api/check-follow/:student_id/:teacher_id', async (req, res) => {
   res.json({ following: !!data });
 });
 
-// ============= التغذية الرئيسية (Feed) =============
+// ============= التغذية الرئيسية =============
 app.get('/api/feed/:student_id', async (req, res) => {
   const { data: follows } = await supabase
     .from('follows')
@@ -631,9 +641,35 @@ app.get('/api/offers', async (req, res) => {
     teacher_name: o.teachers?.full_name,
     teacher_specialization: o.teachers?.specialization,
     teacher_profile_image: o.teachers?.profile_image,
-    teacher_id: o.teachers?.id
+    teacher_id: o.teachers?.id,
+    waiting_count: 0 // سيتم حسابه في صفحة العرض
   }));
   res.json(formatted);
+});
+
+app.get('/api/offers-with-waiting/:teacher_id', async (req, res) => {
+  const { data } = await supabase
+    .from('offers')
+    .select('*, teachers:teacher_id (full_name, specialization, profile_image, id)')
+    .eq('teacher_id', req.params.teacher_id)
+    .order('offer_date', { ascending: true });
+  
+  // جلب عدد الطلاب المنتظرين لكل عرض
+  const offersWithCount = await Promise.all((data || []).map(async (offer) => {
+    const { count: waitingCount } = await supabase
+      .from('waiting_room')
+      .select('*', { count: 'exact', head: true })
+      .eq('offer_id', offer.id);
+    return {
+      ...offer,
+      teacher_name: offer.teachers?.full_name,
+      teacher_specialization: offer.teachers?.specialization,
+      teacher_profile_image: offer.teachers?.profile_image,
+      teacher_id: offer.teachers?.id,
+      waiting_count: waitingCount || 0
+    };
+  }));
+  res.json(offersWithCount);
 });
 
 app.get('/api/teacher/offers/:teacher_id', async (req, res) => {
@@ -663,14 +699,16 @@ app.delete('/api/offer/delete/:offer_id', async (req, res) => {
 app.post('/api/booking/create', async (req, res) => {
   const { offer_id, student_id } = req.body;
   
+  // التحقق من التسجيل المسبق
   const existing = await getOne('sessions', 'offer_id', offer_id);
   if (existing && existing.student_id === student_id) {
-    return res.json({ success: false, error: 'أنت مسجل بالفعل' });
+    return res.json({ success: false, error: 'أنت مسجل بالفعل في هذه الحصة' });
   }
   
   const offer = await getOne('offers', 'id', offer_id);
   if (!offer) return res.json({ success: false, error: 'العرض غير موجود' });
   
+  // إنشاء جلسة جديدة
   const session = await insert('sessions', {
     offer_id,
     student_id,
@@ -678,44 +716,205 @@ app.post('/api/booking/create', async (req, res) => {
     payment_amount: offer.price
   });
   
+  // إذا كان العرض مجاني، أضف مباشرة إلى غرفة الانتظار
   if (offer.is_free === 1) {
     await insert('waiting_room', { offer_id, student_id });
     return res.json({ success: true, session_id: session.id, is_free: true });
   }
   
+  // الحصول على بيانات الطالب للدفع
   const student = await getOne('students', 'id', student_id);
-  const baseUrl = process.env.RENDER_EXTERNAL_URL || `https://chatvidio-api.onrender.com`;
+  const baseUrl = process.env.RENDER_EXTERNAL_URL || `https://chatvidio.onrender.com`;
+  const successUrl = `${baseUrl}/api/payment/success/${session.id}`;
+  const failureUrl = `${baseUrl}/api/payment/failure/${session.id}`;
+  
   const checkout = await createChargilyCheckout(
     offer.price,
     student.full_name,
     student.email,
     student.phone,
     offer.subject_name,
-    `${baseUrl}/api/payment/success/${session.id}`,
-    `${baseUrl}/student-dashboard.html`
+    successUrl,
+    failureUrl
   );
   
-  if (checkout.success) {
+  if (checkout.success && checkout.checkout_url) {
     await update('sessions', session.id, { chargily_checkout_url: checkout.checkout_url });
-    res.json({ success: true, session_id: session.id, checkout_url: checkout.checkout_url, amount: offer.price });
+    res.json({ 
+      success: true, 
+      session_id: session.id, 
+      checkout_url: checkout.checkout_url, 
+      amount: offer.price 
+    });
   } else {
-    await remove('sessions', 'id', session.id);
-    res.json({ success: false, error: 'فشل الاتصال ببوابة الدفع' });
+    // في حالة فشل الدفع، لا نحذف الجلسة بل نرسل خطأ يمكن للطالب إعادة المحاولة منه
+    res.json({ 
+      success: false, 
+      error: checkout.error || 'فشل الاتصال ببوابة الدفع',
+      session_id: session.id,
+      can_retry: true 
+    });
   }
 });
 
+// صفحة نجاح الدفع
 app.get('/api/payment/success/:session_id', async (req, res) => {
   const { session_id } = req.params;
   await update('sessions', session_id, { payment_status: 'paid' });
+  
   const session = await getOne('sessions', 'id', session_id);
-  if (session) await insert('waiting_room', { offer_id: session.offer_id, student_id: session.student_id });
-  res.send(`<!DOCTYPE html><html><head><title>تم الدفع بنجاح</title><style>body{font-family:'Cairo',sans-serif;background:linear-gradient(135deg,#1e3c72,#0f5cbf);display:flex;justify-content:center;align-items:center;height:100vh}.card{background:white;padding:40px;border-radius:30px;text-align:center}.btn{background:#10b981;color:white;padding:12px 30px;border-radius:30px;text-decoration:none}</style></head><body><div class='card'><h1>✅ تم الدفع بنجاح!</h1><p>شكراً لك! تم إضافتك إلى قائمة الانتظار.</p><a href='/student-dashboard.html' class='btn'>العودة</a></div></body></html>`);
+  if (session) {
+    await insert('waiting_room', { offer_id: session.offer_id, student_id: session.student_id });
+  }
+  
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="ar">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>تم الدفع بنجاح</title>
+        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+        <style>
+            body { font-family: 'Cairo', sans-serif; background: linear-gradient(135deg, #1e3c72, #0f5cbf); min-height: 100vh; display: flex; justify-content: center; align-items: center; }
+            .card { background: white; padding: 40px; border-radius: 30px; text-align: center; max-width: 500px; margin: 20px; }
+            .btn { background: #10b981; color: white; padding: 12px 30px; border-radius: 30px; text-decoration: none; display: inline-block; margin-top: 20px; }
+            h1 { color: #10b981; margin-bottom: 20px; }
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <h1>✅ تم الدفع بنجاح!</h1>
+            <p>شكراً لك! تم إضافتك إلى قائمة الانتظار.</p>
+            <a href="/student-dashboard.html" class="btn">العودة إلى لوحة التحكم</a>
+        </div>
+    </body>
+    </html>
+  `);
+});
+
+// صفحة فشل الدفع - تسمح بإعادة المحاولة
+app.get('/api/payment/failure/:session_id', async (req, res) => {
+  const { session_id } = req.params;
+  
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="ar">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>فشل الدفع</title>
+        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+        <style>
+            body { font-family: 'Cairo', sans-serif; background: linear-gradient(135deg, #1e3c72, #0f5cbf); min-height: 100vh; display: flex; justify-content: center; align-items: center; }
+            .card { background: white; padding: 40px; border-radius: 30px; text-align: center; max-width: 500px; margin: 20px; }
+            .btn { background: #f59e0b; color: white; padding: 12px 30px; border-radius: 30px; text-decoration: none; display: inline-block; margin-top: 20px; }
+            .btn-primary { background: #0f5cbf; margin-top: 10px; }
+            h1 { color: #ef4444; margin-bottom: 20px; }
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <h1>❌ فشل الدفع!</h1>
+            <p>حدث خطأ أثناء معالجة الدفع. يرجى المحاولة مرة أخرى.</p>
+            <button class="btn" onclick="retryPayment(${session_id})">محاولة الدفع مرة أخرى</button>
+            <a href="/student-dashboard.html" class="btn btn-primary">العودة إلى لوحة التحكم</a>
+        </div>
+        <script>
+            async function retryPayment(sessionId) {
+                const res = await fetch('/api/retry-payment/' + sessionId, { method: 'POST' });
+                const data = await res.json();
+                if (data.checkout_url) {
+                    window.location.href = data.checkout_url;
+                } else {
+                    alert('حدث خطأ، يرجى المحاولة لاحقاً');
+                }
+            }
+        </script>
+    </body>
+    </html>
+  `);
+});
+
+// إعادة محاولة الدفع
+app.post('/api/retry-payment/:session_id', async (req, res) => {
+  const { session_id } = req.params;
+  
+  const session = await getOne('sessions', 'id', session_id);
+  if (!session) return res.json({ success: false, error: 'الجلسة غير موجودة' });
+  
+  const offer = await getOne('offers', 'id', session.offer_id);
+  const student = await getOne('students', 'id', session.student_id);
+  const baseUrl = process.env.RENDER_EXTERNAL_URL || `https://chatvidio.onrender.com`;
+  const successUrl = `${baseUrl}/api/payment/success/${session_id}`;
+  const failureUrl = `${baseUrl}/api/payment/failure/${session_id}`;
+  
+  const checkout = await createChargilyCheckout(
+    offer.price,
+    student.full_name,
+    student.email,
+    student.phone,
+    offer.subject_name,
+    successUrl,
+    failureUrl
+  );
+  
+  if (checkout.success && checkout.checkout_url) {
+    await update('sessions', session_id, { chargily_checkout_url: checkout.checkout_url });
+    res.json({ success: true, checkout_url: checkout.checkout_url });
+  } else {
+    res.json({ success: false, error: checkout.error });
+  }
 });
 
 app.get('/api/student/bookings/:student_id', async (req, res) => {
-  const { data } = await supabase.from('sessions').select(`*, offers:offer_id (subject_name, offer_date, duration, price, is_free, status, teachers:teacher_id (id, full_name, profile_image))`).eq('student_id', req.params.student_id).order('created_at', { ascending: false });
-  const formatted = (data || []).map(s => ({ ...s, subject_name: s.offers?.subject_name, offer_date: s.offers?.offer_date, duration: s.offers?.duration, price: s.offers?.price, is_free: s.offers?.is_free, offer_status: s.offers?.status, teacher_id: s.offers?.teachers?.id, teacher_name: s.offers?.teachers?.full_name, teacher_image: s.offers?.teachers?.profile_image }));
+  const { data } = await supabase.from('sessions').select(`
+    *,
+    offers:offer_id (
+      id, subject_name, offer_date, duration, price, is_free, status, room_name,
+      teachers:teacher_id (id, full_name, profile_image)
+    )
+  `).eq('student_id', req.params.student_id).order('created_at', { ascending: false });
+  
+  // جلب عدد الطلاب المنتظرين لكل عرض
+  const formatted = await Promise.all((data || []).map(async (s) => {
+    const { count: waitingCount } = await supabase
+      .from('waiting_room')
+      .select('*', { count: 'exact', head: true })
+      .eq('offer_id', s.offer_id);
+    
+    return {
+      id: s.id,
+      offer_id: s.offer_id,
+      student_id: s.student_id,
+      payment_status: s.payment_status,
+      payment_amount: s.payment_amount,
+      chargily_checkout_url: s.chargily_checkout_url,
+      created_at: s.created_at,
+      subject_name: s.offers?.subject_name,
+      offer_date: s.offers?.offer_date,
+      duration: s.offers?.duration,
+      price: s.offers?.price,
+      is_free: s.offers?.is_free,
+      offer_status: s.offers?.status,
+      room_name: s.offers?.room_name,
+      teacher_id: s.offers?.teachers?.id,
+      teacher_name: s.offers?.teachers?.full_name,
+      teacher_image: s.offers?.teachers?.profile_image,
+      waiting_count: waitingCount || 0
+    };
+  }));
+  
   res.json(formatted);
+});
+
+// الحصول على عدد الطلاب المنتظرين لعرض معين
+app.get('/api/waiting-count/:offer_id', async (req, res) => {
+  const { count } = await supabase
+    .from('waiting_room')
+    .select('*', { count: 'exact', head: true })
+    .eq('offer_id', req.params.offer_id);
+  res.json({ count: count || 0 });
 });
 
 // ============= نظام البث المباشر =============
@@ -731,12 +930,23 @@ app.post('/api/stream/add-students/:offer_id', async (req, res) => {
   const { offer_id, teacher_id } = req.body;
   const offer = await getOne('offers', 'id', offer_id);
   if (!offer || offer.teacher_id != teacher_id) return res.json({ success: false });
+  
   await update('offers', offer_id, { status: 'live' });
-  const { data: waitingStudents } = await supabase.from('waiting_room').select('student_id').eq('offer_id', offer_id);
+  
+  const { data: waitingStudents } = await supabase
+    .from('waiting_room')
+    .select('student_id')
+    .eq('offer_id', offer_id);
+  
   for (const student of waitingStudents || []) {
     await insert('active_stream', { offer_id, student_id: student.student_id });
-    await supabase.from('waiting_room').delete().eq('offer_id', offer_id).eq('student_id', student.student_id);
+    await supabase
+      .from('waiting_room')
+      .delete()
+      .eq('offer_id', offer_id)
+      .eq('student_id', student.student_id);
   }
+  
   res.json({ success: true, students_count: waitingStudents?.length || 0 });
 });
 
@@ -755,15 +965,31 @@ app.get('/api/stream/status/:offer_id', async (req, res) => {
 app.get('/api/student/stream-status/:offer_id/:student_id', async (req, res) => {
   const offer = await getOne('offers', 'id', req.params.offer_id);
   if (!offer) return res.json({ can_join: false });
+  
   if (offer.status === 'live') {
-    const { data: active } = await supabase.from('active_stream').select('*').eq('offer_id', req.params.offer_id).eq('student_id', req.params.student_id).single();
-    if (active) return res.json({ can_join: true, room_name: offer.room_name });
+    const { data: active } = await supabase
+      .from('active_stream')
+      .select('*')
+      .eq('offer_id', req.params.offer_id)
+      .eq('student_id', req.params.student_id)
+      .single();
+    if (active) {
+      const { count: waitingCount } = await supabase
+        .from('waiting_room')
+        .select('*', { count: 'exact', head: true })
+        .eq('offer_id', req.params.offer_id);
+      return res.json({ can_join: true, room_name: offer.room_name, waiting_count: waitingCount });
+    }
     return res.json({ can_join: false });
   } else if (offer.status === 'upcoming' || offer.status === 'teacher_ready') {
     const session = await getOne('sessions', 'offer_id', req.params.offer_id);
     if (session && session.payment_status === 'paid' && session.student_id == req.params.student_id) {
       await insert('waiting_room', { offer_id: req.params.offer_id, student_id: req.params.student_id });
-      return res.json({ can_join: false, is_waiting: true });
+      const { count: waitingCount } = await supabase
+        .from('waiting_room')
+        .select('*', { count: 'exact', head: true })
+        .eq('offer_id', req.params.offer_id);
+      return res.json({ can_join: false, is_waiting: true, waiting_count: waitingCount });
     }
     return res.json({ can_join: false, payment_required: true });
   }
@@ -771,8 +997,16 @@ app.get('/api/student/stream-status/:offer_id/:student_id', async (req, res) => 
 });
 
 app.get('/api/stream/waiting-list/:offer_id/:teacher_id', async (req, res) => {
-  const { data } = await supabase.from('waiting_room').select(`*, students:student_id (full_name, email)`).eq('offer_id', req.params.offer_id);
-  const formatted = (data || []).map(w => ({ ...w, full_name: w.students?.full_name, email: w.students?.email }));
+  const { data } = await supabase
+    .from('waiting_room')
+    .select('*, students:student_id (full_name, email)')
+    .eq('offer_id', req.params.offer_id);
+  
+  const formatted = (data || []).map(w => ({
+    ...w,
+    full_name: w.students?.full_name,
+    email: w.students?.email
+  }));
   res.json(formatted);
 });
 
