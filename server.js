@@ -130,6 +130,9 @@ app.post('/api/teacher/register', upload.fields([
 ]), async (req, res) => {
   try {
     const { full_name, email, password, phone, specialization, bio, experience } = req.body;
+    
+    console.log('📝 محاولة تسجيل أستاذ:', email);
+    
     if (!full_name || !email || !password || !phone || !specialization || !bio || !experience) {
       return res.json({ success: false, error: 'يرجى ملء جميع الحقول المطلوبة' });
     }
@@ -144,7 +147,7 @@ app.post('/api/teacher/register', upload.fields([
     const diploma_image = req.files['diploma_image'] ? req.files['diploma_image'][0].filename : null;
     const id_image = req.files['id_image'] ? req.files['id_image'][0].filename : null;
 
-    await insert('teachers', {
+    const newTeacher = await insert('teachers', {
       full_name,
       email,
       password: hashedPassword,
@@ -158,9 +161,10 @@ app.post('/api/teacher/register', upload.fields([
       status: 'pending'
     });
 
+    console.log('✅ تم تسجيل الأستاذ بنجاح:', newTeacher.id);
     res.json({ success: true, message: 'تم إرسال طلبك، سيتم مراجعته من قبل الإدارة' });
   } catch (error) {
-    console.error(error);
+    console.error('❌ خطأ في تسجيل الأستاذ:', error);
     res.json({ success: false, error: 'خطأ في الخادم: ' + error.message });
   }
 });
@@ -169,6 +173,9 @@ app.post('/api/teacher/register', upload.fields([
 app.post('/api/student/register', async (req, res) => {
   try {
     const { full_name, email, password, phone } = req.body;
+    
+    console.log('📝 محاولة تسجيل طالب:', email);
+    
     if (!full_name || !email || !password || !phone) {
       return res.json({ success: false, error: 'يرجى ملء جميع الحقول' });
     }
@@ -179,7 +186,7 @@ app.post('/api/student/register', async (req, res) => {
     }
 
     const hashedPassword = bcrypt.hashSync(password, 10);
-    await insert('students', {
+    const newStudent = await insert('students', {
       full_name,
       email,
       password: hashedPassword,
@@ -187,9 +194,10 @@ app.post('/api/student/register', async (req, res) => {
       balance: 0
     });
 
+    console.log('✅ تم تسجيل الطالب بنجاح:', newStudent.id);
     res.json({ success: true, message: 'تم التسجيل بنجاح' });
   } catch (error) {
-    console.error(error);
+    console.error('❌ خطأ في تسجيل الطالب:', error);
     res.json({ success: false, error: 'خطأ في الخادم' });
   }
 });
@@ -198,6 +206,8 @@ app.post('/api/student/register', async (req, res) => {
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    
+    console.log('📝 محاولة تسجيل دخول:', email);
     
     // البحث في الأساتذة أولاً
     let user = await getOne('teachers', 'email', email);
@@ -218,6 +228,7 @@ app.post('/api/login', async (req, res) => {
     }
     
     const token = Buffer.from(`${user.id}:${Date.now()}`).toString('base64');
+    console.log('✅ تم تسجيل الدخول بنجاح:', user.id);
     res.json({ 
       success: true, 
       token, 
@@ -231,7 +242,7 @@ app.post('/api/login', async (req, res) => {
       } 
     });
   } catch (error) {
-    console.error(error);
+    console.error('❌ خطأ في تسجيل الدخول:', error);
     res.json({ success: false, error: 'خطأ في الخادم' });
   }
 });
@@ -268,12 +279,16 @@ app.delete('/api/admin/delete-teacher/:id', async (req, res) => {
 
 // ============= الصفحات العامة =============
 app.get('/api/public/teachers', async (req, res) => {
-  const { data, error } = await supabase
-    .from('teachers')
-    .select('id, full_name, specialization, bio, experience, profile_image, facebook_url, instagram_url, linkedin_url, website_url')
-    .eq('status', 'approved')
-    .order('created_at', { ascending: false });
-  res.json(data || []);
+  try {
+    const { data, error } = await supabase
+      .from('teachers')
+      .select('id, full_name, specialization, bio, experience, profile_image, facebook_url, instagram_url, linkedin_url, website_url')
+      .eq('status', 'approved')
+      .order('created_at', { ascending: false });
+    res.json(data || []);
+  } catch (error) {
+    res.json([]);
+  }
 });
 
 app.get('/api/teacher/:teacher_id', async (req, res) => {
@@ -869,7 +884,6 @@ loadWaitingCount();setInterval(loadWaitingCount,3000);
 });
 
 app.get('/api/enter-teacher-stream/:offer_id/:teacher_id', async (req, res) => {
-  // استخدام axios بدلاً من fetch لتجنب مشكلة الاتصال
   try {
     await axios.post(`http://localhost:${PORT}/api/stream/enter-teacher/${req.params.offer_id}`, { 
       offer_id: parseInt(req.params.offer_id), 
