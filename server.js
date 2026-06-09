@@ -687,7 +687,7 @@ app.post('/api/booking/create', async (req, res) => {
       return res.json({ success: false, error: 'العرض غير موجود' });
     }
     
-    console.log(`📝 [حجز] معلومات العرض: اسم=${offer.subject_name}, مجاني=${offer.is_free === 1}, سعر=${offer.price}`);
+    console.log(`📝 [حجز] معلومات العرض: اسم=${offer.subject_name}, is_free=${offer.is_free}, سعر=${offer.price}`);
     
     // التحقق من وجود حجز مسبق للطالب في هذا العرض
     const { data: existingSession } = await supabase
@@ -703,46 +703,39 @@ app.post('/api/booking/create', async (req, res) => {
     }
     
     // ✅✅✅ العرض المجاني (is_free = 1) أو السعر 0 ✅✅✅
+    // لا يتم استخدام أي بوابة دفع إطلاقاً
     if (offer.is_free === 1 || offer.price === 0 || offer.price === null) {
-      console.log(`🎉 [حجز] عرض مجاني - حجز مباشر فوري بدون بوابة دفع للطالب ${student_id}`);
+      console.log(`🎉🎉🎉 [حجز] عرض مجاني 100% - حجز مباشر فوري بدون أي بوابة دفع للطالب ${student_id}`);
+      console.log(`🎉🎉🎉 سيتم حجز مكان الطالب فوراً وإضافته إلى غرفة الانتظار`);
       
-      // 1. إنشاء جلسة جديدة بحالة مدفوعة
-      const session = await insert('sessions', {
+      // 1. إنشاء جلسة جديدة بحالة مدفوعة (لأنها مجانية) - بدون payment_method
+      const sessionData = {
         offer_id: parseInt(offer_id),
         student_id: parseInt(student_id),
         payment_status: 'paid',
         payment_amount: 0,
-        payment_method: 'free',
         created_at: new Date().toISOString()
-      });
+      };
+      
+      const session = await insert('sessions', sessionData);
       console.log(`✅ [حجز] تم إنشاء الجلسة المجانية: ${session.id}`);
       
-      // 2. التحقق من عدم وجود الطالب بالفعل في غرفة الانتظار
-      const { data: existingWaiting } = await supabase
-        .from('waiting_room')
-        .select('*')
-        .eq('offer_id', offer_id)
-        .eq('student_id', student_id)
-        .maybeSingle();
+      // 2. إضافة الطالب مباشرة إلى غرفة الانتظار
+      const waitingData = { 
+        offer_id: parseInt(offer_id), 
+        student_id: parseInt(student_id),
+        joined_at: new Date().toISOString()
+      };
       
-      if (!existingWaiting) {
-        // إضافة الطالب إلى غرفة الانتظار
-        const waitingEntry = await insert('waiting_room', { 
-          offer_id: parseInt(offer_id), 
-          student_id: parseInt(student_id),
-          joined_at: new Date().toISOString()
-        });
-        console.log(`✅ [حجز] تم إضافة الطالب ${student_id} إلى غرفة الانتظار للعرض ${offer_id}`);
-      } else {
-        console.log(`⚠️ [حجز] الطالب ${student_id} موجود بالفعل في غرفة الانتظار`);
-      }
+      const waitingEntry = await insert('waiting_room', waitingData);
+      console.log(`✅ [حجز] تم إضافة الطالب ${student_id} إلى غرفة الانتظار للعرض ${offer_id}`);
       
-      // 3. إرجاع استجابة نجاح
+      // 3. إرجاع استجابة نجاح - بدون أي رابط دفع
       return res.json({ 
         success: true, 
         session_id: session.id, 
         is_free: true,
-        message: 'تم حجز مكانك في الحصة المجانية بنجاح! تم إضافتك إلى قائمة الانتظار.',
+        message: '🎉 تم حجز مكانك في الحصة المجانية بنجاح! تم إضافتك إلى قائمة الانتظار.',
         offer: {
           id: offer.id,
           subject_name: offer.subject_name,
@@ -752,46 +745,21 @@ app.post('/api/booking/create', async (req, res) => {
       });
     }
     
-    // ========== العرض المدفوع (السعر > 0) ==========
-    
-    // التأكد من أن السعر أكبر من 0 للعروض المدفوعة
-    if (offer.price <= 0) {
-      console.log(`⚠️ [حجز] عرض مدفوع بسعر غير صالح: ${offer.price}، سيتم معالجته كمجاني`);
-      // معالجة كعرض مجاني
-      const session = await insert('sessions', {
-        offer_id: parseInt(offer_id),
-        student_id: parseInt(student_id),
-        payment_status: 'paid',
-        payment_amount: 0,
-        payment_method: 'free',
-        created_at: new Date().toISOString()
-      });
-      
-      await insert('waiting_room', { 
-        offer_id: parseInt(offer_id), 
-        student_id: parseInt(student_id),
-        joined_at: new Date().toISOString()
-      });
-      
-      return res.json({ 
-        success: true, 
-        session_id: session.id, 
-        is_free: true,
-        message: 'تم حجز مكانك في الحصة بنجاح'
-      });
-    }
+    // ========== العرض المدفوع فقط من هنا ==========
+    // فقط العروض التي is_free = 0 و price > 0 تصل إلى هنا
     
     console.log(`💰 [حجز] عرض مدفوع - إنشاء رابط دفع للطالب ${student_id}`);
     
     // إنشاء جلسة جديدة بحالة انتظار الدفع
-    const session = await insert('sessions', {
+    const sessionData = {
       offer_id: parseInt(offer_id),
       student_id: parseInt(student_id),
       payment_status: 'pending',
       payment_amount: offer.price,
-      payment_method: null,
       created_at: new Date().toISOString()
-    });
+    };
+    
+    const session = await insert('sessions', sessionData);
     console.log(`✅ [حجز] تم إنشاء الجلسة المدفوعة: ${session.id}`);
     
     // الحصول على بيانات الطالب
@@ -1049,7 +1017,6 @@ app.get('/api/student/bookings/:student_id', async (req, res) => {
       student_id: s.student_id,
       payment_status: s.payment_status,
       payment_amount: s.payment_amount,
-      payment_method: s.payment_method,
       chargily_checkout_url: s.chargily_checkout_url,
       created_at: s.created_at,
       subject_name: s.offers?.subject_name,
@@ -1209,6 +1176,6 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ العروض المجانية: حجز مباشر فوري بدون بوابة دفع`);
   console.log(`   - يتم إنشاء الجلسة تلقائياً بحالة مدفوعة`);
   console.log(`   - يتم إضافة الطالب إلى غرفة الانتظار فوراً`);
-  console.log(`   - لا يتم توجيه الطالب إلى أي بوابة دفع`);
+  console.log(`   - لا يتم استخدام أي بوابة دفع إطلاقاً`);
   console.log(`💰 العروض المدفوعة: عبر Chargily (الحد الأدنى 50 دج)`);
 });
