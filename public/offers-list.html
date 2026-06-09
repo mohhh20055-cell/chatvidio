@@ -65,8 +65,17 @@
             .filter-group { width: 100%; }
         }
         
-        .notification-toast { position: fixed; bottom: 30px; right: 30px; background: #10b981; color: white; padding: 15px 25px; border-radius: 15px; z-index: 2000; animation: slideIn 0.5s ease; display: none; }
+        .notification-toast { position: fixed; bottom: 30px; right: 30px; background: #10b981; color: white; padding: 15px 25px; border-radius: 15px; z-index: 2000; animation: slideIn 0.5s ease; display: none; align-items: center; gap: 10px; }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 3000; display: none; }
+        .modal-content { background: white; border-radius: 20px; padding: 30px; max-width: 400px; width: 90%; text-align: center; }
+        .modal-content i { font-size: 60px; margin-bottom: 20px; }
+        .modal-content h3 { margin-bottom: 10px; }
+        .modal-content p { margin-bottom: 20px; color: #666; }
+        .modal-content button { padding: 10px 25px; border-radius: 30px; border: none; cursor: pointer; margin: 5px; }
+        .modal-btn-confirm { background: #10b981; color: white; }
+        .modal-btn-cancel { background: #e2e8f0; color: #4a5568; }
     </style>
 </head>
 <body>
@@ -114,6 +123,16 @@
     </div>
 
     <div id="notificationToast" class="notification-toast"></div>
+    
+    <div id="loginModal" class="modal-overlay">
+        <div class="modal-content">
+            <i class="fas fa-sign-in-alt" style="color: #0f5cbf;"></i>
+            <h3>مطلوب تسجيل الدخول</h3>
+            <p>يجب تسجيل الدخول أولاً لحجز الحصة</p>
+            <button class="modal-btn-confirm" onclick="redirectToLogin()">تسجيل الدخول</button>
+            <button class="modal-btn-cancel" onclick="closeModal()">إلغاء</button>
+        </div>
+    </div>
 
     <script>
         // جلب بيانات المستخدم من localStorage
@@ -134,18 +153,35 @@
             const toast = document.getElementById('notificationToast');
             toast.style.background = type === 'success' ? '#10b981' : (type === 'warning' ? '#f59e0b' : '#ef4444');
             toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'}"></i> ${message}`;
-            toast.style.display = 'block';
+            toast.style.display = 'flex';
             setTimeout(() => { toast.style.display = 'none'; }, 5000);
+        }
+        
+        function showModal() {
+            document.getElementById('loginModal').style.display = 'flex';
+        }
+        
+        function closeModal() {
+            document.getElementById('loginModal').style.display = 'none';
+        }
+        
+        function redirectToLogin() {
+            window.location.href = '/';
         }
 
         async function loadOffers() {
             try {
+                console.log('📡 جاري تحميل العروض...');
                 const res = await fetch('/api/offers');
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                }
                 allOffers = await res.json();
+                console.log('✅ تم تحميل العروض:', allOffers.length);
                 filterOffers();
             } catch(e) {
-                console.log(e);
-                document.getElementById('offersContainer').innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h3>حدث خطأ في تحميل العروض</h3><p>يرجى المحاولة مرة أخرى</p></div>';
+                console.error('❌ خطأ في تحميل العروض:', e);
+                document.getElementById('offersContainer').innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h3>حدث خطأ في تحميل العروض</h3><p>يرجى المحاولة مرة أخرى</p><button class="filter-btn" onclick="loadOffers()" style="margin-top:15px;">محاولة مرة أخرى</button></div>';
             }
         }
 
@@ -158,8 +194,8 @@
 
             if (searchTerm) {
                 filteredOffers = filteredOffers.filter(offer => 
-                    offer.subject_name.toLowerCase().includes(searchTerm) || 
-                    offer.teacher_name.toLowerCase().includes(searchTerm)
+                    (offer.subject_name && offer.subject_name.toLowerCase().includes(searchTerm)) || 
+                    (offer.teacher_name && offer.teacher_name.toLowerCase().includes(searchTerm))
                 );
             }
 
@@ -174,9 +210,9 @@
             } else if (sortFilter === 'date_desc') {
                 filteredOffers.sort((a, b) => new Date(a.offer_date) - new Date(b.offer_date));
             } else if (sortFilter === 'price_asc') {
-                filteredOffers.sort((a, b) => a.price - b.price);
+                filteredOffers.sort((a, b) => (a.price || 0) - (b.price || 0));
             } else if (sortFilter === 'price_desc') {
-                filteredOffers.sort((a, b) => b.price - a.price);
+                filteredOffers.sort((a, b) => (b.price || 0) - (a.price || 0));
             }
 
             renderOffers();
@@ -205,7 +241,7 @@
             for (const offer of filteredOffers) {
                 const offerDate = new Date(offer.offer_date);
                 const isFree = offer.is_free === 1;
-                const imageUrl = offer.profile_image ? `/uploads/${offer.profile_image}` : 'https://via.placeholder.com/50';
+                const imageUrl = offer.teacher_profile_image ? `/uploads/${offer.teacher_profile_image}` : 'https://via.placeholder.com/50';
                 
                 html += `
                     <div class="offer-card">
@@ -217,20 +253,20 @@
                                 <img src="${imageUrl}" class="teacher-avatar" onerror="this.src='https://via.placeholder.com/50'">
                                 <div>
                                     <div class="teacher-name">${escapeHtml(offer.teacher_name)}</div>
-                                    <div class="teacher-specialty"><i class="fas fa-book"></i> ${offer.specialization || 'تخصص عام'}</div>
+                                    <div class="teacher-specialty"><i class="fas fa-book"></i> ${offer.teacher_specialization || 'تخصص عام'}</div>
                                 </div>
                             </div>
                         </div>
                         <div class="offer-body">
                             <div class="offer-subject">📚 ${escapeHtml(offer.subject_name)}</div>
                             <div class="offer-details">
-                                <div class="detail-item"><i class="fas fa-calendar"></i> <span>${offerDate.toLocaleDateString('ar')}</span></div>
-                                <div class="detail-item"><i class="fas fa-clock"></i> <span>${offerDate.toLocaleTimeString('ar')} - مدة ${offer.duration} دقيقة</span></div>
+                                <div class="detail-item"><i class="fas fa-calendar"></i> <span>${offerDate.toLocaleDateString('ar-EG')}</span></div>
+                                <div class="detail-item"><i class="fas fa-clock"></i> <span>${offerDate.toLocaleTimeString('ar-EG')} - مدة ${offer.duration} دقيقة</span></div>
                                 <div class="detail-item"><i class="fas fa-users"></i> <span>بث مباشر عبر Jitsi Meet</span></div>
                             </div>
                         </div>
                         <div class="offer-footer">
-                            <button class="book-btn ${isFree ? 'free' : ''}" onclick="bookOffer(${offer.id}, ${offer.price}, ${isFree})">
+                            <button class="book-btn ${isFree ? 'free' : ''}" onclick="bookOffer(${offer.id}, ${offer.price || 0}, ${isFree})">
                                 <i class="fas ${isFree ? 'fa-check-circle' : 'fa-credit-card'}"></i> ${isFree ? 'تسجيل مجاني' : 'حجز الحصة'}
                             </button>
                             <button class="profile-btn" onclick="viewTeacherProfile(${offer.teacher_id})">
@@ -247,40 +283,79 @@
         async function bookOffer(offerId, price, isFree) {
             // التأكد من وجود studentId
             let currentStudentId = studentId;
+            
+            // محاولة جلب studentId من مصادر متعددة
             if (!currentStudentId) {
                 const storedData = localStorage.getItem('userData');
                 if (storedData) {
-                    const parsedData = JSON.parse(storedData);
-                    currentStudentId = parsedData.id;
-                    studentId = currentStudentId;
+                    try {
+                        const parsedData = JSON.parse(storedData);
+                        currentStudentId = parsedData.id;
+                        studentId = currentStudentId;
+                    } catch(e) {}
+                }
+            }
+            
+            // محاولة جلب studentId من sessionStorage
+            if (!currentStudentId) {
+                const sessionData = sessionStorage.getItem('userData');
+                if (sessionData) {
+                    try {
+                        const parsedData = JSON.parse(sessionData);
+                        currentStudentId = parsedData.id;
+                        studentId = currentStudentId;
+                    } catch(e) {}
                 }
             }
             
             console.log('📝 محاولة حجز:', { offerId, price, isFree, studentId: currentStudentId });
             
             if (!currentStudentId) {
-                if (confirm('يجب تسجيل الدخول أولاً لحجز الحصة. هل تريد تسجيل الدخول الآن؟')) {
-                    window.location.href = '/';
-                }
+                showModal();
                 return;
             }
 
+            // عرض رسالة جاري المعالجة
             showNotification('جاري معالجة طلبك...', 'warning');
+            
+            // تعطيل الزر لمنع النقر المتكرر مؤقتاً
+            const bookButtons = document.querySelectorAll('.book-btn');
+            bookButtons.forEach(btn => btn.disabled = true);
 
             try {
+                console.log('📡 إرسال طلب حجز إلى الخادم...');
                 const res = await fetch('/api/booking/create', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ offer_id: offerId, student_id: currentStudentId })
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        offer_id: parseInt(offerId), 
+                        student_id: parseInt(currentStudentId) 
+                    })
                 });
-                const data = await res.json();
+                
+                console.log('📡 حالة الاستجابة:', res.status);
+                
+                // محاولة قراءة الاستجابة كنص أولاً للتشخيص
+                const responseText = await res.text();
+                console.log('📡 نص الاستجابة:', responseText);
+                
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch(e) {
+                    console.error('❌ فشل تحليل JSON:', e);
+                    throw new Error('استجابة غير صالحة من الخادم');
+                }
 
                 console.log('📝 استجابة الحجز:', data);
 
                 if (data.success) {
-                    // إذا كان العرض مجاني أو الحصة مجانية
+                    // إذا كان العرض مجاني
                     if (isFree || data.is_free === true) {
-                        showNotification('✅ تم تسجيلك بنجاح في الحصة المجانية! سيتم إضافتك إلى غرفة الانتظار.', 'success');
+                        showNotification('✅ تم تسجيلك بنجاح في الحصة المجانية! تم حجز مكانك وإضافتك إلى قائمة الانتظار.', 'success');
                         setTimeout(() => {
                             window.location.href = '/student-dashboard.html';
                         }, 2000);
@@ -288,23 +363,32 @@
                     // إذا كان العرض مدفوع ويوجد رابط دفع
                     else if (data.checkout_url) {
                         showNotification('جاري تحويلك إلى بوابة الدفع...', 'warning');
-                        window.location.href = data.checkout_url;
+                        setTimeout(() => {
+                            window.location.href = data.checkout_url;
+                        }, 1000);
                     } 
-                    // إذا كان العرض مدفوع ولكن لا يوجد رابط دفع (خطأ)
                     else {
-                        showNotification('حدث خطأ في عملية الدفع', 'error');
+                        showNotification('حدث خطأ في عملية الحجز', 'error');
                     }
                 } else {
-                    showNotification(data.error || 'حدث خطأ', 'error');
+                    showNotification(data.error || 'حدث خطأ أثناء الحجز', 'error');
                 }
             } catch(e) {
-                console.error('خطأ في الحجز:', e);
-                showNotification('حدث خطأ في الاتصال بالخادم', 'error');
+                console.error('❌ خطأ في الحجز:', e);
+                showNotification('حدث خطأ في الاتصال بالخادم: ' + (e.message || 'يرجى المحاولة مرة أخرى'), 'error');
+            } finally {
+                // إعادة تمكين الأزرار
+                setTimeout(() => {
+                    const btns = document.querySelectorAll('.book-btn');
+                    btns.forEach(btn => btn.disabled = false);
+                }, 3000);
             }
         }
 
         function viewTeacherProfile(teacherId) {
-            window.open(`/teacher-profile.html?id=${teacherId}`, '_blank');
+            if (teacherId) {
+                window.open(`/teacher-profile.html?id=${teacherId}`, '_blank');
+            }
         }
 
         function escapeHtml(text) {
@@ -314,7 +398,24 @@
             return div.innerHTML;
         }
 
+        // تحميل العروض عند تحميل الصفحة
         loadOffers();
+        
+        // تحديث حالة تسجيل الدخول كل ثانية (للمستخدمين الذين يسجلون دخولهم في تبويب آخر)
+        setInterval(() => {
+            const freshData = localStorage.getItem('userData');
+            if (freshData) {
+                try {
+                    const parsed = JSON.parse(freshData);
+                    if (parsed.id !== studentId) {
+                        studentId = parsed.id;
+                        userData = parsed;
+                        isLoggedIn = true;
+                        console.log('🔄 تحديث بيانات المستخدم:', studentId);
+                    }
+                } catch(e) {}
+            }
+        }, 3000);
     </script>
 </body>
 </html>
