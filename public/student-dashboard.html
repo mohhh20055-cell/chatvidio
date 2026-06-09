@@ -72,6 +72,34 @@
         .join-session-btn { background: #10b981; color: white; border: none; padding: 5px 12px; border-radius: 20px; font-size: 0.7rem; cursor: pointer; }
         .retry-pay-btn { background: #ef4444; color: white; border: none; padding: 5px 12px; border-radius: 20px; font-size: 0.7rem; cursor: pointer; }
         
+        /* العروض المجانية المحسنة */
+        .free-offer-item { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 12px 0; 
+            border-bottom: 1px solid #e2e8f0; 
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .free-offer-info { flex: 1; }
+        .free-offer-title { font-weight: 600; font-size: 0.9rem; }
+        .free-offer-teacher { font-size: 0.7rem; color: #718096; }
+        .free-offer-date { font-size: 0.65rem; color: #10b981; margin-top: 3px; }
+        .free-book-btn { 
+            background: #10b981; 
+            color: white; 
+            border: none; 
+            padding: 5px 12px; 
+            border-radius: 20px; 
+            font-size: 0.7rem; 
+            cursor: pointer; 
+            transition: 0.3s;
+            white-space: nowrap;
+        }
+        .free-book-btn:hover { background: #059669; transform: scale(1.02); }
+        .free-book-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+        
         .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; border-radius: 20px; z-index: 1000; width: 90%; max-width: 500px; }
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999; }
         
@@ -139,7 +167,7 @@
                 <div id="upcomingSessions"></div>
             </div>
             <div class="upcoming-sessions">
-                <div class="sidebar-title"><i class="fas fa-tag"></i> عروض مجانية</div>
+                <div class="sidebar-title"><i class="fas fa-tag"></i> 🎁 عروض مجانية</div>
                 <div id="freeOffers"></div>
             </div>
             <div class="upcoming-sessions">
@@ -421,6 +449,7 @@
             }
         }
 
+        // ✅ تحسين العروض المجانية مع زر حجز
         async function loadFreeOffers() {
             try {
                 const res = await fetch('/api/offers');
@@ -429,7 +458,7 @@
                 const container = document.getElementById('freeOffers');
                 
                 if (freeOffers.length === 0) {
-                    container.innerHTML = '<p style="color:#718096; font-size:0.8rem;">لا توجد عروض مجانية حالياً</p>';
+                    container.innerHTML = '<p style="color:#718096; font-size:0.8rem; text-align:center;">لا توجد عروض مجانية حالياً</p>';
                     return;
                 }
                 
@@ -439,13 +468,16 @@
                     const waitingRes = await fetch(`/api/waiting-count/${offer.id}`);
                     const waitingData = await waitingRes.json();
                     html += `
-                        <div class="offer-card-small" onclick="quickBookFreeOffer(${offer.id})">
-                            <div>
-                                <strong>${escapeHtml(offer.subject_name)}</strong>
-                                <span class="free-badge">مجاني</span>
+                        <div class="free-offer-item">
+                            <div class="free-offer-info">
+                                <div class="free-offer-title">${escapeHtml(offer.subject_name)}</div>
+                                <div class="free-offer-teacher">👨‍🏫 ${escapeHtml(offer.teacher_name)}</div>
+                                <div class="free-offer-date">📅 ${offerDate.toLocaleDateString('ar')} - ${offer.duration} دقيقة</div>
+                                <div class="waiting-info"><i class="fas fa-users"></i> ${waitingData.count || 0} ينتظرون</div>
                             </div>
-                            <small>${offer.teacher_name} | ${offerDate.toLocaleDateString('ar')}</small>
-                            <div class="waiting-info"><i class="fas fa-users"></i> ${waitingData.count || 0} ينتظرون</div>
+                            <button class="free-book-btn" onclick="quickBookFreeOffer(${offer.id})">
+                                <i class="fas fa-calendar-plus"></i> حجز
+                            </button>
                         </div>
                     `;
                 }
@@ -453,7 +485,14 @@
             } catch(e) { console.log(e); }
         }
 
+        // ✅ حجز العرض المجاني مباشرة
         async function quickBookFreeOffer(offerId) {
+            const btn = event.target.closest('.free-book-btn');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري...';
+            }
+            
             showNotification('جاري التسجيل في الحصة المجانية...', 'warning');
             try {
                 const res = await fetch('/api/booking/create', {
@@ -464,12 +503,24 @@
                 const data = await res.json();
                 if (data.success) {
                     showNotification('✅ تم تسجيلك بنجاح في الحصة المجانية!', 'success');
-                    setTimeout(() => location.reload(), 1500);
+                    setTimeout(() => {
+                        loadFreeOffers();
+                        loadUpcomingSessions();
+                        if (currentView === 'bookings') loadMyBookings();
+                    }, 1000);
                 } else {
                     showNotification(data.error || 'حدث خطأ', 'error');
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-calendar-plus"></i> حجز';
+                    }
                 }
             } catch(e) {
                 showNotification('حدث خطأ', 'error');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-calendar-plus"></i> حجز';
+                }
             }
         }
 
