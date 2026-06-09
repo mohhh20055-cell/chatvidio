@@ -199,20 +199,45 @@ app.post('/api/student/register', async (req, res) => {
   }
 });
 
-// تسجيل الدخول الموحد (مع دعم Admin)
+// تحديث بيانات الأستاذ
+app.post('/api/teacher/update-profile', upload.single('profile_image'), async (req, res) => {
+  const { teacher_id, full_name, bio, specialization, experience, phone, facebook_url, instagram_url, linkedin_url, website_url } = req.body;
+  let profile_image = req.body.profile_image;
+  
+  if (req.file) {
+    profile_image = req.file.filename;
+  }
+  
+  const updateData = {
+    full_name,
+    bio,
+    specialization,
+    experience,
+    phone,
+    facebook_url,
+    instagram_url,
+    linkedin_url,
+    website_url
+  };
+  if (profile_image) updateData.profile_image = profile_image;
+
+  await update('teachers', teacher_id, updateData);
+  res.json({ success: true, message: 'تم تحديث الملف الشخصي بنجاح' });
+});
+
+// تسجيل الدخول
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password, role } = req.body;
     
     console.log(`📝 محاولة تسجيل دخول: ${email} كـ ${role}`);
     
-    // التحقق من Admin أولاً
+    // Admin
     if (email === 'admin@platform.com' && password === 'admin123') {
       console.log('✅ تم تسجيل دخول Admin بنجاح');
-      const token = 'admin_token_' + Date.now();
       return res.json({ 
         success: true, 
-        token: token,
+        token: 'admin_token_' + Date.now(),
         user: { 
           id: 0, 
           name: 'مدير المنصة', 
@@ -237,7 +262,6 @@ app.post('/api/login', async (req, res) => {
     const validPassword = bcrypt.compareSync(password, user.password);
     if (!validPassword) return res.json({ success: false, error: 'كلمة المرور خاطئة' });
     
-    // التحقق من أن المستخدم يختار الدور الصحيح
     if (role !== userRole) {
       return res.json({ success: false, error: `هذا الحساب مسجل كـ ${userRole === 'teacher' ? 'أستاذ' : 'طالب'}. يرجى اختيار الدور الصحيح.` });
     }
@@ -246,11 +270,11 @@ app.post('/api/login', async (req, res) => {
       return res.json({ success: false, error: 'حسابك قيد المراجعة من قبل الإدارة' });
     }
     
-    const token = Buffer.from(`${user.id}:${Date.now()}`).toString('base64');
+    const token = `${userRole}_token_${user.id}_${Date.now()}`;
     console.log(`✅ تم تسجيل الدخول بنجاح: ${user.id} كـ ${userRole}`);
     res.json({ 
       success: true, 
-      token, 
+      token: token,
       user: { 
         id: user.id, 
         name: user.full_name, 
@@ -296,9 +320,7 @@ app.delete('/api/admin/delete-teacher/:id', async (req, res) => {
   res.json({ success: true });
 });
 
-// ============= باقي Routes (مختصرة) =============
-
-// الصفحات العامة
+// ============= الصفحات العامة =============
 app.get('/api/public/teachers', async (req, res) => {
   const { data } = await supabase
     .from('teachers')
@@ -349,7 +371,7 @@ app.get('/api/live-offers', async (req, res) => {
   res.json(formatted);
 });
 
-// نظام المنشورات
+// ============= نظام المنشورات =============
 app.post('/api/post/create', upload.fields([
   { name: 'image', maxCount: 1 },
   { name: 'file', maxCount: 1 }
@@ -474,7 +496,7 @@ app.get('/api/post/check-like/:post_id/:student_id', async (req, res) => {
   res.json({ liked: !!data });
 });
 
-// نظام المتابعات
+// ============= نظام المتابعات =============
 app.post('/api/follow', async (req, res) => {
   const { student_id, teacher_id } = req.body;
   await insert('follows', { student_id, teacher_id });
@@ -491,7 +513,95 @@ app.get('/api/check-follow/:student_id/:teacher_id', async (req, res) => {
   res.json({ following: !!data });
 });
 
-// نظام العروض
+// ============= التغذية الرئيسية (Feed) =============
+app.get('/api/feed/:student_id', async (req, res) => {
+  const { data: follows } = await supabase
+    .from('follows')
+    .select('teacher_id')
+    .eq('student_id', req.params.student_id);
+  
+  const teacherIds = (follows || []).map(f => f.teacher_id);
+  
+  if (teacherIds.length === 0) {
+    return res.json([]);
+  }
+  
+  const { data } = await supabase
+    .from('posts')
+    .select('*, teachers:teacher_id (id, full_name, profile_image)')
+    .in('teacher_id', teacherIds)
+    .order('created_at', { ascending: false });
+  
+  const postsWithCounts = await Promise.all((data || []).map(async (post) => {
+    const { count: likesCount } = await supabase
+      .from('post_likes')
+      .select('*', { count: 'exact', head: true })
+      .eq('post_id', post.id);
+    const { count: commentsCount } = await supabase
+      .from('post_comments')
+      .select('*', { count: 'exact', head: true })
+      .eq('post_id', post.id);
+    return {
+      ...post,
+      teacher_id: post.teachers?.id,
+      teacher_name: post.teachers?.full_name,
+      teacher_image: post.teachers?.profile_image,
+      likes_count: likesCount || 0,
+      comments_count: commentsCount || 0
+    };
+  }));
+  res.json(postsWithCounts);
+});
+
+app.get('/api/all-posts', async (req, res) => {
+  const { data } = await supabase
+    .from('posts')
+    .select('*, teachers:teacher_id (id, full_name, profile_image)')
+    .order('created_at', { ascending: false });
+  
+  const postsWithCounts = await Promise.all((data || []).map(async (post) => {
+    const { count: likesCount } = await supabase
+      .from('post_likes')
+      .select('*', { count: 'exact', head: true })
+      .eq('post_id', post.id);
+    const { count: commentsCount } = await supabase
+      .from('post_comments')
+      .select('*', { count: 'exact', head: true })
+      .eq('post_id', post.id);
+    return {
+      ...post,
+      teacher_id: post.teachers?.id,
+      teacher_name: post.teachers?.full_name,
+      teacher_image: post.teachers?.profile_image,
+      likes_count: likesCount || 0,
+      comments_count: commentsCount || 0
+    };
+  }));
+  res.json(postsWithCounts);
+});
+
+app.get('/api/suggested-teachers/:student_id', async (req, res) => {
+  const { data: followedIds } = await supabase
+    .from('follows')
+    .select('teacher_id')
+    .eq('student_id', req.params.student_id);
+  
+  const followedTeacherIds = (followedIds || []).map(f => f.teacher_id);
+  
+  let query = supabase
+    .from('teachers')
+    .select('id, full_name, specialization, profile_image, bio')
+    .eq('status', 'approved');
+  
+  if (followedTeacherIds.length > 0) {
+    query = query.not('id', 'in', `(${followedTeacherIds.join(',')})`);
+  }
+  
+  const { data } = await query.limit(10);
+  res.json(data || []);
+});
+
+// ============= نظام العروض =============
 app.post('/api/offer/create', async (req, res) => {
   const { teacher_id, subject_name, duration, offer_date, price, is_free } = req.body;
   const room_name = `stream_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
@@ -508,6 +618,33 @@ app.post('/api/offer/create', async (req, res) => {
   res.json({ success: true, room_name });
 });
 
+app.get('/api/offers', async (req, res) => {
+  const { data } = await supabase
+    .from('offers')
+    .select('*, teachers:teacher_id (full_name, specialization, profile_image, id)')
+    .eq('status', 'upcoming')
+    .gt('offer_date', new Date().toISOString())
+    .order('offer_date', { ascending: true });
+  
+  const formatted = (data || []).map(o => ({
+    ...o,
+    teacher_name: o.teachers?.full_name,
+    teacher_specialization: o.teachers?.specialization,
+    teacher_profile_image: o.teachers?.profile_image,
+    teacher_id: o.teachers?.id
+  }));
+  res.json(formatted);
+});
+
+app.get('/api/teacher/offers/:teacher_id', async (req, res) => {
+  const { data } = await supabase
+    .from('offers')
+    .select('*')
+    .eq('teacher_id', req.params.teacher_id)
+    .order('offer_date', { ascending: false });
+  res.json(data || []);
+});
+
 app.delete('/api/offer/delete/:offer_id', async (req, res) => {
   const { offer_id } = req.params;
   const { teacher_id } = req.body;
@@ -522,7 +659,7 @@ app.delete('/api/offer/delete/:offer_id', async (req, res) => {
   res.json({ success: true });
 });
 
-// نظام الحجز
+// ============= نظام الحجز =============
 app.post('/api/booking/create', async (req, res) => {
   const { offer_id, student_id } = req.body;
   
@@ -581,7 +718,7 @@ app.get('/api/student/bookings/:student_id', async (req, res) => {
   res.json(formatted);
 });
 
-// نظام البث المباشر
+// ============= نظام البث المباشر =============
 app.post('/api/stream/enter-teacher/:offer_id', async (req, res) => {
   const { offer_id, teacher_id } = req.body;
   const offer = await getOne('offers', 'id', offer_id);
@@ -639,7 +776,7 @@ app.get('/api/stream/waiting-list/:offer_id/:teacher_id', async (req, res) => {
   res.json(formatted);
 });
 
-// صفحات البث
+// ============= صفحات البث =============
 app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
   const offer = await getOne('offers', 'id', req.params.offer_id);
   if (!offer || offer.teacher_id != req.params.teacher_id) return res.redirect('/teacher-dashboard.html');
