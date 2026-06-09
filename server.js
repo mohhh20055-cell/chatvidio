@@ -44,6 +44,7 @@ const db = new sqlite3.Database(DB_PATH);
 
 function initDatabase() {
   db.serialize(() => {
+    // جدول الأساتذة
     db.run(`CREATE TABLE IF NOT EXISTS teachers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       full_name TEXT NOT NULL,
@@ -65,6 +66,7 @@ function initDatabase() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
+    // جدول الطلاب
     db.run(`CREATE TABLE IF NOT EXISTS students (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       full_name TEXT NOT NULL,
@@ -76,6 +78,7 @@ function initDatabase() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
+    // جدول العروض
     db.run(`CREATE TABLE IF NOT EXISTS offers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       teacher_id INTEGER,
@@ -91,6 +94,7 @@ function initDatabase() {
       FOREIGN KEY(teacher_id) REFERENCES teachers(id)
     )`);
 
+    // جدول المنشورات
     db.run(`CREATE TABLE IF NOT EXISTS posts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       teacher_id INTEGER,
@@ -104,6 +108,7 @@ function initDatabase() {
       FOREIGN KEY(teacher_id) REFERENCES teachers(id)
     )`);
 
+    // جدول الإعجابات
     db.run(`CREATE TABLE IF NOT EXISTS post_likes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       post_id INTEGER,
@@ -114,6 +119,7 @@ function initDatabase() {
       UNIQUE(post_id, student_id)
     )`);
 
+    // جدول التعليقات
     db.run(`CREATE TABLE IF NOT EXISTS post_comments (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       post_id INTEGER,
@@ -124,6 +130,18 @@ function initDatabase() {
       FOREIGN KEY(student_id) REFERENCES students(id)
     )`);
 
+    // جدول المتابعات
+    db.run(`CREATE TABLE IF NOT EXISTS follows (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      student_id INTEGER,
+      teacher_id INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(student_id) REFERENCES students(id),
+      FOREIGN KEY(teacher_id) REFERENCES teachers(id),
+      UNIQUE(student_id, teacher_id)
+    )`);
+
+    // جدول الحصص
     db.run(`CREATE TABLE IF NOT EXISTS sessions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       offer_id INTEGER,
@@ -136,6 +154,7 @@ function initDatabase() {
       FOREIGN KEY(student_id) REFERENCES students(id)
     )`);
 
+    // جدول غرفة الانتظار
     db.run(`CREATE TABLE IF NOT EXISTS waiting_room (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       offer_id INTEGER,
@@ -145,6 +164,7 @@ function initDatabase() {
       FOREIGN KEY(student_id) REFERENCES students(id)
     )`);
 
+    // جدول البث المباشر
     db.run(`CREATE TABLE IF NOT EXISTS active_stream (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       offer_id INTEGER,
@@ -154,6 +174,7 @@ function initDatabase() {
       FOREIGN KEY(student_id) REFERENCES students(id)
     )`);
 
+    // جدول المدفوعات
     db.run(`CREATE TABLE IF NOT EXISTS payments (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       session_id INTEGER,
@@ -164,6 +185,7 @@ function initDatabase() {
       FOREIGN KEY(session_id) REFERENCES sessions(id)
     )`);
 
+    // إنشاء admin افتراضي
     db.get("SELECT * FROM teachers WHERE email = 'admin@platform.com'", [], (err, row) => {
       if (!row && !err) {
         const hashedPassword = bcrypt.hashSync('admin123', 10);
@@ -330,6 +352,7 @@ app.post('/api/admin/reject-teacher/:id', (req, res) => {
 app.delete('/api/admin/delete-teacher/:id', (req, res) => {
   db.run(`DELETE FROM posts WHERE teacher_id = ?`, [req.params.id]);
   db.run(`DELETE FROM offers WHERE teacher_id = ?`, [req.params.id]);
+  db.run(`DELETE FROM follows WHERE teacher_id = ?`, [req.params.id]);
   db.run(`DELETE FROM teachers WHERE id = ?`, [req.params.id], function(err) {
     if (err) return res.json({ success: false, error: err.message });
     res.json({ success: true, message: 'تم حذف الأستاذ بنجاح' });
@@ -368,7 +391,29 @@ app.get('/api/live-offers', (req, res) => {
   });
 });
 
-// ============= نظام المنشورات =============
+// ============= نظام المتابعات =============
+app.post('/api/follow', (req, res) => {
+  const { student_id, teacher_id } = req.body;
+  db.run(`INSERT OR IGNORE INTO follows (student_id, teacher_id) VALUES (?, ?)`, [student_id, teacher_id], function(err) {
+    if (err) return res.json({ success: false, error: err.message });
+    res.json({ success: true });
+  });
+});
+
+app.post('/api/unfollow', (req, res) => {
+  const { student_id, teacher_id } = req.body;
+  db.run(`DELETE FROM follows WHERE student_id = ? AND teacher_id = ?`, [student_id, teacher_id], function(err) {
+    res.json({ success: true });
+  });
+});
+
+app.get('/api/check-follow/:student_id/:teacher_id', (req, res) => {
+  db.get(`SELECT * FROM follows WHERE student_id = ? AND teacher_id = ?`, [req.params.student_id, req.params.teacher_id], (err, follow) => {
+    res.json({ following: !!follow });
+  });
+});
+
+// ============= نظام المنشورات والتغذية =============
 app.post('/api/post/create', upload.fields([
   { name: 'image', maxCount: 1 },
   { name: 'file', maxCount: 1 }
@@ -470,6 +515,45 @@ app.delete('/api/post/:post_id', (req, res) => {
 app.get('/api/post/check-like/:post_id/:student_id', (req, res) => {
   db.get(`SELECT * FROM post_likes WHERE post_id = ? AND student_id = ?`, [req.params.post_id, req.params.student_id], (err, like) => {
     res.json({ liked: !!like });
+  });
+});
+
+// ============= التغذية الرئيسية (مثل الفيسبوك) =============
+app.get('/api/feed/:student_id', (req, res) => {
+  db.all(`SELECT p.*, t.full_name as teacher_name, t.profile_image as teacher_image, t.id as teacher_id,
+          (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) as likes_count,
+          (SELECT COUNT(*) FROM post_comments WHERE post_id = p.id) as comments_count
+          FROM posts p
+          JOIN teachers t ON p.teacher_id = t.id
+          JOIN follows f ON f.teacher_id = t.id
+          WHERE f.student_id = ? AND t.status = 'approved'
+          ORDER BY p.created_at DESC`, [req.params.student_id], (err, posts) => {
+    res.json(posts || []);
+  });
+});
+
+app.get('/api/all-posts', (req, res) => {
+  db.all(`SELECT p.*, t.full_name as teacher_name, t.profile_image as teacher_image, t.id as teacher_id,
+          (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) as likes_count,
+          (SELECT COUNT(*) FROM post_comments WHERE post_id = p.id) as comments_count
+          FROM posts p
+          JOIN teachers t ON p.teacher_id = t.id
+          WHERE t.status = 'approved'
+          ORDER BY p.created_at DESC`, [], (err, posts) => {
+    res.json(posts || []);
+  });
+});
+
+app.get('/api/suggested-teachers/:student_id', (req, res) => {
+  db.all(`SELECT t.id, t.full_name, t.specialization, t.profile_image, t.bio,
+          (SELECT COUNT(*) FROM posts WHERE teacher_id = t.id) as posts_count,
+          CASE WHEN f.student_id IS NOT NULL THEN 1 ELSE 0 END as is_following
+          FROM teachers t
+          LEFT JOIN follows f ON f.teacher_id = t.id AND f.student_id = ?
+          WHERE t.status = 'approved' AND t.id NOT IN (SELECT teacher_id FROM follows WHERE student_id = ?)
+          ORDER BY posts_count DESC
+          LIMIT 10`, [req.params.student_id, req.params.student_id], (err, rows) => {
+    res.json(rows || []);
   });
 });
 
