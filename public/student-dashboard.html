@@ -10,7 +10,6 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Cairo', sans-serif; background: #f0f2f5; }
         
-        /* Navbar */
         .navbar { background: white; padding: 12px 24px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; }
         .nav-container { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
         .logo { font-size: 1.5rem; font-weight: 800; color: #0f5cbf; cursor: pointer; }
@@ -21,10 +20,8 @@
         .user-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
         .user-name { font-weight: 600; }
         
-        /* Main Layout */
         .main-container { max-width: 1200px; margin: 20px auto; padding: 0 20px; display: grid; grid-template-columns: 250px 1fr 280px; gap: 20px; }
         
-        /* Sidebar */
         .sidebar { position: sticky; top: 80px; height: fit-content; }
         .sidebar-card { background: white; border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         .sidebar-title { font-size: 1.1rem; margin-bottom: 15px; color: #1e3c72; border-right: 3px solid #0f5cbf; padding-right: 10px; }
@@ -37,14 +34,12 @@
         .follow-btn { background: #0f5cbf; color: white; border: none; padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; cursor: pointer; }
         .follow-btn.following { background: #e2e8f0; color: #4a5568; }
         
-        /* Feed */
         .feed { }
         .create-post-card { background: white; border-radius: 15px; padding: 15px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 15px; cursor: pointer; transition: 0.2s; }
         .create-post-card:hover { background: #f8fafc; }
         .create-post-avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; }
         .create-post-input { flex: 1; background: #f0f2f5; padding: 12px 20px; border-radius: 30px; color: #718096; }
         
-        /* Post Card */
         .post-card { background: white; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); overflow: hidden; }
         .post-header { display: flex; align-items: center; gap: 12px; padding: 15px; border-bottom: 1px solid #e2e8f0; }
         .post-avatar { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; cursor: pointer; }
@@ -63,14 +58,10 @@
         .action-btn:hover { background: #f0f2f5; }
         .action-btn.liked { color: #ef4444; }
         .comments-section { padding: 15px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: none; }
-        .comment-input-container { display: flex; gap: 10px; margin-bottom: 15px; }
-        .comment-input { flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 25px; font-family: 'Cairo', sans-serif; }
-        .comment-submit { background: #0f5cbf; color: white; border: none; padding: 8px 20px; border-radius: 25px; cursor: pointer; }
         .comment-item { padding: 10px 0; border-bottom: 1px solid #e2e8f0; }
         .comment-author { font-weight: 600; font-size: 0.85rem; color: #1e3c72; }
         .comment-text { font-size: 0.9rem; margin-top: 4px; }
         
-        /* Right Sidebar */
         .right-sidebar { position: sticky; top: 80px; height: fit-content; }
         .upcoming-sessions { background: white; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
         .session-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #e2e8f0; }
@@ -111,7 +102,6 @@
     </nav>
 
     <div class="main-container">
-        <!-- Left Sidebar - Suggested Teachers -->
         <div class="sidebar">
             <div class="sidebar-card">
                 <div class="sidebar-title"><i class="fas fa-user-plus"></i> أساتذة مقترحون</div>
@@ -123,7 +113,6 @@
             </div>
         </div>
 
-        <!-- Main Feed -->
         <div class="feed">
             <div class="create-post-card" onclick="window.location.href='/teachers-list.html'">
                 <img id="myAvatar" class="create-post-avatar" src="https://via.placeholder.com/45">
@@ -134,7 +123,6 @@
             </div>
         </div>
 
-        <!-- Right Sidebar - Upcoming Sessions -->
         <div class="right-sidebar">
             <div class="upcoming-sessions">
                 <div class="sidebar-title"><i class="fas fa-clock"></i> حصصي القادمة</div>
@@ -152,11 +140,15 @@
     </div>
 
     <script>
-        // التحقق من تسجيل الدخول
+        // جلب بيانات المستخدم
         let userData = JSON.parse(localStorage.getItem('userData') || '{}');
         let studentToken = localStorage.getItem('studentToken');
+        let token = localStorage.getItem('token');
         
-        if (!studentToken && userData.role !== 'student') {
+        // التحقق من تسجيل الدخول
+        let isLoggedIn = !!(studentToken || token || userData.id);
+        
+        if (!isLoggedIn || userData.role !== 'student') {
             window.location.href = '/';
         }
         
@@ -168,7 +160,6 @@
         document.getElementById('userAvatar').src = studentData.profile_image ? `/uploads/${studentData.profile_image}` : 'https://via.placeholder.com/40';
         document.getElementById('myAvatar').src = studentData.profile_image ? `/uploads/${studentData.profile_image}` : 'https://via.placeholder.com/45';
 
-        // جلب التغذية الرئيسية
         async function loadFeed() {
             try {
                 let res = await fetch(`/api/feed/${studentData.id}`);
@@ -187,7 +178,6 @@
             } catch(e) { console.log(e); }
         }
 
-        // عرض المنشورات
         function renderFeed(posts) {
             const container = document.getElementById('feedContainer');
             if (posts.length === 0) {
@@ -236,7 +226,6 @@
             container.innerHTML = html;
         }
 
-        // التحقق من حالة الإعجاب
         async function checkLikeStatus(postId) {
             const res = await fetch(`/api/post/check-like/${postId}/${studentData.id}`);
             const data = await res.json();
@@ -244,7 +233,6 @@
             if (btn && data.liked) btn.classList.add('liked');
         }
 
-        // تبديل الإعجاب
         async function toggleLike(postId) {
             const btn = document.querySelector(`#post-${postId} .action-btn:first-child`);
             const isLiked = btn.classList.contains('liked');
@@ -263,7 +251,6 @@
             btn.classList.toggle('liked');
         }
 
-        // عرض نافذة التعليق
         function showCommentModal(postId) {
             activeCommentPostId = postId;
             document.getElementById('modalOverlay').style.display = 'block';
@@ -271,7 +258,6 @@
             document.getElementById('commentText').value = '';
         }
 
-        // إرسال تعليق
         async function submitComment() {
             const comment = document.getElementById('commentText').value;
             if (!comment.trim()) { alert('الرجاء كتابة تعليق'); return; }
@@ -290,7 +276,6 @@
             }
         }
 
-        // تحميل التعليقات
         async function loadPostComments(postId) {
             const res = await fetch(`/api/post/${postId}`);
             const post = await res.json();
@@ -312,7 +297,6 @@
             }
         }
 
-        // جلب الأساتذة المقترحين
         async function loadSuggestedTeachers() {
             const res = await fetch(`/api/suggested-teachers/${studentData.id}`);
             const teachers = await res.json();
@@ -323,7 +307,6 @@
             }
             let html = '';
             for (const t of teachers) {
-                // التحقق من حالة المتابعة
                 const followRes = await fetch(`/api/check-follow/${studentData.id}/${t.id}`);
                 const followData = await followRes.json();
                 const isFollowing = followData.following;
@@ -343,7 +326,6 @@
             container.innerHTML = html;
         }
 
-        // متابعة أستاذ
         async function followTeacher(teacherId, btnElement) {
             const isFollowing = btnElement.classList.contains('following');
             const url = isFollowing ? '/api/unfollow' : '/api/follow';
@@ -362,7 +344,6 @@
             loadFeed();
         }
 
-        // جلب الحصص القادمة
         async function loadUpcomingSessions() {
             const res = await fetch(`/api/student/bookings/${studentData.id}`);
             const bookings = await res.json();
@@ -388,7 +369,6 @@
             container.innerHTML = html;
         }
 
-        // إحصائيات المستخدم
         async function loadUserStats() {
             const res = await fetch(`/api/student/bookings/${studentData.id}`);
             const bookings = await res.json();
@@ -414,17 +394,14 @@
             `;
         }
 
-        // الانضمام إلى بث مباشر
         function joinLiveStream(offerId) {
             window.open(`/api/join-stream/${offerId}/${studentData.id}`, '_blank');
         }
 
-        // عرض صفحة الأستاذ
         function viewTeacherProfile(teacherId) {
             window.open(`/teacher-profile.html?id=${teacherId}`, '_blank');
         }
 
-        // تنسيق التاريخ
         function formatDate(date) {
             const now = new Date();
             const diff = Math.floor((now - date) / 1000 / 60);
@@ -434,7 +411,6 @@
             return date.toLocaleDateString('ar');
         }
 
-        // تنسيق النص
         function escapeHtml(text) {
             if (!text) return '';
             const div = document.createElement('div');
@@ -442,19 +418,16 @@
             return div.innerHTML;
         }
 
-        // إغلاق النافذة
         function closeModal() {
             document.getElementById('modalOverlay').style.display = 'none';
             document.getElementById('commentModal').style.display = 'none';
         }
 
-        // تسجيل الخروج
         function logout() {
             localStorage.clear();
             window.location.href = '/';
         }
 
-        // تحميل الصفحة
         loadFeed();
         setInterval(() => { loadUpcomingSessions(); }, 30000);
     </script>
