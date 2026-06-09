@@ -70,7 +70,6 @@
     </nav>
 
     <main>
-        <!-- القسم الرئيسي -->
         <section id="homeSection" class="hero">
             <div class="hero-content">
                 <h1>تعلم مع أفضل الأساتذة <span class="highlight">في الجزائر</span></h1>
@@ -84,25 +83,21 @@
             <div class="hero-image"><i class="fas fa-laptop-code" style="font-size:250px; color:#0f5cbf20;"></i></div>
         </section>
 
-        <!-- الأساتذة -->
         <section id="teachersSection" class="section-container" style="display: none;">
             <h2 class="section-title"><i class="fas fa-users"></i> أساتذتنا المعتمدون</h2>
             <div id="teachersList" class="teachers-grid"></div>
         </section>
 
-        <!-- العروض المتاحة -->
         <section id="offersSection" class="section-container" style="display: none;">
             <h2 class="section-title"><i class="fas fa-calendar-alt"></i> العروض المتاحة</h2>
             <div id="offersListPublic" class="offers-grid"></div>
         </section>
 
-        <!-- البث المباشر -->
         <section id="liveSection" class="section-container" style="display: none;">
             <h2 class="section-title"><i class="fas fa-video"></i> بث مباشر الآن 🔴</h2>
             <div id="liveOffersList" class="offers-grid"></div>
         </section>
 
-        <!-- تسجيل الدخول والتسجيل -->
         <section id="loginSection" class="form-section" style="display: none;">
             <div class="form-tabs">
                 <button class="tab-btn active" onclick="switchTab('login')">تسجيل الدخول</button>
@@ -110,7 +105,6 @@
                 <button class="tab-btn" onclick="switchTab('teacher-register')">تسجيل أستاذ</button>
             </div>
 
-            <!-- تسجيل الدخول -->
             <div id="loginTab" class="form-container">
                 <h3>تسجيل الدخول</h3>
                 <input type="email" id="loginEmail" placeholder="البريد الإلكتروني">
@@ -122,7 +116,6 @@
                 <button class="btn-primary" onclick="login()">دخول</button>
             </div>
 
-            <!-- تسجيل طالب -->
             <div id="studentRegisterTab" class="form-container" style="display: none;">
                 <h3>تسجيل طالب جديد</h3>
                 <input type="text" id="studentName" placeholder="الاسم الكامل">
@@ -132,7 +125,6 @@
                 <button class="btn-primary" onclick="registerStudent()">تسجيل</button>
             </div>
 
-            <!-- تسجيل أستاذ -->
             <div id="teacherRegisterTab" class="form-container" style="display: none;">
                 <h3>تقديم طلب أستاذ</h3>
                 <input type="text" id="teacherName" placeholder="الاسم الكامل" required>
@@ -169,7 +161,6 @@
             setTimeout(() => { toast.style.display = 'none'; }, 5000);
         }
 
-        // تبويبات عامة
         function showHome() {
             document.getElementById('homeSection').style.display = 'flex';
             document.getElementById('teachersSection').style.display = 'none';
@@ -240,7 +231,6 @@
             if (activeEl) activeEl.classList.add('active');
         }
 
-        // جلب الأساتذة
         async function loadPublicTeachers() {
             try {
                 const res = await fetch('/api/public/teachers');
@@ -271,7 +261,6 @@
             }
         }
 
-        // جلب العروض
         async function loadPublicOffers() {
             try {
                 const res = await fetch('/api/public/offers');
@@ -309,7 +298,6 @@
             }
         }
 
-        // جلب البث المباشر
         async function loadLiveStreams() {
             try {
                 const res = await fetch('/api/live-offers');
@@ -354,7 +342,6 @@
             window.open(`/teacher-profile.html?id=${teacherId}`, '_blank');
         }
 
-        // دوال تسجيل الدخول والتسجيل
         function switchTab(tab) {
             document.getElementById('loginTab').style.display = 'none';
             document.getElementById('studentRegisterTab').style.display = 'none';
@@ -389,11 +376,21 @@
                 });
                 const data = await res.json();
                 if (data.success) {
+                    // تخزين البيانات في localStorage
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('userData', JSON.stringify(data.user));
-                    if (data.user.email === 'admin@platform.com') window.location.href = '/admin.html';
-                    else if (data.user.role === 'teacher') window.location.href = '/teacher-dashboard.html';
-                    else window.location.href = '/student-dashboard.html';
+                    
+                    // تخزين التوكن المخصص حسب الدور
+                    if (data.user.role === 'admin') {
+                        localStorage.setItem('adminToken', data.token);
+                        window.location.href = '/admin.html';
+                    } else if (data.user.role === 'teacher') {
+                        localStorage.setItem('teacherToken', data.token);
+                        window.location.href = '/teacher-dashboard.html';
+                    } else {
+                        localStorage.setItem('studentToken', data.token);
+                        window.location.href = '/student-dashboard.html';
+                    }
                 } else { 
                     showNotification(data.error, 'error'); 
                 }
@@ -458,7 +455,6 @@
             }
         }
 
-        // تشغيل الصفحة الرئيسية
         showHome();
         loadLiveStreams();
         setInterval(loadLiveStreams, 10000);
