@@ -72,7 +72,6 @@
 
     <div id="modalOverlay" class="modal-overlay"></div>
     
-    <!-- مودال تعديل الملف الشخصي -->
     <div id="editProfileModal" class="modal">
         <h3><i class="fas fa-user-edit"></i> تعديل الملف الشخصي</h3>
         <input type="text" id="editFullName" placeholder="الاسم الكامل">
@@ -89,7 +88,6 @@
         <button onclick="closeModal()" style="background:#e2e8f0; color:#333; padding:10px; border:none; border-radius:10px; margin-top:10px; width:100%">إلغاء</button>
     </div>
 
-    <!-- مودال إنشاء منشور -->
     <div id="createPostModal" class="modal">
         <h3><i class="fas fa-newspaper"></i> نشر درس جديد</h3>
         <input type="text" id="postTitle" placeholder="عنوان الدرس" required>
@@ -103,33 +101,36 @@
         <button onclick="closeModal()" style="background:#e2e8f0; color:#333; padding:10px; border:none; border-radius:10px; margin-top:10px; width:100%">إلغاء</button>
     </div>
 
-    <!-- مودال إنشاء عرض -->
     <div id="createOfferModal" class="modal">
         <h3><i class="fas fa-video"></i> إنشاء عرض جديد</h3>
-        <input type="text" id="subjectName" placeholder="اسم المادة (مثال: رياضيات - فصل ثاني)" required>
+        <input type="text" id="subjectName" placeholder="اسم المادة" required>
         <input type="number" id="duration" placeholder="مدة الحصة (بالدقائق)" value="60">
         <input type="datetime-local" id="offerDate" required>
         <div class="free-checkbox">
             <input type="checkbox" id="isFree" onchange="togglePrice()">
             <label>حصة مجانية</label>
         </div>
-        <input type="number" id="price" placeholder="سعر الحصة (دج)" value="1000">
+        <input type="number" id="price" placeholder="السعر (دج)" value="1000">
         <button class="create-btn" onclick="createOffer()" style="background:#0f5cbf">إنشاء العرض</button>
         <button onclick="closeModal()" style="background:#e2e8f0; color:#333; padding:10px; border:none; border-radius:10px; margin-top:10px; width:100%">إلغاء</button>
     </div>
 
     <script>
-        // التحقق من تسجيل الدخول
-        let teacherToken = localStorage.getItem('teacherToken');
+        // التحقق من تسجيل الدخول بشكل صحيح
         let userData = JSON.parse(localStorage.getItem('userData') || '{}');
+        let teacherToken = localStorage.getItem('teacherToken');
         
-        if (!teacherToken && userData.role !== 'teacher') {
+        console.log('🔍 التحقق من الجلسة:', { teacherToken: !!teacherToken, userData, role: userData.role });
+        
+        // إذا لم يكن هناك توكن أو الدور ليس أستاذ، ارجع للصفحة الرئيسية
+        if (!teacherToken || userData.role !== 'teacher') {
+            console.log('❌ غير مصرح بالدخول، جاري التوجيه للرئيسية');
             window.location.href = '/';
         }
         
         let teacherData = userData;
+        console.log('✅ تم التحقق، مرحباً أستاذ:', teacherData.name);
 
-        // عرض التبويب المحدد
         function showTab(tab) {
             document.getElementById('profileTab').style.display = 'none';
             document.getElementById('postsTab').style.display = 'none';
@@ -150,7 +151,6 @@
             }
         }
 
-        // تحميل الملف الشخصي
         async function loadProfile() {
             const res = await fetch(`/api/teacher/${teacherData.id}`);
             const teacher = await res.json();
@@ -172,7 +172,6 @@
             `;
         }
 
-        // عرض نافذة تعديل الملف الشخصي
         function showEditProfileModal() {
             document.getElementById('modalOverlay').style.display = 'block';
             document.getElementById('editProfileModal').style.display = 'block';
@@ -189,7 +188,6 @@
             });
         }
 
-        // تحديث الملف الشخصي
         async function updateProfile() {
             const formData = new FormData();
             formData.append('teacher_id', teacherData.id);
@@ -216,7 +214,6 @@
             }
         }
 
-        // تحميل المنشورات
         async function loadPosts() {
             const res = await fetch(`/api/posts/${teacherData.id}`);
             const posts = await res.json();
@@ -242,7 +239,6 @@
             container.innerHTML = html;
         }
 
-        // تحميل التعليقات
         async function loadComments(postId) {
             const res = await fetch(`/api/post/${postId}`);
             const post = await res.json();
@@ -259,7 +255,6 @@
             }
         }
 
-        // حذف تعليق
         async function deleteComment(commentId, postId) {
             if (confirm('هل أنت متأكد من حذف هذا التعليق؟')) {
                 await fetch(`/api/post/comment/${commentId}`, { 
@@ -271,7 +266,6 @@
             }
         }
 
-        // حذف منشور
         async function deletePost(postId) {
             if (confirm('هل أنت متأكد من حذف هذا المنشور؟')) {
                 await fetch(`/api/post/${postId}`, { 
@@ -283,7 +277,6 @@
             }
         }
 
-        // عرض نافذة إنشاء منشور
         function showCreatePostModal() {
             document.getElementById('modalOverlay').style.display = 'block';
             document.getElementById('createPostModal').style.display = 'block';
@@ -294,7 +287,6 @@
             document.getElementById('postFile').value = '';
         }
 
-        // إنشاء منشور جديد
         async function createPost() {
             const title = document.getElementById('postTitle').value;
             if (!title) { alert('الرجاء إدخال عنوان الدرس'); return; }
@@ -318,7 +310,6 @@
             }
         }
 
-        // تحميل العروض
         async function loadOffers() {
             const res = await fetch(`/api/teacher/offers/${teacherData.id}`);
             const offers = await res.json();
@@ -330,11 +321,11 @@
             let html = '';
             for (const offer of offers) {
                 const offerDate = new Date(offer.offer_date);
-                let statusClass = '', statusText = '';
-                if (offer.status === 'upcoming') { statusClass = 'status-upcoming'; statusText = 'قادم'; }
-                else if (offer.status === 'teacher_ready') { statusClass = 'status-teacher_ready'; statusText = 'الأستاذ جاهز'; }
-                else if (offer.status === 'live') { statusClass = 'status-live'; statusText = 'بث مباشر'; }
-                else { statusClass = 'status-completed'; statusText = 'منتهية'; }
+                let statusText = '';
+                if (offer.status === 'upcoming') statusText = 'قادم';
+                else if (offer.status === 'teacher_ready') statusText = 'الأستاذ جاهز';
+                else if (offer.status === 'live') statusText = 'بث مباشر';
+                else statusText = 'منتهية';
                 
                 // جلب قائمة الانتظار
                 let waitingHtml = '';
@@ -370,7 +361,6 @@
             container.innerHTML = html;
         }
 
-        // دخول البث كأستاذ
         async function enterStream(offerId) {
             if (confirm(`⚠️ هل تريد الدخول إلى البث كأستاذ؟\n\n📌 ستدخل إلى غرفة البث وحدك أولاً.\n📌 بعد تجهيز البث، سيكون لديك زر لإضافة الطلاب المنتظرين.`)) {
                 window.open(`/api/enter-teacher-stream/${offerId}/${teacherData.id}`, '_blank');
@@ -382,7 +372,6 @@
             window.open(`/api/teacher-stream/${offerId}/${teacherData.id}`, '_blank');
         }
 
-        // حذف عرض
         async function deleteOffer(offerId) {
             if (confirm('⚠️ هل أنت متأكد من حذف هذا العرض؟ سيتم حذف جميع الحجوزات المرتبطة به.')) {
                 const res = await fetch(`/api/offer/delete/${offerId}`, { 
@@ -400,7 +389,6 @@
             }
         }
 
-        // عرض نافذة إنشاء عرض
         function showCreateOfferModal() {
             document.getElementById('modalOverlay').style.display = 'block';
             document.getElementById('createOfferModal').style.display = 'block';
@@ -418,7 +406,6 @@
             if (isFree) document.getElementById('price').value = 0;
         }
 
-        // إنشاء عرض جديد
         async function createOffer() {
             const subject_name = document.getElementById('subjectName').value;
             const offer_date = document.getElementById('offerDate').value;
@@ -447,13 +434,11 @@
             }
         }
 
-        // إغلاق النافذة
         function closeModal() { 
             document.getElementById('modalOverlay').style.display = 'none'; 
             document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); 
         }
 
-        // تنسيق النص
         function escapeHtml(text) {
             if (!text) return '';
             const div = document.createElement('div');
@@ -461,14 +446,13 @@
             return div.innerHTML;
         }
 
-        // تسجيل الخروج
         function logout() { 
             localStorage.clear(); 
             window.location.href = '/'; 
         }
 
         // تحميل الصفحة
-        loadProfile();
+        showTab('profile');
         setInterval(() => { if (document.getElementById('offersTab').style.display !== 'none') loadOffers(); }, 5000);
     </script>
 </body>
