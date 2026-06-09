@@ -41,8 +41,14 @@
         <div id="approvedTab" style="display:none"><div id="approvedTeachers" class="teachers-grid"></div></div>
     </div>
     <script>
-        let token = localStorage.getItem('adminToken');
-        if (!token) window.location.href = '/';
+        // التحقق من وجود adminToken (تم إصلاح الشرط)
+        let adminToken = localStorage.getItem('adminToken');
+        let userData = JSON.parse(localStorage.getItem('userData') || '{}');
+        
+        // إذا لم يكن هناك adminToken أو user role ليس admin
+        if (!adminToken && userData.role !== 'admin') {
+            window.location.href = '/';
+        }
 
         async function loadPending() {
             const res = await fetch('/api/admin/pending-teachers');
@@ -130,7 +136,11 @@
             document.querySelectorAll('.tab').forEach((t, i) => { t.classList.remove('active'); if ((tab === 'pending' && i === 0) || (tab === 'approved' && i === 1)) t.classList.add('active'); });
         }
 
-        function logout() { localStorage.removeItem('adminToken'); window.location.href = '/'; }
+        function logout() {
+            localStorage.clear();
+            window.location.href = '/';
+        }
+        
         loadPending(); loadApproved();
     </script>
 </body>
