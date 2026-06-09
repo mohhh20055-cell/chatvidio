@@ -209,10 +209,10 @@ app.post('/api/login', async (req, res) => {
     // التحقق من Admin أولاً
     if (email === 'admin@platform.com' && password === 'admin123') {
       console.log('✅ تم تسجيل دخول Admin بنجاح');
-      const token = Buffer.from(`admin:${Date.now()}`).toString('base64');
+      const token = 'admin_token_' + Date.now();
       return res.json({ 
         success: true, 
-        token, 
+        token: token,
         user: { 
           id: 0, 
           name: 'مدير المنصة', 
@@ -296,7 +296,7 @@ app.delete('/api/admin/delete-teacher/:id', async (req, res) => {
   res.json({ success: true });
 });
 
-// ============= باقي Routes (كما هي) =============
+// ============= باقي Routes (مختصرة) =============
 
 // الصفحات العامة
 app.get('/api/public/teachers', async (req, res) => {
