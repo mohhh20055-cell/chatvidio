@@ -115,6 +115,10 @@
                 <h3>تسجيل الدخول</h3>
                 <input type="email" id="loginEmail" placeholder="البريد الإلكتروني">
                 <input type="password" id="loginPassword" placeholder="كلمة المرور">
+                <select id="loginRole">
+                    <option value="student">طالب</option>
+                    <option value="teacher">أستاذ</option>
+                </select>
                 <button class="btn-primary" onclick="login()">دخول</button>
             </div>
 
@@ -370,13 +374,18 @@
         async function login() {
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
-            if (!email || !password) { showNotification('يرجى إدخال البريد الإلكتروني وكلمة المرور', 'error'); return; }
+            const role = document.getElementById('loginRole').value;
+            
+            if (!email || !password) { 
+                showNotification('يرجى إدخال البريد الإلكتروني وكلمة المرور', 'error'); 
+                return; 
+            }
             
             try {
                 const res = await fetch('/api/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
+                    body: JSON.stringify({ email, password, role })
                 });
                 const data = await res.json();
                 if (data.success) {
@@ -385,7 +394,9 @@
                     if (data.user.email === 'admin@platform.com') window.location.href = '/admin.html';
                     else if (data.user.role === 'teacher') window.location.href = '/teacher-dashboard.html';
                     else window.location.href = '/student-dashboard.html';
-                } else { showNotification(data.error, 'error'); }
+                } else { 
+                    showNotification(data.error, 'error'); 
+                }
             } catch(e) {
                 showNotification('خطأ في الاتصال بالخادم', 'error');
             }
@@ -409,8 +420,12 @@
                     body: JSON.stringify({ full_name, email, password, phone })
                 });
                 const data = await res.json();
-                if (data.success) { showNotification('تم التسجيل بنجاح! يمكنك تسجيل الدخول الآن'); switchTab('login'); }
-                else { showNotification(data.error, 'error'); }
+                if (data.success) { 
+                    showNotification('تم التسجيل بنجاح! يمكنك تسجيل الدخول الآن'); 
+                    switchTab('login'); 
+                } else { 
+                    showNotification(data.error, 'error'); 
+                }
             } catch(e) {
                 showNotification('خطأ في الاتصال بالخادم', 'error');
             }
@@ -432,8 +447,12 @@
             try {
                 const res = await fetch('/api/teacher/register', { method: 'POST', body: formData });
                 const data = await res.json();
-                if (data.success) { showNotification('تم إرسال طلبك بنجاح! سيتم مراجعته'); switchTab('login'); }
-                else { showNotification(data.error, 'error'); }
+                if (data.success) { 
+                    showNotification('تم إرسال طلبك بنجاح! سيتم مراجعته'); 
+                    switchTab('login'); 
+                } else { 
+                    showNotification(data.error, 'error'); 
+                }
             } catch(e) {
                 showNotification('خطأ في الاتصال بالخادم', 'error');
             }
