@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>جميع العروض - منصة التعليم</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Cairo', sans-serif; background: #f0f2f5; }
+        
+        /* Navbar */
+        .navbar { background: white; padding: 12px 24px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; }
+        .nav-container { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        .logo { font-size: 1.5rem; font-weight: 800; color: #0f5cbf; cursor: pointer; }
+        .back-btn { background: #0f5cbf; color: white; border: none; padding: 8px 20px; border-radius: 30px; cursor: pointer; }
+        
+        /* Main Container */
+        .container { max-width: 1200px; margin: 30px auto; padding: 0 20px; }
+        .page-title { font-size: 1.8rem; margin-bottom: 20px; color: #1e3c72; display: flex; align-items: center; gap: 10px; }
+        
+        /* Filters */
+        .filters { background: white; border-radius: 15px; padding: 20px; margin-bottom: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; }
+        .filter-group { flex: 1; min-width: 150px; }
+        .filter-group label { display: block; font-size: 0.8rem; color: #718096; margin-bottom: 5px; }
+        .filter-group input, .filter-group select { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 10px; font-family: 'Cairo', sans-serif; }
+        .filter-btn { background: #0f5cbf; color: white; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer; }
+        .filter-btn.reset { background: #e2e8f0; color: #4a5568; }
+        
+        /* Offers Grid */
+        .offers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 25px; margin-top: 20px; }
+        .offer-card { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.08); transition: 0.3s; }
+        .offer-card:hover { transform: translateY(-5px); box-shadow: 0 12px 30px rgba(0,0,0,0.12); }
+        
+        .offer-header { background: linear-gradient(135deg, #1e3c72, #0f5cbf); padding: 15px; color: white; position: relative; }
+        .offer-price { position: absolute; top: 15px; left: 15px; background: rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; }
+        .offer-free { background: #10b981; }
+        .offer-teacher { display: flex; align-items: center; gap: 12px; }
+        .teacher-avatar { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid white; }
+        .teacher-name { font-weight: 700; font-size: 1.1rem; cursor: pointer; }
+        .teacher-name:hover { text-decoration: underline; }
+        .teacher-specialty { font-size: 0.75rem; opacity: 0.9; }
+        
+        .offer-body { padding: 20px; }
+        .offer-subject { font-size: 1.2rem; font-weight: 700; color: #1e3c72; margin-bottom: 15px; }
+        .offer-details { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+        .detail-item { display: flex; align-items: center; gap: 10px; color: #4a5568; font-size: 0.9rem; }
+        .detail-item i { width: 20px; color: #0f5cbf; }
+        
+        .offer-footer { padding: 15px 20px; border-top: 1px solid #e2e8f0; display: flex; gap: 10px; }
+        .book-btn { flex: 2; background: #0f5cbf; color: white; border: none; padding: 10px; border-radius: 25px; cursor: pointer; font-weight: 600; transition: 0.3s; }
+        .book-btn:hover { background: #0b4a9c; }
+        .profile-btn { flex: 1; background: #e2e8f0; color: #4a5568; border: none; padding: 10px; border-radius: 25px; cursor: pointer; font-weight: 600; transition: 0.3s; }
+        .profile-btn:hover { background: #cbd5e1; }
+        
+        .badge-live { background: #ef4444; color: white; padding: 3px 10px; border-radius: 20px; font-size: 0.7rem; display: inline-block; margin-left: 10px; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 0.7; } 50% { opacity: 1; } 100% { opacity: 0.7; } }
+        
+        .empty-state { text-align: center; padding: 60px; background: white; border-radius: 20px; color: #718096; }
+        .empty-state i { font-size: 60px; margin-bottom: 20px; color: #cbd5e1; }
+        
+        .loading { text-align: center; padding: 50px; }
+        
+        @media (max-width: 768px) {
+            .offers-grid { grid-template-columns: 1fr; }
+            .filters { flex-direction: column; }
+            .filter-group { width: 100%; }
+        }
+        
+        .notification-toast { position: fixed; bottom: 30px; right: 30px; background: #10b981; color: white; padding: 15px 25px; border-radius: 15px; z-index: 2000; animation: slideIn 0.5s ease; display: none; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo" onclick="window.location.href='/student-dashboard.html'"><i class="fas fa-chalkboard-user"></i> منصة التعليم</div>
+            <button class="back-btn" onclick="window.location.href='/student-dashboard.html'"><i class="fas fa-arrow-right"></i> العودة للرئيسية</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-title">
+            <i class="fas fa-calendar-alt"></i>
+            <span>جميع العروض المتاحة</span>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters">
+            <div class="filter-group">
+                <label><i class="fas fa-search"></i> بحث</label>
+                <input type="text" id="searchInput" placeholder="ابحث عن مادة أو أستاذ..." onkeyup="filterOffers()">
+            </div>
+            <div class="filter-group">
+                <label><i class="fas fa-filter"></i> السعر</label>
+                <select id="priceFilter" onchange="filterOffers()">
+                    <option value="all">الكل</option>
+                    <option value="free">مجانية فقط</option>
+                    <option value="paid">مدفوعة فقط</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label><i class="fas fa-sort"></i> ترتيب حسب</label>
+                <select id="sortFilter" onchange="filterOffers()">
+                    <option value="date_asc">الأحدث أولاً</option>
+                    <option value="date_desc">الأقدم أولاً</option>
+                    <option value="price_asc">السعر من الأقل للأعلى</option>
+                    <option value="price_desc">السعر من الأعلى للأقل</option>
+                </select>
+            </div>
+            <button class="filter-btn" onclick="resetFilters()">إعادة تعيين</button>
+        </div>
+
+        <!-- Offers List -->
+        <div id="offersContainer">
+            <div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>
+        </div>
+    </div>
+
+    <div id="notificationToast" class="notification-toast"></div>
+
+    <script>
+        let studentData = JSON.parse(localStorage.getItem('studentData') || '{}');
+        let allOffers = [];
+        let filteredOffers = [];
+
+        if (!studentData.id) {
+            // إذا لم يكن طالب مسجل، يمكنه فقط مشاهدة العروض
+            studentData = { id: null };
+        }
+
+        function showNotification(message, type = 'success') {
+            const toast = document.getElementById('notificationToast');
+            toast.style.background = type === 'success' ? '#10b981' : (type === 'warning' ? '#f59e0b' : '#ef4444');
+            toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'}"></i> ${message}`;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 5000);
+        }
+
+        async function loadOffers() {
+            try {
+                const res = await fetch('/api/offers');
+                allOffers = await res.json();
+                filterOffers();
+            } catch(e) {
+                console.log(e);
+                document.getElementById('offersContainer').innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h3>حدث خطأ في تحميل العروض</h3><p>يرجى المحاولة مرة أخرى</p></div>';
+            }
+        }
+
+        function filterOffers() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const priceFilter = document.getElementById('priceFilter').value;
+            const sortFilter = document.getElementById('sortFilter').value;
+
+            filteredOffers = [...allOffers];
+
+            // Filter by search
+            if (searchTerm) {
+                filteredOffers = filteredOffers.filter(offer => 
+                    offer.subject_name.toLowerCase().includes(searchTerm) || 
+                    offer.teacher_name.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            // Filter by price
+            if (priceFilter === 'free') {
+                filteredOffers = filteredOffers.filter(offer => offer.is_free === 1);
+            } else if (priceFilter === 'paid') {
+                filteredOffers = filteredOffers.filter(offer => offer.is_free === 0);
+            }
+
+            // Sort
+            if (sortFilter === 'date_asc') {
+                filteredOffers.sort((a, b) => new Date(b.offer_date) - new Date(a.offer_date));
+            } else if (sortFilter === 'date_desc') {
+                filteredOffers.sort((a, b) => new Date(a.offer_date) - new Date(b.offer_date));
+            } else if (sortFilter === 'price_asc') {
+                filteredOffers.sort((a, b) => a.price - b.price);
+            } else if (sortFilter === 'price_desc') {
+                filteredOffers.sort((a, b) => b.price - a.price);
+            }
+
+            renderOffers();
+        }
+
+        function resetFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('priceFilter').value = 'all';
+            document.getElementById('sortFilter').value = 'date_asc';
+            filterOffers();
+        }
+
+        function renderOffers() {
+            const container = document.getElementById('offersContainer');
+            if (filteredOffers.length === 0) {
+                container.innerHTML = `<div class="empty-state">
+                    <i class="fas fa-calendar-times"></i>
+                    <h3>لا توجد عروض متاحة</h3>
+                    <p>حالياً لا توجد عروض متاحة للحجز</p>
+                    <button class="filter-btn" onclick="resetFilters()" style="margin-top:15px;">مسح الفلاتر</button>
+                </div>`;
+                return;
+            }
+
+            let html = '<div class="offers-grid">';
+            for (const offer of filteredOffers) {
+                const offerDate = new Date(offer.offer_date);
+                const isFree = offer.is_free === 1;
+                const imageUrl = offer.profile_image ? `/uploads/${offer.profile_image}` : 'https://via.placeholder.com/50';
+                const isPast = offerDate < new Date();
+                
+                html += `
+                    <div class="offer-card">
+                        <div class="offer-header">
+                            <div class="offer-price ${isFree ? 'offer-free' : ''}">
+                                ${isFree ? '<i class="fas fa-gift"></i> مجانية' : `<i class="fas fa-money-bill"></i> ${offer.price} دج`}
+                            </div>
+                            <div class="offer-teacher">
+                                <img src="${imageUrl}" class="teacher-avatar" onerror="this.src='https://via.placeholder.com/50'">
+                                <div>
+                                    <div class="teacher-name" onclick="viewTeacherProfile(${offer.teacher_id})">${escapeHtml(offer.teacher_name)}</div>
+                                    <div class="teacher-specialty"><i class="fas fa-book"></i> ${offer.specialization || 'تخصص عام'}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="offer-body">
+                            <div class="offer-subject">📚 ${escapeHtml(offer.subject_name)}</div>
+                            <div class="offer-details">
+                                <div class="detail-item"><i class="fas fa-calendar"></i> <span>${offerDate.toLocaleDateString('ar')}</span></div>
+                                <div class="detail-item"><i class="fas fa-clock"></i> <span>${offerDate.toLocaleTimeString('ar')} - مدة ${offer.duration} دقيقة</span></div>
+                                <div class="detail-item"><i class="fas fa-users"></i> <span>بث مباشر عبر Jitsi Meet</span></div>
+                            </div>
+                        </div>
+                        <div class="offer-footer">
+                            <button class="book-btn" onclick="bookOffer(${offer.id}, ${offer.price}, ${isFree})">
+                                <i class="fas ${isFree ? 'fa-check-circle' : 'fa-credit-card'}"></i> ${isFree ? 'تسجيل مجاني' : 'حجز الحصة'}
+                            </button>
+                            <button class="profile-btn" onclick="viewTeacherProfile(${offer.teacher_id})">
+                                <i class="fas fa-user"></i> الملف
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        async function bookOffer(offerId, price, isFree) {
+            if (!studentData.id) {
+                if (confirm('يجب تسجيل الدخول أولاً لحجز الحصة. هل تريد تسجيل الدخول الآن؟')) {
+                    window.location.href = '/';
+                }
+                return;
+            }
+
+            showNotification('جاري معالجة طلبك...', 'warning');
+
+            try {
+                const res = await fetch('/api/booking/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ offer_id: offerId, student_id: studentData.id })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    if (isFree || data.is_free) {
+                        showNotification('✅ تم تسجيلك بنجاح! سيتم إضافتك إلى غرفة الانتظار.', 'success');
+                        setTimeout(() => {
+                            window.location.href = '/student-dashboard.html';
+                        }, 2000);
+                    } else if (data.checkout_url) {
+                        showNotification('جاري تحويلك إلى بوابة الدفع...', 'warning');
+                        window.location.href = data.checkout_url;
+                    } else {
+                        showNotification('حدث خطأ في عملية الحجز', 'error');
+                    }
+                } else {
+                    showNotification(data.error || 'حدث خطأ', 'error');
+                }
+            } catch(e) {
+                showNotification('حدث خطأ في الاتصال بالخادم', 'error');
+            }
+        }
+
+        function viewTeacherProfile(teacherId) {
+            window.open(`/teacher-profile.html?id=${teacherId}`, '_blank');
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        loadOffers();
+    </script>
+</body>
+</html>
