@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة تحكم المدير | منصة التعليم</title>
+    <title>لوحة تحكم المدير - منصة التعليم</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -16,12 +16,14 @@
         .tab { padding: 10px 25px; background: #e2e8f0; border-radius: 30px; cursor: pointer; font-weight: 600; }
         .tab.active { background: #0f5cbf; color: white; }
         .teachers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
-        .teacher-card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .teacher-image { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; }
-        .documents { display: flex; gap: 10px; margin: 15px 0; flex-wrap: wrap; }
-        .doc-link { background: #e2e8f0; padding: 5px 10px; border-radius: 10px; text-decoration: none; color: #0f5cbf; font-size: 12px; }
+        .teacher-card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; }
+        .teacher-image { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 15px; }
         .btn-approve { background: #10b981; color: white; border: none; padding: 8px 20px; border-radius: 25px; cursor: pointer; margin: 5px; }
         .btn-reject { background: #ef4444; color: white; border: none; padding: 8px 20px; border-radius: 25px; cursor: pointer; margin: 5px; }
+        .btn-delete { background: #dc2626; color: white; border: none; padding: 8px 20px; border-radius: 25px; cursor: pointer; margin: 5px; }
+        .view-profile { background: #0f5cbf; color: white; border: none; padding: 8px 20px; border-radius: 25px; cursor: pointer; margin: 5px; text-decoration: none; display: inline-block; }
+        .documents { display: flex; gap: 10px; justify-content: center; margin: 15px 0; }
+        .doc-link { background: #e2e8f0; padding: 5px 10px; border-radius: 10px; text-decoration: none; color: #0f5cbf; font-size: 12px; }
         .reject-reason { width: 100%; padding: 8px; margin-top: 10px; border: 1px solid #cbd5e1; border-radius: 10px; display: none; }
     </style>
 </head>
@@ -33,12 +35,10 @@
         </div>
         <div class="tabs">
             <div class="tab active" onclick="showTab('pending')">طلبات الأساتذة <span id="pendingCount"></span></div>
-            <div class="tab" onclick="showTab('approved')">الأساتذة المقبولون</div>
-            <div class="tab" onclick="showTab('live')">بث مباشر حالياً</div>
+            <div class="tab" onclick="showTab('approved')">الأساتذة المعتمدون</div>
         </div>
         <div id="pendingTab"><div id="pendingTeachers" class="teachers-grid"></div></div>
         <div id="approvedTab" style="display:none"><div id="approvedTeachers" class="teachers-grid"></div></div>
-        <div id="liveTab" style="display:none"><div id="liveTeachers" class="teachers-grid"></div></div>
     </div>
     <script>
         let token = localStorage.getItem('adminToken');
@@ -59,7 +59,6 @@
                     <p><i class="fas fa-phone"></i> ${t.phone}</p>
                     <p><i class="fas fa-book"></i> ${t.specialization}</p>
                     <p><i class="fas fa-briefcase"></i> ${t.experience || 'غير مذكور'}</p>
-                    <p><i class="fas fa-align-left"></i> ${t.bio || ''}</p>
                     <div class="documents">
                         <a href="/uploads/${t.diploma_image}" target="_blank" class="doc-link"><i class="fas fa-graduation-cap"></i> الدبلوم</a>
                         <a href="/uploads/${t.id_image}" target="_blank" class="doc-link"><i class="fas fa-id-card"></i> بطاقة الهوية</a>
@@ -84,39 +83,21 @@
                 html += `<div class="teacher-card">
                     <img src="/uploads/${t.profile_image}" class="teacher-image">
                     <h3>${t.full_name}</h3>
-                    <p><i class="fas fa-envelope"></i> ${t.email}</p>
                     <p><i class="fas fa-book"></i> ${t.specialization}</p>
-                    <p><i class="fas fa-briefcase"></i> ${t.experience || 'غير مذكور'}</p>
-                    <span style="background:#d1fae5; color:#065f46; padding:5px 10px; border-radius:15px;">✅ معتمد</span>
-                </div>`;
-            });
-            container.innerHTML = html;
-        }
-
-        async function loadLive() {
-            const res = await fetch('/api/live-offers');
-            const offers = await res.json();
-            const container = document.getElementById('liveTeachers');
-            if (offers.length === 0) { container.innerHTML = '<p>لا يوجد بث مباشر حالياً</p>'; return; }
-            let html = '';
-            offers.forEach(o => {
-                const date = new Date(o.offer_date);
-                html += `<div class="teacher-card">
-                    <img src="/uploads/${o.profile_image}" class="teacher-image">
-                    <h3>${o.teacher_name}</h3>
-                    <p><i class="fas fa-book"></i> ${o.subject_name}</p>
-                    <p><i class="fas fa-calendar"></i> ${date.toLocaleString('ar')}</p>
-                    <p><i class="fas fa-tag"></i> ${o.is_free ? 'مجانية' : o.price + ' دج'}</p>
-                    <span style="background:#10b981; color:white; padding:5px 10px; border-radius:15px;">🔴 بث مباشر الآن</span>
+                    <p><i class="fas fa-briefcase"></i> ${t.experience || 'غير مذكور'} سنة</p>
+                    <div>
+                        <a href="/teacher-profile.html?id=${t.id}" target="_blank" class="view-profile"><i class="fas fa-eye"></i> عرض الصفحة</a>
+                        <button class="btn-delete" onclick="deleteTeacher(${t.id})"><i class="fas fa-trash"></i> حذف</button>
+                    </div>
                 </div>`;
             });
             container.innerHTML = html;
         }
 
         async function approveTeacher(id) {
-            const res = await fetch(`/api/admin/approve-teacher/${id}`, { method: 'POST' });
-            const data = await res.json();
-            if (data.success) { alert('تم قبول الأستاذ'); loadPending(); loadApproved(); }
+            await fetch(`/api/admin/approve-teacher/${id}`, { method: 'POST' });
+            alert('تم قبول الأستاذ');
+            loadPending(); loadApproved();
         }
 
         function showRejectReason(id) {
@@ -132,19 +113,25 @@
             }
         }
 
+        async function deleteTeacher(id) {
+            if (confirm('⚠️ هل أنت متأكد من حذف هذا الأستاذ؟ سيتم حذف جميع منشوراته وعروضه.')) {
+                const res = await fetch(`/api/admin/delete-teacher/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) { alert('تم حذف الأستاذ'); loadApproved(); }
+                else alert('خطأ: ' + data.error);
+            }
+        }
+
         function showTab(tab) {
             document.getElementById('pendingTab').style.display = 'none';
             document.getElementById('approvedTab').style.display = 'none';
-            document.getElementById('liveTab').style.display = 'none';
             if (tab === 'pending') { document.getElementById('pendingTab').style.display = 'block'; loadPending(); }
-            else if (tab === 'approved') { document.getElementById('approvedTab').style.display = 'block'; loadApproved(); }
-            else { document.getElementById('liveTab').style.display = 'block'; loadLive(); }
-            document.querySelectorAll('.tab').forEach((t, i) => { t.classList.remove('active'); if ((tab === 'pending' && i === 0) || (tab === 'approved' && i === 1) || (tab === 'live' && i === 2)) t.classList.add('active'); });
+            else { document.getElementById('approvedTab').style.display = 'block'; loadApproved(); }
+            document.querySelectorAll('.tab').forEach((t, i) => { t.classList.remove('active'); if ((tab === 'pending' && i === 0) || (tab === 'approved' && i === 1)) t.classList.add('active'); });
         }
 
         function logout() { localStorage.removeItem('adminToken'); window.location.href = '/'; }
-        loadPending();
-        setInterval(() => { if (document.getElementById('liveTab').style.display !== 'none') loadLive(); }, 5000);
+        loadPending(); loadApproved();
     </script>
 </body>
 </html>
