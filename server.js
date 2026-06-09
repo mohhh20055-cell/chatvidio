@@ -199,11 +199,31 @@ app.post('/api/student/register', async (req, res) => {
   }
 });
 
-// تسجيل الدخول
+// تسجيل الدخول الموحد (مع دعم Admin)
 app.post('/api/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, role } = req.body;
     
+    console.log(`📝 محاولة تسجيل دخول: ${email} كـ ${role}`);
+    
+    // التحقق من Admin أولاً
+    if (email === 'admin@platform.com' && password === 'admin123') {
+      console.log('✅ تم تسجيل دخول Admin بنجاح');
+      const token = Buffer.from(`admin:${Date.now()}`).toString('base64');
+      return res.json({ 
+        success: true, 
+        token, 
+        user: { 
+          id: 0, 
+          name: 'مدير المنصة', 
+          email: 'admin@platform.com', 
+          role: 'admin', 
+          status: 'approved'
+        } 
+      });
+    }
+    
+    // البحث في الأساتذة
     let user = await getOne('teachers', 'email', email);
     let userRole = 'teacher';
     
@@ -217,11 +237,17 @@ app.post('/api/login', async (req, res) => {
     const validPassword = bcrypt.compareSync(password, user.password);
     if (!validPassword) return res.json({ success: false, error: 'كلمة المرور خاطئة' });
     
-    if (userRole === 'teacher' && user.status !== 'approved' && email !== 'admin@platform.com') {
+    // التحقق من أن المستخدم يختار الدور الصحيح
+    if (role !== userRole) {
+      return res.json({ success: false, error: `هذا الحساب مسجل كـ ${userRole === 'teacher' ? 'أستاذ' : 'طالب'}. يرجى اختيار الدور الصحيح.` });
+    }
+    
+    if (userRole === 'teacher' && user.status !== 'approved') {
       return res.json({ success: false, error: 'حسابك قيد المراجعة من قبل الإدارة' });
     }
     
     const token = Buffer.from(`${user.id}:${Date.now()}`).toString('base64');
+    console.log(`✅ تم تسجيل الدخول بنجاح: ${user.id} كـ ${userRole}`);
     res.json({ 
       success: true, 
       token, 
@@ -235,8 +261,8 @@ app.post('/api/login', async (req, res) => {
       } 
     });
   } catch (error) {
-    console.error('❌ خطأ:', error.message);
-    res.json({ success: false, error: 'خطأ في الخادم' });
+    console.error('❌ خطأ في تسجيل الدخول:', error.message);
+    res.json({ success: false, error: 'خطأ في الاتصال بقاعدة البيانات' });
   }
 });
 
@@ -270,7 +296,9 @@ app.delete('/api/admin/delete-teacher/:id', async (req, res) => {
   res.json({ success: true });
 });
 
-// ============= الصفحات العامة =============
+// ============= باقي Routes (كما هي) =============
+
+// الصفحات العامة
 app.get('/api/public/teachers', async (req, res) => {
   const { data } = await supabase
     .from('teachers')
@@ -321,7 +349,7 @@ app.get('/api/live-offers', async (req, res) => {
   res.json(formatted);
 });
 
-// ============= نظام المنشورات =============
+// نظام المنشورات
 app.post('/api/post/create', upload.fields([
   { name: 'image', maxCount: 1 },
   { name: 'file', maxCount: 1 }
@@ -446,7 +474,7 @@ app.get('/api/post/check-like/:post_id/:student_id', async (req, res) => {
   res.json({ liked: !!data });
 });
 
-// ============= نظام المتابعات =============
+// نظام المتابعات
 app.post('/api/follow', async (req, res) => {
   const { student_id, teacher_id } = req.body;
   await insert('follows', { student_id, teacher_id });
@@ -463,7 +491,7 @@ app.get('/api/check-follow/:student_id/:teacher_id', async (req, res) => {
   res.json({ following: !!data });
 });
 
-// ============= نظام العروض =============
+// نظام العروض
 app.post('/api/offer/create', async (req, res) => {
   const { teacher_id, subject_name, duration, offer_date, price, is_free } = req.body;
   const room_name = `stream_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
@@ -494,7 +522,7 @@ app.delete('/api/offer/delete/:offer_id', async (req, res) => {
   res.json({ success: true });
 });
 
-// ============= نظام الحجز =============
+// نظام الحجز
 app.post('/api/booking/create', async (req, res) => {
   const { offer_id, student_id } = req.body;
   
@@ -553,7 +581,7 @@ app.get('/api/student/bookings/:student_id', async (req, res) => {
   res.json(formatted);
 });
 
-// ============= نظام البث المباشر =============
+// نظام البث المباشر
 app.post('/api/stream/enter-teacher/:offer_id', async (req, res) => {
   const { offer_id, teacher_id } = req.body;
   const offer = await getOne('offers', 'id', offer_id);
@@ -611,7 +639,7 @@ app.get('/api/stream/waiting-list/:offer_id/:teacher_id', async (req, res) => {
   res.json(formatted);
 });
 
-// ============= صفحات البث =============
+// صفحات البث
 app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
   const offer = await getOne('offers', 'id', req.params.offer_id);
   if (!offer || offer.teacher_id != req.params.teacher_id) return res.redirect('/teacher-dashboard.html');
