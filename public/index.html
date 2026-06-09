@@ -29,10 +29,13 @@
         .btn-outline:hover { background: #0f5cbf10; }
         .section-container { max-width: 1200px; margin: 50px auto; padding: 0 20px; }
         .section-title { font-size: 2rem; margin-bottom: 30px; text-align: center; color: #1e3c72; }
-        .teachers-grid, .offers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 25px; }
-        .teacher-card, .offer-card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); transition: 0.3s; text-align: center; }
-        .teacher-card:hover, .offer-card:hover { transform: translateY(-5px); box-shadow: 0 12px 30px rgba(0,0,0,0.12); }
+        .teachers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; }
+        .teacher-card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); transition: 0.3s; text-align: center; cursor: pointer; }
+        .teacher-card:hover { transform: translateY(-5px); box-shadow: 0 12px 30px rgba(0,0,0,0.12); }
         .teacher-image { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 15px; border: 3px solid #0f5cbf; }
+        .offers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 25px; }
+        .offer-card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); transition: 0.3s; }
+        .offer-card:hover { transform: translateY(-5px); }
         .live-badge { background: #ef4444; color: white; padding: 5px 10px; border-radius: 20px; font-size: 12px; animation: pulse 1s infinite; display: inline-block; }
         @keyframes pulse { 0% { opacity: 0.7; } 50% { opacity: 1; } 100% { opacity: 0.7; } }
         .form-section { max-width: 600px; margin: 50px auto; padding: 0 20px; }
@@ -45,6 +48,7 @@
         footer { text-align: center; padding: 30px; background: #1e2a3e; color: #94a3b8; margin-top: 50px; }
         .price-tag { background: #10b981; color: white; padding: 5px 12px; border-radius: 20px; display: inline-block; margin-top: 10px; }
         .free-tag { background: #f59e0b; color: white; padding: 5px 12px; border-radius: 20px; display: inline-block; margin-top: 10px; }
+        .view-profile-btn { background: #0f5cbf; color: white; border: none; padding: 8px 20px; border-radius: 25px; cursor: pointer; margin-top: 15px; width: 100%; font-weight: 600; }
         @media (max-width: 768px) {
             .hero-content h1 { font-size: 1.8rem; }
             .nav-links a { padding: 5px 10px; font-size: 14px; }
@@ -57,7 +61,7 @@
             <div class="logo"><i class="fas fa-chalkboard-user"></i><span>منصة<span class="highlight"> التعليم</span></span></div>
             <div class="nav-links">
                 <a onclick="showHome()" id="homeTab">الرئيسية</a>
-                <a onclick="showTeachers()" id="teachersTab">الأساتذة المعتمدون</a>
+                <a onclick="showTeachers()" id="teachersTab">الأساتذة</a>
                 <a onclick="showOffers()" id="offersTab">العروض المتاحة</a>
                 <a onclick="showLiveStreams()" id="liveTab">بث مباشر <span id="liveCount" class="live-badge" style="display:none; padding:2px 8px;">0</span></a>
                 <a onclick="showLogin()" id="loginTabNav">تسجيل الدخول</a>
@@ -66,7 +70,6 @@
     </nav>
 
     <main>
-        <!-- القسم الرئيسي -->
         <section id="homeSection" class="hero">
             <div class="hero-content">
                 <h1>تعلم مع أفضل الأساتذة <span class="highlight">في الجزائر</span></h1>
@@ -80,25 +83,21 @@
             <div class="hero-image"><i class="fas fa-laptop-code" style="font-size:250px; color:#0f5cbf20;"></i></div>
         </section>
 
-        <!-- الأساتذة المعتمدون -->
         <section id="teachersSection" class="section-container" style="display: none;">
             <h2 class="section-title"><i class="fas fa-users"></i> أساتذتنا المعتمدون</h2>
             <div id="teachersList" class="teachers-grid"></div>
         </section>
 
-        <!-- العروض المتاحة -->
         <section id="offersSection" class="section-container" style="display: none;">
             <h2 class="section-title"><i class="fas fa-calendar-alt"></i> العروض المتاحة</h2>
             <div id="offersListPublic" class="offers-grid"></div>
         </section>
 
-        <!-- البث المباشر -->
         <section id="liveSection" class="section-container" style="display: none;">
             <h2 class="section-title"><i class="fas fa-video"></i> بث مباشر الآن 🔴</h2>
             <div id="liveOffersList" class="offers-grid"></div>
         </section>
 
-        <!-- تسجيل الدخول والتسجيل -->
         <section id="loginSection" class="form-section" style="display: none;">
             <div class="form-tabs">
                 <button class="tab-btn active" onclick="switchTab('login')">تسجيل الدخول</button>
@@ -129,12 +128,12 @@
                 <input type="email" id="teacherEmail" placeholder="البريد الإلكتروني" required>
                 <input type="password" id="teacherPassword" placeholder="كلمة المرور" required>
                 <input type="tel" id="teacherPhone" placeholder="رقم الهاتف" required>
-                <input type="text" id="teacherSpecialization" placeholder="التخصص (مثال: رياضيات، فيزياء)" required>
-                <textarea id="teacherBio" placeholder="نبذة عنك وخبراتك" required></textarea>
+                <input type="text" id="teacherSpecialization" placeholder="التخصص" required>
+                <textarea id="teacherBio" placeholder="نبذة عنك" required></textarea>
                 <input type="text" id="teacherExperience" placeholder="سنوات الخبرة" required>
                 <label><i class="fas fa-user"></i> الصورة الشخصية</label>
                 <input type="file" id="profileImage" accept="image/*" required>
-                <label><i class="fas fa-graduation-cap"></i> صورة الدبلوم/الشهادة</label>
+                <label><i class="fas fa-graduation-cap"></i> صورة الدبلوم</label>
                 <input type="file" id="diplomaImage" accept="image/*" required>
                 <label><i class="fas fa-id-card"></i> صورة بطاقة الهوية</label>
                 <input type="file" id="idImage" accept="image/*" required>
@@ -149,7 +148,6 @@
     </footer>
 
     <script>
-        // ============= تبويبات عامة =============
         function showHome() {
             document.getElementById('homeSection').style.display = 'flex';
             document.getElementById('teachersSection').style.display = 'none';
@@ -220,7 +218,6 @@
             if (activeEl) activeEl.classList.add('active');
         }
 
-        // ============= جلب الأساتذة المعتمدين (بدون تسجيل) =============
         async function loadPublicTeachers() {
             const res = await fetch('/api/public/teachers');
             const teachers = await res.json();
@@ -232,19 +229,20 @@
             let html = '';
             teachers.forEach(t => {
                 const imageUrl = t.profile_image ? `/uploads/${t.profile_image}` : 'https://via.placeholder.com/100';
-                html += `<div class="teacher-card">
+                html += `<div class="teacher-card" onclick="viewTeacherProfile(${t.id})">
                     <img src="${imageUrl}" class="teacher-image" onerror="this.src='https://via.placeholder.com/100'">
                     <h3>${t.full_name}</h3>
                     <p><i class="fas fa-book"></i> ${t.specialization || 'تخصص عام'}</p>
-                    <p><i class="fas fa-briefcase"></i> ${t.experience || 'خبرة'} سنة</p>
-                    <p><i class="fas fa-align-left"></i> ${t.bio ? t.bio.substring(0, 80) + '...' : ''}</p>
-                    <button class="btn-outline" onclick="showOffers()" style="margin-top:10px; width:100%">عرض العروض</button>
+                    <p><i class="fas fa-briefcase"></i> ${t.experience || '0'} سنة خبرة</p>
+                    <p><i class="fas fa-align-left"></i> ${t.bio ? t.bio.substring(0, 80) + '...' : 'لا توجد نبذة'}</p>
+                    <button class="view-profile-btn" onclick="event.stopPropagation(); viewTeacherProfile(${t.id})">
+                        <i class="fas fa-eye"></i> زيارة صفحة الأستاذ
+                    </button>
                 </div>`;
             });
             container.innerHTML = html;
         }
 
-        // ============= جلب العروض المتاحة (بدون تسجيل) =============
         async function loadPublicOffers() {
             const res = await fetch('/api/public/offers');
             const offers = await res.json();
@@ -256,21 +254,27 @@
             let html = '';
             offers.forEach(o => {
                 const offerDate = new Date(o.offer_date);
-                const imageUrl = o.profile_image ? `/uploads/${o.profile_image}` : 'https://via.placeholder.com/100';
+                const imageUrl = o.profile_image ? `/uploads/${o.profile_image}` : 'https://via.placeholder.com/80';
                 html += `<div class="offer-card">
-                    <img src="${imageUrl}" class="teacher-image" onerror="this.src='https://via.placeholder.com/100'">
-                    <h3>${o.teacher_name}</h3>
-                    <p><i class="fas fa-book"></i> <strong>${o.subject_name}</strong></p>
+                    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px; cursor: pointer;" onclick="viewTeacherProfile(${o.teacher_id})">
+                        <img src="${imageUrl}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;">
+                        <div>
+                            <h3 style="margin-bottom: 5px; color:#0f5cbf;">${o.teacher_name}</h3>
+                            <p><i class="fas fa-book"></i> ${o.specialization || 'تخصص عام'}</p>
+                        </div>
+                    </div>
+                    <p><strong>${o.subject_name}</strong></p>
                     <p><i class="fas fa-calendar"></i> ${offerDate.toLocaleString('ar')}</p>
                     <p><i class="fas fa-clock"></i> ${o.duration} دقيقة</p>
                     ${o.is_free ? '<span class="free-tag"><i class="fas fa-gift"></i> مجانية</span>' : '<span class="price-tag"><i class="fas fa-money-bill"></i> ' + o.price + ' دج</span>'}
-                    <button class="btn-primary" onclick="handleJoinOffer(${o.id}, ${o.is_free})" style="margin-top:15px; width:100%"><i class="fas fa-video"></i> احجز الآن</button>
+                    <button class="btn-primary" onclick="viewTeacherProfile(${o.teacher_id})" style="margin-top:15px; width:100%">
+                        <i class="fas fa-eye"></i> زيارة صفحة الأستاذ
+                    </button>
                 </div>`;
             });
             container.innerHTML = html;
         }
 
-        // ============= جلب البث المباشر =============
         async function loadLiveStreams() {
             const res = await fetch('/api/live-offers');
             const offers = await res.json();
@@ -283,104 +287,29 @@
             }
             let html = '';
             offers.forEach(o => {
-                const imageUrl = o.profile_image ? `/uploads/${o.profile_image}` : 'https://via.placeholder.com/100';
+                const imageUrl = o.profile_image ? `/uploads/${o.profile_image}` : 'https://via.placeholder.com/80';
                 html += `<div class="offer-card">
-                    <img src="${imageUrl}" class="teacher-image" onerror="this.src='https://via.placeholder.com/100'">
-                    <h3>${o.teacher_name}</h3>
-                    <p><i class="fas fa-book"></i> <strong>${o.subject_name}</strong></p>
-                    <p><i class="fas fa-tag"></i> ${o.is_free ? 'مجانية' : o.price + ' دج'}</p>
+                    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px; cursor: pointer;" onclick="viewTeacherProfile(${o.teacher_id})">
+                        <img src="${imageUrl}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;">
+                        <div>
+                            <h3 style="margin-bottom: 5px; color:#0f5cbf;">${o.teacher_name}</h3>
+                            <p><i class="fas fa-book"></i> ${o.specialization || 'تخصص عام'}</p>
+                        </div>
+                    </div>
+                    <p><strong>${o.subject_name}</strong></p>
                     <span class="live-badge" style="display:inline-block; margin-bottom:10px;">🔴 بث مباشر</span>
-                    <button class="btn-primary" onclick="joinLiveStreamFromPublic(${o.id}, ${o.is_free})" style="width:100%"><i class="fas fa-play"></i> انضم الآن</button>
+                    <button class="btn-primary" onclick="viewTeacherProfile(${o.teacher_id})" style="width:100%">
+                        <i class="fas fa-eye"></i> زيارة صفحة الأستاذ
+                    </button>
                 </div>`;
             });
             container.innerHTML = html;
         }
 
-        async function handleJoinOffer(offerId, isFree) {
-            const studentToken = localStorage.getItem('studentToken');
-            if (!studentToken) {
-                if (confirm('يجب تسجيل الدخول كطالب أولاً. هل تريد تسجيل الدخول الآن؟')) {
-                    showLogin();
-                }
-                return;
-            }
-            const studentData = JSON.parse(localStorage.getItem('studentData'));
-            const bookRes = await fetch('/api/booking/create', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ offer_id: offerId, student_id: studentData.id })
-            });
-            const bookData = await bookRes.json();
-            if (bookData.success) {
-                if (isFree === 1 || bookData.is_free) {
-                    alert('تم تسجيلك بنجاح! سيتم إضافتك إلى غرفة الانتظار عند بدء البث.');
-                    checkStreamStatus(offerId, studentData.id);
-                } else {
-                    alert('يرجى إتمام الدفع من لوحة التحكم الخاصة بك');
-                    window.location.href = '/student-dashboard.html';
-                }
-            } else {
-                alert(bookData.error);
-            }
+        function viewTeacherProfile(teacherId) {
+            window.open(`/teacher-profile.html?id=${teacherId}`, '_blank');
         }
 
-        async function joinLiveStreamFromPublic(offerId, isFree) {
-            const studentToken = localStorage.getItem('studentToken');
-            if (!studentToken) {
-                if (confirm('يجب تسجيل الدخول كطالب أولاً. هل تريد تسجيل الدخول الآن؟')) {
-                    showLogin();
-                }
-                return;
-            }
-            const studentData = JSON.parse(localStorage.getItem('studentData'));
-            
-            // التحقق من التسجيل في الحصة
-            const checkRes = await fetch(`/api/student/stream-status/${offerId}/${studentData.id}`);
-            const status = await checkRes.json();
-            
-            if (status.can_join) {
-                window.open(`/api/join-stream/${offerId}/${studentData.id}`, '_blank');
-            } else if (status.is_waiting) {
-                alert('⏳ أنت في غرفة الانتظار. سيتم نقلك تلقائياً عند بدء البث.');
-                checkStreamStatus(offerId, studentData.id);
-            } else if (status.payment_required) {
-                window.location.href = '/student-dashboard.html';
-            } else {
-                // تسجيل جديد للحصة المجانية
-                if (isFree === 1) {
-                    const bookRes = await fetch('/api/booking/create', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ offer_id: offerId, student_id: studentData.id })
-                    });
-                    const bookData = await bookRes.json();
-                    if (bookData.success) {
-                        alert('تم تسجيلك في الحصة المجانية! سيتم إضافتك إلى غرفة الانتظار.');
-                        checkStreamStatus(offerId, studentData.id);
-                    } else {
-                        alert(bookData.error);
-                    }
-                } else {
-                    alert('يرجى حجز الحصة أولاً من قسم العروض');
-                }
-            }
-        }
-
-        async function checkStreamStatus(offerId, studentId) {
-            const checkInterval = setInterval(async () => {
-                const res = await fetch(`/api/student/stream-status/${offerId}/${studentId}`);
-                const data = await res.json();
-                if (data.can_join) {
-                    clearInterval(checkInterval);
-                    if (confirm('🎉 بدأ البث المباشر! هل تريد الانضمام الآن؟')) {
-                        window.open(`/api/join-stream/${offerId}/${studentId}`, '_blank');
-                    }
-                }
-            }, 5000);
-            setTimeout(() => clearInterval(checkInterval), 30 * 60 * 1000);
-        }
-
-        // ============= دوال تسجيل الدخول والتسجيل =============
         function switchTab(tab) {
             document.getElementById('loginTab').style.display = 'none';
             document.getElementById('studentRegisterTab').style.display = 'none';
@@ -452,7 +381,6 @@
             if (data.success) { alert('تم إرسال طلبك بنجاح! سيتم مراجعته من قبل الإدارة'); switchTab('login'); } else { alert(data.error); }
         }
 
-        // تحميل البث المباشر تلقائياً عند فتح التبويب
         showHome();
     </script>
 </body>
