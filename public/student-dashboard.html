@@ -152,6 +152,7 @@
     </div>
 
     <script>
+        // التحقق من تسجيل الدخول
         let userData = JSON.parse(localStorage.getItem('userData') || '{}');
         let studentToken = localStorage.getItem('studentToken');
         
@@ -167,6 +168,7 @@
         document.getElementById('userAvatar').src = studentData.profile_image ? `/uploads/${studentData.profile_image}` : 'https://via.placeholder.com/40';
         document.getElementById('myAvatar').src = studentData.profile_image ? `/uploads/${studentData.profile_image}` : 'https://via.placeholder.com/45';
 
+        // جلب التغذية الرئيسية
         async function loadFeed() {
             try {
                 let res = await fetch(`/api/feed/${studentData.id}`);
@@ -185,6 +187,7 @@
             } catch(e) { console.log(e); }
         }
 
+        // عرض المنشورات
         function renderFeed(posts) {
             const container = document.getElementById('feedContainer');
             if (posts.length === 0) {
@@ -233,6 +236,7 @@
             container.innerHTML = html;
         }
 
+        // التحقق من حالة الإعجاب
         async function checkLikeStatus(postId) {
             const res = await fetch(`/api/post/check-like/${postId}/${studentData.id}`);
             const data = await res.json();
@@ -240,6 +244,7 @@
             if (btn && data.liked) btn.classList.add('liked');
         }
 
+        // تبديل الإعجاب
         async function toggleLike(postId) {
             const btn = document.querySelector(`#post-${postId} .action-btn:first-child`);
             const isLiked = btn.classList.contains('liked');
@@ -258,6 +263,7 @@
             btn.classList.toggle('liked');
         }
 
+        // عرض نافذة التعليق
         function showCommentModal(postId) {
             activeCommentPostId = postId;
             document.getElementById('modalOverlay').style.display = 'block';
@@ -265,6 +271,7 @@
             document.getElementById('commentText').value = '';
         }
 
+        // إرسال تعليق
         async function submitComment() {
             const comment = document.getElementById('commentText').value;
             if (!comment.trim()) { alert('الرجاء كتابة تعليق'); return; }
@@ -283,6 +290,7 @@
             }
         }
 
+        // تحميل التعليقات
         async function loadPostComments(postId) {
             const res = await fetch(`/api/post/${postId}`);
             const post = await res.json();
@@ -304,6 +312,7 @@
             }
         }
 
+        // جلب الأساتذة المقترحين
         async function loadSuggestedTeachers() {
             const res = await fetch(`/api/suggested-teachers/${studentData.id}`);
             const teachers = await res.json();
@@ -313,7 +322,11 @@
                 return;
             }
             let html = '';
-            teachers.forEach(t => {
+            for (const t of teachers) {
+                // التحقق من حالة المتابعة
+                const followRes = await fetch(`/api/check-follow/${studentData.id}/${t.id}`);
+                const followData = await followRes.json();
+                const isFollowing = followData.following;
                 html += `
                     <div class="teacher-suggestion" onclick="viewTeacherProfile(${t.id})">
                         <img src="${t.profile_image ? `/uploads/${t.profile_image}` : 'https://via.placeholder.com/40'}" class="suggestion-avatar">
@@ -321,25 +334,35 @@
                             <div class="suggestion-name">${escapeHtml(t.full_name)}</div>
                             <div class="suggestion-specialty">${t.specialization || 'تخصص عام'}</div>
                         </div>
-                        <button class="follow-btn" onclick="event.stopPropagation(); followTeacher(${t.id}, this)">متابعة</button>
+                        <button class="follow-btn ${isFollowing ? 'following' : ''}" onclick="event.stopPropagation(); followTeacher(${t.id}, this)">
+                            ${isFollowing ? '✅ متابع' : 'متابعة'}
+                        </button>
                     </div>
                 `;
-            });
+            }
             container.innerHTML = html;
         }
 
+        // متابعة أستاذ
         async function followTeacher(teacherId, btnElement) {
-            await fetch('/api/follow', {
+            const isFollowing = btnElement.classList.contains('following');
+            const url = isFollowing ? '/api/unfollow' : '/api/follow';
+            await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ student_id: studentData.id, teacher_id: teacherId })
             });
-            btnElement.innerText = '✅ تم';
-            btnElement.disabled = true;
-            btnElement.style.opacity = '0.6';
+            if (isFollowing) {
+                btnElement.classList.remove('following');
+                btnElement.innerHTML = 'متابعة';
+            } else {
+                btnElement.classList.add('following');
+                btnElement.innerHTML = '✅ متابع';
+            }
             loadFeed();
         }
 
+        // جلب الحصص القادمة
         async function loadUpcomingSessions() {
             const res = await fetch(`/api/student/bookings/${studentData.id}`);
             const bookings = await res.json();
@@ -365,6 +388,7 @@
             container.innerHTML = html;
         }
 
+        // إحصائيات المستخدم
         async function loadUserStats() {
             const res = await fetch(`/api/student/bookings/${studentData.id}`);
             const bookings = await res.json();
@@ -390,14 +414,17 @@
             `;
         }
 
+        // الانضمام إلى بث مباشر
         function joinLiveStream(offerId) {
             window.open(`/api/join-stream/${offerId}/${studentData.id}`, '_blank');
         }
 
+        // عرض صفحة الأستاذ
         function viewTeacherProfile(teacherId) {
             window.open(`/teacher-profile.html?id=${teacherId}`, '_blank');
         }
 
+        // تنسيق التاريخ
         function formatDate(date) {
             const now = new Date();
             const diff = Math.floor((now - date) / 1000 / 60);
@@ -407,6 +434,7 @@
             return date.toLocaleDateString('ar');
         }
 
+        // تنسيق النص
         function escapeHtml(text) {
             if (!text) return '';
             const div = document.createElement('div');
@@ -414,16 +442,19 @@
             return div.innerHTML;
         }
 
+        // إغلاق النافذة
         function closeModal() {
             document.getElementById('modalOverlay').style.display = 'none';
             document.getElementById('commentModal').style.display = 'none';
         }
 
+        // تسجيل الخروج
         function logout() {
             localStorage.clear();
             window.location.href = '/';
         }
 
+        // تحميل الصفحة
         loadFeed();
         setInterval(() => { loadUpcomingSessions(); }, 30000);
     </script>
