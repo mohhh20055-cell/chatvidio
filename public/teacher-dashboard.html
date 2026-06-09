@@ -103,8 +103,15 @@
     </div>
 
     <script>
-        let teacherData = JSON.parse(localStorage.getItem('teacherData') || '{}');
-        if (!teacherData.id) window.location.href = '/';
+        // التحقق من وجود teacherToken و role صحيح
+        let teacherToken = localStorage.getItem('teacherToken');
+        let userData = JSON.parse(localStorage.getItem('userData') || '{}');
+        
+        if (!teacherToken && userData.role !== 'teacher') {
+            window.location.href = '/';
+        }
+        
+        let teacherData = userData;
 
         function showTab(tab) {
             document.getElementById('profileTab').style.display = 'none';
