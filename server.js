@@ -12,8 +12,13 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ============= تهيئة Supabase من المتغيرات البيئية =============
-const supabaseUrl = process.env.SUPABASE_URL || 'https://supabase.co';
+const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error('❌ خطأ: متغيرات البيئة SUPABASE_URL و SUPABASE_KEY غير معرفة.');
+  process.exit(1); // إيقاف الخادم إذا كانت المتغيرات الأساسية مفقودة
+}
 
 console.log('🔌 الاتصال بـ Supabase:', supabaseUrl);
 
