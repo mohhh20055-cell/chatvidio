@@ -47,7 +47,6 @@ const CHARGILY_API_URL = 'https://pay.chargily.net/test/api/v2';
 
 async function createChargilyCheckout(amount, studentName, studentEmail, studentPhone, offerName, successUrl, failureUrl) {
   try {
-    // التأكد من أن المبلغ لا يقل عن 50 دج (الحد الأدنى لـ Chargily)
     let finalAmount = amount;
     if (finalAmount < 50) {
       finalAmount = 50;
@@ -359,7 +358,8 @@ app.get('/api/public/offers', async (req, res) => {
     teacher_name: o.teachers?.full_name,
     teacher_specialization: o.teachers?.specialization,
     teacher_profile_image: o.teachers?.profile_image,
-    teacher_id: o.teachers?.id
+    teacher_id: o.teachers?.id,
+    waiting_count: 0
   }));
   res.json(formatted);
 });
@@ -641,35 +641,9 @@ app.get('/api/offers', async (req, res) => {
     teacher_name: o.teachers?.full_name,
     teacher_specialization: o.teachers?.specialization,
     teacher_profile_image: o.teachers?.profile_image,
-    teacher_id: o.teachers?.id,
-    waiting_count: 0 // سيتم حسابه في صفحة العرض
+    teacher_id: o.teachers?.id
   }));
   res.json(formatted);
-});
-
-app.get('/api/offers-with-waiting/:teacher_id', async (req, res) => {
-  const { data } = await supabase
-    .from('offers')
-    .select('*, teachers:teacher_id (full_name, specialization, profile_image, id)')
-    .eq('teacher_id', req.params.teacher_id)
-    .order('offer_date', { ascending: true });
-  
-  // جلب عدد الطلاب المنتظرين لكل عرض
-  const offersWithCount = await Promise.all((data || []).map(async (offer) => {
-    const { count: waitingCount } = await supabase
-      .from('waiting_room')
-      .select('*', { count: 'exact', head: true })
-      .eq('offer_id', offer.id);
-    return {
-      ...offer,
-      teacher_name: offer.teachers?.full_name,
-      teacher_specialization: offer.teachers?.specialization,
-      teacher_profile_image: offer.teachers?.profile_image,
-      teacher_id: offer.teachers?.id,
-      waiting_count: waitingCount || 0
-    };
-  }));
-  res.json(offersWithCount);
 });
 
 app.get('/api/teacher/offers/:teacher_id', async (req, res) => {
@@ -716,13 +690,14 @@ app.post('/api/booking/create', async (req, res) => {
     payment_amount: offer.price
   });
   
-  // إذا كان العرض مجاني، أضف مباشرة إلى غرفة الانتظار
+  // ✅ العرض المجاني: حجز مباشر دون دفع
   if (offer.is_free === 1) {
     await insert('waiting_room', { offer_id, student_id });
+    console.log(`✅ حجز مجاني مباشر: الطالب ${student_id} - العرض ${offer_id}`);
     return res.json({ success: true, session_id: session.id, is_free: true });
   }
   
-  // الحصول على بيانات الطالب للدفع
+  // ✅ العرض المدفوع: يتم إنشاء رابط دفع
   const student = await getOne('students', 'id', student_id);
   const baseUrl = process.env.RENDER_EXTERNAL_URL || `https://chatvidio.onrender.com`;
   const successUrl = `${baseUrl}/api/payment/success/${session.id}`;
@@ -747,7 +722,6 @@ app.post('/api/booking/create', async (req, res) => {
       amount: offer.price 
     });
   } else {
-    // في حالة فشل الدفع، لا نحذف الجلسة بل نرسل خطأ يمكن للطالب إعادة المحاولة منه
     res.json({ 
       success: false, 
       error: checkout.error || 'فشل الاتصال ببوابة الدفع',
@@ -793,7 +767,7 @@ app.get('/api/payment/success/:session_id', async (req, res) => {
   `);
 });
 
-// صفحة فشل الدفع - تسمح بإعادة المحاولة
+// صفحة فشل الدفع
 app.get('/api/payment/failure/:session_id', async (req, res) => {
   const { session_id } = req.params;
   
@@ -876,7 +850,6 @@ app.get('/api/student/bookings/:student_id', async (req, res) => {
     )
   `).eq('student_id', req.params.student_id).order('created_at', { ascending: false });
   
-  // جلب عدد الطلاب المنتظرين لكل عرض
   const formatted = await Promise.all((data || []).map(async (s) => {
     const { count: waitingCount } = await supabase
       .from('waiting_room')
@@ -908,7 +881,6 @@ app.get('/api/student/bookings/:student_id', async (req, res) => {
   res.json(formatted);
 });
 
-// الحصول على عدد الطلاب المنتظرين لعرض معين
 app.get('/api/waiting-count/:offer_id', async (req, res) => {
   const { count } = await supabase
     .from('waiting_room')
