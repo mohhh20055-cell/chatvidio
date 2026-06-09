@@ -3,415 +3,175 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>الرئيسية - منصة التعليم</title>
+    <title>لوحة الطالب - منصة التعليم</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Cairo', sans-serif; background: #f0f2f5; }
-        
-        .navbar { background: white; padding: 12px 24px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; }
-        .nav-container { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
-        .logo { font-size: 1.5rem; font-weight: 800; color: #0f5cbf; }
-        .nav-icons { display: flex; gap: 20px; align-items: center; }
-        .nav-icon { font-size: 1.3rem; color: #4a5568; cursor: pointer; transition: 0.3s; }
-        .nav-icon:hover, .nav-icon.active { color: #0f5cbf; }
-        .user-info { display: flex; align-items: center; gap: 10px; cursor: pointer; }
-        .user-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
-        .user-name { font-weight: 600; }
-        
-        .main-container { max-width: 1200px; margin: 20px auto; padding: 0 20px; display: grid; grid-template-columns: 250px 1fr 280px; gap: 20px; }
-        
-        .sidebar { position: sticky; top: 80px; height: fit-content; }
-        .sidebar-card { background: white; border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-        .sidebar-title { font-size: 1.1rem; margin-bottom: 15px; color: #1e3c72; border-right: 3px solid #0f5cbf; padding-right: 10px; }
-        .teacher-suggestion { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; cursor: pointer; transition: 0.2s; }
-        .teacher-suggestion:hover { background: #f0f2f5; padding: 5px; border-radius: 10px; }
-        .suggestion-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
-        .suggestion-info { flex: 1; }
-        .suggestion-name { font-weight: 600; font-size: 0.9rem; }
-        .suggestion-specialty { font-size: 0.7rem; color: #718096; }
-        .follow-btn { background: #0f5cbf; color: white; border: none; padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; cursor: pointer; }
-        .follow-btn.following { background: #e2e8f0; color: #4a5568; }
-        
-        .feed { }
-        .create-post-card { background: white; border-radius: 15px; padding: 15px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 15px; cursor: pointer; transition: 0.2s; }
-        .create-post-card:hover { background: #f8fafc; }
-        .create-post-avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; }
-        .create-post-input { flex: 1; background: #f0f2f5; padding: 12px 20px; border-radius: 30px; color: #718096; }
-        
-        .post-card { background: white; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); overflow: hidden; }
-        .post-header { display: flex; align-items: center; gap: 12px; padding: 15px; border-bottom: 1px solid #e2e8f0; }
-        .post-avatar { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; cursor: pointer; }
-        .post-author { flex: 1; }
-        .post-author-name { font-weight: 700; cursor: pointer; color: #1e3c72; }
-        .post-author-name:hover { text-decoration: underline; }
-        .post-date { font-size: 0.75rem; color: #718096; }
-        .post-content { padding: 15px; }
-        .post-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 10px; color: #1e3c72; }
-        .post-text { color: #4a5568; line-height: 1.6; margin-bottom: 10px; }
-        .post-image { max-width: 100%; border-radius: 10px; margin: 10px 0; }
-        .post-file, .post-link { display: inline-block; background: #e2e8f0; padding: 8px 15px; border-radius: 25px; text-decoration: none; color: #0f5cbf; margin: 5px 5px 0 0; font-size: 0.85rem; }
-        .post-stats { display: flex; gap: 20px; padding: 10px 15px; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; color: #718096; font-size: 0.85rem; }
-        .post-actions { display: flex; padding: 8px 15px; gap: 20px; }
-        .action-btn { flex: 1; background: none; border: none; padding: 8px; border-radius: 8px; cursor: pointer; font-size: 1rem; color: #4a5568; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .action-btn:hover { background: #f0f2f5; }
-        .action-btn.liked { color: #ef4444; }
-        .comments-section { padding: 15px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: none; }
-        .comment-input-container { display: flex; gap: 10px; margin-bottom: 15px; }
-        .comment-input { flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 25px; font-family: 'Cairo', sans-serif; }
-        .comment-submit { background: #0f5cbf; color: white; border: none; padding: 8px 20px; border-radius: 25px; cursor: pointer; }
-        .comment-item { padding: 10px 0; border-bottom: 1px solid #e2e8f0; }
-        .comment-author { font-weight: 600; font-size: 0.85rem; color: #1e3c72; }
-        .comment-text { font-size: 0.9rem; margin-top: 4px; }
-        
-        .right-sidebar { position: sticky; top: 80px; height: fit-content; }
-        .upcoming-sessions { background: white; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
-        .session-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #e2e8f0; }
-        .session-info { flex: 1; }
-        .session-subject { font-weight: 600; font-size: 0.9rem; }
-        .session-date { font-size: 0.7rem; color: #718096; }
-        .join-session-btn { background: #10b981; color: white; border: none; padding: 5px 12px; border-radius: 20px; font-size: 0.7rem; cursor: pointer; }
-        
-        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; border-radius: 20px; z-index: 1000; width: 90%; max-width: 500px; }
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999; }
-        .modal input, .modal textarea { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #cbd5e1; border-radius: 10px; }
-        
-        @media (max-width: 1000px) {
-            .main-container { grid-template-columns: 1fr; }
-            .sidebar, .right-sidebar { display: none; }
-        }
-        
-        .empty-feed { text-align: center; padding: 50px; background: white; border-radius: 15px; color: #718096; }
-        .empty-feed i { font-size: 50px; margin-bottom: 15px; color: #cbd5e1; }
-        .loading { text-align: center; padding: 50px; }
+        .dashboard { max-width: 1200px; margin: 30px auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #1e3c72, #0f5cbf); color: white; padding: 20px; border-radius: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        .logout-btn { background: #ef4444; color: white; border: none; padding: 10px 20px; border-radius: 30px; cursor: pointer; }
+        .offers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+        .offer-card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .book-btn { background: #0f5cbf; color: white; border: none; padding: 10px 20px; border-radius: 25px; cursor: pointer; margin-top: 15px; width: 100%; font-weight: 600; }
+        .my-sessions { background: white; border-radius: 20px; padding: 20px; margin-top: 40px; }
+        .session-item { border-bottom: 1px solid #e2e8f0; padding: 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .join-btn { background: #10b981; color: white; border: none; padding: 8px 20px; border-radius: 25px; cursor: pointer; }
+        .status-badge { display: inline-block; padding: 3px 10px; border-radius: 15px; font-size: 12px; }
+        .status-paid { background: #d1fae5; color: #065f46; }
+        .status-pending { background: #fed7aa; color: #92400e; }
+        .notification-toast { position: fixed; bottom: 30px; right: 30px; background: #10b981; color: white; padding: 15px 25px; border-radius: 15px; z-index: 2000; animation: slideIn 0.5s ease; display: none; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .view-profile-btn { background: #0f5cbf; color: white; border: none; padding: 8px 15px; border-radius: 20px; cursor: pointer; margin-top: 5px; }
+        .teacher-info { display: flex; align-items: center; gap: 15px; cursor: pointer; }
+        .teacher-avatar { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; }
     </style>
 </head>
 <body>
-    <nav class="navbar">
-        <div class="nav-container">
-            <div class="logo" onclick="window.location.href='/student-dashboard.html'"><i class="fas fa-chalkboard-user"></i> منصة التعليم</div>
-            <div class="nav-icons">
-                <i class="fas fa-home nav-icon active" onclick="loadFeed()"></i>
-                <i class="fas fa-users nav-icon" onclick="window.location.href='/teachers-list.html'"></i>
-                <i class="fas fa-calendar-alt nav-icon" onclick="window.location.href='/student-bookings.html'"></i>
-                <div class="user-info" onclick="logout()">
-                    <img id="userAvatar" class="user-avatar" src="https://via.placeholder.com/40">
-                    <span id="userName" class="user-name"></span>
-                    <i class="fas fa-sign-out-alt" style="font-size: 0.9rem; color:#ef4444;"></i>
-                </div>
-            </div>
+    <div class="dashboard">
+        <div class="header">
+            <h1><i class="fas fa-user-graduate"></i> لوحة الطالب</h1>
+            <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> تسجيل خروج</button>
         </div>
-    </nav>
-
-    <div class="main-container">
-        <div class="sidebar">
-            <div class="sidebar-card">
-                <div class="sidebar-title"><i class="fas fa-user-plus"></i> أساتذة مقترحون</div>
-                <div id="suggestedTeachers"></div>
-            </div>
-            <div class="sidebar-card">
-                <div class="sidebar-title"><i class="fas fa-chart-line"></i> إحصائياتي</div>
-                <div id="userStats"></div>
-            </div>
-        </div>
-
-        <div class="feed">
-            <div class="create-post-card" onclick="window.location.href='/teachers-list.html'">
-                <img id="myAvatar" class="create-post-avatar" src="https://via.placeholder.com/45">
-                <div class="create-post-input">ابحث عن أساتذة لمتابعتهم...</div>
-            </div>
-            <div id="feedContainer">
-                <div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>
-            </div>
-        </div>
-
-        <div class="right-sidebar">
-            <div class="upcoming-sessions">
-                <div class="sidebar-title"><i class="fas fa-clock"></i> حصصي القادمة</div>
-                <div id="upcomingSessions"></div>
-            </div>
+        <h2 style="margin-bottom: 20px;"><i class="fas fa-calendar-alt"></i> العروض المتاحة</h2>
+        <div id="offersList" class="offers-grid"></div>
+        <div class="my-sessions">
+            <h2><i class="fas fa-clock"></i> حصصي المسجلة</h2>
+            <div id="mySessions"></div>
         </div>
     </div>
 
-    <div id="modalOverlay" class="modal-overlay"></div>
-    <div id="commentModal" class="modal">
-        <h3><i class="fas fa-comment"></i> إضافة تعليق</h3>
-        <textarea id="commentText" rows="3" placeholder="اكتب تعليقك..."></textarea>
-        <button class="follow-btn" onclick="submitComment()" style="width:100%; padding:10px;">نشر التعليق</button>
-        <button onclick="closeModal()" style="margin-top:10px; width:100%; background:#e2e8f0; border:none; padding:10px; border-radius:10px;">إلغاء</button>
-    </div>
+    <div id="notificationToast" class="notification-toast"></div>
 
     <script>
-        let studentData = JSON.parse(localStorage.getItem('studentData') || '{}');
-        let activeCommentPostId = null;
-        let currentFeed = [];
-
-        if (!studentData.id) window.location.href = '/';
-
-        document.getElementById('userName').innerText = studentData.name || studentData.full_name;
-        document.getElementById('userAvatar').src = studentData.profile_image ? `/uploads/${studentData.profile_image}` : 'https://via.placeholder.com/40';
-        document.getElementById('myAvatar').src = studentData.profile_image ? `/uploads/${studentData.profile_image}` : 'https://via.placeholder.com/45';
-
-        async function loadFeed() {
-            try {
-                let res = await fetch(`/api/feed/${studentData.id}`);
-                let posts = await res.json();
-                
-                if (posts.length === 0) {
-                    res = await fetch('/api/all-posts');
-                    posts = await res.json();
-                }
-                
-                currentFeed = posts;
-                renderFeed(posts);
-                loadSuggestedTeachers();
-                loadUpcomingSessions();
-                loadUserStats();
-            } catch(e) { console.log(e); }
+        // التحقق من وجود studentToken و role صحيح
+        let studentToken = localStorage.getItem('studentToken');
+        let userData = JSON.parse(localStorage.getItem('userData') || '{}');
+        
+        if (!studentToken && userData.role !== 'student') {
+            window.location.href = '/';
         }
+        
+        let studentData = userData;
+        let activeStreamChecker = {};
 
-        function renderFeed(posts) {
-            const container = document.getElementById('feedContainer');
-            if (posts.length === 0) {
-                container.innerHTML = `<div class="empty-feed">
-                    <i class="fas fa-newspaper"></i>
-                    <h3>لا توجد منشورات</h3>
-                    <p>تابع بعض الأساتذة لرؤية منشوراتهم هنا</p>
-                    <button class="follow-btn" onclick="window.location.href='/teachers-list.html'" style="margin-top:15px;">استعرض الأساتذة</button>
-                </div>`;
-                return;
-            }
-            
-            let html = '';
-            for (const post of posts) {
-                const postDate = new Date(post.created_at);
-                html += `
-                    <div class="post-card" id="post-${post.id}">
-                        <div class="post-header">
-                            <img src="${post.teacher_image ? `/uploads/${post.teacher_image}` : 'https://via.placeholder.com/50'}" class="post-avatar" onclick="viewTeacherProfile(${post.teacher_id})">
-                            <div class="post-author">
-                                <div class="post-author-name" onclick="viewTeacherProfile(${post.teacher_id})">${escapeHtml(post.teacher_name)}</div>
-                                <div class="post-date">${formatDate(postDate)}</div>
-                            </div>
-                        </div>
-                        <div class="post-content">
-                            <div class="post-title">${escapeHtml(post.title)}</div>
-                            <div class="post-text">${escapeHtml(post.content)}</div>
-                            ${post.image_url ? `<img src="${post.image_url}" class="post-image">` : ''}
-                            ${post.file_url ? `<a href="${post.file_url}" class="post-file" download><i class="fas fa-download"></i> تحميل الملف</a>` : ''}
-                            ${post.link_url ? `<a href="${post.link_url}" target="_blank" class="post-link"><i class="fas fa-link"></i> رابط مفيد</a>` : ''}
-                        </div>
-                        <div class="post-stats">
-                            <span><i class="fas fa-heart"></i> <span id="likes-${post.id}">${post.likes_count || 0}</span></span>
-                            <span><i class="fas fa-comment"></i> <span id="comments-count-${post.id}">${post.comments_count || 0}</span></span>
-                        </div>
-                        <div class="post-actions">
-                            <button class="action-btn" onclick="toggleLike(${post.id})"><i class="fas fa-heart"></i> إعجاب</button>
-                            <button class="action-btn" onclick="showCommentModal(${post.id})"><i class="fas fa-comment"></i> تعليق</button>
-                        </div>
-                        <div class="comments-section" id="comments-${post.id}"></div>
-                    </div>
-                `;
-                loadPostComments(post.id);
-                checkLikeStatus(post.id);
-            }
-            container.innerHTML = html;
-        }
-
-        async function checkLikeStatus(postId) {
-            const res = await fetch(`/api/post/check-like/${postId}/${studentData.id}`);
-            const data = await res.json();
-            const btn = document.querySelector(`#post-${postId} .action-btn:first-child`);
-            if (btn && data.liked) btn.classList.add('liked');
-        }
-
-        async function toggleLike(postId) {
-            const btn = document.querySelector(`#post-${postId} .action-btn:first-child`);
-            const isLiked = btn.classList.contains('liked');
-            const url = isLiked ? '/api/post/unlike' : '/api/post/like';
-            await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ post_id: postId, student_id: studentData.id })
-            });
-            const post = currentFeed.find(p => p.id === postId);
-            if (post) {
-                const newCount = isLiked ? (post.likes_count - 1) : (post.likes_count + 1);
-                document.getElementById(`likes-${postId}`).innerText = newCount;
-                post.likes_count = newCount;
-            }
-            btn.classList.toggle('liked');
-        }
-
-        function showCommentModal(postId) {
-            activeCommentPostId = postId;
-            document.getElementById('modalOverlay').style.display = 'block';
-            document.getElementById('commentModal').style.display = 'block';
-            document.getElementById('commentText').value = '';
-        }
-
-        async function submitComment() {
-            const comment = document.getElementById('commentText').value;
-            if (!comment.trim()) { alert('الرجاء كتابة تعليق'); return; }
-            await fetch('/api/post/comment', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ post_id: activeCommentPostId, student_id: studentData.id, comment })
-            });
-            closeModal();
-            loadPostComments(activeCommentPostId);
-            const post = currentFeed.find(p => p.id === activeCommentPostId);
-            if (post) {
-                const newCount = (post.comments_count || 0) + 1;
-                document.getElementById(`comments-count-${activeCommentPostId}`).innerText = newCount;
-                post.comments_count = newCount;
-            }
-        }
-
-        async function loadPostComments(postId) {
-            const res = await fetch(`/api/post/${postId}`);
-            const post = await res.json();
-            const container = document.getElementById(`comments-${postId}`);
-            if (post.comments && post.comments.length > 0) {
-                let html = '<div style="padding:15px;">';
-                post.comments.forEach(c => {
-                    html += `<div class="comment-item">
-                        <div class="comment-author">${escapeHtml(c.student_name)}</div>
-                        <div class="comment-text">${escapeHtml(c.comment)}</div>
-                    </div>`;
-                });
-                html += '</div>';
-                container.innerHTML = html;
-                container.style.display = 'block';
-            } else {
-                container.innerHTML = '';
-                container.style.display = 'none';
-            }
-        }
-
-        async function loadSuggestedTeachers() {
-            const res = await fetch(`/api/suggested-teachers/${studentData.id}`);
-            const teachers = await res.json();
-            const container = document.getElementById('suggestedTeachers');
-            if (teachers.length === 0) {
-                container.innerHTML = '<p style="color:#718096; font-size:0.8rem;">لا توجد اقتراحات حالياً</p>';
-                return;
-            }
-            let html = '';
-            teachers.forEach(t => {
-                html += `
-                    <div class="teacher-suggestion" onclick="viewTeacherProfile(${t.id})">
-                        <img src="${t.profile_image ? `/uploads/${t.profile_image}` : 'https://via.placeholder.com/40'}" class="suggestion-avatar">
-                        <div class="suggestion-info">
-                            <div class="suggestion-name">${escapeHtml(t.full_name)}</div>
-                            <div class="suggestion-specialty">${t.specialization || 'تخصص عام'}</div>
-                        </div>
-                        <button class="follow-btn" onclick="event.stopPropagation(); followTeacher(${t.id}, this)">متابعة</button>
-                    </div>
-                `;
-            });
-            container.innerHTML = html;
-        }
-
-        async function followTeacher(teacherId, btnElement) {
-            await fetch('/api/follow', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ student_id: studentData.id, teacher_id: teacherId })
-            });
-            btnElement.innerText = '✅ تم';
-            btnElement.disabled = true;
-            btnElement.style.opacity = '0.6';
-            loadFeed();
-        }
-
-        async function loadUpcomingSessions() {
-            const res = await fetch(`/api/student/bookings/${studentData.id}`);
-            const bookings = await res.json();
-            const upcoming = bookings.filter(b => new Date(b.offer_date) > new Date() && b.payment_status === 'paid');
-            const container = document.getElementById('upcomingSessions');
-            if (upcoming.length === 0) {
-                container.innerHTML = '<p style="color:#718096; font-size:0.8rem;">لا توجد حصص قادمة</p>';
-                return;
-            }
-            let html = '';
-            upcoming.slice(0, 5).forEach(s => {
-                const sessionDate = new Date(s.offer_date);
-                html += `
-                    <div class="session-item">
-                        <div class="session-info">
-                            <div class="session-subject">${escapeHtml(s.subject_name)}</div>
-                            <div class="session-date">${sessionDate.toLocaleDateString('ar')} ${sessionDate.toLocaleTimeString('ar')}</div>
-                        </div>
-                        ${s.offer_status === 'live' ? `<button class="join-session-btn" onclick="joinLiveStream(${s.offer_id})">انضم</button>` : '<span style="font-size:0.7rem; color:#f59e0b;">قادم</span>'}
-                    </div>
-                `;
-            });
-            container.innerHTML = html;
-        }
-
-        async function loadUserStats() {
-            const res = await fetch(`/api/student/bookings/${studentData.id}`);
-            const bookings = await res.json();
-            const followingRes = await fetch(`/api/suggested-teachers/${studentData.id}`);
-            const following = await followingRes.json();
-            const followingCount = 10 - (following?.length || 0);
-            const completedCount = bookings.filter(b => b.offer_status === 'completed').length;
-            const upcomingCount = bookings.filter(b => new Date(b.offer_date) > new Date() && b.payment_status === 'paid').length;
-            
-            document.getElementById('userStats').innerHTML = `
-                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                    <div><i class="fas fa-users"></i> متابع</div>
-                    <div><strong>${followingCount}</strong></div>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                    <div><i class="fas fa-check-circle"></i> حصص مكتملة</div>
-                    <div><strong>${completedCount}</strong></div>
-                </div>
-                <div style="display: flex; justify-content: space-between;">
-                    <div><i class="fas fa-clock"></i> حصص قادمة</div>
-                    <div><strong>${upcomingCount}</strong></div>
-                </div>
-            `;
-        }
-
-        function joinLiveStream(offerId) {
-            window.open(`/api/join-stream/${offerId}/${studentData.id}`, '_blank');
+        function showNotification(message, type = 'success') {
+            const toast = document.getElementById('notificationToast');
+            toast.style.background = type === 'success' ? '#10b981' : (type === 'warning' ? '#f59e0b' : '#ef4444');
+            toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'}"></i> ${message}`;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 5000);
         }
 
         function viewTeacherProfile(teacherId) {
             window.open(`/teacher-profile.html?id=${teacherId}`, '_blank');
         }
 
-        function formatDate(date) {
-            const now = new Date();
-            const diff = Math.floor((now - date) / 1000 / 60);
-            if (diff < 1) return 'الآن';
-            if (diff < 60) return `منذ ${diff} دقيقة`;
-            if (diff < 1440) return `منذ ${Math.floor(diff / 60)} ساعة`;
-            return date.toLocaleDateString('ar');
+        async function loadOffers() {
+            const res = await fetch('/api/offers');
+            const offers = await res.json();
+            const container = document.getElementById('offersList');
+            if (offers.length === 0) { container.innerHTML = '<p style="text-align:center">لا توجد عروض متاحة حالياً</p>'; return; }
+            let html = '';
+            for (const offer of offers) {
+                const offerDate = new Date(offer.offer_date);
+                const imageUrl = offer.profile_image ? `/uploads/${offer.profile_image}` : 'https://via.placeholder.com/60';
+                html += `<div class="offer-card">
+                    <div class="teacher-info" onclick="viewTeacherProfile(${offer.teacher_id})">
+                        <img src="${imageUrl}" class="teacher-avatar">
+                        <div><h3 style="margin-bottom: 5px;">${offer.teacher_name}</h3><p><i class="fas fa-book"></i> ${offer.specialization || 'تخصص عام'}</p></div>
+                    </div>
+                    <p><strong>${offer.subject_name}</strong></p>
+                    <p><i class="fas fa-calendar"></i> ${offerDate.toLocaleString('ar')}</p>
+                    <p><i class="fas fa-clock"></i> ${offer.duration} دقيقة</p>
+                    <p><i class="fas fa-tag"></i> ${offer.is_free ? 'مجانية' : offer.price + ' دج'}</p>
+                    <button class="book-btn" onclick="bookOffer(${offer.id}, ${offer.is_free ? 0 : offer.price})">${offer.is_free ? 'تسجيل مجاني' : 'حجز الحصة'}</button>
+                    <button class="view-profile-btn" onclick="viewTeacherProfile(${offer.teacher_id})"><i class="fas fa-eye"></i> صفحة الأستاذ</button>
+                </div>`;
+            }
+            container.innerHTML = html;
         }
 
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
+        async function bookOffer(offerId, price) {
+            showNotification('جاري معالجة طلبك...', 'warning');
+            const res = await fetch('/api/booking/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ offer_id: offerId, student_id: studentData.id })
+            });
+            const data = await res.json();
+            if (data.success) {
+                if (price === 0 || data.is_free) {
+                    showNotification('✅ تم تسجيلك بنجاح! في انتظار بدء البث.', 'success');
+                    startWatchingStream(offerId);
+                    loadMySessions();
+                } else if (data.checkout_url) {
+                    window.location.href = data.checkout_url;
+                }
+            } else {
+                showNotification(data.error || 'حدث خطأ', 'error');
+            }
         }
 
-        function closeModal() {
-            document.getElementById('modalOverlay').style.display = 'none';
-            document.getElementById('commentModal').style.display = 'none';
+        function startWatchingStream(offerId) {
+            if (activeStreamChecker[offerId]) return;
+            const checkInterval = setInterval(async () => {
+                const res = await fetch(`/api/student/stream-status/${offerId}/${studentData.id}`);
+                const data = await res.json();
+                if (data.can_join === true) {
+                    clearInterval(activeStreamChecker[offerId]);
+                    delete activeStreamChecker[offerId];
+                    showNotification('🎉 بدأ البث المباشر! جاري نقلك...', 'success');
+                    setTimeout(() => { window.open(`/api/join-stream/${offerId}/${studentData.id}`, '_blank'); }, 1000);
+                }
+            }, 3000);
+            activeStreamChecker[offerId] = checkInterval;
+            setTimeout(() => { if (activeStreamChecker[offerId]) { clearInterval(activeStreamChecker[offerId]); delete activeStreamChecker[offerId]; } }, 30 * 60 * 1000);
         }
 
-        function logout() {
-            localStorage.clear();
-            window.location.href = '/';
+        async function loadMySessions() {
+            const res = await fetch(`/api/student/bookings/${studentData.id}`);
+            const bookings = await res.json();
+            const container = document.getElementById('mySessions');
+            if (bookings.length === 0) { container.innerHTML = '<p>لا توجد حصص مسجلة</p>'; return; }
+            let html = '';
+            for (const booking of bookings) {
+                const offerDate = new Date(booking.offer_date);
+                const isPaid = booking.is_free === 1 || booking.payment_status === 'paid';
+                const isLive = booking.offer_status === 'live';
+                const imageUrl = booking.teacher_image ? `/uploads/${booking.teacher_image}` : 'https://via.placeholder.com/40';
+                html += `<div class="session-item">
+                    <div style="display: flex; align-items: center; gap: 15px; cursor: pointer;" onclick="viewTeacherProfile(${booking.teacher_id})">
+                        <img src="${imageUrl}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                        <div>
+                            <strong>${booking.subject_name}</strong><br>
+                            <small>الأستاذ: ${booking.teacher_name}</small><br>
+                            <small>${offerDate.toLocaleString('ar')}</small>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="status-badge ${isPaid ? 'status-paid' : 'status-pending'}">${isPaid ? (isLive ? 'بث مباشر' : 'مسجل') : 'بانتظار الدفع'}</span>
+                        ${isLive && isPaid ? `<button class="join-btn" onclick="joinLiveStream(${booking.offer_id})"><i class="fas fa-video"></i> انضم</button>` : ''}
+                        <button class="view-profile-btn" onclick="viewTeacherProfile(${booking.teacher_id})"><i class="fas fa-eye"></i> صفحة الأستاذ</button>
+                    </div>
+                </div>`;
+                if (isPaid && !isLive && !activeStreamChecker[booking.offer_id]) { startWatchingStream(booking.offer_id); }
+            }
+            container.innerHTML = html;
         }
 
-        loadFeed();
-        setInterval(() => { loadUpcomingSessions(); }, 30000);
+        function joinLiveStream(offerId) { window.open(`/api/join-stream/${offerId}/${studentData.id}`, '_blank'); }
+        
+        function logout() { 
+            Object.values(activeStreamChecker).forEach(i => clearInterval(i)); 
+            localStorage.clear(); 
+            window.location.href = '/'; 
+        }
+
+        loadOffers(); 
+        loadMySessions(); 
+        setInterval(() => loadMySessions(), 10000);
     </script>
 </body>
 </html>
