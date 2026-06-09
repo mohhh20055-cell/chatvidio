@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>حجوزاتي - منصة التعليم</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Cairo', sans-serif; background: #f0f2f5; }
+        .navbar { background: white; padding: 12px 24px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .nav-container { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 1.5rem; font-weight: 800; color: #0f5cbf; cursor: pointer; }
+        .back-btn { background: #0f5cbf; color: white; border: none; padding: 8px 20px; border-radius: 30px; cursor: pointer; }
+        .container { max-width: 1000px; margin: 30px auto; padding: 0 20px; }
+        .booking-card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .booking-info { flex: 1; }
+        .booking-subject { font-size: 1.1rem; font-weight: 700; color: #1e3c72; }
+        .booking-teacher { color: #0f5cbf; cursor: pointer; }
+        .booking-date { color: #718096; font-size: 0.85rem; margin-top: 5px; }
+        .status-badge { display: inline-block; padding: 3px 10px; border-radius: 15px; font-size: 0.7rem; }
+        .status-paid { background: #d1fae5; color: #065f46; }
+        .status-pending { background: #fed7aa; color: #92400e; }
+        .status-live { background: #ef4444; color: white; }
+        .join-btn { background: #10b981; color: white; border: none; padding: 8px 20px; border-radius: 25px; cursor: pointer; }
+        .pay-btn { background: #f59e0b; color: white; border: none; padding: 8px 20px; border-radius: 25px; cursor: pointer; }
+        .view-profile-btn { background: #0f5cbf; color: white; border: none; padding: 8px 20px; border-radius: 25px; cursor: pointer; }
+        .empty { text-align: center; padding: 50px; background: white; border-radius: 20px; color: #718096; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo" onclick="window.location.href='/student-dashboard.html'"><i class="fas fa-chalkboard-user"></i> منصة التعليم</div>
+            <button class="back-btn" onclick="window.location.href='/student-dashboard.html'"><i class="fas fa-arrow-right"></i> العودة للرئيسية</button>
+        </div>
+    </nav>
+    <div class="container">
+        <h2><i class="fas fa-calendar-alt"></i> جميع حجوزاتي</h2>
+        <div id="bookingsList"></div>
+    </div>
+    <script>
+        let studentData = JSON.parse(localStorage.getItem('studentData') || '{}');
+        if (!studentData.id) window.location.href = '/';
+
+        async function loadBookings() {
+            const res = await fetch(`/api/student/bookings/${studentData.id}`);
+            const bookings = await res.json();
+            const container = document.getElementById('bookingsList');
+            if (bookings.length === 0) {
+                container.innerHTML = '<div class="empty"><i class="fas fa-calendar-times"></i><p>لا توجد حجوزات حتى الآن</p><button class="view-profile-btn" onclick="window.location.href=\'/offers-list.html\'">استعرض العروض</button></div>';
+                return;
+            }
+            let html = '';
+            for (const b of bookings) {
+                const offerDate = new Date(b.offer_date);
+                const isPaid = b.is_free === 1 || b.payment_status === 'paid';
+                const isLive = b.offer_status === 'live';
+                const imageUrl = b.teacher_image ? `/uploads/${b.teacher_image}` : 'https://via.placeholder.com/40';
+                html += `
+                    <div class="booking-card">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <img src="${imageUrl}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; cursor: pointer;" onclick="viewTeacherProfile(${b.teacher_id})">
+                            <div class="booking-info">
+                                <div class="booking-subject">${b.subject_name}</div>
+                                <div class="booking-teacher" onclick="viewTeacherProfile(${b.teacher_id})">👨‍🏫 ${b.teacher_name}</div>
+                                <div class="booking-date"><i class="fas fa-calendar"></i> ${offerDate.toLocaleString('ar')}</div>
+                            </div>
+                        </div>
+                        <div>
+                            <span class="status-badge ${isPaid ? (isLive ? 'status-live' : 'status-paid') : 'status-pending'}">${isLive ? '🔴 بث مباشر' : (isPaid ? '✅ مدفوع' : '⏳ بانتظار الدفع')}</span>
+                            ${isLive && isPaid ? `<button class="join-btn" onclick="joinLiveStream(${b.offer_id})"><i class="fas fa-video"></i> انضم</button>` : ''}
+                            ${!isPaid && !b.is_free ? `<button class="pay-btn" onclick="payForSession(${b.id}, ${b.price})"><i class="fas fa-credit-card"></i> دفع</button>` : ''}
+                            <button class="view-profile-btn" onclick="viewTeacherProfile(${b.teacher_id})"><i class="fas fa-eye"></i> صفحة الأستاذ</button>
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        function viewTeacherProfile(teacherId) {
+            window.open(`/teacher-profile.html?id=${teacherId}`, '_blank');
+        }
+
+        function joinLiveStream(offerId) {
+            window.open(`/api/join-stream/${offerId}/${studentData.id}`, '_blank');
+        }
+
+        async function payForSession(sessionId, amount) {
+            const res = await fetch('/api/booking/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ offer_id: sessionId, student_id: studentData.id })
+            });
+            const data = await res.json();
+            if (data.checkout_url) {
+                window.location.href = data.checkout_url;
+            } else {
+                alert('حدث خطأ في الدفع');
+            }
+        }
+
+        loadBookings();
+    </script>
+</body>
+</html>
