@@ -11,38 +11,17 @@ const { createClient } = require('@supabase/supabase-js');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ============= تهيئة Supabase من المتغيرات البيئية =============
+// ============= تهيئة Supabase =============
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
   console.error('❌ خطأ: متغيرات البيئة SUPABASE_URL و SUPABASE_KEY غير معرفة.');
-  process.exit(1); // إيقاف الخادم إذا كانت المتغيرات الأساسية مفقودة
+  process.exit(1);
 }
 
 console.log('🔌 الاتصال بـ Supabase:', supabaseUrl);
-
 const supabase = createClient(supabaseUrl, supabaseKey);
-
-// اختبار الاتصال بقاعدة البيانات
-async function testConnection() {
-  try {
-    const { data, error } = await supabase.from('teachers').select('count', { count: 'exact', head: true });
-    if (error) {
-      console.error('❌ فشل الاتصال بـ Supabase:', error.message);
-      console.log('⚠️ يرجى التحقق من:');
-      console.log('   1. أن Supabase URL صحيح');
-      console.log('   2. أن Anon Key صحيح');
-      console.log('   3. أن الجداول موجودة في Supabase');
-      return false;
-    }
-    console.log('✅ الاتصال بـ Supabase ناجح');
-    return true;
-  } catch (error) {
-    console.error('❌ خطأ في الاتصال:', error.message);
-    return false;
-  }
-}
 
 // إعداد رفع الملفات
 const storage = multer.diskStorage({
@@ -98,18 +77,13 @@ async function createChargilyCheckout(amount, studentName, studentEmail, student
 
 // ============= دوال مساعدة Supabase =============
 async function getOne(table, column, value) {
-  try {
-    const { data, error } = await supabase
-      .from(table)
-      .select('*')
-      .eq(column, value)
-      .single();
-    if (error && error.code !== 'PGRST116') return null;
-    return data;
-  } catch (error) {
-    console.error(`خطأ في getOne (${table}):`, error.message);
-    return null;
-  }
+  const { data, error } = await supabase
+    .from(table)
+    .select('*')
+    .eq(column, value)
+    .single();
+  if (error && error.code !== 'PGRST116') return null;
+  return data;
 }
 
 async function insert(table, data) {
@@ -150,201 +124,6 @@ async function getAll(table, conditions = {}) {
   return data;
 }
 
-// ============= إنشاء الجداول =============
-async function createTables() {
-  console.log('📦 إنشاء الجداول في Supabase...');
-  
-  // جدول الأساتذة
-  await supabase.rpc('exec_sql', {
-    sql: `
-      CREATE TABLE IF NOT EXISTS teachers (
-        id SERIAL PRIMARY KEY,
-        full_name TEXT NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        phone TEXT,
-        specialization TEXT,
-        bio TEXT,
-        experience TEXT,
-        profile_image TEXT,
-        diploma_image TEXT,
-        id_image TEXT,
-        facebook_url TEXT,
-        instagram_url TEXT,
-        linkedin_url TEXT,
-        website_url TEXT,
-        status TEXT DEFAULT 'pending',
-        rejection_reason TEXT,
-        created_at TIMESTAMP DEFAULT NOW()
-      )
-    `
-  }).catch(e => console.log('⚠️ جدول teachers موجود مسبقاً أو خطأ:', e.message));
-  
-  // جدول الطلاب
-  await supabase.rpc('exec_sql', {
-    sql: `
-      CREATE TABLE IF NOT EXISTS students (
-        id SERIAL PRIMARY KEY,
-        full_name TEXT NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        phone TEXT,
-        profile_image TEXT,
-        balance INTEGER DEFAULT 0,
-        created_at TIMESTAMP DEFAULT NOW()
-      )
-    `
-  }).catch(e => console.log('⚠️ جدول students موجود مسبقاً'));
-  
-  // جدول العروض
-  await supabase.rpc('exec_sql', {
-    sql: `
-      CREATE TABLE IF NOT EXISTS offers (
-        id SERIAL PRIMARY KEY,
-        teacher_id INTEGER REFERENCES teachers(id) ON DELETE CASCADE,
-        subject_name TEXT NOT NULL,
-        duration INTEGER DEFAULT 60,
-        offer_date TIMESTAMP NOT NULL,
-        price INTEGER DEFAULT 0,
-        is_free BOOLEAN DEFAULT FALSE,
-        status TEXT DEFAULT 'upcoming',
-        room_name TEXT UNIQUE,
-        room_password TEXT,
-        created_at TIMESTAMP DEFAULT NOW()
-      )
-    `
-  }).catch(e => console.log('⚠️ جدول offers موجود مسبقاً'));
-  
-  // جدول المنشورات
-  await supabase.rpc('exec_sql', {
-    sql: `
-      CREATE TABLE IF NOT EXISTS posts (
-        id SERIAL PRIMARY KEY,
-        teacher_id INTEGER REFERENCES teachers(id) ON DELETE CASCADE,
-        title TEXT NOT NULL,
-        content TEXT,
-        image_url TEXT,
-        file_url TEXT,
-        link_url TEXT,
-        likes INTEGER DEFAULT 0,
-        created_at TIMESTAMP DEFAULT NOW()
-      )
-    `
-  }).catch(e => console.log('⚠️ جدول posts موجود مسبقاً'));
-  
-  // جدول الإعجابات
-  await supabase.rpc('exec_sql', {
-    sql: `
-      CREATE TABLE IF NOT EXISTS post_likes (
-        id SERIAL PRIMARY KEY,
-        post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
-        student_id INTEGER REFERENCES students(id) ON DELETE CASCADE,
-        created_at TIMESTAMP DEFAULT NOW(),
-        UNIQUE(post_id, student_id)
-      )
-    `
-  }).catch(e => console.log('⚠️ جدول post_likes موجود مسبقاً'));
-  
-  // جدول التعليقات
-  await supabase.rpc('exec_sql', {
-    sql: `
-      CREATE TABLE IF NOT EXISTS post_comments (
-        id SERIAL PRIMARY KEY,
-        post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
-        student_id INTEGER REFERENCES students(id) ON DELETE CASCADE,
-        comment TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT NOW()
-      )
-    `
-  }).catch(e => console.log('⚠️ جدول post_comments موجود مسبقاً'));
-  
-  // جدول المتابعات
-  await supabase.rpc('exec_sql', {
-    sql: `
-      CREATE TABLE IF NOT EXISTS follows (
-        id SERIAL PRIMARY KEY,
-        student_id INTEGER REFERENCES students(id) ON DELETE CASCADE,
-        teacher_id INTEGER REFERENCES teachers(id) ON DELETE CASCADE,
-        created_at TIMESTAMP DEFAULT NOW(),
-        UNIQUE(student_id, teacher_id)
-      )
-    `
-  }).catch(e => console.log('⚠️ جدول follows موجود مسبقاً'));
-  
-  // جدول الحصص
-  await supabase.rpc('exec_sql', {
-    sql: `
-      CREATE TABLE IF NOT EXISTS sessions (
-        id SERIAL PRIMARY KEY,
-        offer_id INTEGER REFERENCES offers(id) ON DELETE CASCADE,
-        student_id INTEGER REFERENCES students(id) ON DELETE CASCADE,
-        payment_status TEXT DEFAULT 'pending',
-        payment_amount INTEGER DEFAULT 0,
-        chargily_checkout_url TEXT,
-        created_at TIMESTAMP DEFAULT NOW()
-      )
-    `
-  }).catch(e => console.log('⚠️ جدول sessions موجود مسبقاً'));
-  
-  // جدول غرفة الانتظار
-  await supabase.rpc('exec_sql', {
-    sql: `
-      CREATE TABLE IF NOT EXISTS waiting_room (
-        id SERIAL PRIMARY KEY,
-        offer_id INTEGER REFERENCES offers(id) ON DELETE CASCADE,
-        student_id INTEGER REFERENCES students(id) ON DELETE CASCADE,
-        added_at TIMESTAMP DEFAULT NOW()
-      )
-    `
-  }).catch(e => console.log('⚠️ جدول waiting_room موجود مسبقاً'));
-  
-  // جدول البث المباشر
-  await supabase.rpc('exec_sql', {
-    sql: `
-      CREATE TABLE IF NOT EXISTS active_stream (
-        id SERIAL PRIMARY KEY,
-        offer_id INTEGER REFERENCES offers(id) ON DELETE CASCADE,
-        student_id INTEGER REFERENCES students(id) ON DELETE CASCADE,
-        joined_at TIMESTAMP DEFAULT NOW()
-      )
-    `
-  }).catch(e => console.log('⚠️ جدول active_stream موجود مسبقاً'));
-  
-  // جدول المدفوعات
-  await supabase.rpc('exec_sql', {
-    sql: `
-      CREATE TABLE IF NOT EXISTS payments (
-        id SERIAL PRIMARY KEY,
-        session_id INTEGER REFERENCES sessions(id) ON DELETE CASCADE,
-        amount INTEGER,
-        checkout_url TEXT,
-        status TEXT DEFAULT 'pending',
-        created_at TIMESTAMP DEFAULT NOW()
-      )
-    `
-  }).catch(e => console.log('⚠️ جدول payments موجود مسبقاً'));
-  
-  console.log('✅ تم التحقق من جميع الجداول');
-  
-  // إنشاء admin افتراضي
-  const existingAdmin = await getOne('teachers', 'email', 'admin@platform.com');
-  if (!existingAdmin) {
-    const hashedPassword = bcrypt.hashSync('admin123', 10);
-    try {
-      await insert('teachers', {
-        full_name: 'مدير المنصة',
-        email: 'admin@platform.com',
-        password: hashedPassword,
-        phone: '00000000',
-        status: 'approved'
-      });
-      console.log('✅ تم إنشاء حساب admin بنجاح');
-    } catch(e) {
-      console.log('⚠️ admin موجود مسبقاً');
-    }
-  }
-}
-
 // ============= API Routes =============
 
 // تسجيل أستاذ جديد
@@ -355,8 +134,6 @@ app.post('/api/teacher/register', upload.fields([
 ]), async (req, res) => {
   try {
     const { full_name, email, password, phone, specialization, bio, experience } = req.body;
-    
-    console.log('📝 محاولة تسجيل أستاذ:', email);
     
     if (!full_name || !email || !password || !phone || !specialization || !bio || !experience) {
       return res.json({ success: false, error: 'يرجى ملء جميع الحقول المطلوبة' });
@@ -372,7 +149,7 @@ app.post('/api/teacher/register', upload.fields([
     const diploma_image = req.files['diploma_image'] ? req.files['diploma_image'][0].filename : null;
     const id_image = req.files['id_image'] ? req.files['id_image'][0].filename : null;
 
-    const newTeacher = await insert('teachers', {
+    await insert('teachers', {
       full_name,
       email,
       password: hashedPassword,
@@ -386,11 +163,10 @@ app.post('/api/teacher/register', upload.fields([
       status: 'pending'
     });
 
-    console.log('✅ تم تسجيل الأستاذ بنجاح:', newTeacher.id);
     res.json({ success: true, message: 'تم إرسال طلبك، سيتم مراجعته من قبل الإدارة' });
   } catch (error) {
-    console.error('❌ خطأ في تسجيل الأستاذ:', error.message);
-    res.json({ success: false, error: 'خطأ في الاتصال بقاعدة البيانات: ' + error.message });
+    console.error('❌ خطأ:', error.message);
+    res.json({ success: false, error: 'خطأ في الخادم: ' + error.message });
   }
 });
 
@@ -398,9 +174,6 @@ app.post('/api/teacher/register', upload.fields([
 app.post('/api/student/register', async (req, res) => {
   try {
     const { full_name, email, password, phone } = req.body;
-    
-    console.log('📝 محاولة تسجيل طالب:', email);
-    
     if (!full_name || !email || !password || !phone) {
       return res.json({ success: false, error: 'يرجى ملء جميع الحقول' });
     }
@@ -411,7 +184,7 @@ app.post('/api/student/register', async (req, res) => {
     }
 
     const hashedPassword = bcrypt.hashSync(password, 10);
-    const newStudent = await insert('students', {
+    await insert('students', {
       full_name,
       email,
       password: hashedPassword,
@@ -419,20 +192,17 @@ app.post('/api/student/register', async (req, res) => {
       balance: 0
     });
 
-    console.log('✅ تم تسجيل الطالب بنجاح:', newStudent.id);
     res.json({ success: true, message: 'تم التسجيل بنجاح' });
   } catch (error) {
-    console.error('❌ خطأ في تسجيل الطالب:', error.message);
-    res.json({ success: false, error: 'خطأ في الاتصال بقاعدة البيانات' });
+    console.error('❌ خطأ:', error.message);
+    res.json({ success: false, error: 'خطأ في الخادم' });
   }
 });
 
-// تسجيل الدخول الموحد
+// تسجيل الدخول
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    
-    console.log('📝 محاولة تسجيل دخول:', email);
     
     let user = await getOne('teachers', 'email', email);
     let userRole = 'teacher';
@@ -452,7 +222,6 @@ app.post('/api/login', async (req, res) => {
     }
     
     const token = Buffer.from(`${user.id}:${Date.now()}`).toString('base64');
-    console.log('✅ تم تسجيل الدخول بنجاح:', user.id);
     res.json({ 
       success: true, 
       token, 
@@ -466,30 +235,20 @@ app.post('/api/login', async (req, res) => {
       } 
     });
   } catch (error) {
-    console.error('❌ خطأ في تسجيل الدخول:', error.message);
-    res.json({ success: false, error: 'خطأ في الاتصال بقاعدة البيانات' });
+    console.error('❌ خطأ:', error.message);
+    res.json({ success: false, error: 'خطأ في الخادم' });
   }
 });
-
-// ============= باقي Routes (مختصرة) =============
 
 // ADMIN Routes
 app.get('/api/admin/pending-teachers', async (req, res) => {
-  try {
-    const teachers = await getAll('teachers', { status: 'pending' });
-    res.json(teachers || []);
-  } catch (error) {
-    res.json([]);
-  }
+  const teachers = await getAll('teachers', { status: 'pending' });
+  res.json(teachers || []);
 });
 
 app.get('/api/admin/approved-teachers', async (req, res) => {
-  try {
-    const teachers = await getAll('teachers', { status: 'approved' });
-    res.json(teachers || []);
-  } catch (error) {
-    res.json([]);
-  }
+  const teachers = await getAll('teachers', { status: 'approved' });
+  res.json(teachers || []);
 });
 
 app.post('/api/admin/approve-teacher/:id', async (req, res) => {
@@ -511,18 +270,14 @@ app.delete('/api/admin/delete-teacher/:id', async (req, res) => {
   res.json({ success: true });
 });
 
-// الصفحات العامة
+// ============= الصفحات العامة =============
 app.get('/api/public/teachers', async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from('teachers')
-      .select('id, full_name, specialization, bio, experience, profile_image')
-      .eq('status', 'approved')
-      .order('created_at', { ascending: false });
-    res.json(data || []);
-  } catch (error) {
-    res.json([]);
-  }
+  const { data } = await supabase
+    .from('teachers')
+    .select('id, full_name, specialization, bio, experience, profile_image')
+    .eq('status', 'approved')
+    .order('created_at', { ascending: false });
+  res.json(data || []);
 });
 
 app.get('/api/teacher/:teacher_id', async (req, res) => {
@@ -532,102 +287,106 @@ app.get('/api/teacher/:teacher_id', async (req, res) => {
 });
 
 app.get('/api/public/offers', async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from('offers')
-      .select('*, teachers:teacher_id (full_name, specialization, profile_image, id)')
-      .eq('status', 'upcoming')
-      .gt('offer_date', new Date().toISOString())
-      .order('offer_date', { ascending: true });
-    
-    const formatted = (data || []).map(o => ({
-      ...o,
-      teacher_name: o.teachers?.full_name,
-      teacher_specialization: o.teachers?.specialization,
-      teacher_profile_image: o.teachers?.profile_image,
-      teacher_id: o.teachers?.id
-    }));
-    res.json(formatted);
-  } catch (error) {
-    res.json([]);
-  }
+  const { data } = await supabase
+    .from('offers')
+    .select('*, teachers:teacher_id (full_name, specialization, profile_image, id)')
+    .eq('status', 'upcoming')
+    .gt('offer_date', new Date().toISOString())
+    .order('offer_date', { ascending: true });
+  
+  const formatted = (data || []).map(o => ({
+    ...o,
+    teacher_name: o.teachers?.full_name,
+    teacher_specialization: o.teachers?.specialization,
+    teacher_profile_image: o.teachers?.profile_image,
+    teacher_id: o.teachers?.id
+  }));
+  res.json(formatted);
 });
 
 app.get('/api/live-offers', async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from('offers')
-      .select('*, teachers:teacher_id (full_name, specialization, profile_image, id)')
-      .eq('status', 'live')
-      .order('offer_date', { ascending: false });
-    
-    const formatted = (data || []).map(o => ({
-      ...o,
-      teacher_name: o.teachers?.full_name,
-      teacher_specialization: o.teachers?.specialization,
-      teacher_profile_image: o.teachers?.profile_image,
-      teacher_id: o.teachers?.id
-    }));
-    res.json(formatted);
-  } catch (error) {
-    res.json([]);
-  }
+  const { data } = await supabase
+    .from('offers')
+    .select('*, teachers:teacher_id (full_name, specialization, profile_image, id)')
+    .eq('status', 'live')
+    .order('offer_date', { ascending: false });
+  
+  const formatted = (data || []).map(o => ({
+    ...o,
+    teacher_name: o.teachers?.full_name,
+    teacher_specialization: o.teachers?.specialization,
+    teacher_profile_image: o.teachers?.profile_image,
+    teacher_id: o.teachers?.id
+  }));
+  res.json(formatted);
 });
 
-// منشورات
+// ============= نظام المنشورات =============
+app.post('/api/post/create', upload.fields([
+  { name: 'image', maxCount: 1 },
+  { name: 'file', maxCount: 1 }
+]), async (req, res) => {
+  const { teacher_id, title, content, link_url } = req.body;
+  let image_url = null, file_url = null;
+  if (req.files['image']) image_url = `/uploads/posts/${req.files['image'][0].filename}`;
+  if (req.files['file']) file_url = `/uploads/files/${req.files['file'][0].filename}`;
+  
+  await insert('posts', {
+    teacher_id: parseInt(teacher_id),
+    title,
+    content,
+    image_url,
+    file_url,
+    link_url,
+    likes: 0
+  });
+  res.json({ success: true });
+});
+
 app.get('/api/posts/:teacher_id', async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from('posts')
-      .select('*')
-      .eq('teacher_id', req.params.teacher_id)
-      .order('created_at', { ascending: false });
-    
-    const postsWithCounts = await Promise.all((data || []).map(async (post) => {
-      const { count: likesCount } = await supabase
-        .from('post_likes')
-        .select('*', { count: 'exact', head: true })
-        .eq('post_id', post.id);
-      const { count: commentsCount } = await supabase
-        .from('post_comments')
-        .select('*', { count: 'exact', head: true })
-        .eq('post_id', post.id);
-      return { ...post, likes_count: likesCount || 0, comments_count: commentsCount || 0 };
-    }));
-    res.json(postsWithCounts);
-  } catch (error) {
-    res.json([]);
-  }
+  const { data } = await supabase
+    .from('posts')
+    .select('*')
+    .eq('teacher_id', req.params.teacher_id)
+    .order('created_at', { ascending: false });
+  
+  const postsWithCounts = await Promise.all((data || []).map(async (post) => {
+    const { count: likesCount } = await supabase
+      .from('post_likes')
+      .select('*', { count: 'exact', head: true })
+      .eq('post_id', post.id);
+    const { count: commentsCount } = await supabase
+      .from('post_comments')
+      .select('*', { count: 'exact', head: true })
+      .eq('post_id', post.id);
+    return { ...post, likes_count: likesCount || 0, comments_count: commentsCount || 0 };
+  }));
+  res.json(postsWithCounts);
 });
 
 app.get('/api/post/:post_id', async (req, res) => {
-  try {
-    const { data: post, error } = await supabase
-      .from('posts')
-      .select('*, teachers:teacher_id (full_name, profile_image)')
-      .eq('id', req.params.post_id)
-      .single();
-    
-    if (!post) return res.json({ error: 'المنشور غير موجود' });
-    
-    const { data: comments } = await supabase
-      .from('post_comments')
-      .select('*, students:student_id (full_name, profile_image)')
-      .eq('post_id', req.params.post_id)
-      .order('created_at', { ascending: true });
-    
-    res.json({
-      ...post,
-      teacher_name: post.teachers?.full_name,
-      teacher_image: post.teachers?.profile_image,
-      comments: comments || []
-    });
-  } catch (error) {
-    res.json({ error: 'خطأ في جلب المنشور' });
-  }
+  const { data: post } = await supabase
+    .from('posts')
+    .select('*, teachers:teacher_id (full_name, profile_image)')
+    .eq('id', req.params.post_id)
+    .single();
+  
+  if (!post) return res.json({ error: 'المنشور غير موجود' });
+  
+  const { data: comments } = await supabase
+    .from('post_comments')
+    .select('*, students:student_id (full_name, profile_image)')
+    .eq('post_id', req.params.post_id)
+    .order('created_at', { ascending: true });
+  
+  res.json({
+    ...post,
+    teacher_name: post.teachers?.full_name,
+    teacher_image: post.teachers?.profile_image,
+    comments: comments || []
+  });
 });
 
-// إعجابات وتعليقات
 app.post('/api/post/like', async (req, res) => {
   const { post_id, student_id } = req.body;
   try {
@@ -654,15 +413,17 @@ app.post('/api/post/unlike', async (req, res) => {
 app.post('/api/post/comment', async (req, res) => {
   const { post_id, student_id, comment } = req.body;
   if (!comment || comment.trim() === '') return res.json({ success: false, error: 'التعليق لا يمكن أن يكون فارغاً' });
-  const newComment = await insert('post_comments', { post_id, student_id, comment });
-  res.json({ success: true, comment_id: newComment.id });
+  await insert('post_comments', { post_id, student_id, comment });
+  res.json({ success: true });
 });
 
 app.delete('/api/post/comment/:comment_id', async (req, res) => {
   const { comment_id } = req.params;
   const { teacher_id, post_id } = req.body;
   const post = await getOne('posts', 'id', post_id);
-  if (!post || post.teacher_id != teacher_id) return res.json({ success: false, error: 'غير مصرح لك' });
+  if (!post || post.teacher_id != teacher_id) {
+    return res.json({ success: false, error: 'غير مصرح لك' });
+  }
   await remove('post_comments', 'id', comment_id);
   res.json({ success: true });
 });
@@ -671,7 +432,9 @@ app.delete('/api/post/:post_id', async (req, res) => {
   const { post_id } = req.params;
   const { teacher_id } = req.body;
   const post = await getOne('posts', 'id', post_id);
-  if (!post || post.teacher_id != teacher_id) return res.json({ success: false, error: 'غير مصرح لك' });
+  if (!post || post.teacher_id != teacher_id) {
+    return res.json({ success: false, error: 'غير مصرح لك' });
+  }
   await supabase.from('post_likes').delete().eq('post_id', post_id);
   await supabase.from('post_comments').delete().eq('post_id', post_id);
   await remove('posts', 'id', post_id);
@@ -679,11 +442,11 @@ app.delete('/api/post/:post_id', async (req, res) => {
 });
 
 app.get('/api/post/check-like/:post_id/:student_id', async (req, res) => {
-  const { data, error } = await supabase.from('post_likes').select('*').eq('post_id', req.params.post_id).eq('student_id', req.params.student_id).single();
+  const { data } = await supabase.from('post_likes').select('*').eq('post_id', req.params.post_id).eq('student_id', req.params.student_id).single();
   res.json({ liked: !!data });
 });
 
-// متابعات
+// ============= نظام المتابعات =============
 app.post('/api/follow', async (req, res) => {
   const { student_id, teacher_id } = req.body;
   await insert('follows', { student_id, teacher_id });
@@ -696,23 +459,34 @@ app.post('/api/unfollow', async (req, res) => {
 });
 
 app.get('/api/check-follow/:student_id/:teacher_id', async (req, res) => {
-  const { data, error } = await supabase.from('follows').select('*').eq('student_id', req.params.student_id).eq('teacher_id', req.params.teacher_id).single();
+  const { data } = await supabase.from('follows').select('*').eq('student_id', req.params.student_id).eq('teacher_id', req.params.teacher_id).single();
   res.json({ following: !!data });
 });
 
-// عروض
+// ============= نظام العروض =============
 app.post('/api/offer/create', async (req, res) => {
   const { teacher_id, subject_name, duration, offer_date, price, is_free } = req.body;
   const room_name = `stream_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
-  const offer = await insert('offers', { teacher_id, subject_name, duration, offer_date, price, is_free: is_free ? 1 : 0, room_name, status: 'upcoming' });
-  res.json({ success: true, offer_id: offer.id, room_name });
+  await insert('offers', {
+    teacher_id,
+    subject_name,
+    duration,
+    offer_date,
+    price,
+    is_free: is_free ? 1 : 0,
+    room_name,
+    status: 'upcoming'
+  });
+  res.json({ success: true, room_name });
 });
 
 app.delete('/api/offer/delete/:offer_id', async (req, res) => {
   const { offer_id } = req.params;
   const { teacher_id } = req.body;
   const offer = await getOne('offers', 'id', offer_id);
-  if (!offer || offer.teacher_id != teacher_id) return res.json({ success: false, error: 'غير مصرح لك' });
+  if (!offer || offer.teacher_id != teacher_id) {
+    return res.json({ success: false, error: 'غير مصرح لك' });
+  }
   await supabase.from('sessions').delete().eq('offer_id', offer_id);
   await supabase.from('waiting_room').delete().eq('offer_id', offer_id);
   await supabase.from('active_stream').delete().eq('offer_id', offer_id);
@@ -720,21 +494,42 @@ app.delete('/api/offer/delete/:offer_id', async (req, res) => {
   res.json({ success: true });
 });
 
-// حجز
+// ============= نظام الحجز =============
 app.post('/api/booking/create', async (req, res) => {
   const { offer_id, student_id } = req.body;
+  
   const existing = await getOne('sessions', 'offer_id', offer_id);
-  if (existing && existing.student_id === student_id) return res.json({ success: false, error: 'أنت مسجل بالفعل' });
+  if (existing && existing.student_id === student_id) {
+    return res.json({ success: false, error: 'أنت مسجل بالفعل' });
+  }
+  
   const offer = await getOne('offers', 'id', offer_id);
   if (!offer) return res.json({ success: false, error: 'العرض غير موجود' });
-  const session = await insert('sessions', { offer_id, student_id, payment_status: offer.is_free === 1 ? 'paid' : 'pending', payment_amount: offer.price });
+  
+  const session = await insert('sessions', {
+    offer_id,
+    student_id,
+    payment_status: offer.is_free === 1 ? 'paid' : 'pending',
+    payment_amount: offer.price
+  });
+  
   if (offer.is_free === 1) {
     await insert('waiting_room', { offer_id, student_id });
     return res.json({ success: true, session_id: session.id, is_free: true });
   }
+  
   const student = await getOne('students', 'id', student_id);
   const baseUrl = process.env.RENDER_EXTERNAL_URL || `https://chatvidio-api.onrender.com`;
-  const checkout = await createChargilyCheckout(offer.price, student.full_name, student.email, student.phone, offer.subject_name, `${baseUrl}/api/payment/success/${session.id}`, `${baseUrl}/student-dashboard.html`);
+  const checkout = await createChargilyCheckout(
+    offer.price,
+    student.full_name,
+    student.email,
+    student.phone,
+    offer.subject_name,
+    `${baseUrl}/api/payment/success/${session.id}`,
+    `${baseUrl}/student-dashboard.html`
+  );
+  
   if (checkout.success) {
     await update('sessions', session.id, { chargily_checkout_url: checkout.checkout_url });
     res.json({ success: true, session_id: session.id, checkout_url: checkout.checkout_url, amount: offer.price });
@@ -753,12 +548,12 @@ app.get('/api/payment/success/:session_id', async (req, res) => {
 });
 
 app.get('/api/student/bookings/:student_id', async (req, res) => {
-  const { data, error } = await supabase.from('sessions').select(`*, offers:offer_id (subject_name, offer_date, duration, price, is_free, status, teachers:teacher_id (id, full_name, profile_image))`).eq('student_id', req.params.student_id).order('created_at', { ascending: false });
+  const { data } = await supabase.from('sessions').select(`*, offers:offer_id (subject_name, offer_date, duration, price, is_free, status, teachers:teacher_id (id, full_name, profile_image))`).eq('student_id', req.params.student_id).order('created_at', { ascending: false });
   const formatted = (data || []).map(s => ({ ...s, subject_name: s.offers?.subject_name, offer_date: s.offers?.offer_date, duration: s.offers?.duration, price: s.offers?.price, is_free: s.offers?.is_free, offer_status: s.offers?.status, teacher_id: s.offers?.teachers?.id, teacher_name: s.offers?.teachers?.full_name, teacher_image: s.offers?.teachers?.profile_image }));
   res.json(formatted);
 });
 
-// بث مباشر
+// ============= نظام البث المباشر =============
 app.post('/api/stream/enter-teacher/:offer_id', async (req, res) => {
   const { offer_id, teacher_id } = req.body;
   const offer = await getOne('offers', 'id', offer_id);
@@ -811,12 +606,12 @@ app.get('/api/student/stream-status/:offer_id/:student_id', async (req, res) => 
 });
 
 app.get('/api/stream/waiting-list/:offer_id/:teacher_id', async (req, res) => {
-  const { data, error } = await supabase.from('waiting_room').select(`*, students:student_id (full_name, email)`).eq('offer_id', req.params.offer_id);
+  const { data } = await supabase.from('waiting_room').select(`*, students:student_id (full_name, email)`).eq('offer_id', req.params.offer_id);
   const formatted = (data || []).map(w => ({ ...w, full_name: w.students?.full_name, email: w.students?.email }));
   res.json(formatted);
 });
 
-// صفحات البث
+// ============= صفحات البث =============
 app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
   const offer = await getOne('offers', 'id', req.params.offer_id);
   if (!offer || offer.teacher_id != req.params.teacher_id) return res.redirect('/teacher-dashboard.html');
@@ -839,17 +634,7 @@ app.get('/api/join-stream/:offer_id/:student_id', async (req, res) => {
 });
 
 // ============= تشغيل الخادم =============
-async function startServer() {
-  const isConnected = await testConnection();
-  if (!isConnected) {
-    console.log('⚠️ تنبيه: فشل الاتصال بـ Supabase. بعض الميزات قد لا تعمل.');
-  } else {
-    await createTables();
-  }
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 الخادم يعمل على http://localhost:${PORT}`);
-    console.log(`📦 قاعدة البيانات: Supabase (${supabaseUrl})`);
-  });
-}
-
-startServer();
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 الخادم يعمل على http://localhost:${PORT}`);
+  console.log(`📦 قاعدة البيانات: Supabase (${supabaseUrl})`);
+});
