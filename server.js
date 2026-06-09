@@ -117,7 +117,6 @@ async function getAll(table, conditions = {}) {
   return data;
 }
 
-// ============= إنشاء الجداول (يتم مرة واحدة في Supabase SQL Editor) =============
 console.log('📦 استخدام Supabase كقاعدة بيانات');
 console.log('⚠️ تأكد من إنشاء الجداول في SQL Editor في Supabase');
 
@@ -198,7 +197,7 @@ app.post('/api/student/register', async (req, res) => {
 // تسجيل الدخول الموحد
 app.post('/api/login', async (req, res) => {
   try {
-    const { email, password, role } = req.body;
+    const { email, password } = req.body;
     
     // البحث في الأساتذة أولاً
     let user = await getOne('teachers', 'email', email);
@@ -338,7 +337,6 @@ app.get('/api/posts/:teacher_id', async (req, res) => {
     .eq('teacher_id', req.params.teacher_id)
     .order('created_at', { ascending: false });
   
-  // جلب عدد الإعجابات لكل منشور
   const postsWithCounts = await Promise.all((data || []).map(async (post) => {
     const { count: likesCount } = await supabase
       .from('post_likes')
@@ -478,7 +476,6 @@ app.get('/api/check-follow/:student_id/:teacher_id', async (req, res) => {
 
 // ============= التغذية الرئيسية =============
 app.get('/api/feed/:student_id', async (req, res) => {
-  // جلب IDs الأساتذة الذين يتابعهم الطالب
   const { data: follows, error: followError } = await supabase
     .from('follows')
     .select('teacher_id')
@@ -583,6 +580,27 @@ app.post('/api/offer/create', async (req, res) => {
   res.json({ success: true, offer_id: offer.id, room_name });
 });
 
+app.get('/api/public/offers', async (req, res) => {
+  const { data, error } = await supabase
+    .from('offers')
+    .select(`
+      *,
+      teachers:teacher_id (full_name, specialization, profile_image, id)
+    `)
+    .eq('status', 'upcoming')
+    .gt('offer_date', new Date().toISOString())
+    .order('offer_date', { ascending: true });
+  
+  const formatted = (data || []).map(o => ({
+    ...o,
+    teacher_name: o.teachers?.full_name,
+    teacher_specialization: o.teachers?.specialization,
+    teacher_profile_image: o.teachers?.profile_image,
+    teacher_id: o.teachers?.id
+  }));
+  res.json(formatted);
+});
+
 app.get('/api/offers', async (req, res) => {
   const { data, error } = await supabase
     .from('offers')
@@ -593,6 +611,26 @@ app.get('/api/offers', async (req, res) => {
     .eq('status', 'upcoming')
     .gt('offer_date', new Date().toISOString())
     .order('offer_date', { ascending: true });
+  
+  const formatted = (data || []).map(o => ({
+    ...o,
+    teacher_name: o.teachers?.full_name,
+    teacher_specialization: o.teachers?.specialization,
+    teacher_profile_image: o.teachers?.profile_image,
+    teacher_id: o.teachers?.id
+  }));
+  res.json(formatted);
+});
+
+app.get('/api/live-offers', async (req, res) => {
+  const { data, error } = await supabase
+    .from('offers')
+    .select(`
+      *,
+      teachers:teacher_id (full_name, specialization, profile_image, id)
+    `)
+    .eq('status', 'live')
+    .order('offer_date', { ascending: false });
   
   const formatted = (data || []).map(o => ({
     ...o,
@@ -655,14 +693,17 @@ app.post('/api/booking/create', async (req, res) => {
   
   const student = await getOne('students', 'id', student_id);
   const baseUrl = process.env.RENDER_EXTERNAL_URL || `https://chatvidio-api.onrender.com`;
+  const successUrl = `${baseUrl}/api/payment/success/${session.id}`;
+  const failureUrl = `${baseUrl}/student-dashboard.html`;
+  
   const checkout = await createChargilyCheckout(
     offer.price,
     student.full_name,
     student.email,
     student.phone,
     offer.subject_name,
-    `${baseUrl}/api/payment/success/${session.id}`,
-    `${baseUrl}/student-dashboard.html`
+    successUrl,
+    failureUrl
   );
   
   if (checkout.success) {
@@ -828,10 +869,15 @@ loadWaitingCount();setInterval(loadWaitingCount,3000);
 });
 
 app.get('/api/enter-teacher-stream/:offer_id/:teacher_id', async (req, res) => {
-  await axios.post(`http://localhost:${PORT}/api/stream/enter-teacher/${req.params.offer_id}`, { 
-    offer_id: parseInt(req.params.offer_id), 
-    teacher_id: parseInt(req.params.teacher_id) 
-  }).catch(e=>console.log(e));
+  // استخدام axios بدلاً من fetch لتجنب مشكلة الاتصال
+  try {
+    await axios.post(`http://localhost:${PORT}/api/stream/enter-teacher/${req.params.offer_id}`, { 
+      offer_id: parseInt(req.params.offer_id), 
+      teacher_id: parseInt(req.params.teacher_id) 
+    });
+  } catch(e) {
+    console.log('خطأ في بدء البث:', e.message);
+  }
   res.redirect(`/api/teacher-stream/${req.params.offer_id}/${req.params.teacher_id}`);
 });
 
