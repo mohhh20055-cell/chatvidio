@@ -11,60 +11,114 @@
         body { font-family: 'Cairo', sans-serif; background: linear-gradient(135deg, #f5f7fa 0%, #e9edf2 100%); min-height: 100vh; }
         .navbar { background: white; padding: 15px 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); position: sticky; top: 0; z-index: 100; }
         .nav-container { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
-        .logo { font-size: 1.8rem; font-weight: 800; color: #0f5cbf; }
+        .logo { font-size: 1.8rem; font-weight: 800; }
+        .logo i { color: #0f5cbf; margin-left: 10px; }
+        .logo .highlight { background: linear-gradient(135deg, #0f5cbf, #1e3c72); background-clip: text; -webkit-background-clip: text; color: transparent; }
+        .nav-links { display: flex; gap: 15px; flex-wrap: wrap; }
+        .nav-links a { text-decoration: none; color: #4a5568; font-weight: 600; cursor: pointer; padding: 8px 15px; border-radius: 30px; transition: 0.3s; }
+        .nav-links a:hover, .nav-links a.active { background: #0f5cbf; color: white; }
         .hero { max-width: 1200px; margin: 50px auto; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 40px; }
+        .hero-content { flex: 1; }
         .hero-content h1 { font-size: 2.5rem; margin-bottom: 20px; }
         .hero-content .highlight { color: #0f5cbf; }
-        .btn-primary { background: #0f5cbf; color: white; border: none; padding: 12px 30px; border-radius: 40px; cursor: pointer; }
-        .btn-outline { background: transparent; border: 2px solid #0f5cbf; color: #0f5cbf; padding: 10px 28px; border-radius: 40px; cursor: pointer; }
+        .hero-content p { font-size: 1.1rem; color: #4a5568; margin-bottom: 30px; }
+        .hero-buttons { display: flex; gap: 15px; flex-wrap: wrap; }
+        .btn-primary { background: #0f5cbf; color: white; border: none; padding: 12px 30px; border-radius: 40px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: 0.3s; }
+        .btn-primary:hover { background: #0b4a9c; transform: translateY(-2px); }
+        .btn-outline { background: transparent; border: 2px solid #0f5cbf; color: #0f5cbf; padding: 10px 28px; border-radius: 40px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: 0.3s; }
+        .btn-outline:hover { background: #0f5cbf10; }
+        .section-container { max-width: 1200px; margin: 50px auto; padding: 0 20px; }
+        .section-title { font-size: 2rem; margin-bottom: 30px; text-align: center; color: #1e3c72; }
+        .teachers-grid, .offers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; }
+        .teacher-card, .offer-card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); transition: 0.3s; text-align: center; cursor: pointer; }
+        .teacher-card:hover, .offer-card:hover { transform: translateY(-5px); box-shadow: 0 12px 30px rgba(0,0,0,0.12); }
+        .teacher-image { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 15px; border: 3px solid #0f5cbf; }
+        .live-badge { background: #ef4444; color: white; padding: 5px 10px; border-radius: 20px; font-size: 12px; animation: pulse 1s infinite; display: inline-block; }
+        @keyframes pulse { 0% { opacity: 0.7; } 50% { opacity: 1; } 100% { opacity: 0.7; } }
         .form-section { max-width: 600px; margin: 50px auto; padding: 0 20px; }
         .form-tabs { display: flex; gap: 10px; justify-content: center; margin-bottom: 30px; flex-wrap: wrap; }
-        .tab-btn { padding: 12px 25px; background: #e2e8f0; border: none; border-radius: 40px; cursor: pointer; }
+        .tab-btn { padding: 12px 25px; background: #e2e8f0; border: none; border-radius: 40px; cursor: pointer; font-weight: 600; }
         .tab-btn.active { background: #0f5cbf; color: white; }
         .form-container { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
         .form-container input, .form-container select, .form-container textarea { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #cbd5e1; border-radius: 12px; font-family: 'Cairo', sans-serif; }
         .form-container input[type="file"] { padding: 8px; }
         footer { text-align: center; padding: 30px; background: #1e2a3e; color: #94a3b8; margin-top: 50px; }
+        .price-tag { background: #10b981; color: white; padding: 5px 12px; border-radius: 20px; display: inline-block; margin-top: 10px; }
+        .free-tag { background: #f59e0b; color: white; padding: 5px 12px; border-radius: 20px; display: inline-block; margin-top: 10px; }
+        .view-profile-btn { background: #0f5cbf; color: white; border: none; padding: 8px 20px; border-radius: 25px; cursor: pointer; margin-top: 15px; width: 100%; font-weight: 600; }
         .notification-toast { position: fixed; bottom: 30px; right: 30px; background: #10b981; color: white; padding: 15px 25px; border-radius: 15px; z-index: 2000; animation: slideIn 0.5s ease; display: none; }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        .loading { display: inline-block; width: 20px; height: 20px; border: 2px solid white; border-radius: 50%; border-top-color: transparent; animation: spin 0.6s linear infinite; margin-left: 10px; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width: 768px) {
+            .hero-content h1 { font-size: 1.8rem; }
+            .nav-links a { padding: 5px 10px; font-size: 14px; }
+            .teachers-grid, .offers-grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
     <nav class="navbar">
         <div class="nav-container">
-            <div class="logo"><i class="fas fa-chalkboard-user"></i> منصة التعليم الجزائرية</div>
+            <div class="logo"><i class="fas fa-chalkboard-user"></i><span>منصة<span class="highlight"> التعليم</span></span></div>
+            <div class="nav-links">
+                <a onclick="showHome()" id="homeTab" class="active">الرئيسية</a>
+                <a onclick="showTeachers()" id="teachersTab">الأساتذة</a>
+                <a onclick="showOffers()" id="offersTab">العروض المتاحة</a>
+                <a onclick="showLiveStreams()" id="liveTab">بث مباشر <span id="liveCount" class="live-badge" style="display:none; padding:2px 8px;">0</span></a>
+                <a onclick="showLogin()" id="loginTabNav">تسجيل الدخول</a>
+            </div>
         </div>
     </nav>
 
     <main>
-        <section class="hero">
+        <!-- القسم الرئيسي -->
+        <section id="homeSection" class="hero">
             <div class="hero-content">
                 <h1>تعلم مع أفضل الأساتذة <span class="highlight">في الجزائر</span></h1>
                 <p>دروس خصوصية عبر الفيديو مع نخبة من الأساتذة المعتمدين. ادفع عبر شارجيلي بسهولة وأمان</p>
                 <div class="hero-buttons">
-                    <button class="btn-primary" onclick="showLogin()"><i class="fas fa-sign-in-alt"></i> تسجيل الدخول</button>
-                    <button class="btn-outline" onclick="showRegister()"><i class="fas fa-user-plus"></i> إنشاء حساب</button>
+                    <button class="btn-primary" onclick="showTeachers()"><i class="fas fa-users"></i> تعرف على أساتذتنا</button>
+                    <button class="btn-outline" onclick="showOffers()"><i class="fas fa-calendar-alt"></i> استعرض العروض</button>
+                    <button class="btn-outline" onclick="showTeacherRegister()"><i class="fas fa-chalkboard-user"></i> انضم كأستاذ</button>
                 </div>
             </div>
             <div class="hero-image"><i class="fas fa-laptop-code" style="font-size:250px; color:#0f5cbf20;"></i></div>
         </section>
 
+        <!-- الأساتذة -->
+        <section id="teachersSection" class="section-container" style="display: none;">
+            <h2 class="section-title"><i class="fas fa-users"></i> أساتذتنا المعتمدون</h2>
+            <div id="teachersList" class="teachers-grid"></div>
+        </section>
+
+        <!-- العروض المتاحة -->
+        <section id="offersSection" class="section-container" style="display: none;">
+            <h2 class="section-title"><i class="fas fa-calendar-alt"></i> العروض المتاحة</h2>
+            <div id="offersListPublic" class="offers-grid"></div>
+        </section>
+
+        <!-- البث المباشر -->
+        <section id="liveSection" class="section-container" style="display: none;">
+            <h2 class="section-title"><i class="fas fa-video"></i> بث مباشر الآن 🔴</h2>
+            <div id="liveOffersList" class="offers-grid"></div>
+        </section>
+
+        <!-- تسجيل الدخول والتسجيل -->
         <section id="loginSection" class="form-section" style="display: none;">
             <div class="form-tabs">
                 <button class="tab-btn active" onclick="switchTab('login')">تسجيل الدخول</button>
                 <button class="tab-btn" onclick="switchTab('student-register')">تسجيل طالب</button>
                 <button class="tab-btn" onclick="switchTab('teacher-register')">تسجيل أستاذ</button>
             </div>
-            
+
+            <!-- تسجيل الدخول -->
             <div id="loginTab" class="form-container">
                 <h3>تسجيل الدخول</h3>
                 <input type="email" id="loginEmail" placeholder="البريد الإلكتروني">
                 <input type="password" id="loginPassword" placeholder="كلمة المرور">
                 <button class="btn-primary" onclick="login()">دخول</button>
             </div>
-            
+
+            <!-- تسجيل طالب -->
             <div id="studentRegisterTab" class="form-container" style="display: none;">
                 <h3>تسجيل طالب جديد</h3>
                 <input type="text" id="studentName" placeholder="الاسم الكامل">
@@ -73,7 +127,8 @@
                 <input type="tel" id="studentPhone" placeholder="رقم الهاتف">
                 <button class="btn-primary" onclick="registerStudent()">تسجيل</button>
             </div>
-            
+
+            <!-- تسجيل أستاذ -->
             <div id="teacherRegisterTab" class="form-container" style="display: none;">
                 <h3>تقديم طلب أستاذ</h3>
                 <input type="text" id="teacherName" placeholder="الاسم الكامل" required>
@@ -110,18 +165,192 @@
             setTimeout(() => { toast.style.display = 'none'; }, 5000);
         }
 
+        // تبويبات عامة
+        function showHome() {
+            document.getElementById('homeSection').style.display = 'flex';
+            document.getElementById('teachersSection').style.display = 'none';
+            document.getElementById('offersSection').style.display = 'none';
+            document.getElementById('liveSection').style.display = 'none';
+            document.getElementById('loginSection').style.display = 'none';
+            setActiveTab('homeTab');
+        }
+
+        async function showTeachers() {
+            document.getElementById('homeSection').style.display = 'none';
+            document.getElementById('teachersSection').style.display = 'block';
+            document.getElementById('offersSection').style.display = 'none';
+            document.getElementById('liveSection').style.display = 'none';
+            document.getElementById('loginSection').style.display = 'none';
+            setActiveTab('teachersTab');
+            await loadPublicTeachers();
+        }
+
+        async function showOffers() {
+            document.getElementById('homeSection').style.display = 'none';
+            document.getElementById('teachersSection').style.display = 'none';
+            document.getElementById('offersSection').style.display = 'block';
+            document.getElementById('liveSection').style.display = 'none';
+            document.getElementById('loginSection').style.display = 'none';
+            setActiveTab('offersTab');
+            await loadPublicOffers();
+        }
+
+        async function showLiveStreams() {
+            document.getElementById('homeSection').style.display = 'none';
+            document.getElementById('teachersSection').style.display = 'none';
+            document.getElementById('offersSection').style.display = 'none';
+            document.getElementById('liveSection').style.display = 'block';
+            document.getElementById('loginSection').style.display = 'none';
+            setActiveTab('liveTab');
+            await loadLiveStreams();
+            setInterval(loadLiveStreams, 5000);
+        }
+
         function showLogin() {
-            document.querySelector('.hero').style.display = 'none';
+            document.getElementById('homeSection').style.display = 'none';
+            document.getElementById('teachersSection').style.display = 'none';
+            document.getElementById('offersSection').style.display = 'none';
+            document.getElementById('liveSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'block';
+            setActiveTab('loginTabNav');
             switchTab('login');
         }
 
-        function showRegister() {
-            document.querySelector('.hero').style.display = 'none';
+        function showTeacherRegister() {
+            document.getElementById('homeSection').style.display = 'none';
+            document.getElementById('teachersSection').style.display = 'none';
+            document.getElementById('offersSection').style.display = 'none';
+            document.getElementById('liveSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'block';
-            switchTab('student-register');
+            setActiveTab('loginTabNav');
+            switchTab('teacher-register');
         }
 
+        function setActiveTab(tabId) {
+            const tabs = ['homeTab', 'teachersTab', 'offersTab', 'liveTab', 'loginTabNav'];
+            tabs.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.remove('active');
+            });
+            const activeEl = document.getElementById(tabId);
+            if (activeEl) activeEl.classList.add('active');
+        }
+
+        // جلب الأساتذة
+        async function loadPublicTeachers() {
+            try {
+                const res = await fetch('/api/public/teachers');
+                const teachers = await res.json();
+                const container = document.getElementById('teachersList');
+                if (teachers.length === 0) {
+                    container.innerHTML = '<p style="text-align:center">لا يوجد أساتذة معتمدون حالياً</p>';
+                    return;
+                }
+                let html = '';
+                teachers.forEach(t => {
+                    const imageUrl = t.profile_image ? `/uploads/${t.profile_image}` : 'https://via.placeholder.com/100';
+                    html += `<div class="teacher-card" onclick="viewTeacherProfile(${t.id})">
+                        <img src="${imageUrl}" class="teacher-image" onerror="this.src='https://via.placeholder.com/100'">
+                        <h3>${t.full_name}</h3>
+                        <p><i class="fas fa-book"></i> ${t.specialization || 'تخصص عام'}</p>
+                        <p><i class="fas fa-briefcase"></i> ${t.experience || '0'} سنة خبرة</p>
+                        <p><i class="fas fa-align-left"></i> ${t.bio ? t.bio.substring(0, 80) + '...' : 'لا توجد نبذة'}</p>
+                        <button class="view-profile-btn" onclick="event.stopPropagation(); viewTeacherProfile(${t.id})">
+                            <i class="fas fa-eye"></i> زيارة صفحة الأستاذ
+                        </button>
+                    </div>`;
+                });
+                container.innerHTML = html;
+            } catch(e) {
+                console.log(e);
+                document.getElementById('teachersList').innerHTML = '<p style="text-align:center">حدث خطأ في تحميل البيانات</p>';
+            }
+        }
+
+        // جلب العروض
+        async function loadPublicOffers() {
+            try {
+                const res = await fetch('/api/public/offers');
+                const offers = await res.json();
+                const container = document.getElementById('offersListPublic');
+                if (offers.length === 0) {
+                    container.innerHTML = '<p style="text-align:center">لا توجد عروض متاحة حالياً</p>';
+                    return;
+                }
+                let html = '';
+                offers.forEach(o => {
+                    const offerDate = new Date(o.offer_date);
+                    const imageUrl = o.teacher_profile_image ? `/uploads/${o.teacher_profile_image}` : 'https://via.placeholder.com/80';
+                    html += `<div class="offer-card">
+                        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px; cursor: pointer;" onclick="viewTeacherProfile(${o.teacher_id})">
+                            <img src="${imageUrl}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;">
+                            <div>
+                                <h3 style="margin-bottom: 5px; color:#0f5cbf;">${o.teacher_name}</h3>
+                                <p><i class="fas fa-book"></i> ${o.teacher_specialization || 'تخصص عام'}</p>
+                            </div>
+                        </div>
+                        <p><strong>${o.subject_name}</strong></p>
+                        <p><i class="fas fa-calendar"></i> ${offerDate.toLocaleString('ar')}</p>
+                        <p><i class="fas fa-clock"></i> ${o.duration} دقيقة</p>
+                        ${o.is_free ? '<span class="free-tag"><i class="fas fa-gift"></i> مجانية</span>' : '<span class="price-tag"><i class="fas fa-money-bill"></i> ' + o.price + ' دج</span>'}
+                        <button class="btn-primary" onclick="viewTeacherProfile(${o.teacher_id})" style="margin-top:15px; width:100%">
+                            <i class="fas fa-eye"></i> زيارة صفحة الأستاذ
+                        </button>
+                    </div>`;
+                });
+                container.innerHTML = html;
+            } catch(e) {
+                console.log(e);
+                document.getElementById('offersListPublic').innerHTML = '<p style="text-align:center">حدث خطأ في تحميل البيانات</p>';
+            }
+        }
+
+        // جلب البث المباشر
+        async function loadLiveStreams() {
+            try {
+                const res = await fetch('/api/live-offers');
+                const offers = await res.json();
+                const liveCount = document.getElementById('liveCount');
+                if (offers.length > 0) {
+                    liveCount.style.display = 'inline-block';
+                    liveCount.innerText = offers.length;
+                } else {
+                    liveCount.style.display = 'none';
+                }
+                const container = document.getElementById('liveOffersList');
+                if (!offers.length) {
+                    container.innerHTML = '<p style="text-align:center">لا يوجد بث مباشر حالياً</p>';
+                    return;
+                }
+                let html = '';
+                offers.forEach(o => {
+                    const imageUrl = o.teacher_profile_image ? `/uploads/${o.teacher_profile_image}` : 'https://via.placeholder.com/80';
+                    html += `<div class="offer-card">
+                        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px; cursor: pointer;" onclick="viewTeacherProfile(${o.teacher_id})">
+                            <img src="${imageUrl}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;">
+                            <div>
+                                <h3 style="margin-bottom: 5px; color:#0f5cbf;">${o.teacher_name}</h3>
+                                <p><i class="fas fa-book"></i> ${o.teacher_specialization || 'تخصص عام'}</p>
+                            </div>
+                        </div>
+                        <p><strong>${o.subject_name}</strong></p>
+                        <span class="live-badge" style="display:inline-block; margin-bottom:10px;">🔴 بث مباشر</span>
+                        <button class="btn-primary" onclick="viewTeacherProfile(${o.teacher_id})" style="width:100%">
+                            <i class="fas fa-eye"></i> زيارة صفحة الأستاذ
+                        </button>
+                    </div>`;
+                });
+                container.innerHTML = html;
+            } catch(e) {
+                console.log(e);
+            }
+        }
+
+        function viewTeacherProfile(teacherId) {
+            window.open(`/teacher-profile.html?id=${teacherId}`, '_blank');
+        }
+
+        // دوال تسجيل الدخول والتسجيل
         function switchTab(tab) {
             document.getElementById('loginTab').style.display = 'none';
             document.getElementById('studentRegisterTab').style.display = 'none';
@@ -209,6 +438,11 @@
                 showNotification('خطأ في الاتصال بالخادم', 'error');
             }
         }
+
+        // تشغيل الصفحة الرئيسية
+        showHome();
+        loadLiveStreams();
+        setInterval(loadLiveStreams, 10000);
     </script>
 </body>
 </html>
