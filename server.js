@@ -210,7 +210,7 @@ app.post('/api/student/register', async (req, res) => {
   }
 });
 
-// تحديث بيانات الطالب (بدون bio لأن العمود غير موجود)
+// تحديث بيانات الطالب (بدون أعمدة غير موجودة)
 app.post('/api/student/update-profile', upload.single('profile_image'), async (req, res) => {
   try {
     const { student_id, full_name, phone } = req.body;
@@ -223,15 +223,14 @@ app.post('/api/student/update-profile', upload.single('profile_image'), async (r
       console.log('📸 تم استلام صورة جديدة:', profile_image);
     }
     
-    const updateData = {
-      full_name,
-      phone,
-      updated_at: new Date().toISOString()
-    };
+    // فقط الأعمدة الموجودة في جدول students
+    const updateData = {};
     
-    if (profile_image) {
-      updateData.profile_image = profile_image;
-    }
+    if (full_name) updateData.full_name = full_name;
+    if (phone) updateData.phone = phone;
+    if (profile_image) updateData.profile_image = profile_image;
+    
+    console.log('📝 بيانات التحديث:', updateData);
     
     const { data, error } = await supabase
       .from('students')
