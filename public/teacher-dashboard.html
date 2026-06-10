@@ -23,11 +23,11 @@
         .edit-profile-btn { background: #0f5cbf; color: white; border: none; padding: 8px 20px; border-radius: 25px; cursor: pointer; margin-top: 10px; }
         .social-links { display: flex; justify-content: center; gap: 15px; margin-top: 15px; }
         .social-links a { color: #0f5cbf; font-size: 24px; transition: 0.3s; }
-        .post-image { max-width: 100%; border-radius: 15px; margin: 10px 0; }
+        .post-image { max-width: 100%; border-radius: 15px; margin: 10px 0; cursor: pointer; }
         .post-file, .post-link { background: #e2e8f0; padding: 8px 15px; border-radius: 20px; text-decoration: none; color: #0f5cbf; display: inline-block; margin: 5px; }
         .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 20px; z-index: 1000; width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; }
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999; }
-        .modal input, .modal textarea { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #cbd5e1; border-radius: 10px; }
+        .modal input, .modal textarea { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #cbd5e1; border-radius: 10px; font-family: 'Cairo', sans-serif; }
         .delete-btn { background: #ef4444; color: white; border: none; padding: 8px 15px; border-radius: 20px; cursor: pointer; margin-top: 10px; width: 100%; }
         .comment-item { background: #f8fafc; padding: 10px; border-radius: 10px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center; }
         .delete-comment { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1rem; }
@@ -40,6 +40,10 @@
         .free-checkbox input { width: auto; }
         .btn-group { display: flex; gap: 10px; margin-top: 15px; }
         .btn-group button { margin-top: 0; width: 50%; }
+        .image-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 2000; justify-content: center; align-items: center; cursor: pointer; }
+        .image-modal img { max-width: 90%; max-height: 90%; border-radius: 10px; }
+        .notification-toast { position: fixed; bottom: 20px; right: 20px; background: #10b981; color: white; padding: 12px 20px; border-radius: 8px; z-index: 3000; display: none; animation: slideIn 0.3s ease; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     </style>
 </head>
 <body>
@@ -83,6 +87,7 @@
         <input type="url" id="editInstagram" placeholder="رابط انستغرام">
         <input type="url" id="editLinkedin" placeholder="رابط لينكد إن">
         <input type="url" id="editWebsite" placeholder="رابط موقع شخصي">
+        <label style="font-weight:600; margin-top:10px;"><i class="fas fa-camera"></i> صورة شخصية</label>
         <input type="file" id="editProfileImage" accept="image/*">
         <button class="create-btn" onclick="updateProfile()" style="background:#0f5cbf">حفظ التغييرات</button>
         <button onclick="closeModal()" style="background:#e2e8f0; color:#333; padding:10px; border:none; border-radius:10px; margin-top:10px; width:100%">إلغاء</button>
@@ -115,14 +120,18 @@
         <button onclick="closeModal()" style="background:#e2e8f0; color:#333; padding:10px; border:none; border-radius:10px; margin-top:10px; width:100%">إلغاء</button>
     </div>
 
+    <div id="imageModal" class="image-modal" onclick="closeImageModal()">
+        <img id="fullImage" src="">
+    </div>
+
+    <div id="notificationToast" class="notification-toast"></div>
+
     <script>
-        // التحقق من تسجيل الدخول بشكل صحيح
         let userData = JSON.parse(localStorage.getItem('userData') || '{}');
         let teacherToken = localStorage.getItem('teacherToken');
         
         console.log('🔍 التحقق من الجلسة:', { teacherToken: !!teacherToken, userData, role: userData.role });
         
-        // إذا لم يكن هناك توكن أو الدور ليس أستاذ، ارجع للصفحة الرئيسية
         if (!teacherToken || userData.role !== 'teacher') {
             console.log('❌ غير مصرح بالدخول، جاري التوجيه للرئيسية');
             window.location.href = '/';
@@ -130,6 +139,23 @@
         
         let teacherData = userData;
         console.log('✅ تم التحقق، مرحباً أستاذ:', teacherData.name);
+
+        function showNotification(message, type = 'success') {
+            const toast = document.getElementById('notificationToast');
+            toast.style.background = type === 'success' ? '#10b981' : (type === 'warning' ? '#f59e0b' : '#ef4444');
+            toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'}"></i> ${message}`;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 4000);
+        }
+
+        function showFullImage(src) {
+            document.getElementById('fullImage').src = src;
+            document.getElementById('imageModal').style.display = 'flex';
+        }
+
+        function closeImageModal() {
+            document.getElementById('imageModal').style.display = 'none';
+        }
 
         function showTab(tab) {
             document.getElementById('profileTab').style.display = 'none';
@@ -154,9 +180,13 @@
         async function loadProfile() {
             const res = await fetch(`/api/teacher/${teacherData.id}`);
             const teacher = await res.json();
-            const imageUrl = teacher.profile_image ? `/uploads/${teacher.profile_image}` : 'https://via.placeholder.com/120';
+            let imageUrl = 'https://via.placeholder.com/120';
+            if (teacher.profile_image) {
+                imageUrl = `/uploads/${teacher.profile_image}`;
+                console.log('صورة الأستاذ:', imageUrl);
+            }
             document.getElementById('profileInfo').innerHTML = `
-                <img src="${imageUrl}" class="profile-image">
+                <img src="${imageUrl}" class="profile-image" onclick="showFullImage('${imageUrl}')">
                 <h2>${escapeHtml(teacher.full_name)}</h2>
                 <p><i class="fas fa-book"></i> ${escapeHtml(teacher.specialization || 'تخصص غير محدد')}</p>
                 <p><i class="fas fa-briefcase"></i> ${teacher.experience || '0'} سنة خبرة</p>
@@ -206,11 +236,11 @@
             const res = await fetch('/api/teacher/update-profile', { method: 'POST', body: formData });
             const data = await res.json();
             if (data.success) { 
-                alert('تم تحديث الملف الشخصي'); 
+                showNotification('تم تحديث الملف الشخصي بنجاح', 'success');
                 closeModal(); 
                 loadProfile(); 
             } else {
-                alert('خطأ: ' + data.error);
+                showNotification('خطأ: ' + data.error, 'error');
             }
         }
 
@@ -224,10 +254,14 @@
             }
             let html = '';
             for (const post of posts) {
+                let imageHtml = '';
+                if (post.image_url) {
+                    imageHtml = `<img src="${post.image_url}" class="post-image" onclick="event.stopPropagation(); showFullImage('${post.image_url}')">`;
+                }
                 html += `<div class="card" id="post-${post.id}">
                     <h3>${escapeHtml(post.title)}</h3>
                     <p>${escapeHtml(post.content)}</p>
-                    ${post.image_url ? `<img src="${post.image_url}" class="post-image">` : ''}
+                    ${imageHtml}
                     ${post.file_url ? `<a href="${post.file_url}" class="post-file" download><i class="fas fa-download"></i> تحميل الملف</a>` : ''}
                     ${post.link_url ? `<a href="${post.link_url}" target="_blank" class="post-link"><i class="fas fa-link"></i> رابط مفيد</a>` : ''}
                     <p><small><i class="fas fa-heart"></i> ${post.likes_count || 0} إعجاب | <i class="fas fa-comment"></i> ${post.comments_count || 0} تعليق</small></p>
@@ -274,6 +308,7 @@
                     body: JSON.stringify({ teacher_id: teacherData.id }) 
                 });
                 loadPosts();
+                showNotification('تم حذف المنشور بنجاح', 'success');
             }
         }
 
@@ -302,7 +337,7 @@
             const res = await fetch('/api/post/create', { method: 'POST', body: formData });
             const data = await res.json();
             if (data.success) { 
-                alert('تم نشر الدرس بنجاح'); 
+                showNotification('تم نشر الدرس بنجاح', 'success');
                 closeModal(); 
                 loadPosts(); 
             } else {
@@ -327,7 +362,6 @@
                 else if (offer.status === 'live') statusText = 'بث مباشر';
                 else statusText = 'منتهية';
                 
-                // جلب قائمة الانتظار
                 let waitingHtml = '';
                 let waitingCount = 0;
                 if (offer.status === 'upcoming' || offer.status === 'teacher_ready') {
@@ -351,7 +385,7 @@
                     <span class="status-badge">${statusText}</span>
                     ${waitingHtml}
                     <div class="btn-group">
-                        ${offer.status === 'upcoming' ? `<button class="start-stream-btn" onclick="enterStream(${offer.id})"><i class="fas fa-play"></i> دخول البث (أولاً)</button>` : ''}
+                        ${offer.status === 'upcoming' ? `<button class="start-stream-btn" onclick="enterStream(${offer.id})"><i class="fas fa-play"></i> دخول البث</button>` : ''}
                         ${offer.status === 'teacher_ready' ? `<button class="start-stream-btn" onclick="joinTeacherStream(${offer.id})" style="background:#0f5cbf"><i class="fas fa-video"></i> متابعة البث</button>` : ''}
                         ${offer.status === 'live' ? `<button class="start-stream-btn" onclick="joinTeacherStream(${offer.id})" style="background:#0f5cbf"><i class="fas fa-video"></i> دخول البث</button>` : ''}
                         ${offer.status === 'upcoming' ? `<button class="delete-btn" onclick="deleteOffer(${offer.id})"><i class="fas fa-trash"></i> حذف العرض</button>` : ''}
@@ -381,7 +415,7 @@
                 });
                 const data = await res.json();
                 if (data.success) { 
-                    alert('تم حذف العرض بنجاح'); 
+                    showNotification('تم حذف العرض بنجاح', 'success');
                     loadOffers(); 
                 } else {
                     alert('خطأ: ' + data.error);
@@ -426,7 +460,7 @@
             });
             const result = await res.json();
             if (result.success) { 
-                alert('تم إنشاء العرض بنجاح'); 
+                showNotification('تم إنشاء العرض بنجاح', 'success');
                 closeModal(); 
                 loadOffers(); 
             } else {
@@ -451,7 +485,6 @@
             window.location.href = '/'; 
         }
 
-        // تحميل الصفحة
         showTab('profile');
         setInterval(() => { if (document.getElementById('offersTab').style.display !== 'none') loadOffers(); }, 5000);
     </script>
