@@ -18,7 +18,7 @@ const supabaseKey = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6Ikp
 console.log('🔌 الاتصال بـ Supabase:', supabaseUrl);
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// إعداد رفع الملفات
+// ============= إعداد رفع الملفات - مسارات صحيحة =============
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     let dir = './uploads';
@@ -33,7 +33,8 @@ const storage = multer.diskStorage({
     cb(null, dir);
   },
   filename: (req, file, cb) => {
-    const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname);
+    const ext = path.extname(file.originalname);
+    const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + ext;
     cb(null, uniqueName);
   }
 });
@@ -223,7 +224,7 @@ app.post('/api/student/update-profile', upload.single('profile_image'), async (r
     
     if (req.file) {
       profile_image = req.file.filename;
-      console.log('📸 تم استلام صورة جديدة:', profile_image);
+      console.log('📸 تم استلام صورة جديدة للطالب:', profile_image);
     }
     
     const updateData = {};
@@ -231,20 +232,13 @@ app.post('/api/student/update-profile', upload.single('profile_image'), async (r
     if (phone) updateData.phone = phone;
     if (profile_image) updateData.profile_image = profile_image;
     
-    console.log('📝 بيانات التحديث:', updateData);
-    
     const { data, error } = await supabase
       .from('students')
       .update(updateData)
       .eq('id', parseInt(student_id))
       .select();
     
-    if (error) {
-      console.error('❌ خطأ في التحديث:', error);
-      throw error;
-    }
-    
-    console.log('✅ تم تحديث الملف الشخصي بنجاح');
+    if (error) throw error;
     
     res.json({ 
       success: true, 
@@ -253,7 +247,7 @@ app.post('/api/student/update-profile', upload.single('profile_image'), async (r
     });
   } catch (error) {
     console.error('❌ خطأ:', error.message);
-    res.json({ success: false, error: 'خطأ في تحديث الملف الشخصي: ' + error.message });
+    res.json({ success: false, error: error.message });
   }
 });
 
@@ -265,7 +259,6 @@ app.post('/api/student/update-cover', upload.single('cover_image'), async (req, 
     
     if (req.file) {
       cover_image = req.file.filename;
-      console.log('📸 تم استلام صورة غلاف جديدة:', cover_image);
     }
     
     if (!cover_image) {
@@ -305,31 +298,50 @@ app.get('/api/student/:student_id', async (req, res) => {
   }
 });
 
-// تحديث بيانات الأستاذ
+// تحديث بيانات الأستاذ (مع مسار صحيح للصورة)
 app.post('/api/teacher/update-profile', upload.single('profile_image'), async (req, res) => {
   try {
     const { teacher_id, full_name, bio, specialization, experience, phone, facebook_url, instagram_url, linkedin_url, website_url } = req.body;
     let profile_image = null;
     
+    console.log('📝 تحديث ملف الأستاذ:', { teacher_id, full_name, specialization });
+    
     if (req.file) {
       profile_image = req.file.filename;
+      console.log('📸 تم استلام صورة جديدة للأستاذ:', profile_image);
     }
     
     const updateData = {
       full_name,
-      bio,
+      bio: bio || '',
       specialization,
-      experience,
+      experience: experience || '0',
       phone,
-      facebook_url,
-      instagram_url,
-      linkedin_url,
-      website_url
+      facebook_url: facebook_url || '',
+      instagram_url: instagram_url || '',
+      linkedin_url: linkedin_url || '',
+      website_url: website_url || ''
     };
-    if (profile_image) updateData.profile_image = profile_image;
-
-    await update('teachers', teacher_id, updateData);
-    res.json({ success: true, message: 'تم تحديث الملف الشخصي بنجاح' });
+    
+    if (profile_image) {
+      updateData.profile_image = profile_image;
+    }
+    
+    const { data, error } = await supabase
+      .from('teachers')
+      .update(updateData)
+      .eq('id', parseInt(teacher_id))
+      .select();
+    
+    if (error) throw error;
+    
+    console.log('✅ تم تحديث ملف الأستاذ بنجاح');
+    
+    res.json({ 
+      success: true, 
+      message: 'تم تحديث الملف الشخصي بنجاح',
+      user: data[0]
+    });
   } catch (error) {
     console.error('❌ خطأ:', error.message);
     res.json({ success: false, error: error.message });
@@ -379,7 +391,7 @@ app.post('/api/login', async (req, res) => {
     }
     
     const token = `${userRole}_token_${user.id}_${Date.now()}`;
-    console.log(`✅ تم تسجيل الدخول بنجاح: ${user.id} كـ ${userRole}`);
+    
     res.json({ 
       success: true, 
       token: token,
@@ -391,12 +403,28 @@ app.post('/api/login', async (req, res) => {
         status: user.status,
         profile_image: user.profile_image,
         phone: user.phone,
+        bio: user.bio,
+        specialization: user.specialization,
+        experience: user.experience,
         cover_image: user.cover_image
       } 
     });
   } catch (error) {
     console.error('❌ خطأ في تسجيل الدخول:', error.message);
     res.json({ success: false, error: 'خطأ في الاتصال بقاعدة البيانات' });
+  }
+});
+
+// جلب بيانات أستاذ واحد
+app.get('/api/teacher/:teacher_id', async (req, res) => {
+  try {
+    const teacher = await getOne('teachers', 'id', req.params.teacher_id);
+    if (!teacher) {
+      return res.json({ error: 'الأستاذ غير موجود' });
+    }
+    res.json(teacher);
+  } catch (error) {
+    res.json({ error: error.message });
   }
 });
 
@@ -438,12 +466,6 @@ app.get('/api/public/teachers', async (req, res) => {
     .eq('status', 'approved')
     .order('created_at', { ascending: false });
   res.json(data || []);
-});
-
-app.get('/api/teacher/:teacher_id', async (req, res) => {
-  const teacher = await getOne('teachers', 'id', req.params.teacher_id);
-  if (!teacher || teacher.status !== 'approved') return res.json({ error: 'الأستاذ غير موجود' });
-  res.json(teacher);
 });
 
 app.get('/api/public/offers', async (req, res) => {
@@ -1169,5 +1191,5 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`📦 قاعدة البيانات: Supabase (${supabaseUrl})`);
   console.log(`✅ العروض المجانية: حجز مباشر فوري بدون بوابة دفع`);
   console.log(`💰 العروض المدفوعة: عبر Chargily (الحد الأدنى 50 دج)`);
-  console.log(`📸 تم إعداد رفع الصور للملفات الشخصية في مجلد uploads/profiles/`);
+  console.log(`📸 مجلد الصور: uploads/profiles/`);
 });
