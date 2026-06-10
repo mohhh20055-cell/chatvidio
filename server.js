@@ -708,7 +708,7 @@ app.post('/api/booking/create', async (req, res) => {
       console.log(`🎉🎉🎉 [حجز] عرض مجاني 100% - حجز مباشر فوري بدون أي بوابة دفع للطالب ${student_id}`);
       console.log(`🎉🎉🎉 سيتم حجز مكان الطالب فوراً وإضافته إلى غرفة الانتظار`);
       
-      // 1. إنشاء جلسة جديدة بحالة مدفوعة (لأنها مجانية) - بدون payment_method
+      // 1. إنشاء جلسة جديدة بحالة مدفوعة (لأنها مجانية)
       const sessionData = {
         offer_id: parseInt(offer_id),
         student_id: parseInt(student_id),
@@ -720,11 +720,10 @@ app.post('/api/booking/create', async (req, res) => {
       const session = await insert('sessions', sessionData);
       console.log(`✅ [حجز] تم إنشاء الجلسة المجانية: ${session.id}`);
       
-      // 2. إضافة الطالب مباشرة إلى غرفة الانتظار
+      // 2. إضافة الطالب مباشرة إلى غرفة الانتظار (بدون عمود joined_at)
       const waitingData = { 
         offer_id: parseInt(offer_id), 
-        student_id: parseInt(student_id),
-        joined_at: new Date().toISOString()
+        student_id: parseInt(student_id)
       };
       
       const waitingEntry = await insert('waiting_room', waitingData);
@@ -842,8 +841,7 @@ app.get('/api/payment/success/:session_id', async (req, res) => {
     if (!existingWaiting) {
       await insert('waiting_room', { 
         offer_id: session.offer_id, 
-        student_id: session.student_id,
-        joined_at: new Date().toISOString()
+        student_id: session.student_id
       });
       console.log(`✅ [دفع] تم إضافة الطالب ${session.student_id} إلى غرفة الانتظار بعد الدفع`);
     }
