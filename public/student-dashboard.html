@@ -8,123 +8,633 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Cairo', sans-serif; background: #f0f2f5; }
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
+            min-height: 100vh;
+        }
         
-        .navbar { background: white; padding: 12px 24px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; }
-        .nav-container { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
-        .logo { font-size: 1.5rem; font-weight: 800; color: #0f5cbf; cursor: pointer; }
-        .nav-icons { display: flex; gap: 20px; align-items: center; }
-        .nav-icon { font-size: 1.3rem; color: #4a5568; cursor: pointer; transition: 0.3s; }
-        .nav-icon:hover, .nav-icon.active { color: #0f5cbf; }
-        .user-info { display: flex; align-items: center; gap: 10px; cursor: pointer; }
-        .user-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
-        .user-name { font-weight: 600; }
+        /* ============= النافبار المحسن ============= */
+        .navbar { 
+            background: white; 
+            padding: 12px 24px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08); 
+            position: sticky; 
+            top: 0; 
+            z-index: 100; 
+            backdrop-filter: blur(10px);
+            background: rgba(255,255,255,0.95);
+        }
+        .nav-container { 
+            max-width: 1400px; 
+            margin: 0 auto; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            flex-wrap: wrap; 
+        }
+        .logo { 
+            font-size: 1.6rem; 
+            font-weight: 800; 
+            background: linear-gradient(135deg, #0f5cbf, #1e3c72);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            cursor: pointer; 
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .logo i { 
+            background: linear-gradient(135deg, #0f5cbf, #1e3c72);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 1.8rem;
+        }
+        .nav-icons { display: flex; gap: 25px; align-items: center; }
+        .nav-icon { 
+            font-size: 1.3rem; 
+            color: #64748b; 
+            cursor: pointer; 
+            transition: all 0.3s ease;
+            padding: 8px;
+            border-radius: 12px;
+        }
+        .nav-icon:hover, .nav-icon.active { 
+            color: #0f5cbf; 
+            background: #e0e7ff;
+            transform: translateY(-2px);
+        }
+        .user-info { 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            cursor: pointer;
+            padding: 5px 12px;
+            border-radius: 30px;
+            background: #f1f5f9;
+            transition: all 0.3s ease;
+        }
+        .user-info:hover {
+            background: #e2e8f0;
+        }
+        .user-avatar { 
+            width: 40px; 
+            height: 40px; 
+            border-radius: 50%; 
+            object-fit: cover;
+            border: 2px solid #0f5cbf;
+        }
+        .user-name { font-weight: 600; color: #1e293b; }
         
-        .main-container { max-width: 1200px; margin: 20px auto; padding: 0 20px; display: grid; grid-template-columns: 250px 1fr 280px; gap: 20px; }
+        /* ============= الحاوية الرئيسية ============= */
+        .main-container { 
+            max-width: 1400px; 
+            margin: 30px auto; 
+            padding: 0 25px; 
+            display: grid; 
+            grid-template-columns: 280px 1fr 320px; 
+            gap: 25px; 
+        }
         
-        .sidebar { position: sticky; top: 80px; height: fit-content; }
-        .sidebar-card { background: white; border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-        .sidebar-title { font-size: 1.1rem; margin-bottom: 15px; color: #1e3c72; border-right: 3px solid #0f5cbf; padding-right: 10px; }
-        .teacher-suggestion { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; cursor: pointer; transition: 0.2s; }
-        .teacher-suggestion:hover { background: #f0f2f5; padding: 5px; border-radius: 10px; }
-        .suggestion-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+        /* ============= السايد بار ============= */
+        .sidebar { position: sticky; top: 90px; height: fit-content; }
+        .sidebar-card { 
+            background: white; 
+            border-radius: 20px; 
+            padding: 20px; 
+            margin-bottom: 25px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            transition: transform 0.3s ease;
+        }
+        .sidebar-card:hover {
+            transform: translateY(-3px);
+        }
+        .sidebar-title { 
+            font-size: 1.1rem; 
+            margin-bottom: 18px; 
+            color: #1e293b; 
+            border-right: 3px solid #0f5cbf; 
+            padding-right: 12px;
+            font-weight: 700;
+        }
+        
+        /* ============= بطاقات الأساتذة المقترحين ============= */
+        .teacher-suggestion { 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            margin-bottom: 15px; 
+            cursor: pointer; 
+            transition: all 0.2s;
+            padding: 8px;
+            border-radius: 12px;
+        }
+        .teacher-suggestion:hover { 
+            background: #f8fafc;
+            transform: translateX(-5px);
+        }
+        .suggestion-avatar { 
+            width: 48px; 
+            height: 48px; 
+            border-radius: 50%; 
+            object-fit: cover;
+            border: 2px solid #e2e8f0;
+        }
         .suggestion-info { flex: 1; }
-        .suggestion-name { font-weight: 600; font-size: 0.9rem; }
-        .suggestion-specialty { font-size: 0.7rem; color: #718096; }
-        .follow-btn { background: #0f5cbf; color: white; border: none; padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; cursor: pointer; }
-        .follow-btn.following { background: #e2e8f0; color: #4a5568; }
+        .suggestion-name { font-weight: 700; font-size: 0.95rem; color: #1e293b; }
+        .suggestion-specialty { font-size: 0.7rem; color: #64748b; margin-top: 2px; }
+        .follow-btn { 
+            background: #0f5cbf; 
+            color: white; 
+            border: none; 
+            padding: 6px 14px; 
+            border-radius: 25px; 
+            font-size: 0.7rem; 
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+        .follow-btn:hover {
+            background: #1e3c72;
+            transform: scale(1.05);
+        }
+        .follow-btn.following { background: #e2e8f0; color: #475569; }
         
+        /* ============= بطاقات المنشورات المحسنة ============= */
         .feed { }
-        .create-post-card { background: white; border-radius: 15px; padding: 15px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 15px; cursor: pointer; transition: 0.2s; }
-        .create-post-card:hover { background: #f8fafc; }
-        .create-post-avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; }
-        .create-post-input { flex: 1; background: #f0f2f5; padding: 12px 20px; border-radius: 30px; color: #718096; }
+        .create-post-card { 
+            background: white; 
+            border-radius: 20px; 
+            padding: 20px; 
+            margin-bottom: 25px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            display: flex; 
+            align-items: center; 
+            gap: 15px; 
+            cursor: pointer; 
+            transition: all 0.3s;
+        }
+        .create-post-card:hover { 
+            background: #f8fafc;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        .create-post-avatar { 
+            width: 50px; 
+            height: 50px; 
+            border-radius: 50%; 
+            object-fit: cover;
+            border: 2px solid #0f5cbf;
+        }
+        .create-post-input { 
+            flex: 1; 
+            background: #f1f5f9; 
+            padding: 14px 20px; 
+            border-radius: 35px; 
+            color: #64748b;
+            font-weight: 500;
+        }
         
-        .post-card { background: white; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); overflow: hidden; }
-        .post-header { display: flex; align-items: center; gap: 12px; padding: 15px; border-bottom: 1px solid #e2e8f0; }
-        .post-avatar { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; cursor: pointer; }
+        /* ============= بطاقة المنشور الرئيسية ============= */
+        .post-card { 
+            background: white; 
+            border-radius: 20px; 
+            margin-bottom: 25px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+            overflow: hidden; 
+            transition: all 0.3s ease;
+        }
+        .post-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+        }
+        .post-header { 
+            display: flex; 
+            align-items: center; 
+            gap: 14px; 
+            padding: 18px 20px; 
+            border-bottom: 1px solid #eef2f6;
+        }
+        .post-avatar { 
+            width: 55px; 
+            height: 55px; 
+            border-radius: 50%; 
+            object-fit: cover; 
+            cursor: pointer;
+            border: 2px solid #0f5cbf;
+            transition: transform 0.3s;
+        }
+        .post-avatar:hover {
+            transform: scale(1.05);
+        }
         .post-author { flex: 1; }
-        .post-author-name { font-weight: 700; cursor: pointer; color: #1e3c72; }
-        .post-author-name:hover { text-decoration: underline; }
-        .post-date { font-size: 0.75rem; color: #718096; }
-        .post-content { padding: 15px; }
-        .post-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 10px; color: #1e3c72; }
-        .post-text { color: #4a5568; line-height: 1.6; margin-bottom: 10px; }
-        .post-image { max-width: 100%; border-radius: 10px; margin: 10px 0; }
-        .post-file, .post-link { display: inline-block; background: #e2e8f0; padding: 8px 15px; border-radius: 25px; text-decoration: none; color: #0f5cbf; margin: 5px 5px 0 0; font-size: 0.85rem; }
-        .post-stats { display: flex; gap: 20px; padding: 10px 15px; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; color: #718096; font-size: 0.85rem; }
-        .post-actions { display: flex; padding: 8px 15px; gap: 20px; }
-        .action-btn { flex: 1; background: none; border: none; padding: 8px; border-radius: 8px; cursor: pointer; font-size: 1rem; color: #4a5568; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .action-btn:hover { background: #f0f2f5; }
-        .action-btn.liked { color: #ef4444; }
-        .comments-section { padding: 15px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: none; }
-        .comment-item { padding: 10px 0; border-bottom: 1px solid #e2e8f0; }
-        .comment-author { font-weight: 600; font-size: 0.85rem; color: #1e3c72; }
-        .comment-text { font-size: 0.9rem; margin-top: 4px; }
+        .post-author-name { 
+            font-weight: 800; 
+            cursor: pointer; 
+            color: #1e293b;
+            font-size: 1.05rem;
+            transition: color 0.2s;
+        }
+        .post-author-name:hover { 
+            color: #0f5cbf;
+            text-decoration: underline;
+        }
+        .post-date { 
+            font-size: 0.75rem; 
+            color: #94a3b8;
+            margin-top: 4px;
+        }
+        .post-content { 
+            padding: 20px; 
+            background: #fefefe;
+        }
+        .post-title { 
+            font-size: 1.3rem; 
+            font-weight: 800; 
+            margin-bottom: 12px; 
+            color: #0f172a;
+            line-height: 1.4;
+        }
+        .post-text { 
+            color: #334155; 
+            line-height: 1.7; 
+            margin-bottom: 15px;
+            font-size: 1rem;
+        }
         
-        .right-sidebar { position: sticky; top: 80px; height: fit-content; }
-        .upcoming-sessions { background: white; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
-        .session-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; gap: 10px; }
-        .session-info { flex: 1; }
-        .session-subject { font-weight: 600; font-size: 0.9rem; }
-        .session-date { font-size: 0.7rem; color: #718096; }
-        .waiting-badge { background: #f59e0b; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; display: inline-block; margin-top: 5px; }
-        .join-session-btn { background: #10b981; color: white; border: none; padding: 5px 12px; border-radius: 20px; font-size: 0.7rem; cursor: pointer; }
-        .retry-pay-btn { background: #ef4444; color: white; border: none; padding: 5px 12px; border-radius: 20px; font-size: 0.7rem; cursor: pointer; }
+        /* ============= تحسين صور المنشورات ============= */
+        .post-image { 
+            max-width: 100%; 
+            border-radius: 16px; 
+            margin: 15px 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+        .post-image:hover {
+            transform: scale(1.02);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
         
-        /* العروض المجانية المحسنة */
+        /* ============= روابط وملفات المنشورات ============= */
+        .post-file, .post-link { 
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #e0e7ff, #f1f5f9);
+            padding: 8px 16px; 
+            border-radius: 30px; 
+            text-decoration: none; 
+            color: #0f5cbf; 
+            margin: 5px 8px 5px 0; 
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .post-file:hover, .post-link:hover {
+            background: #0f5cbf;
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        /* ============= إحصائيات المنشور ============= */
+        .post-stats { 
+            display: flex; 
+            gap: 25px; 
+            padding: 12px 20px; 
+            border-top: 1px solid #eef2f6; 
+            border-bottom: 1px solid #eef2f6; 
+            color: #64748b; 
+            font-size: 0.85rem;
+            background: #fafcff;
+        }
+        .post-stats span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        /* ============= أزرار التفاعل ============= */
+        .post-actions { 
+            display: flex; 
+            padding: 10px 20px; 
+            gap: 15px; 
+            background: white;
+        }
+        .action-btn { 
+            flex: 1; 
+            background: none; 
+            border: none; 
+            padding: 10px; 
+            border-radius: 12px; 
+            cursor: pointer; 
+            font-size: 1rem; 
+            color: #475569; 
+            transition: all 0.3s;
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 10px;
+            font-weight: 600;
+        }
+        .action-btn:hover { 
+            background: #f1f5f9;
+            transform: translateY(-2px);
+        }
+        .action-btn.liked { 
+            color: #ef4444;
+            background: #fef2f2;
+        }
+        .action-btn.liked i {
+            animation: heartBeat 0.3s ease;
+        }
+        @keyframes heartBeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+        }
+        
+        /* ============= التعليقات ============= */
+        .comments-section { 
+            padding: 20px; 
+            background: #f8fafc; 
+            border-top: 1px solid #e2e8f0; 
+            display: none;
+        }
+        .comment-item { 
+            padding: 12px 0; 
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .comment-item:last-child {
+            border-bottom: none;
+        }
+        .comment-author { 
+            font-weight: 700; 
+            font-size: 0.85rem; 
+            color: #0f5cbf;
+            margin-bottom: 4px;
+        }
+        .comment-text { 
+            font-size: 0.9rem; 
+            margin-top: 5px;
+            color: #334155;
+            line-height: 1.5;
+        }
+        
+        /* ============= السايد بار الأيمن ============= */
+        .right-sidebar { position: sticky; top: 90px; height: fit-content; }
+        .upcoming-sessions { 
+            background: white; 
+            border-radius: 20px; 
+            padding: 20px; 
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        
+        /* ============= العروض المجانية المحسنة ============= */
         .free-offer-item { 
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
+            padding: 14px 0; 
+            border-bottom: 1px solid #eef2f6; 
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .free-offer-item:last-child {
+            border-bottom: none;
+        }
+        .free-offer-info { flex: 1; }
+        .free-offer-title { 
+            font-weight: 700; 
+            font-size: 0.95rem; 
+            color: #1e293b;
+        }
+        .free-offer-teacher { 
+            font-size: 0.7rem; 
+            color: #64748b;
+            margin-top: 2px;
+        }
+        .free-offer-date { 
+            font-size: 0.65rem; 
+            color: #10b981; 
+            margin-top: 3px;
+        }
+        .free-book-btn { 
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white; 
+            border: none; 
+            padding: 8px 16px; 
+            border-radius: 30px; 
+            font-size: 0.75rem; 
+            cursor: pointer; 
+            transition: all 0.3s;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .free-book-btn:hover { 
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(16,185,129,0.3);
+        }
+        .free-book-btn:disabled { 
+            background: #9ca3af; 
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        /* ============= جلسات الطالب ============= */
+        .session-item { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
             padding: 12px 0; 
-            border-bottom: 1px solid #e2e8f0; 
+            border-bottom: 1px solid #eef2f6; 
             gap: 10px;
             flex-wrap: wrap;
         }
-        .free-offer-info { flex: 1; }
-        .free-offer-title { font-weight: 600; font-size: 0.9rem; }
-        .free-offer-teacher { font-size: 0.7rem; color: #718096; }
-        .free-offer-date { font-size: 0.65rem; color: #10b981; margin-top: 3px; }
-        .free-book-btn { 
-            background: #10b981; 
+        .session-info { flex: 1; }
+        .session-subject { 
+            font-weight: 700; 
+            font-size: 0.9rem; 
+            color: #1e293b;
+        }
+        .session-date { 
+            font-size: 0.7rem; 
+            color: #64748b;
+            margin-top: 2px;
+        }
+        .waiting-info { 
+            font-size: 0.7rem; 
+            color: #f59e0b; 
+            margin-top: 3px;
+        }
+        .join-session-btn { 
+            background: linear-gradient(135deg, #10b981, #059669);
             color: white; 
             border: none; 
-            padding: 5px 12px; 
-            border-radius: 20px; 
+            padding: 6px 14px; 
+            border-radius: 25px; 
             font-size: 0.7rem; 
-            cursor: pointer; 
-            transition: 0.3s;
-            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
         }
-        .free-book-btn:hover { background: #059669; transform: scale(1.02); }
-        .free-book-btn:disabled { background: #9ca3af; cursor: not-allowed; }
-        
-        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; border-radius: 20px; z-index: 1000; width: 90%; max-width: 500px; }
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999; }
-        
-        @media (max-width: 1000px) {
-            .main-container { grid-template-columns: 1fr; }
-            .sidebar, .right-sidebar { display: none; }
+        .join-session-btn:hover {
+            transform: scale(1.05);
+        }
+        .retry-pay-btn { 
+            background: #ef4444; 
+            color: white; 
+            border: none; 
+            padding: 6px 14px; 
+            border-radius: 25px; 
+            font-size: 0.7rem; 
+            cursor: pointer;
         }
         
-        .empty-feed { text-align: center; padding: 50px; background: white; border-radius: 15px; color: #718096; }
-        .empty-feed i { font-size: 50px; margin-bottom: 15px; color: #cbd5e1; }
-        .loading { text-align: center; padding: 50px; }
+        /* ============= مودال التعليقات ============= */
+        .modal { 
+            display: none; 
+            position: fixed; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); 
+            background: white; 
+            padding: 30px; 
+            border-radius: 25px; 
+            z-index: 1000; 
+            width: 90%; 
+            max-width: 500px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+        }
+        .modal h3 {
+            margin-bottom: 20px;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .modal textarea {
+            width: 100%;
+            padding: 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 15px;
+            font-family: 'Cairo', sans-serif;
+            font-size: 0.95rem;
+            resize: vertical;
+            margin-bottom: 15px;
+        }
+        .modal textarea:focus {
+            outline: none;
+            border-color: #0f5cbf;
+        }
+        .modal-overlay { 
+            display: none; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            right: 0; 
+            bottom: 0; 
+            background: rgba(0,0,0,0.5); 
+            z-index: 999;
+            backdrop-filter: blur(4px);
+        }
         
-        .offer-card-small { background: white; border-radius: 15px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); cursor: pointer; transition: 0.2s; }
-        .offer-card-small:hover { background: #f8fafc; }
-        .free-badge { background: #10b981; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; margin-left: 10px; }
-        .waiting-info { font-size: 0.7rem; color: #f59e0b; margin-top: 5px; }
+        /* ============= حالة عدم وجود بيانات ============= */
+        .empty-feed { 
+            text-align: center; 
+            padding: 60px; 
+            background: white; 
+            border-radius: 25px; 
+            color: #64748b;
+        }
+        .empty-feed i { 
+            font-size: 60px; 
+            margin-bottom: 20px; 
+            color: #cbd5e1;
+        }
+        .loading { 
+            text-align: center; 
+            padding: 50px; 
+            color: #0f5cbf;
+        }
         
-        .notification-toast { position: fixed; bottom: 30px; right: 30px; background: #10b981; color: white; padding: 15px 25px; border-radius: 15px; z-index: 2000; animation: slideIn 0.5s ease; display: none; }
-        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        /* ============= إشعارات منبثقة ============= */
+        .notification-toast { 
+            position: fixed; 
+            bottom: 30px; 
+            right: 30px; 
+            background: #10b981; 
+            color: white; 
+            padding: 15px 25px; 
+            border-radius: 15px; 
+            z-index: 2000; 
+            animation: slideIn 0.5s ease; 
+            display: none;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
+            font-weight: 600;
+        }
+        @keyframes slideIn { 
+            from { transform: translateX(100%); opacity: 0; } 
+            to { transform: translateX(0); opacity: 1; } 
+        }
+        
+        /* ============= تصميم متجاوب ============= */
+        @media (max-width: 1100px) {
+            .main-container { 
+                grid-template-columns: 1fr; 
+            }
+            .sidebar, .right-sidebar { 
+                display: none; 
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .main-container {
+                padding: 0 15px;
+            }
+            .post-title {
+                font-size: 1.1rem;
+            }
+            .action-btn {
+                font-size: 0.85rem;
+            }
+        }
+        
+        /* ============= حالة الدفع ============= */
+        .status-live { color: #ef4444; font-weight: 700; }
+        .status-completed { color: #10b981; }
+        .status-waiting { color: #f59e0b; }
+        .status-pending { color: #ef4444; }
+        .status-booked { color: #0f5cbf; }
+        
+        /* ============= عرض الصورة بتكبير ============= */
+        .image-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 3000;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+        .image-modal img {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 10px;
+        }
     </style>
 </head>
 <body>
     <nav class="navbar">
         <div class="nav-container">
-            <div class="logo" onclick="location.reload()"><i class="fas fa-chalkboard-user"></i> منصة التعليم</div>
+            <div class="logo" onclick="location.reload()">
+                <i class="fas fa-chalkboard-user"></i> 
+                منصة التعليم
+            </div>
             <div class="nav-icons">
                 <i class="fas fa-home nav-icon active" onclick="loadFeed()"></i>
                 <i class="fas fa-users nav-icon" onclick="window.location.href='/teachers-list.html'"></i>
@@ -154,7 +664,9 @@
         <div class="feed">
             <div class="create-post-card" onclick="window.location.href='/teachers-list.html'">
                 <img id="myAvatar" class="create-post-avatar" src="https://via.placeholder.com/45">
-                <div class="create-post-input">ابحث عن أساتذة لمتابعتهم...</div>
+                <div class="create-post-input">
+                    <i class="fas fa-search"></i> ابحث عن أساتذة لمتابعتهم...
+                </div>
             </div>
             <div id="feedContainer">
                 <div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>
@@ -179,10 +691,14 @@
 
     <div id="modalOverlay" class="modal-overlay"></div>
     <div id="commentModal" class="modal">
-        <h3><i class="fas fa-comment"></i> إضافة تعليق</h3>
+        <h3><i class="fas fa-comment-dots"></i> إضافة تعليق</h3>
         <textarea id="commentText" rows="3" placeholder="اكتب تعليقك..."></textarea>
-        <button class="follow-btn" onclick="submitComment()" style="width:100%; padding:10px;">نشر التعليق</button>
-        <button onclick="closeModal()" style="margin-top:10px; width:100%; background:#e2e8f0; border:none; padding:10px; border-radius:10px;">إلغاء</button>
+        <button class="follow-btn" onclick="submitComment()" style="width:100%; padding:12px;">📝 نشر التعليق</button>
+        <button onclick="closeModal()" style="margin-top:12px; width:100%; background:#e2e8f0; border:none; padding:12px; border-radius:12px; cursor:pointer; font-weight:600;">إلغاء</button>
+    </div>
+
+    <div id="imageModal" class="image-modal" onclick="closeImageModal()">
+        <img id="fullImage" src="">
     </div>
 
     <div id="notificationToast" class="notification-toast"></div>
@@ -211,6 +727,17 @@
             setTimeout(() => { toast.style.display = 'none'; }, 5000);
         }
 
+        function showFullImage(imageSrc) {
+            const modal = document.getElementById('imageModal');
+            const img = document.getElementById('fullImage');
+            img.src = imageSrc;
+            modal.style.display = 'flex';
+        }
+
+        function closeImageModal() {
+            document.getElementById('imageModal').style.display = 'none';
+        }
+
         document.getElementById('userName').innerText = studentData.name || studentData.full_name;
         document.getElementById('userAvatar').src = studentData.profile_image ? `/uploads/${studentData.profile_image}` : 'https://via.placeholder.com/40';
         document.getElementById('myAvatar').src = studentData.profile_image ? `/uploads/${studentData.profile_image}` : 'https://via.placeholder.com/45';
@@ -235,7 +762,10 @@
                 loadUserStats();
                 loadFreeOffers();
                 loadPastSessions();
-            } catch(e) { console.log(e); }
+            } catch(e) { 
+                console.log(e);
+                showNotification('حدث خطأ في تحميل المنشورات', 'error');
+            }
         }
 
         async function loadMyBookings() {
@@ -270,13 +800,13 @@
                 return;
             }
             
-            let html = '<div style="display:flex; flex-direction:column; gap:15px;">';
+            let html = '<div style="display:flex; flex-direction:column; gap:20px;">';
             for (const booking of bookings) {
                 const offerDate = new Date(booking.offer_date);
                 const isPaid = booking.is_free === 1 || booking.payment_status === 'paid';
                 const isLive = booking.offer_status === 'live';
                 const isUpcoming = offerDate > new Date();
-                const imageUrl = booking.teacher_image ? `/uploads/${booking.teacher_image}` : 'https://via.placeholder.com/50';
+                const imageUrl = booking.teacher_image ? `/uploads/${booking.teacher_image}` : 'https://via.placeholder.com/55';
                 
                 let statusText = '';
                 let statusClass = '';
@@ -298,8 +828,8 @@
                         <div class="post-content">
                             <div class="post-title">📚 ${escapeHtml(booking.subject_name)}</div>
                             <div class="post-text">
-                                <strong>السعر:</strong> ${booking.is_free ? 'مجانية' : booking.price + ' دج'}<br>
-                                <strong>الحالة:</strong> <span class="${statusClass}">${statusText}</span>
+                                <strong>💰 السعر:</strong> ${booking.is_free ? '<span style="color:#10b981;">🎁 مجانية</span>' : booking.price + ' دج'}<br>
+                                <strong>📌 الحالة:</strong> <span class="${statusClass}">${statusText}</span>
                                 ${booking.waiting_count > 0 ? `<div class="waiting-info"><i class="fas fa-users"></i> ${booking.waiting_count} طالب في قائمة الانتظار</div>` : ''}
                             </div>
                         </div>
@@ -345,10 +875,12 @@
             let html = '';
             for (const post of posts) {
                 const postDate = new Date(post.created_at);
+                const teacherImage = post.teacher_image ? `/uploads/${post.teacher_image}` : 'https://via.placeholder.com/55';
+                
                 html += `
                     <div class="post-card" id="post-${post.id}">
                         <div class="post-header">
-                            <img src="${post.teacher_image ? `/uploads/${post.teacher_image}` : 'https://via.placeholder.com/50'}" class="post-avatar" onclick="viewTeacherProfile(${post.teacher_id})">
+                            <img src="${teacherImage}" class="post-avatar" onclick="viewTeacherProfile(${post.teacher_id})">
                             <div class="post-author">
                                 <div class="post-author-name" onclick="viewTeacherProfile(${post.teacher_id})">${escapeHtml(post.teacher_name)}</div>
                                 <div class="post-date">${formatDate(postDate)}</div>
@@ -357,9 +889,9 @@
                         <div class="post-content">
                             <div class="post-title">${escapeHtml(post.title)}</div>
                             <div class="post-text">${escapeHtml(post.content)}</div>
-                            ${post.image_url ? `<img src="${post.image_url}" class="post-image">` : ''}
+                            ${post.image_url ? `<img src="${post.image_url}" class="post-image" onclick="event.stopPropagation(); showFullImage('${post.image_url}')">` : ''}
                             ${post.file_url ? `<a href="${post.file_url}" class="post-file" download><i class="fas fa-download"></i> تحميل الملف</a>` : ''}
-                            ${post.link_url ? `<a href="${post.link_url}" target="_blank" class="post-link"><i class="fas fa-link"></i> رابط مفيد</a>` : ''}
+                            ${post.link_url ? `<a href="${post.link_url}" target="_blank" class="post-link"><i class="fas fa-external-link-alt"></i> رابط مفيد</a>` : ''}
                         </div>
                         <div class="post-stats">
                             <span><i class="fas fa-heart"></i> <span id="likes-${post.id}">${post.likes_count || 0}</span></span>
@@ -433,14 +965,13 @@
             const post = await res.json();
             const container = document.getElementById(`comments-${postId}`);
             if (post.comments && post.comments.length > 0) {
-                let html = '<div style="padding:15px;">';
+                let html = '';
                 post.comments.forEach(c => {
                     html += `<div class="comment-item">
-                        <div class="comment-author">${escapeHtml(c.student_name)}</div>
+                        <div class="comment-author"><i class="fas fa-user-circle"></i> ${escapeHtml(c.student_name)}</div>
                         <div class="comment-text">${escapeHtml(c.comment)}</div>
                     </div>`;
                 });
-                html += '</div>';
                 container.innerHTML = html;
                 container.style.display = 'block';
             } else {
@@ -449,7 +980,6 @@
             }
         }
 
-        // ✅ تحسين العروض المجانية مع زر حجز
         async function loadFreeOffers() {
             try {
                 const res = await fetch('/api/offers');
@@ -458,7 +988,7 @@
                 const container = document.getElementById('freeOffers');
                 
                 if (freeOffers.length === 0) {
-                    container.innerHTML = '<p style="color:#718096; font-size:0.8rem; text-align:center;">لا توجد عروض مجانية حالياً</p>';
+                    container.innerHTML = '<p style="color:#64748b; font-size:0.8rem; text-align:center;">لا توجد عروض مجانية حالياً</p>';
                     return;
                 }
                 
@@ -471,8 +1001,8 @@
                         <div class="free-offer-item">
                             <div class="free-offer-info">
                                 <div class="free-offer-title">${escapeHtml(offer.subject_name)}</div>
-                                <div class="free-offer-teacher">👨‍🏫 ${escapeHtml(offer.teacher_name)}</div>
-                                <div class="free-offer-date">📅 ${offerDate.toLocaleDateString('ar')} - ${offer.duration} دقيقة</div>
+                                <div class="free-offer-teacher"><i class="fas fa-chalkboard-user"></i> ${escapeHtml(offer.teacher_name)}</div>
+                                <div class="free-offer-date"><i class="fas fa-calendar"></i> ${offerDate.toLocaleDateString('ar')} - ${offer.duration} دقيقة</div>
                                 <div class="waiting-info"><i class="fas fa-users"></i> ${waitingData.count || 0} ينتظرون</div>
                             </div>
                             <button class="free-book-btn" onclick="quickBookFreeOffer(${offer.id})">
@@ -485,7 +1015,6 @@
             } catch(e) { console.log(e); }
         }
 
-        // ✅ حجز العرض المجاني مباشرة
         async function quickBookFreeOffer(offerId) {
             const btn = event.target.closest('.free-book-btn');
             if (btn) {
@@ -529,7 +1058,7 @@
             const teachers = await res.json();
             const container = document.getElementById('suggestedTeachers');
             if (teachers.length === 0) {
-                container.innerHTML = '<p style="color:#718096; font-size:0.8rem;">لا توجد اقتراحات حالياً</p>';
+                container.innerHTML = '<p style="color:#64748b; font-size:0.8rem;">لا توجد اقتراحات حالياً</p>';
                 return;
             }
             let html = '';
@@ -539,13 +1068,13 @@
                 const isFollowing = followData.following;
                 html += `
                     <div class="teacher-suggestion" onclick="viewTeacherProfile(${t.id})">
-                        <img src="${t.profile_image ? `/uploads/${t.profile_image}` : 'https://via.placeholder.com/40'}" class="suggestion-avatar">
+                        <img src="${t.profile_image ? `/uploads/${t.profile_image}` : 'https://via.placeholder.com/48'}" class="suggestion-avatar">
                         <div class="suggestion-info">
                             <div class="suggestion-name">${escapeHtml(t.full_name)}</div>
-                            <div class="suggestion-specialty">${t.specialization || 'تخصص عام'}</div>
+                            <div class="suggestion-specialty"><i class="fas fa-graduation-cap"></i> ${t.specialization || 'تخصص عام'}</div>
                         </div>
                         <button class="follow-btn ${isFollowing ? 'following' : ''}" onclick="event.stopPropagation(); followTeacher(${t.id}, this)">
-                            ${isFollowing ? '✅ متابع' : 'متابعة'}
+                            ${isFollowing ? '✅ متابع' : '➕ متابعة'}
                         </button>
                     </div>
                 `;
@@ -563,10 +1092,12 @@
             });
             if (isFollowing) {
                 btnElement.classList.remove('following');
-                btnElement.innerHTML = 'متابعة';
+                btnElement.innerHTML = '➕ متابعة';
+                showNotification('تم إلغاء المتابعة', 'warning');
             } else {
                 btnElement.classList.add('following');
                 btnElement.innerHTML = '✅ متابع';
+                showNotification('تمت المتابعة بنجاح', 'success');
             }
             loadFeed();
         }
@@ -577,7 +1108,7 @@
             const upcoming = bookings.filter(b => new Date(b.offer_date) > new Date() && b.payment_status === 'paid');
             const container = document.getElementById('upcomingSessions');
             if (upcoming.length === 0) {
-                container.innerHTML = '<p style="color:#718096; font-size:0.8rem;">لا توجد حصص قادمة</p>';
+                container.innerHTML = '<p style="color:#64748b; font-size:0.8rem;">لا توجد حصص قادمة</p>';
                 return;
             }
             let html = '';
@@ -587,10 +1118,10 @@
                     <div class="session-item">
                         <div class="session-info">
                             <div class="session-subject">${escapeHtml(s.subject_name)}</div>
-                            <div class="session-date">${sessionDate.toLocaleDateString('ar')} ${sessionDate.toLocaleTimeString('ar')}</div>
+                            <div class="session-date"><i class="fas fa-calendar"></i> ${sessionDate.toLocaleDateString('ar')} ${sessionDate.toLocaleTimeString('ar')}</div>
                             <div class="waiting-info"><i class="fas fa-users"></i> ${s.waiting_count || 0} طالب ينتظرون</div>
                         </div>
-                        ${s.offer_status === 'live' ? `<button class="join-session-btn" onclick="joinLiveStream(${s.offer_id})">انضم</button>` : '<span style="font-size:0.7rem; color:#f59e0b;">قادم</span>'}
+                        ${s.offer_status === 'live' ? `<button class="join-session-btn" onclick="joinLiveStream(${s.offer_id})"><i class="fas fa-video"></i> انضم</button>` : '<span style="font-size:0.7rem; color:#f59e0b;"><i class="fas fa-clock"></i> قادم</span>'}
                     </div>
                 `;
             }
@@ -603,7 +1134,7 @@
             const past = bookings.filter(b => new Date(b.offer_date) <= new Date() || b.offer_status === 'completed');
             const container = document.getElementById('pastSessions');
             if (past.length === 0) {
-                container.innerHTML = '<p style="color:#718096; font-size:0.8rem;">لا توجد حصص سابقة</p>';
+                container.innerHTML = '<p style="color:#64748b; font-size:0.8rem;">لا توجد حصص سابقة</p>';
                 return;
             }
             let html = '';
@@ -613,9 +1144,9 @@
                     <div class="session-item">
                         <div class="session-info">
                             <div class="session-subject">${escapeHtml(s.subject_name)}</div>
-                            <div class="session-date">${sessionDate.toLocaleDateString('ar')}</div>
+                            <div class="session-date"><i class="fas fa-calendar"></i> ${sessionDate.toLocaleDateString('ar')}</div>
                         </div>
-                        <span style="font-size:0.7rem; color:#6b7280;">✅ منتهية</span>
+                        <span style="font-size:0.7rem; color:#10b981;"><i class="fas fa-check-circle"></i> منتهية</span>
                     </div>
                 `;
             }
@@ -632,11 +1163,11 @@
             const upcomingCount = bookings.filter(b => new Date(b.offer_date) > new Date() && b.payment_status === 'paid').length;
             
             document.getElementById('userStats').innerHTML = `
-                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
                     <div><i class="fas fa-users"></i> متابع</div>
                     <div><strong>${followingCount}</strong></div>
                 </div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
                     <div><i class="fas fa-check-circle"></i> حصص مكتملة</div>
                     <div><strong>${completedCount}</strong></div>
                 </div>
@@ -678,6 +1209,7 @@
 
         function logout() {
             localStorage.clear();
+            sessionStorage.clear();
             window.location.href = '/';
         }
 
