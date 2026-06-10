@@ -25,6 +25,7 @@ const storage = multer.diskStorage({
     if (file.fieldname === 'post_image') dir = './uploads/posts';
     if (file.fieldname === 'post_file') dir = './uploads/files';
     if (file.fieldname === 'profile_image') dir = './uploads/profiles';
+    if (file.fieldname === 'cover_image') dir = './uploads/covers';
     if (file.fieldname === 'student_profile_image') dir = './uploads/students';
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     cb(null, dir);
@@ -199,7 +200,8 @@ app.post('/api/student/register', async (req, res) => {
       password: hashedPassword,
       phone,
       balance: 0,
-      profile_image: null
+      profile_image: null,
+      bio: null
     });
 
     res.json({ success: true, message: 'تم التسجيل بنجاح' });
@@ -215,8 +217,11 @@ app.post('/api/student/update-profile', upload.single('profile_image'), async (r
     const { student_id, full_name, phone, bio } = req.body;
     let profile_image = null;
     
+    console.log('📝 تحديث ملف الطالب:', { student_id, full_name, phone, bio });
+    
     if (req.file) {
       profile_image = req.file.filename;
+      console.log('📸 تم استلام صورة جديدة:', profile_image);
     }
     
     const updateData = {
@@ -236,7 +241,12 @@ app.post('/api/student/update-profile', upload.single('profile_image'), async (r
       .eq('id', parseInt(student_id))
       .select();
     
-    if (error) throw error;
+    if (error) {
+      console.error('❌ خطأ في التحديث:', error);
+      throw error;
+    }
+    
+    console.log('✅ تم تحديث الملف الشخصي بنجاح');
     
     res.json({ 
       success: true, 
@@ -245,7 +255,40 @@ app.post('/api/student/update-profile', upload.single('profile_image'), async (r
     });
   } catch (error) {
     console.error('❌ خطأ:', error.message);
-    res.json({ success: false, error: 'خطأ في تحديث الملف الشخصي' });
+    res.json({ success: false, error: 'خطأ في تحديث الملف الشخصي: ' + error.message });
+  }
+});
+
+// تحديث صورة الغلاف للطالب
+app.post('/api/student/update-cover', upload.single('cover_image'), async (req, res) => {
+  try {
+    const { student_id } = req.body;
+    let cover_image = null;
+    
+    if (req.file) {
+      cover_image = req.file.filename;
+    }
+    
+    if (!cover_image) {
+      return res.json({ success: false, error: 'لم يتم رفع صورة' });
+    }
+    
+    const { data, error } = await supabase
+      .from('students')
+      .update({ cover_image: cover_image })
+      .eq('id', parseInt(student_id))
+      .select();
+    
+    if (error) throw error;
+    
+    res.json({ 
+      success: true, 
+      message: 'تم تحديث صورة الغلاف بنجاح',
+      user: data[0]
+    });
+  } catch (error) {
+    console.error('❌ خطأ:', error.message);
+    res.json({ success: false, error: error.message });
   }
 });
 
@@ -258,6 +301,7 @@ app.get('/api/student/:student_id', async (req, res) => {
     }
     res.json(student);
   } catch (error) {
+    console.error('❌ خطأ:', error.message);
     res.json({ error: error.message });
   }
 });
@@ -343,7 +387,8 @@ app.post('/api/login', async (req, res) => {
         status: user.status,
         profile_image: user.profile_image,
         phone: user.phone,
-        bio: user.bio
+        bio: user.bio,
+        cover_image: user.cover_image
       } 
     });
   } catch (error) {
@@ -1120,5 +1165,6 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 الخادم يعمل على http://localhost:${PORT}`);
   console.log(`📦 قاعدة البيانات: Supabase (${supabaseUrl})`);
   console.log(`✅ العروض المجانية: حجز مباشر فوري بدون بوابة دفع`);
-  console.log(`💰 العروض المدفوعة: عبر Chargily`);
+  console.log(`💰 العروض المدفوعة: عبر Chargily (الحد الأدنى 50 دج)`);
+  console.log(`📸 تم إعداد رفع الصور للملفات الشخصية`);
 });
