@@ -43,6 +43,7 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            cursor: pointer;
         }
 
         .nav-logo i {
@@ -69,6 +70,7 @@
         .nav-icons {
             display: flex;
             gap: 8px;
+            align-items: center;
         }
 
         .nav-icon-btn {
@@ -309,6 +311,7 @@
             object-fit: cover;
             cursor: pointer;
             margin-top: 8px;
+            border-radius: 8px;
         }
 
         .post-image:hover {
@@ -647,11 +650,11 @@
     <!-- فيسبوك نافبار -->
     <div class="facebook-nav">
         <div class="nav-content">
-            <div class="nav-logo">
+            <div class="nav-logo" onclick="location.reload()">
                 <i class="fas fa-chalkboard-user"></i>
                 <span>منصة التعليم</span>
             </div>
-            <input type="text" class="nav-search" placeholder="بحث في المنصة...">
+            <input type="text" class="nav-search" placeholder="بحث في المنصة..." id="searchInput" onkeyup="searchPosts()">
             <div class="nav-icons">
                 <button class="nav-icon-btn" onclick="loadFeed()">
                     <i class="fas fa-home"></i>
@@ -771,28 +774,57 @@
     <div id="notificationToast" class="notification-toast"></div>
 
     <script>
-        let userData = JSON.parse(localStorage.getItem('userData') || '{}');
+        let userData = null;
         let studentToken = localStorage.getItem('studentToken');
         let token = localStorage.getItem('token');
-        
-        if (!studentToken && !token && !userData.id) {
-            window.location.href = '/';
-        }
-        
-        let studentId = userData.id;
+        let studentId = null;
         let currentFeed = [];
         let currentView = 'feed';
         let activeCommentPostId = null;
 
+        // تحميل بيانات المستخدم
+        async function loadUserData() {
+            try {
+                const storedData = localStorage.getItem('userData');
+                if (storedData) {
+                    userData = JSON.parse(storedData);
+                    studentId = userData.id;
+                }
+
+                if (!studentId) {
+                    window.location.href = '/';
+                    return;
+                }
+
+                const res = await fetch(`/api/student/${studentId}`);
+                const data = await res.json();
+                
+                if (!data.error) {
+                    userData = data;
+                    localStorage.setItem('userData', JSON.stringify(data));
+                }
+                
+                updateUI();
+            } catch(e) {
+                console.error(e);
+            }
+        }
+
         // تحديث واجهة المستخدم
         function updateUI() {
-            const userName = userData.name || userData.full_name || 'طالب';
-            const userImage = userData.profile_image ? `/uploads/${userData.profile_image}` : 'https://via.placeholder.com/40';
+            if (!userData) return;
+            
+            const userName = userData.full_name || userData.name || 'طالب';
+            let userImage = 'https://via.placeholder.com/40';
+            
+            if (userData.profile_image) {
+                userImage = `/uploads/profiles/${userData.profile_image}`;
+            }
             
             document.getElementById('navUserName').innerText = userName.split(' ')[0];
             document.getElementById('navUserAvatar').src = userImage;
             document.getElementById('sidebarName').innerText = userName;
-            document.getElementById('sidebarAvatar').src = userImage;
+            document.getElementById('sidebarAvatar').src = userImage.replace('40', '60');
             document.getElementById('feedAvatar').src = userImage;
         }
 
@@ -833,10 +865,25 @@
             return div.innerHTML;
         }
 
+        function searchPosts() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            if (!searchTerm) {
+                renderFeed(currentFeed);
+                return;
+            }
+            
+            const filtered = currentFeed.filter(post => 
+                post.title.toLowerCase().includes(searchTerm) || 
+                post.content.toLowerCase().includes(searchTerm) ||
+                post.teacher_name.toLowerCase().includes(searchTerm)
+            );
+            renderFeed(filtered);
+        }
+
         // ============= تحميل المنشورات =============
         async function loadFeed() {
             currentView = 'feed';
-            showNotification('جاري تحديث المنشورات...', 'warning');
+            document.getElementById('searchInput').value = '';
             
             try {
                 let res = await fetch(`/api/feed/${studentId}`);
@@ -874,7 +921,11 @@
             let html = '';
             for (const post of posts) {
                 const postDate = new Date(post.created_at);
-                const teacherImage = post.teacher_image ? `/uploads/${post.teacher_image}` : 'https://via.placeholder.com/40';
+                let teacherImage = 'https://via.placeholder.com/40';
+                
+                if (post.teacher_image) {
+                    teacherImage = `/uploads/${post.teacher_image}`;
+                }
                 
                 html += `
                     <div class="post-card" id="post-${post.id}">
@@ -918,9 +969,13 @@
             if (post.comments && post.comments.length > 0) {
                 let html = '';
                 for (const comment of post.comments) {
+                    let commentAvatar = 'https://via.placeholder.com/32';
+                    if (comment.profile_image) {
+                        commentAvatar = `/uploads/${comment.profile_image}`;
+                    }
                     html += `
                         <div class="comment-item">
-                            <img src="${comment.profile_image ? '/uploads/' + comment.profile_image : 'https://via.placeholder.com/32'}" class="comment-avatar">
+                            <img src="${commentAvatar}" class="comment-avatar">
                             <div class="comment-bubble">
                                 <div class="comment-author">${escapeHtml(comment.student_name)}</div>
                                 <div class="comment-text">${escapeHtml(comment.comment)}</div>
@@ -1018,7 +1073,11 @@
                     const offerDate = new Date(booking.offer_date);
                     const isPaid = booking.is_free === 1 || booking.payment_status === 'paid';
                     const isLive = booking.offer_status === 'live';
-                    const teacherImage = booking.teacher_image ? `/uploads/${booking.teacher_image}` : 'https://via.placeholder.com/40';
+                    let teacherImage = 'https://via.placeholder.com/40';
+                    
+                    if (booking.teacher_image) {
+                        teacherImage = `/uploads/${booking.teacher_image}`;
+                    }
                     
                     let statusBadge = '';
                     if (isLive) statusBadge = '<span style="color:#ef4444;">🔴 بث مباشر</span>';
@@ -1147,10 +1206,15 @@
                 const followRes = await fetch(`/api/check-follow/${studentId}/${t.id}`);
                 const followData = await followRes.json();
                 const isFollowing = followData.following;
+                let teacherImage = 'https://via.placeholder.com/40';
+                
+                if (t.profile_image) {
+                    teacherImage = `/uploads/${t.profile_image}`;
+                }
                 
                 html += `
                     <div class="teacher-item" onclick="viewTeacherProfile(${t.id})">
-                        <img src="${t.profile_image ? '/uploads/' + t.profile_image : 'https://via.placeholder.com/40'}" class="teacher-avatar">
+                        <img src="${teacherImage}" class="teacher-avatar">
                         <div class="teacher-info">
                             <div class="teacher-name">${escapeHtml(t.full_name)}</div>
                             <div class="teacher-specialty">${t.specialization || 'تخصص عام'}</div>
@@ -1246,8 +1310,12 @@
         }
 
         // تهيئة الصفحة
-        updateUI();
-        loadFeed();
+        async function init() {
+            await loadUserData();
+            await loadFeed();
+        }
+        
+        init();
 
         // تحديث كل 30 ثانية
         setInterval(() => {
