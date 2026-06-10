@@ -200,8 +200,7 @@ app.post('/api/student/register', async (req, res) => {
       password: hashedPassword,
       phone,
       balance: 0,
-      profile_image: null,
-      bio: null
+      profile_image: null
     });
 
     res.json({ success: true, message: 'تم التسجيل بنجاح' });
@@ -211,13 +210,13 @@ app.post('/api/student/register', async (req, res) => {
   }
 });
 
-// تحديث بيانات الطالب
+// تحديث بيانات الطالب (بدون bio لأن العمود غير موجود)
 app.post('/api/student/update-profile', upload.single('profile_image'), async (req, res) => {
   try {
-    const { student_id, full_name, phone, bio } = req.body;
+    const { student_id, full_name, phone } = req.body;
     let profile_image = null;
     
-    console.log('📝 تحديث ملف الطالب:', { student_id, full_name, phone, bio });
+    console.log('📝 تحديث ملف الطالب:', { student_id, full_name, phone });
     
     if (req.file) {
       profile_image = req.file.filename;
@@ -227,7 +226,6 @@ app.post('/api/student/update-profile', upload.single('profile_image'), async (r
     const updateData = {
       full_name,
       phone,
-      bio: bio || '',
       updated_at: new Date().toISOString()
     };
     
@@ -387,7 +385,6 @@ app.post('/api/login', async (req, res) => {
         status: user.status,
         profile_image: user.profile_image,
         phone: user.phone,
-        bio: user.bio,
         cover_image: user.cover_image
       } 
     });
