@@ -27,6 +27,8 @@ const storage = multer.diskStorage({
     if (file.fieldname === 'profile_image') dir = './uploads/profiles';
     if (file.fieldname === 'cover_image') dir = './uploads/covers';
     if (file.fieldname === 'student_profile_image') dir = './uploads/students';
+    if (file.fieldname === 'diploma_image') dir = './uploads/diplomas';
+    if (file.fieldname === 'id_image') dir = './uploads/ids';
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     cb(null, dir);
   },
@@ -200,7 +202,8 @@ app.post('/api/student/register', async (req, res) => {
       password: hashedPassword,
       phone,
       balance: 0,
-      profile_image: null
+      profile_image: null,
+      cover_image: null
     });
 
     res.json({ success: true, message: 'تم التسجيل بنجاح' });
@@ -210,7 +213,7 @@ app.post('/api/student/register', async (req, res) => {
   }
 });
 
-// تحديث بيانات الطالب (بدون أعمدة غير موجودة)
+// تحديث بيانات الطالب
 app.post('/api/student/update-profile', upload.single('profile_image'), async (req, res) => {
   try {
     const { student_id, full_name, phone } = req.body;
@@ -223,9 +226,7 @@ app.post('/api/student/update-profile', upload.single('profile_image'), async (r
       console.log('📸 تم استلام صورة جديدة:', profile_image);
     }
     
-    // فقط الأعمدة الموجودة في جدول students
     const updateData = {};
-    
     if (full_name) updateData.full_name = full_name;
     if (phone) updateData.phone = phone;
     if (profile_image) updateData.profile_image = profile_image;
@@ -264,6 +265,7 @@ app.post('/api/student/update-cover', upload.single('cover_image'), async (req, 
     
     if (req.file) {
       cover_image = req.file.filename;
+      console.log('📸 تم استلام صورة غلاف جديدة:', cover_image);
     }
     
     if (!cover_image) {
@@ -305,28 +307,33 @@ app.get('/api/student/:student_id', async (req, res) => {
 
 // تحديث بيانات الأستاذ
 app.post('/api/teacher/update-profile', upload.single('profile_image'), async (req, res) => {
-  const { teacher_id, full_name, bio, specialization, experience, phone, facebook_url, instagram_url, linkedin_url, website_url } = req.body;
-  let profile_image = req.body.profile_image;
-  
-  if (req.file) {
-    profile_image = req.file.filename;
-  }
-  
-  const updateData = {
-    full_name,
-    bio,
-    specialization,
-    experience,
-    phone,
-    facebook_url,
-    instagram_url,
-    linkedin_url,
-    website_url
-  };
-  if (profile_image) updateData.profile_image = profile_image;
+  try {
+    const { teacher_id, full_name, bio, specialization, experience, phone, facebook_url, instagram_url, linkedin_url, website_url } = req.body;
+    let profile_image = null;
+    
+    if (req.file) {
+      profile_image = req.file.filename;
+    }
+    
+    const updateData = {
+      full_name,
+      bio,
+      specialization,
+      experience,
+      phone,
+      facebook_url,
+      instagram_url,
+      linkedin_url,
+      website_url
+    };
+    if (profile_image) updateData.profile_image = profile_image;
 
-  await update('teachers', teacher_id, updateData);
-  res.json({ success: true, message: 'تم تحديث الملف الشخصي بنجاح' });
+    await update('teachers', teacher_id, updateData);
+    res.json({ success: true, message: 'تم تحديث الملف الشخصي بنجاح' });
+  } catch (error) {
+    console.error('❌ خطأ:', error.message);
+    res.json({ success: false, error: error.message });
+  }
 });
 
 // تسجيل الدخول
@@ -1162,5 +1169,5 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`📦 قاعدة البيانات: Supabase (${supabaseUrl})`);
   console.log(`✅ العروض المجانية: حجز مباشر فوري بدون بوابة دفع`);
   console.log(`💰 العروض المدفوعة: عبر Chargily (الحد الأدنى 50 دج)`);
-  console.log(`📸 تم إعداد رفع الصور للملفات الشخصية`);
+  console.log(`📸 تم إعداد رفع الصور للملفات الشخصية في مجلد uploads/profiles/`);
 });
