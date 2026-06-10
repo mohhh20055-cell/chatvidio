@@ -19,7 +19,6 @@
             color: #1c1e21;
         }
 
-        /* ============= نافبار فيسبوك ============= */
         .facebook-nav {
             background: white;
             padding: 8px 16px;
@@ -97,14 +96,12 @@
             object-fit: cover;
         }
 
-        /* ============= الحاوية الرئيسية ============= */
         .main-container {
             max-width: 1000px;
             margin: 80px auto 40px;
             padding: 0 20px;
         }
 
-        /* ============= بطاقة الملف الشخصي ============= */
         .profile-card {
             background: white;
             border-radius: 16px;
@@ -112,12 +109,13 @@
             box-shadow: 0 1px 2px rgba(0,0,0,0.1);
         }
 
-        /* ============= صورة الغلاف ============= */
         .cover-section {
             position: relative;
             height: 200px;
             background: linear-gradient(135deg, #0f5cbf, #1e3c72);
             cursor: pointer;
+            background-size: cover;
+            background-position: center;
         }
 
         .cover-overlay {
@@ -140,7 +138,6 @@
             background: rgba(0,0,0,0.8);
         }
 
-        /* ============= صورة البروفايل ============= */
         .avatar-section {
             position: relative;
             padding: 0 20px;
@@ -161,7 +158,7 @@
             border-radius: 50%;
             object-fit: cover;
             border: 4px solid white;
-            background: white;
+            background: #e4e6eb;
         }
 
         .avatar-overlay {
@@ -183,25 +180,6 @@
             background: #d8dadf;
         }
 
-        .edit-name-btn {
-            background: #e4e6eb;
-            border: none;
-            padding: 8px 20px;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-bottom: 10px;
-        }
-
-        .edit-name-btn:hover {
-            background: #d8dadf;
-        }
-
-        /* ============= معلومات الملف ============= */
-        .profile-info {
-            padding: 20px;
-        }
-
         .profile-name {
             font-size: 1.8rem;
             font-weight: 800;
@@ -213,7 +191,6 @@
             margin-bottom: 20px;
         }
 
-        /* ============= نموذج التعديل ============= */
         .edit-form {
             padding: 0 20px 20px;
         }
@@ -255,7 +232,6 @@
             gap: 20px;
         }
 
-        /* ============= أزرار الحفظ ============= */
         .form-actions {
             display: flex;
             gap: 16px;
@@ -294,7 +270,6 @@
             background: #d8dadf;
         }
 
-        /* ============= رسائل التنبيه ============= */
         .notification-toast {
             position: fixed;
             bottom: 20px;
@@ -344,7 +319,6 @@
             to { transform: rotate(360deg); }
         }
 
-        /* ============= مودال تغيير الصورة ============= */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -428,7 +402,6 @@
     </style>
 </head>
 <body>
-    <!-- نافبار فيسبوك -->
     <div class="facebook-nav">
         <div class="nav-content">
             <div class="nav-logo" onclick="window.location.href='/student-dashboard.html'">
@@ -449,7 +422,6 @@
 
     <div class="main-container">
         <div class="profile-card">
-            <!-- صورة الغلاف -->
             <div class="cover-section" id="coverSection">
                 <div class="cover-overlay" onclick="showCoverModal()">
                     <i class="fas fa-camera"></i>
@@ -457,7 +429,6 @@
                 </div>
             </div>
 
-            <!-- صورة البروفايل والاسم -->
             <div class="avatar-section">
                 <div class="avatar-container" onclick="showAvatarModal()">
                     <img id="profileAvatar" class="profile-avatar" src="https://via.placeholder.com/120">
@@ -471,7 +442,6 @@
                 </div>
             </div>
 
-            <!-- نموذج التعديل -->
             <div class="edit-form">
                 <form id="profileForm">
                     <div class="form-group">
@@ -490,11 +460,6 @@
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label class="form-label"><i class="fas fa-info-circle"></i> نبذة عني</label>
-                        <textarea id="bio" class="form-input" placeholder="اكتب نبذة عن نفسك..."></textarea>
-                    </div>
-
                     <div class="form-actions">
                         <button type="button" class="cancel-btn" onclick="cancelEdit()">إلغاء</button>
                         <button type="submit" class="save-btn"><i class="fas fa-save"></i> حفظ التغييرات</button>
@@ -504,11 +469,10 @@
         </div>
     </div>
 
-    <!-- مودال اختيار الصورة -->
     <div id="modalOverlay" class="modal-overlay"></div>
     
     <div id="imageModal" class="image-modal">
-        <div class="image-modal-header">تغيير الصورة</div>
+        <div class="image-modal-header">تغيير الصورة الشخصية</div>
         <div class="image-modal-option" onclick="uploadFromDevice()">
             <i class="fas fa-upload"></i> رفع من الجهاز
         </div>
@@ -527,11 +491,9 @@
         </div>
     </div>
 
-    <!-- إدخال ملف مخفي -->
     <input type="file" id="avatarInput" accept="image/*" style="display: none;">
     <input type="file" id="coverInput" accept="image/*" style="display: none;">
 
-    <!-- تحميل -->
     <div id="loadingOverlay" class="loading-overlay">
         <div class="loading-spinner">
             <i class="fas fa-spinner fa-spin"></i>
@@ -545,7 +507,6 @@
         let userData = null;
         let studentId = null;
         let currentAvatarFile = null;
-        let currentCoverFile = null;
 
         function showNotification(message, type = 'success') {
             const toast = document.getElementById('notificationToast');
@@ -563,7 +524,6 @@
             document.getElementById('loadingOverlay').style.display = 'none';
         }
 
-        // جلب بيانات المستخدم
         async function loadUserData() {
             try {
                 const storedData = localStorage.getItem('userData');
@@ -572,7 +532,6 @@
                     studentId = userData.id;
                 }
 
-                const token = localStorage.getItem('studentToken') || localStorage.getItem('token');
                 if (!studentId) {
                     window.location.href = '/';
                     return;
@@ -590,36 +549,40 @@
                 updateUI();
             } catch(e) {
                 console.error(e);
-                showNotification('حدث خطأ', 'error');
+                showNotification('حدث خطأ في تحميل البيانات', 'error');
             }
         }
 
         function updateUI() {
             if (!userData) return;
             
-            document.getElementById('profileName').innerText = userData.full_name || userData.name || 'طالب';
-            document.getElementById('fullName').value = userData.full_name || userData.name || '';
+            document.getElementById('profileName').innerText = userData.full_name || 'طالب';
+            document.getElementById('fullName').value = userData.full_name || '';
             document.getElementById('email').value = userData.email || '';
             document.getElementById('phone').value = userData.phone || '';
-            document.getElementById('bio').value = userData.bio || '';
             
-            const avatarUrl = userData.profile_image ? `/uploads/${userData.profile_image}` : 'https://via.placeholder.com/120';
-            document.getElementById('profileAvatar').src = avatarUrl;
-            document.getElementById('navAvatar').src = userData.profile_image ? `/uploads/${userData.profile_image}` : 'https://via.placeholder.com/28';
-            
-            // صورة الغلاف الافتراضية
-            const coverUrl = userData.cover_image ? `/uploads/${userData.cover_image}` : null;
-            const coverSection = document.getElementById('coverSection');
-            if (coverUrl) {
-                coverSection.style.backgroundImage = `url(${coverUrl})`;
-                coverSection.style.backgroundSize = 'cover';
-                coverSection.style.backgroundPosition = 'center';
+            // تحديث صورة البروفايل
+            if (userData.profile_image) {
+                const avatarUrl = `/uploads/profiles/${userData.profile_image}`;
+                document.getElementById('profileAvatar').src = avatarUrl;
+                document.getElementById('navAvatar').src = avatarUrl;
+                console.log('تم تحميل الصورة من:', avatarUrl);
             } else {
-                coverSection.style.background = 'linear-gradient(135deg, #0f5cbf, #1e3c72)';
+                document.getElementById('profileAvatar').src = 'https://via.placeholder.com/120';
+                document.getElementById('navAvatar').src = 'https://via.placeholder.com/28';
+            }
+            
+            // تحديث صورة الغلاف
+            if (userData.cover_image) {
+                const coverUrl = `/uploads/covers/${userData.cover_image}`;
+                document.getElementById('coverSection').style.backgroundImage = `url(${coverUrl})`;
+                document.getElementById('coverSection').style.backgroundSize = 'cover';
+                document.getElementById('coverSection').style.backgroundPosition = 'center';
+            } else {
+                document.getElementById('coverSection').style.background = 'linear-gradient(135deg, #0f5cbf, #1e3c72)';
             }
         }
 
-        // رفع صورة البروفايل
         function showAvatarModal() {
             document.getElementById('modalOverlay').style.display = 'block';
             document.getElementById('imageModal').style.display = 'block';
@@ -646,14 +609,13 @@
             
             currentAvatarFile = file;
             
-            // معاينة الصورة
+            // معاينة الصورة مؤقتاً
             const reader = new FileReader();
             reader.onload = (e) => {
                 document.getElementById('profileAvatar').src = e.target.result;
             };
             reader.readAsDataURL(file);
             
-            // رفع فوري
             await uploadAvatar();
         });
 
@@ -666,7 +628,6 @@
             formData.append('profile_image', currentAvatarFile);
             formData.append('full_name', document.getElementById('fullName').value);
             formData.append('phone', document.getElementById('phone').value);
-            formData.append('bio', document.getElementById('bio').value);
             
             try {
                 const res = await fetch('/api/student/update-profile', {
@@ -685,15 +646,17 @@
                     currentAvatarFile = null;
                 } else {
                     showNotification(data.error || 'حدث خطأ', 'error');
+                    // إعادة تحميل الصورة القديمة
+                    updateUI();
                 }
             } catch(e) {
                 showNotification('حدث خطأ في الاتصال', 'error');
+                updateUI();
             } finally {
                 hideLoading();
             }
         }
 
-        // رفع صورة الغلاف
         function showCoverModal() {
             document.getElementById('modalOverlay').style.display = 'block';
             document.getElementById('coverModal').style.display = 'block';
@@ -718,33 +681,13 @@
                 return;
             }
             
-            currentCoverFile = file;
-            
-            // معاينة الصورة
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                document.getElementById('coverSection').style.backgroundImage = `url(${e.target.result})`;
-                document.getElementById('coverSection').style.backgroundSize = 'cover';
-                document.getElementById('coverSection').style.backgroundPosition = 'center';
-            };
-            reader.readAsDataURL(file);
-            
-            await uploadCover();
-        });
-
-        async function uploadCover() {
-            if (!currentCoverFile) return;
-            
             showLoading();
             const formData = new FormData();
             formData.append('student_id', studentId);
-            formData.append('cover_image', currentCoverFile);
-            formData.append('full_name', document.getElementById('fullName').value);
-            formData.append('phone', document.getElementById('phone').value);
-            formData.append('bio', document.getElementById('bio').value);
+            formData.append('cover_image', file);
             
             try {
-                const res = await fetch('/api/student/update-profile', {
+                const res = await fetch('/api/student/update-cover', {
                     method: 'POST',
                     body: formData
                 });
@@ -755,8 +698,8 @@
                     if (data.user) {
                         userData = data.user;
                         localStorage.setItem('userData', JSON.stringify(data.user));
+                        updateUI();
                     }
-                    currentCoverFile = null;
                 } else {
                     showNotification(data.error || 'حدث خطأ', 'error');
                 }
@@ -765,9 +708,8 @@
             } finally {
                 hideLoading();
             }
-        }
+        });
 
-        // حفظ البيانات النصية
         document.getElementById('profileForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -776,7 +718,6 @@
             formData.append('student_id', studentId);
             formData.append('full_name', document.getElementById('fullName').value);
             formData.append('phone', document.getElementById('phone').value);
-            formData.append('bio', document.getElementById('bio').value);
             
             try {
                 const res = await fetch('/api/student/update-profile', {
@@ -804,9 +745,8 @@
 
         function cancelEdit() {
             if (userData) {
-                document.getElementById('fullName').value = userData.full_name || userData.name || '';
+                document.getElementById('fullName').value = userData.full_name || '';
                 document.getElementById('phone').value = userData.phone || '';
-                document.getElementById('bio').value = userData.bio || '';
                 updateUI();
                 showNotification('تم إلغاء التعديلات', 'warning');
             } else {
@@ -830,7 +770,6 @@
             window.location.href = '/';
         }
 
-        // تحميل البيانات
         loadUserData();
     </script>
 </body>
