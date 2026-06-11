@@ -692,7 +692,7 @@
         // ============= نظام الإشعارات =============
         async function loadNotifications() {
             try {
-                const res = await fetch(`/api/notifications/${studentId}`);
+                const res = await fetch(`/api/notifications/${studentId}/student`);
                 const notifications = await res.json();
                 renderNotifications(notifications);
             } catch(e) { console.log(e); }
