@@ -451,9 +451,10 @@
         function updateUI() {
             if (!userData) return;
             const userName = userData.full_name || 'أستاذ';
-            const userImage = userData.profile_image ? `/uploads/profiles/${userData.profile_image}` : 'https://via.placeholder.com/80';
+            // استخدام profile_url من Supabase Storage
+            const userImage = userData.profile_url || 'https://via.placeholder.com/80';
             document.getElementById('navUserName').innerText = userName.split(' ')[0];
-            document.getElementById('navAvatar').src = userImage.replace('80', '28');
+            document.getElementById('navAvatar').src = userImage;
             document.getElementById('sidebarName').innerText = userName;
             document.getElementById('sidebarSpecialty').innerText = userData.specialization || 'تخصص غير محدد';
             document.getElementById('sidebarAvatar').src = userImage;
@@ -478,7 +479,6 @@
                 document.getElementById('balanceAmount').innerText = (data.balance || 0) + ' دج';
                 document.getElementById('withdrawBalance').innerText = data.balance || 0;
                 
-                // عرض الأرباح
                 let earningsHtml = `
                     <div style="background: #f8f9fa; border-radius: 12px; padding: 15px; margin-bottom: 20px;">
                         <h3>إجمالي الأرباح: ${data.total_earned || 0} دج</h3>
@@ -503,7 +503,6 @@
                 earningsHtml += `</tbody></table>`;
                 document.getElementById('earningsInfo').innerHTML = earningsHtml;
                 
-                // جلب طلبات السحب
                 loadWithdrawRequests();
             } catch(e) { console.log(e); }
         }
