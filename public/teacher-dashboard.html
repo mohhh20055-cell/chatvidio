@@ -97,6 +97,26 @@
             font-weight: 600;
             width: 100%;
         }
+        .balance-card {
+            background: linear-gradient(135deg, #0f5cbf, #1e3c72);
+            color: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        .balance-amount { font-size: 2rem; font-weight: 800; margin: 10px 0; }
+        .withdraw-btn {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 10px;
+            width: 100%;
+        }
         .shortcut-item {
             display: flex;
             align-items: center;
@@ -173,6 +193,39 @@
             width: 100%;
             font-weight: 600;
         }
+        .earnings-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .earnings-table th, .earnings-table td {
+            padding: 10px;
+            text-align: right;
+            border-bottom: 1px solid #e4e6eb;
+        }
+        .earnings-table th {
+            background: #f0f2f5;
+            font-weight: 700;
+        }
+        .requests-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .request-item {
+            padding: 10px;
+            border-bottom: 1px solid #e4e6eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .request-status {
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+        }
+        .status-pending { background: #f59e0b; color: white; }
+        .status-completed { background: #10b981; color: white; }
+        .status-rejected { background: #ef4444; color: white; }
 
         .modal-overlay {
             display: none;
@@ -217,8 +270,6 @@
         .save-btn { background: #0f5cbf; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; }
         .cancel-btn { background: #e4e6eb; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; }
         .close-modal { background: none; border: none; font-size: 1.5rem; cursor: pointer; }
-        .free-checkbox { display: flex; align-items: center; gap: 10px; margin: 10px 0; }
-        .waiting-list { background: #f8f9fa; border-radius: 12px; padding: 12px; margin-top: 12px; }
 
         .notification-toast {
             position: fixed;
@@ -254,6 +305,7 @@
             <div class="nav-icons">
                 <button class="nav-icon-btn" onclick="showSection('profile')"><i class="fas fa-user"></i></button>
                 <button class="nav-icon-btn" onclick="showSection('offers')"><i class="fas fa-calendar-alt"></i></button>
+                <button class="nav-icon-btn" onclick="showSection('earnings')"><i class="fas fa-money-bill-wave"></i></button>
                 <div class="user-menu" onclick="logout()">
                     <img id="navAvatar" src="https://via.placeholder.com/28">
                     <span id="navUserName"></span>
@@ -269,7 +321,13 @@
                 <img id="sidebarAvatar" class="profile-avatar" src="https://via.placeholder.com/80">
                 <div class="profile-name" id="sidebarName"></div>
                 <div class="profile-specialty" id="sidebarSpecialty"></div>
-                <button class="edit-profile-btn" onclick="showEditProfileModal()"><i class="fas fa-edit"></i> تعديل الملف الشخصي</button>
+                <button class="edit-profile-btn" onclick="showEditProfileModal()"><i class="fas fa-camera"></i> تغيير الصورة فقط</button>
+            </div>
+            <div class="balance-card">
+                <i class="fas fa-wallet" style="font-size: 1.5rem;"></i>
+                <div class="balance-amount" id="balanceAmount">0 دج</div>
+                <div>الرصيد المتاح</div>
+                <button class="withdraw-btn" onclick="showWithdrawModal()"><i class="fas fa-hand-holding-usd"></i> سحب الأرباح</button>
             </div>
             <div class="profile-card">
                 <div class="shortcut-item" onclick="showSection('profile')">
@@ -279,6 +337,10 @@
                 <div class="shortcut-item" onclick="showSection('offers')">
                     <div class="shortcut-icon"><i class="fas fa-calendar-alt"></i></div>
                     <span>عروضي</span>
+                </div>
+                <div class="shortcut-item" onclick="showSection('earnings')">
+                    <div class="shortcut-icon"><i class="fas fa-chart-line"></i></div>
+                    <span>الأرباح والطلبات</span>
                 </div>
                 <div class="shortcut-item" onclick="showCreateOfferModal()">
                     <div class="shortcut-icon"><i class="fas fa-plus"></i></div>
@@ -297,6 +359,12 @@
                 <button class="create-btn" onclick="showCreateOfferModal()"><i class="fas fa-plus"></i> إنشاء عرض جديد</button>
                 <div id="offersList" class="offers-grid"></div>
             </div>
+            <div id="earningsSection" style="display: none;">
+                <div class="section-title"><i class="fas fa-chart-line"></i> أرباحي</div>
+                <div id="earningsInfo"></div>
+                <div class="section-title" style="margin-top: 20px;"><i class="fas fa-history"></i> طلبات السحب</div>
+                <div id="withdrawRequestsList"></div>
+            </div>
         </div>
     </div>
 
@@ -304,20 +372,32 @@
     
     <div id="editProfileModal" class="modal">
         <div class="modal-header">
-            <h3><i class="fas fa-user-edit"></i> تعديل الملف الشخصي</h3>
+            <h3><i class="fas fa-camera"></i> تغيير الصورة الشخصية</h3>
             <button class="close-modal" onclick="closeModal()">&times;</button>
         </div>
         <div class="modal-body">
-            <input type="text" id="editFullName" placeholder="الاسم الكامل">
-            <input type="text" id="editSpecialization" placeholder="التخصص">
-            <input type="text" id="editExperience" placeholder="سنوات الخبرة">
-            <input type="tel" id="editPhone" placeholder="رقم الهاتف">
-            <textarea id="editBio" placeholder="نبذة عنك" rows="3"></textarea>
+            <p style="color: #ef4444; margin-bottom: 10px;">⚠️ ملاحظة: لا يمكنك تغيير معلوماتك الشخصية (الاسم، التخصص، الخبرة، الهاتف) إلا عبر إدارة المنصة لمنع الاحتيال.</p>
             <input type="file" id="editProfileImage" accept="image/*">
         </div>
         <div class="modal-footer">
             <button class="cancel-btn" onclick="closeModal()">إلغاء</button>
-            <button class="save-btn" onclick="updateProfile()">حفظ</button>
+            <button class="save-btn" onclick="updateProfile()">تحديث الصورة</button>
+        </div>
+    </div>
+
+    <div id="withdrawModal" class="modal">
+        <div class="modal-header">
+            <h3><i class="fas fa-hand-holding-usd"></i> سحب الأرباح</h3>
+            <button class="close-modal" onclick="closeWithdrawModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p><strong>الرصيد المتاح: <span id="withdrawBalance">0</span> دج</strong></p>
+            <input type="number" id="withdrawAmount" placeholder="المبلغ المراد سحبه" min="100">
+            <input type="text" id="ccpAccount" placeholder="رقم حساب CCP (20 رقم)">
+        </div>
+        <div class="modal-footer">
+            <button class="cancel-btn" onclick="closeWithdrawModal()">إلغاء</button>
+            <button class="save-btn" onclick="submitWithdrawRequest()">تقديم طلب</button>
         </div>
     </div>
 
@@ -330,7 +410,7 @@
             <input type="text" id="subjectName" placeholder="اسم المادة" required>
             <input type="number" id="duration" placeholder="المدة (بالدقائق)" value="60">
             <input type="datetime-local" id="offerDate" required>
-            <div class="free-checkbox">
+            <div class="free-checkbox" style="display: flex; align-items: center; gap: 10px; margin: 10px 0;">
                 <input type="checkbox" id="isFree" onchange="togglePrice()">
                 <label>حصة مجانية</label>
             </div>
@@ -364,13 +444,14 @@
                     localStorage.setItem('userData', JSON.stringify(data));
                 }
                 updateUI();
+                loadBalance();
             } catch(e) { console.error(e); }
         }
 
         function updateUI() {
             if (!userData) return;
             const userName = userData.full_name || 'أستاذ';
-            const userImage = userData.profile_image ? `/uploads/${userData.profile_image}` : 'https://via.placeholder.com/80';
+            const userImage = userData.profile_image ? `/uploads/profiles/${userData.profile_image}` : 'https://via.placeholder.com/80';
             document.getElementById('navUserName').innerText = userName.split(' ')[0];
             document.getElementById('navAvatar').src = userImage.replace('80', '28');
             document.getElementById('sidebarName').innerText = userName;
@@ -385,8 +466,79 @@
                     <p><i class="fas fa-briefcase"></i> ${userData.experience || '0'} سنة خبرة</p>
                     <p><i class="fas fa-phone"></i> ${userData.phone || 'غير محدد'}</p>
                     <p><i class="fas fa-align-left"></i> ${escapeHtml(userData.bio || 'لا توجد نبذة')}</p>
+                    <p style="color: #ef4444; margin-top: 10px; font-size: 0.8rem;"><i class="fas fa-lock"></i> لا يمكن تعديل المعلومات الشخصية - للتواصل مع الإدارة</p>
                 </div>
             `;
+        }
+
+        async function loadBalance() {
+            try {
+                const res = await fetch(`/api/teacher/balance/${teacherId}`);
+                const data = await res.json();
+                document.getElementById('balanceAmount').innerText = (data.balance || 0) + ' دج';
+                document.getElementById('withdrawBalance').innerText = data.balance || 0;
+                
+                // عرض الأرباح
+                let earningsHtml = `
+                    <div style="background: #f8f9fa; border-radius: 12px; padding: 15px; margin-bottom: 20px;">
+                        <h3>إجمالي الأرباح: ${data.total_earned || 0} دج</h3>
+                        <p>الرصيد المتاح للسحب: ${data.balance || 0} دج</p>
+                        <p style="font-size: 0.8rem; color: #65676b;">* الحد الأدنى للسحب: 100 دج</p>
+                    </div>
+                    <h4>المدفوعات المستحقة:</h4>
+                    <table class="earnings-table">
+                        <thead>
+                            <tr><th>المادة</th><th>المبلغ</th><th>التاريخ</th></tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                if (data.sessions && data.sessions.length > 0) {
+                    for (const s of data.sessions) {
+                        earningsHtml += `<tr><td>${escapeHtml(s.offers?.subject_name || 'غير معروف')}</td><td>${s.teacher_earned || s.payment_amount} دج</td><td>${new Date(s.created_at).toLocaleDateString()}</td></tr>`;
+                    }
+                } else {
+                    earningsHtml += `<tr><td colspan="3">لا توجد مدفوعات حتى الآن</td></tr>`;
+                }
+                earningsHtml += `</tbody></table>`;
+                document.getElementById('earningsInfo').innerHTML = earningsHtml;
+                
+                // جلب طلبات السحب
+                loadWithdrawRequests();
+            } catch(e) { console.log(e); }
+        }
+
+        async function loadWithdrawRequests() {
+            try {
+                const res = await fetch(`/api/teacher/withdraw-requests/${teacherId}`);
+                const requests = await res.json();
+                if (requests.length === 0) {
+                    document.getElementById('withdrawRequestsList').innerHTML = '<p style="text-align:center; padding:20px;">لا توجد طلبات سحب</p>';
+                    return;
+                }
+                let html = '<div class="requests-list">';
+                for (const req of requests) {
+                    let statusClass = '';
+                    let statusText = '';
+                    if (req.status === 'pending') { statusClass = 'status-pending'; statusText = 'قيد المراجعة'; }
+                    else if (req.status === 'completed') { statusClass = 'status-completed'; statusText = 'تم الدفع'; }
+                    else { statusClass = 'status-rejected'; statusText = 'مرفوض'; }
+                    
+                    html += `
+                        <div class="request-item">
+                            <div>
+                                <strong>${req.amount} دج</strong><br>
+                                <small>حساب CCP: ${req.ccp_account}</small>
+                            </div>
+                            <div>
+                                <span class="request-status ${statusClass}">${statusText}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+                html += '</div>';
+                document.getElementById('withdrawRequestsList').innerHTML = html;
+            } catch(e) { console.log(e); }
         }
 
         function showNotification(message, type = 'success') {
@@ -400,15 +552,12 @@
         function showSection(section) {
             document.getElementById('profileSection').style.display = section === 'profile' ? 'block' : 'none';
             document.getElementById('offersSection').style.display = section === 'offers' ? 'block' : 'none';
+            document.getElementById('earningsSection').style.display = section === 'earnings' ? 'block' : 'none';
             if (section === 'offers') loadOffers();
+            if (section === 'earnings') loadBalance();
         }
 
         function showEditProfileModal() {
-            document.getElementById('editFullName').value = userData.full_name || '';
-            document.getElementById('editSpecialization').value = userData.specialization || '';
-            document.getElementById('editExperience').value = userData.experience || '';
-            document.getElementById('editPhone').value = userData.phone || '';
-            document.getElementById('editBio').value = userData.bio || '';
             document.getElementById('modalOverlay').style.display = 'block';
             document.getElementById('editProfileModal').style.display = 'block';
         }
@@ -416,22 +565,57 @@
         async function updateProfile() {
             const formData = new FormData();
             formData.append('teacher_id', teacherId);
-            formData.append('full_name', document.getElementById('editFullName').value);
-            formData.append('specialization', document.getElementById('editSpecialization').value);
-            formData.append('experience', document.getElementById('editExperience').value);
-            formData.append('phone', document.getElementById('editPhone').value);
-            formData.append('bio', document.getElementById('editBio').value);
             if (document.getElementById('editProfileImage').files[0]) {
                 formData.append('profile_image', document.getElementById('editProfileImage').files[0]);
+            } else {
+                showNotification('الرجاء اختيار صورة', 'error');
+                return;
             }
             
             try {
                 const res = await fetch('/api/teacher/update-profile', { method: 'POST', body: formData });
                 const data = await res.json();
                 if (data.success) {
-                    showNotification('تم تحديث الملف الشخصي', 'success');
+                    showNotification('تم تحديث الصورة الشخصية', 'success');
                     closeModal();
                     loadUserData();
+                } else {
+                    showNotification(data.error, 'error');
+                }
+            } catch(e) { showNotification('حدث خطأ', 'error'); }
+        }
+
+        function showWithdrawModal() {
+            document.getElementById('modalOverlay').style.display = 'block';
+            document.getElementById('withdrawModal').style.display = 'block';
+            document.getElementById('withdrawAmount').value = '';
+            document.getElementById('ccpAccount').value = '';
+        }
+
+        async function submitWithdrawRequest() {
+            const amount = document.getElementById('withdrawAmount').value;
+            const ccpAccount = document.getElementById('ccpAccount').value;
+            
+            if (!amount || amount < 100) {
+                showNotification('المبلغ يجب أن لا يقل عن 100 دج', 'error');
+                return;
+            }
+            if (!ccpAccount || ccpAccount.length < 10) {
+                showNotification('الرجاء إدخال رقم حساب CCP صحيح', 'error');
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/teacher/withdraw-request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ teacher_id: teacherId, amount: amount, ccp_account: ccpAccount })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showNotification('تم تقديم طلب السحب بنجاح', 'success');
+                    closeWithdrawModal();
+                    loadBalance();
                 } else {
                     showNotification(data.error, 'error');
                 }
@@ -562,6 +746,11 @@
             document.getElementById('modalOverlay').style.display = 'none';
             document.getElementById('editProfileModal').style.display = 'none';
             document.getElementById('createOfferModal').style.display = 'none';
+        }
+
+        function closeWithdrawModal() {
+            document.getElementById('modalOverlay').style.display = 'none';
+            document.getElementById('withdrawModal').style.display = 'none';
         }
 
         function logout() { localStorage.clear(); window.location.href = '/'; }
