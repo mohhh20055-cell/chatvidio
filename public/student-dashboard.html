@@ -10,7 +10,6 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Cairo', sans-serif; background: #f0f2f5; }
 
-        /* ============= نافبار فيسبوك ============= */
         .facebook-nav {
             background: white;
             padding: 8px 16px;
@@ -60,7 +59,6 @@
         .user-menu img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
         .user-menu span { font-weight: 600; font-size: 0.9rem; }
 
-        /* ============= الحاوية الرئيسية ============= */
         .main-wrapper {
             max-width: 1200px;
             margin: 70px auto 20px;
@@ -70,7 +68,6 @@
             gap: 20px;
         }
 
-        /* ============= السايد بار الأيسر ============= */
         .left-sidebar { position: sticky; top: 80px; height: fit-content; }
         .profile-card {
             background: white;
@@ -128,7 +125,6 @@
             color: #0f5cbf;
         }
 
-        /* ============= منتصف الصفحة ============= */
         .content-area { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         .section-title { font-size: 1.3rem; font-weight: 700; margin-bottom: 20px; border-right: 3px solid #0f5cbf; padding-right: 12px; }
         .offers-grid, .teachers-grid {
@@ -174,7 +170,6 @@
             width: 100%;
         }
 
-        /* ============= السايد بار الأيمن ============= */
         .right-sidebar { position: sticky; top: 80px; height: fit-content; }
         .right-card {
             background: white;
@@ -200,7 +195,6 @@
             cursor: pointer;
         }
 
-        /* ============= مودال ============= */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -316,14 +310,7 @@
                 </div>
             </div>
         </div>
-<!-- قسم الإشعارات - أضفه داخل right-sidebar -->
-<div class="right-card">
-    <div class="card-title">
-        <i class="fas fa-bell"></i> الإشعارات
-        <span id="unreadCount" style="background:#ef4444; color:white; padding:2px 8px; border-radius:20px; font-size:0.7rem; margin-right:8px;">0</span>
-    </div>
-    <div id="notificationsList"></div>
-</div>
+
         <div class="content-area">
             <div id="offersSection">
                 <div class="section-title"><i class="fas fa-calendar-alt"></i> العروض المتوفرة</div>
@@ -340,6 +327,13 @@
         </div>
 
         <div class="right-sidebar">
+            <div class="right-card">
+                <div class="card-title">
+                    <i class="fas fa-bell"></i> الإشعارات
+                    <span id="unreadCount" style="background:#ef4444; color:white; padding:2px 8px; border-radius:20px; font-size:0.7rem; margin-right:8px;">0</span>
+                </div>
+                <div id="notificationsList"></div>
+            </div>
             <div class="right-card">
                 <div class="card-title">🎁 عروض مجانية</div>
                 <div id="freeOffersSidebar"></div>
@@ -399,13 +393,14 @@
                     localStorage.setItem('userData', JSON.stringify(data));
                 }
                 updateUI();
+                loadNotifications();
             } catch(e) { console.error(e); }
         }
 
         function updateUI() {
             if (!userData) return;
             const userName = userData.full_name || 'طالب';
-            const userImage = userData.profile_image ? `/uploads/${userData.profile_image}` : 'https://via.placeholder.com/80';
+            const userImage = userData.profile_image ? `/uploads/profiles/${userData.profile_image}` : 'https://via.placeholder.com/80';
             document.getElementById('navUserName').innerText = userName.split(' ')[0];
             document.getElementById('navAvatar').src = userImage.replace('80', '28');
             document.getElementById('sidebarName').innerText = userName;
@@ -452,7 +447,7 @@
             for (const offer of offers) {
                 const offerDate = new Date(offer.offer_date);
                 const isFree = offer.is_free === 1;
-                const teacherImage = offer.teacher_profile_image ? `/uploads/${offer.teacher_profile_image}` : 'https://via.placeholder.com/50';
+                const teacherImage = offer.teacher_profile_image ? `/uploads/profiles/${offer.teacher_profile_image}` : 'https://via.placeholder.com/50';
                 
                 html += `
                     <div class="offer-card">
@@ -519,7 +514,7 @@
             }
             let html = '';
             for (const teacher of teachers) {
-                const teacherImage = teacher.profile_image ? `/uploads/${teacher.profile_image}` : 'https://via.placeholder.com/60';
+                const teacherImage = teacher.profile_image ? `/uploads/profiles/${teacher.profile_image}` : 'https://via.placeholder.com/60';
                 html += `
                     <div class="teacher-card" onclick="showTeacherProfile(${teacher.id})">
                         <img src="${teacherImage}" class="teacher-avatar">
@@ -537,7 +532,7 @@
             try {
                 const res = await fetch(`/api/teacher/${teacherId}`);
                 const teacher = await res.json();
-                const teacherImage = teacher.profile_image ? `/uploads/${teacher.profile_image}` : 'https://via.placeholder.com/100';
+                const teacherImage = teacher.profile_image ? `/uploads/profiles/${teacher.profile_image}` : 'https://via.placeholder.com/100';
                 document.getElementById('teacherModalName').innerText = teacher.full_name;
                 document.getElementById('teacherModalBody').innerHTML = `
                     <div style="text-align: center;">
@@ -561,6 +556,7 @@
                 renderBookings(bookings);
                 updateBookingsCount(bookings.length);
                 loadUpcomingBookings(bookings);
+                loadNotifications();
             } catch(e) { showNotification('حدث خطأ', 'error'); }
         }
 
@@ -575,7 +571,7 @@
                 const offerDate = new Date(booking.offer_date);
                 const isPaid = booking.is_free === 1 || booking.payment_status === 'paid';
                 const isLive = booking.offer_status === 'live';
-                const teacherImage = booking.teacher_image ? `/uploads/${booking.teacher_image}` : 'https://via.placeholder.com/40';
+                const teacherImage = booking.teacher_image ? `/uploads/profiles/${booking.teacher_image}` : 'https://via.placeholder.com/40';
                 
                 html += `
                     <div style="background: #f8f9fa; border-radius: 12px; padding: 15px;">
@@ -693,6 +689,52 @@
             } catch(e) { showNotification('حدث خطأ', 'error'); }
         }
 
+        // ============= نظام الإشعارات =============
+        async function loadNotifications() {
+            try {
+                const res = await fetch(`/api/notifications/${studentId}`);
+                const notifications = await res.json();
+                renderNotifications(notifications);
+            } catch(e) { console.log(e); }
+        }
+
+        function renderNotifications(notifications) {
+            const container = document.getElementById('notificationsList');
+            const unreadCount = notifications.filter(n => !n.is_read).length;
+            document.getElementById('unreadCount').innerText = unreadCount;
+            
+            if (!notifications || notifications.length === 0) {
+                container.innerHTML = '<p style="font-size:0.8rem; color:#65676b; text-align:center;">لا توجد إشعارات</p>';
+                return;
+            }
+            
+            let html = '';
+            for (const notif of notifications.slice(0, 10)) {
+                html += `
+                    <div style="padding: 10px 0; border-bottom: 1px solid #e4e6eb; ${!notif.is_read ? 'background: #e8f4fd; margin: 0 -8px; padding: 10px 8px; border-radius: 8px;' : ''}">
+                        <div style="font-weight: 600; font-size: 0.85rem;">${escapeHtml(notif.title)}</div>
+                        <div style="font-size: 0.75rem; color: #65676b; margin: 4px 0;">${escapeHtml(notif.message)}</div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+                            <span style="font-size: 0.65rem; color: #999;">${new Date(notif.created_at).toLocaleTimeString()}</span>
+                            ${notif.offer_id ? `<button class="join-stream-btn" style="font-size:0.65rem; padding:3px 10px;" onclick="joinFromNotification(${notif.offer_id})">انضم الآن</button>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        async function joinFromNotification(offerId) {
+            const res = await fetch(`/api/student/stream-status/${offerId}/${studentId}`);
+            const data = await res.json();
+            if (data.can_join) {
+                window.open(`/api/join-stream/${offerId}/${studentId}`, '_blank');
+            } else {
+                showNotification('البث غير متاح حالياً', 'warning');
+                showSection('bookings');
+            }
+        }
+
         function closeModal() {
             document.getElementById('modalOverlay').style.display = 'none';
             document.getElementById('editProfileModal').style.display = 'none';
@@ -706,58 +748,15 @@
         function logout() { localStorage.clear(); window.location.href = '/'; }
         function escapeHtml(text) { if (!text) return ''; const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
 
+        // بدء التطبيق
         loadUserData().then(() => { showSection('offers'); });
-       setInterval(() => { if (currentSection === 'offers') loadOffers(); else if (currentSection === 'bookings') loadMyBookings(); }, 30000);
-        // جلب الإشعارات
-async function loadNotifications() {
-    try {
-        const res = await fetch(`/api/notifications/${studentId}`);
-        const notifications = await res.json();
-        renderNotifications(notifications);
-    } catch(e) { console.log(e); }
-}
-
-function renderNotifications(notifications) {
-    const container = document.getElementById('notificationsList');
-    const unreadCount = notifications.filter(n => !n.is_read).length;
-    document.getElementById('unreadCount').innerText = unreadCount;
-    
-    if (notifications.length === 0) {
-        container.innerHTML = '<p style="font-size:0.8rem; color:#65676b; text-align:center;">لا توجد إشعارات</p>';
-        return;
-    }
-    
-    let html = '';
-    for (const notif of notifications.slice(0, 10)) {
-        html += `
-            <div style="padding: 10px 0; border-bottom: 1px solid #e4e6eb; ${!notif.is_read ? 'background: #e8f4fd; margin: 0 -8px; padding: 10px 8px; border-radius: 8px;' : ''}">
-                <div style="font-weight: 600; font-size: 0.85rem;">${escapeHtml(notif.title)}</div>
-                <div style="font-size: 0.75rem; color: #65676b; margin: 4px 0;">${escapeHtml(notif.message)}</div>
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
-                    <span style="font-size: 0.65rem; color: #999;">${new Date(notif.created_at).toLocaleTimeString()}</span>
-                    ${notif.offer_id ? `<button class="join-stream-btn" style="font-size:0.65rem; padding:3px 10px;" onclick="joinFromNotification(${notif.offer_id})">انضم الآن</button>` : ''}
-                </div>
-            </div>
-        `;
-    }
-    container.innerHTML = html;
-}
-
-async function joinFromNotification(offerId) {
-    // التحقق من حالة البث أولاً
-    const res = await fetch(`/api/student/stream-status/${offerId}/${studentId}`);
-    const data = await res.json();
-    if (data.can_join) {
-        window.open(`/api/join-stream/${offerId}/${studentId}`, '_blank');
-    } else {
-        showNotification('البث غير متاح حالياً', 'warning');
-        showSection('bookings');
-    }
-}
-
-// استدعاء الإشعارات في loadMyBookings و loadOffers
-// أضف هذا السطر داخل الدوال:
-await loadNotifications();
+        
+        // تحديث دوري
+        setInterval(() => { 
+            if (currentSection === 'offers') loadOffers(); 
+            else if (currentSection === 'bookings') loadMyBookings();
+            loadNotifications();
+        }, 30000);
     </script>
 </body>
 </html>
