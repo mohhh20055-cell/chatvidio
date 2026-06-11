@@ -59,6 +59,7 @@
             border-radius: 16px;
             padding: 20px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: relative;
         }
         .teacher-avatar {
             width: 80px;
@@ -69,6 +70,8 @@
         }
         .btn-approve { background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 25px; cursor: pointer; margin: 5px; }
         .btn-reject { background: #ef4444; color: white; border: none; padding: 8px 16px; border-radius: 25px; cursor: pointer; margin: 5px; }
+        .btn-delete { background: #dc2626; color: white; border: none; padding: 8px 16px; border-radius: 25px; cursor: pointer; margin: 5px; }
+        .btn-delete:hover { background: #b91c1c; }
         .btn-complete { background: #0f5cbf; color: white; border: none; padding: 8px 16px; border-radius: 25px; cursor: pointer; }
         .request-amount { font-size: 1.5rem; font-weight: 700; color: #0f5cbf; }
         .notification-toast {
@@ -117,6 +120,18 @@
         .modal-footer { padding: 12px 16px; border-top: 1px solid #e4e6eb; display: flex; gap: 10px; justify-content: flex-end; }
         .btn-save { background: #0f5cbf; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; }
         .btn-cancel { background: #e4e6eb; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; }
+        
+        .button-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .warning-text {
+            color: #dc2626;
+            font-size: 0.7rem;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
@@ -157,10 +172,23 @@
         </div>
     </div>
 
+    <div id="deleteConfirmModal" class="modal">
+        <div class="modal-header"><h3>⚠️ تأكيد الحذف</h3></div>
+        <div class="modal-body">
+            <p>هل أنت متأكد من حذف هذا الأستاذ؟</p>
+            <p class="warning-text">⚠️ سيتم حذف جميع العروض والحجوزات والبيانات المرتبطة بهذا الأستاذ!</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="closeDeleteModal()">إلغاء</button>
+            <button class="btn-save" style="background:#dc2626;" onclick="confirmDelete()">تأكيد الحذف</button>
+        </div>
+    </div>
+
     <div id="notificationToast" class="notification-toast"></div>
 
     <script>
         let currentRejectId = null;
+        let currentDeleteId = null;
 
         function showNotification(message, type = 'success') {
             const toast = document.getElementById('notificationToast');
@@ -207,8 +235,10 @@
                             <p><i class="fas fa-book"></i> ${escapeHtml(t.specialization)}</p>
                             <p><i class="fas fa-briefcase"></i> ${t.experience} سنة خبرة</p>
                             <p><i class="fas fa-align-left"></i> ${escapeHtml(t.bio)}</p>
-                            <button class="btn-approve" onclick="approveTeacher(${t.id})"><i class="fas fa-check"></i> قبول</button>
-                            <button class="btn-reject" onclick="showRejectModal(${t.id})"><i class="fas fa-times"></i> رفض</button>
+                            <div class="button-group">
+                                <button class="btn-approve" onclick="approveTeacher(${t.id})"><i class="fas fa-check"></i> قبول</button>
+                                <button class="btn-reject" onclick="showRejectModal(${t.id})"><i class="fas fa-times"></i> رفض</button>
+                            </div>
                         </div>
                     `;
                 }
@@ -243,6 +273,9 @@
                             <p><i class="fas fa-briefcase"></i> ${t.experience} سنة خبرة</p>
                             <p><i class="fas fa-align-left"></i> ${escapeHtml(t.bio)}</p>
                             <p><strong><i class="fas fa-wallet"></i> الرصيد:</strong> ${t.balance || 0} دج</p>
+                            <div class="button-group">
+                                <button class="btn-delete" onclick="showDeleteModal(${t.id})"><i class="fas fa-trash"></i> حذف الأستاذ</button>
+                            </div>
                         </div>
                     `;
                 }
@@ -274,8 +307,10 @@
                             <div class="request-amount">${req.amount} دج</div>
                             <p><i class="fas fa-credit-card"></i> حساب CCP: ${req.ccp_account}</p>
                             <p><small>📅 تاريخ الطلب: ${new Date(req.created_at).toLocaleString()}</small></p>
-                            <button class="btn-approve" onclick="approveWithdraw(${req.id})"><i class="fas fa-check"></i> تأكيد الدفع</button>
-                            <button class="btn-reject" onclick="rejectWithdraw(${req.id})"><i class="fas fa-times"></i> رفض</button>
+                            <div class="button-group">
+                                <button class="btn-approve" onclick="approveWithdraw(${req.id})"><i class="fas fa-check"></i> تأكيد الدفع</button>
+                                <button class="btn-reject" onclick="rejectWithdraw(${req.id})"><i class="fas fa-times"></i> رفض</button>
+                            </div>
                         </div>
                     `;
                 }
@@ -337,6 +372,29 @@
             }
         }
 
+        function showDeleteModal(id) {
+            currentDeleteId = id;
+            document.getElementById('modalOverlay').style.display = 'block';
+            document.getElementById('deleteConfirmModal').style.display = 'block';
+        }
+
+        async function confirmDelete() {
+            try {
+                const res = await fetch(`/api/admin/delete-teacher/${currentDeleteId}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    showNotification('✅ تم حذف الأستاذ بنجاح', 'success');
+                    closeDeleteModal();
+                    loadApprovedTeachers();
+                    loadPendingTeachers();
+                } else {
+                    showNotification(data.error || '❌ حدث خطأ', 'error');
+                }
+            } catch(e) {
+                showNotification('❌ حدث خطأ', 'error');
+            }
+        }
+
         async function approveWithdraw(id) {
             if (confirm('💰 هل تم تحويل المبلغ إلى حساب الأستاذ؟')) {
                 try {
@@ -379,6 +437,12 @@
         function closeRejectModal() {
             document.getElementById('modalOverlay').style.display = 'none';
             document.getElementById('rejectModal').style.display = 'none';
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('modalOverlay').style.display = 'none';
+            document.getElementById('deleteConfirmModal').style.display = 'none';
+            currentDeleteId = null;
         }
 
         function logout() { 
