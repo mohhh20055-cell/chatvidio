@@ -29,7 +29,7 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname);
-    const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + ext;
+    const uniqueName = Date.now() + '-' + Math.round(Math.random()  * 1E9) + ext;
     cb(null, uniqueName);
   }
 });
@@ -125,7 +125,7 @@ app.post('/api/teacher/register', upload.single('profile_image'), async (req, re
 
     await insert('teachers', {
       full_name, email, password: hashedPassword, phone, specialization, bio, experience,
-      profile_image, status: 'pending'
+      profile_image, status: 'pending', balance: 0
     });
 
     res.json({ success: true, message: 'تم إرسال طلبك، سيتم مراجعته من قبل الإدارة' });
@@ -156,7 +156,7 @@ app.post('/api/student/register', async (req, res) => {
   }
 });
 
-// تحديث بيانات الطالب
+// تحديث بيانات الطالب (الاسم والهاتف فقط)
 app.post('/api/student/update-profile', upload.single('profile_image'), async (req, res) => {
   try {
     const { student_id, full_name, phone } = req.body;
@@ -197,20 +197,21 @@ app.get('/api/student/:student_id', async (req, res) => {
   }
 });
 
-// تحديث بيانات الأستاذ
+// تحديث بيانات الأستاذ (فقط الصورة - يمنع تغيير المعلومات الشخصية)
 app.post('/api/teacher/update-profile', upload.single('profile_image'), async (req, res) => {
   try {
-    const { teacher_id, full_name, bio, specialization, experience, phone } = req.body;
+    const { teacher_id } = req.body;
     let profile_image = null;
     
-    console.log('📝 تحديث ملف الأستاذ:', { teacher_id, full_name });
+    console.log('📝 تحديث صورة الأستاذ:', { teacher_id });
     if (req.file) {
       profile_image = req.file.filename;
       console.log('📸 صورة جديدة للأستاذ:', profile_image);
+    } else {
+      return res.json({ success: false, error: 'الرجاء اختيار صورة' });
     }
     
-    const updateData = { full_name, bio, specialization, experience, phone };
-    if (profile_image) updateData.profile_image = profile_image;
+    const updateData = { profile_image: profile_image };
     
     const { data, error } = await supabase
       .from('teachers')
@@ -220,7 +221,7 @@ app.post('/api/teacher/update-profile', upload.single('profile_image'), async (r
     
     if (error) throw error;
     
-    res.json({ success: true, message: 'تم تحديث الملف الشخصي', user: data[0] });
+    res.json({ success: true, message: 'تم تحديث الصورة الشخصية', user: data[0] });
   } catch (error) {
     res.json({ success: false, error: error.message });
   }
@@ -276,7 +277,13 @@ app.post('/api/login', async (req, res) => {
       return res.json({ success: false, error: 'حسابك قيد المراجعة' });
     }
     
-    res.json({ success: true, token: `${userRole}_token`, user: { id: user.id, name: user.full_name, role: userRole, profile_image: user.profile_image } });
+    res.json({ success: true, token: `${userRole}_token`, user: { 
+      id: user.id, 
+      name: user.full_name, 
+      role: userRole, 
+      profile_image: user.profile_image,
+      balance: user.balance || 0
+    } });
   } catch (error) {
     res.json({ success: false, error: error.message });
   }
@@ -358,13 +365,13 @@ app.post('/api/booking/create', async (req, res) => {
     
     // عرض مجاني
     if (offer.is_free === 1 || offer.price === 0) {
-      const session = await insert('sessions', { offer_id, student_id, payment_status: 'paid', payment_amount: 0 });
+      const session = await insert('sessions', { offer_id, student_id, payment_status: 'paid', payment_amount: 0, teacher_earned: 0 });
       await insert('waiting_room', { offer_id, student_id });
       return res.json({ success: true, session_id: session.id, is_free: true });
     }
     
     // عرض مدفوع
-    const session = await insert('sessions', { offer_id, student_id, payment_status: 'pending', payment_amount: offer.price });
+    const session = await insert('sessions', { offer_id, student_id, payment_status: 'pending', payment_amount: offer.price, teacher_earned: 0 });
     
     const student = await getOne('students', 'id', student_id);
     const baseUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
@@ -386,9 +393,27 @@ app.post('/api/booking/create', async (req, res) => {
 
 app.get('/api/payment/success/:session_id', async (req, res) => {
   const { session_id } = req.params;
-  await update('sessions', session_id, { payment_status: 'paid' });
+  
+  // جلب معلومات الجلسة
   const session = await getOne('sessions', 'id', session_id);
-  if (session) await insert('waiting_room', { offer_id: session.offer_id, student_id: session.student_id });
+  if (session) {
+    // تحديث حالة الدفع
+    await update('sessions', session_id, { payment_status: 'paid' });
+    
+    // جلب معلومات العرض
+    const offer = await getOne('offers', 'id', session.offer_id);
+    if (offer && !offer.is_free) {
+      // تحديث رصيد الأستاذ (بعد خصم عمولة المنصة 10%)
+      const teacher = await getOne('teachers', 'id', offer.teacher_id);
+      const commission = offer.price * 0.1; // 10% عمولة
+      const teacherEarned = offer.price - commission;
+      
+      await update('teachers', offer.teacher_id, { balance: (teacher.balance || 0) + teacherEarned });
+      await update('sessions', session_id, { teacher_earned: teacherEarned });
+    }
+    
+    await insert('waiting_room', { offer_id: session.offer_id, student_id: session.student_id });
+  }
   
   res.send(`
     <!DOCTYPE html>
@@ -445,9 +470,173 @@ app.get('/api/waiting-count/:offer_id', async (req, res) => {
   res.json({ count: count || 0 });
 });
 
-// ============= نظام البث المباشر مع إشعارات تلقائية =============
+// ============= نظام الرصيد وسحب الأرباح =============
 
-// دخول الأستاذ إلى البث
+// جلب رصيد الأستاذ والمدفوعات المستحقة
+app.get('/api/teacher/balance/:teacher_id', async (req, res) => {
+  try {
+    const teacher = await getOne('teachers', 'id', req.params.teacher_id);
+    if (!teacher) return res.json({ error: 'أستاذ غير موجود' });
+    
+    // جلب المدفوعات الناجحة
+    const { data: paidSessions } = await supabase
+      .from('sessions')
+      .select('*, offers:offer_id (subject_name)')
+      .eq('offer_id', req.params.teacher_id)
+      .eq('payment_status', 'paid')
+      .order('created_at', { ascending: false });
+    
+    res.json({
+      balance: teacher.balance || 0,
+      total_earned: teacher.total_earned || 0,
+      sessions: paidSessions || []
+    });
+  } catch (error) {
+    res.json({ error: error.message });
+  }
+});
+
+// تقديم طلب سحب رصيد
+app.post('/api/teacher/withdraw-request', async (req, res) => {
+  try {
+    const { teacher_id, amount, ccp_account } = req.body;
+    
+    if (!amount || amount <= 0) {
+      return res.json({ success: false, error: 'المبلغ غير صالح' });
+    }
+    
+    if (!ccp_account || ccp_account.length < 10) {
+      return res.json({ success: false, error: 'رقم حساب CCP غير صالح' });
+    }
+    
+    const teacher = await getOne('teachers', 'id', teacher_id);
+    if (!teacher) return res.json({ success: false, error: 'أستاذ غير موجود' });
+    
+    if ((teacher.balance || 0) < amount) {
+      return res.json({ success: false, error: 'الرصيد غير كافٍ' });
+    }
+    
+    // إنشاء طلب سحب
+    const withdrawRequest = await insert('withdraw_requests', {
+      teacher_id: parseInt(teacher_id),
+      amount: parseFloat(amount),
+      ccp_account: ccp_account,
+      status: 'pending',
+      created_at: new Date().toISOString()
+    });
+    
+    // تجميد المبلغ مؤقتاً
+    await update('teachers', teacher_id, { 
+      balance: (teacher.balance || 0) - amount,
+      pending_withdraw: (teacher.pending_withdraw || 0) + amount
+    });
+    
+    res.json({ success: true, request: withdrawRequest });
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// جلب طلبات السحب (للأستاذ)
+app.get('/api/teacher/withdraw-requests/:teacher_id', async (req, res) => {
+  try {
+    const { data } = await supabase
+      .from('withdraw_requests')
+      .select('*')
+      .eq('teacher_id', req.params.teacher_id)
+      .order('created_at', { ascending: false });
+    res.json(data || []);
+  } catch (error) {
+    res.json([]);
+  }
+});
+
+// ADMIN: جلب جميع طلبات السحب
+app.get('/api/admin/withdraw-requests', async (req, res) => {
+  const { data } = await supabase
+    .from('withdraw_requests')
+    .select('*, teachers:teacher_id (full_name, email, phone)')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true });
+  res.json(data || []);
+});
+
+// ADMIN: معالجة طلب سحب (قبول)
+app.post('/api/admin/withdraw-requests/:id/approve', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const request = await getOne('withdraw_requests', 'id', id);
+    if (!request) return res.json({ success: false, error: 'الطلب غير موجود' });
+    
+    await update('withdraw_requests', id, { 
+      status: 'completed',
+      processed_at: new Date().toISOString()
+    });
+    
+    // تحديث إجمالي الأرباح المسحوبة للأستاذ
+    const teacher = await getOne('teachers', 'id', request.teacher_id);
+    await update('teachers', request.teacher_id, {
+      total_withdrawn: (teacher.total_withdrawn || 0) + request.amount,
+      pending_withdraw: (teacher.pending_withdraw || 0) - request.amount
+    });
+    
+    // إضافة إشعار للأستاذ
+    await insert('notifications', {
+      user_id: request.teacher_id,
+      user_type: 'teacher',
+      title: '✅ تمت معالجة طلب السحب',
+      message: `تم تحويل مبلغ ${request.amount} دج إلى حسابك ${request.ccp_account}`,
+      is_read: false,
+      created_at: new Date().toISOString()
+    });
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// ADMIN: رفض طلب سحب
+app.post('/api/admin/withdraw-requests/:id/reject', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    
+    const request = await getOne('withdraw_requests', 'id', id);
+    if (!request) return res.json({ success: false, error: 'الطلب غير موجود' });
+    
+    await update('withdraw_requests', id, { 
+      status: 'rejected',
+      rejection_reason: reason || 'لم يتم تحديد سبب',
+      processed_at: new Date().toISOString()
+    });
+    
+    // إعادة المبلغ إلى رصيد الأستاذ
+    const teacher = await getOne('teachers', 'id', request.teacher_id);
+    await update('teachers', request.teacher_id, {
+      balance: (teacher.balance || 0) + request.amount,
+      pending_withdraw: (teacher.pending_withdraw || 0) - request.amount
+    });
+    
+    // إضافة إشعار للأستاذ
+    await insert('notifications', {
+      user_id: request.teacher_id,
+      user_type: 'teacher',
+      title: '❌ تم رفض طلب السحب',
+      message: `تم رفض طلب سحب مبلغ ${request.amount} دج. السبب: ${reason || 'لم يتم تحديد سبب'}`,
+      is_read: false,
+      created_at: new Date().toISOString()
+    });
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// ============= نظام البث المباشر =============
+
 app.post('/api/stream/enter-teacher/:offer_id', async (req, res) => {
   const { offer_id, teacher_id } = req.body;
   const offer = await getOne('offers', 'id', offer_id);
@@ -456,16 +645,13 @@ app.post('/api/stream/enter-teacher/:offer_id', async (req, res) => {
   res.json({ success: true, room_name: offer.room_name });
 });
 
-// إضافة الطلاب إلى البث - مع إشعارات تلقائية
 app.post('/api/stream/add-students/:offer_id', async (req, res) => {
   const { offer_id, teacher_id } = req.body;
   const offer = await getOne('offers', 'id', offer_id);
   if (!offer || offer.teacher_id != teacher_id) return res.json({ success: false });
   
-  // تغيير حالة العرض إلى بث مباشر
   await update('offers', offer_id, { status: 'live' });
   
-  // جلب جميع الطلاب المنتظرين
   const { data: waitingStudents } = await supabase
     .from('waiting_room')
     .select('student_id')
@@ -474,10 +660,8 @@ app.post('/api/stream/add-students/:offer_id', async (req, res) => {
   const addedStudents = [];
   
   for (const student of waitingStudents || []) {
-    // إضافة الطالب إلى البث المباشر
     await insert('active_stream', { offer_id, student_id: student.student_id });
     
-    // إضافة إشعار للطالب (يمكن تخزينه في قاعدة بيانات للإشعارات)
     await insert('notifications', {
       user_id: student.student_id,
       user_type: 'student',
@@ -490,7 +674,6 @@ app.post('/api/stream/add-students/:offer_id', async (req, res) => {
     
     addedStudents.push(student.student_id);
     
-    // حذف الطالب من غرفة الانتظار
     await supabase
       .from('waiting_room')
       .delete()
@@ -501,38 +684,23 @@ app.post('/api/stream/add-students/:offer_id', async (req, res) => {
   res.json({ success: true, students_count: addedStudents.length, students: addedStudents });
 });
 
-// التحقق من الإشعارات للطالب
-app.get('/api/notifications/:student_id', async (req, res) => {
-  const { data } = await supabase
-    .from('notifications')
-    .select('*')
-    .eq('user_id', req.params.student_id)
-    .eq('user_type', 'student')
-    .order('created_at', { ascending: false })
-    .limit(20);
-  res.json(data || []);
-});
-
-// تحديث حالة الإشعار كمقروء
-app.post('/api/notifications/read/:notification_id', async (req, res) => {
-  await update('notifications', req.params.notification_id, { is_read: true });
+app.post('/api/stream/end/:offer_id', async (req, res) => {
+  await update('offers', req.params.offer_id, { status: 'completed' });
+  await supabase.from('active_stream').delete().eq('offer_id', req.params.offer_id);
+  await supabase.from('waiting_room').delete().eq('offer_id', req.params.offer_id);
   res.json({ success: true });
 });
 
-// حذف إشعار
-app.delete('/api/notifications/:notification_id', async (req, res) => {
-  await remove('notifications', 'id', req.params.notification_id);
-  res.json({ success: true });
+app.get('/api/stream/status/:offer_id', async (req, res) => {
+  const offer = await getOne('offers', 'id', req.params.offer_id);
+  res.json({ status: offer?.status || 'not_found', room_name: offer?.room_name });
 });
 
-// حالة البث للطالب - مع إمكانية الانضمام التلقائي
 app.get('/api/student/stream-status/:offer_id/:student_id', async (req, res) => {
   const offer = await getOne('offers', 'id', req.params.offer_id);
   if (!offer) return res.json({ can_join: false, status: 'not_found' });
   
-  // إذا كان البث مباشر
   if (offer.status === 'live') {
-    // التحقق من أن الطالب مفعل في البث
     const { data: active } = await supabase
       .from('active_stream')
       .select('*')
@@ -541,7 +709,6 @@ app.get('/api/student/stream-status/:offer_id/:student_id', async (req, res) => 
       .single();
     
     if (active) {
-      // تحديث الإشعار كمقروء تلقائياً
       await supabase
         .from('notifications')
         .update({ is_read: true })
@@ -551,12 +718,9 @@ app.get('/api/student/stream-status/:offer_id/:student_id', async (req, res) => 
       return res.json({ can_join: true, room_name: offer.room_name, status: 'live' });
     }
     return res.json({ can_join: false, status: 'not_active' });
-  } 
-  // إذا كان الأستاذ جاهز (في غرفة الانتظار)
-  else if (offer.status === 'teacher_ready') {
+  } else if (offer.status === 'teacher_ready') {
     const session = await getOne('sessions', 'offer_id', req.params.offer_id);
     if (session && session.payment_status === 'paid' && session.student_id == req.params.student_id) {
-      // التأكد من وجود الطالب في غرفة الانتظار
       const { data: existingWaiting } = await supabase
         .from('waiting_room')
         .select('*')
@@ -570,9 +734,7 @@ app.get('/api/student/stream-status/:offer_id/:student_id', async (req, res) => 
       return res.json({ can_join: false, is_waiting: true, status: 'waiting' });
     }
     return res.json({ can_join: false, payment_required: true, status: 'payment_required' });
-  }
-  // إذا كان العرض قادم
-  else if (offer.status === 'upcoming') {
+  } else if (offer.status === 'upcoming') {
     const session = await getOne('sessions', 'offer_id', req.params.offer_id);
     if (session && session.payment_status === 'paid' && session.student_id == req.params.student_id) {
       return res.json({ can_join: false, is_upcoming: true, status: 'upcoming', offer_date: offer.offer_date });
@@ -583,7 +745,6 @@ app.get('/api/student/stream-status/:offer_id/:student_id', async (req, res) => 
   return res.json({ can_join: false, status: 'unknown' });
 });
 
-// قائمة انتظار الطلاب للأستاذ
 app.get('/api/stream/waiting-list/:offer_id/:teacher_id', async (req, res) => {
   const { data } = await supabase
     .from('waiting_room')
@@ -598,23 +759,24 @@ app.get('/api/stream/waiting-list/:offer_id/:teacher_id', async (req, res) => {
   res.json(formatted);
 });
 
-// إنهاء البث
-app.post('/api/stream/end/:offer_id', async (req, res) => {
-  await update('offers', req.params.offer_id, { status: 'completed' });
-  await supabase.from('active_stream').delete().eq('offer_id', req.params.offer_id);
-  await supabase.from('waiting_room').delete().eq('offer_id', req.params.offer_id);
-  res.json({ success: true });
+app.get('/api/notifications/:user_id/:user_type', async (req, res) => {
+  const { data } = await supabase
+    .from('notifications')
+    .select('*')
+    .eq('user_id', req.params.user_id)
+    .eq('user_type', req.params.user_type)
+    .order('created_at', { ascending: false })
+    .limit(30);
+  res.json(data || []);
 });
 
-// حالة البث العامة
-app.get('/api/stream/status/:offer_id', async (req, res) => {
-  const offer = await getOne('offers', 'id', req.params.offer_id);
-  res.json({ status: offer?.status || 'not_found', room_name: offer?.room_name });
+app.post('/api/notifications/read/:notification_id', async (req, res) => {
+  await update('notifications', req.params.notification_id, { is_read: true });
+  res.json({ success: true });
 });
 
 // ============= صفحات البث =============
 
-// صفحة بث الأستاذ
 app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
   const offer = await getOne('offers', 'id', req.params.offer_id);
   if (!offer || offer.teacher_id != req.params.teacher_id) return res.redirect('/teacher-dashboard.html');
@@ -629,10 +791,10 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
       .btn-green{background:#10b981}
       #jitsi-container{position:fixed;top:60px;left:0;right:0;bottom:0}
       .info{background:#f59e0b;padding:8px 16px;border-radius:30px}
-      .student-item{display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid #e2e8f0}
       .waiting-panel{position:fixed;left:20px;top:80px;width:280px;background:white;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:200;max-height:400px;overflow-y:auto}
       .waiting-header{background:#0f5cbf;color:white;padding:12px;border-radius:12px 12px 0 0;font-weight:700}
       .waiting-list{padding:8px}
+      .student-item{display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid #e2e8f0}
       .add-btn{background:#10b981;color:white;border:none;padding:4px 12px;border-radius:20px;cursor:pointer;font-size:0.7rem}
     </style>
     </head>
@@ -662,7 +824,7 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
         width:'100%',
         height:window.innerHeight-60,
         parentNode:document.querySelector('#jitsi-container'),
-        userInfo:{displayName:'👨‍🏫 الأستاذ ${escapeHtml(offer.teacher_name)}'}
+        userInfo:{displayName:'👨‍🏫 الأستاذ'}
       });
       
       async function loadWaitingList(){
@@ -739,7 +901,6 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
   `);
 });
 
-// دخول الأستاذ إلى غرفة البث
 app.get('/api/enter-teacher-stream/:offer_id/:teacher_id', async (req, res) => {
   await axios.post(`http://localhost:${PORT}/api/stream/enter-teacher/${req.params.offer_id}`, { 
     offer_id: parseInt(req.params.offer_id), 
@@ -748,7 +909,6 @@ app.get('/api/enter-teacher-stream/:offer_id/:teacher_id', async (req, res) => {
   res.redirect(`/api/teacher-stream/${req.params.offer_id}/${req.params.teacher_id}`);
 });
 
-// صفحة انضمام الطالب إلى البث
 app.get('/api/join-stream/:offer_id/:student_id', async (req, res) => {
   const offer = await getOne('offers', 'id', req.params.offer_id);
   if (!offer || offer.status !== 'live') return res.redirect('/student-dashboard.html');
@@ -801,5 +961,5 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ العروض المجانية: حجز مباشر`);
   console.log(`💰 العروض المدفوعة: عبر Chargily`);
   console.log(`📸 مجلد الصور: uploads/profiles/`);
-  console.log(`🔔 نظام الإشعارات: تم تفعيله`);
+  console.log(`💰 نظام الرصيد وسحب الأرباح: تم تفعيله`);
 });
