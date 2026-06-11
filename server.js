@@ -985,4 +985,5 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`💰 العروض المدفوعة: عبر Chargily`);
   console.log(`📸 مجلد الصور: uploads/profiles/`);
   console.log(`💰 نظام الرصيد وسحب الأرباح: تم تفعيله`);
+  console.log(`👨‍💼 ADMIN Routes: تم تفعيلها`);
 });
