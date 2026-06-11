@@ -28,7 +28,8 @@ const storage = multer.diskStorage({
     cb(null, dir);
   },
   filename: (req, file, cb) => {
-    const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname);
+    const ext = path.extname(file.originalname);
+    const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + ext;
     cb(null, uniqueName);
   }
 });
@@ -97,6 +98,12 @@ async function update(table, id, data) {
   return result[0];
 }
 
+async function remove(table, column, value) {
+  const { error } = await supabase.from(table).delete().eq(column, value);
+  if (error) throw error;
+  return true;
+}
+
 // ============= Routes =============
 
 // تسجيل أستاذ جديد
@@ -155,7 +162,11 @@ app.post('/api/student/update-profile', upload.single('profile_image'), async (r
     const { student_id, full_name, phone } = req.body;
     let profile_image = null;
     
-    if (req.file) profile_image = req.file.filename;
+    console.log('📝 تحديث ملف الطالب:', { student_id, full_name, phone });
+    if (req.file) {
+      profile_image = req.file.filename;
+      console.log('📸 صورة جديدة:', profile_image);
+    }
     
     const updateData = {};
     if (full_name) updateData.full_name = full_name;
@@ -192,13 +203,24 @@ app.post('/api/teacher/update-profile', upload.single('profile_image'), async (r
     const { teacher_id, full_name, bio, specialization, experience, phone } = req.body;
     let profile_image = null;
     
-    if (req.file) profile_image = req.file.filename;
+    console.log('📝 تحديث ملف الأستاذ:', { teacher_id, full_name });
+    if (req.file) {
+      profile_image = req.file.filename;
+      console.log('📸 صورة جديدة للأستاذ:', profile_image);
+    }
     
     const updateData = { full_name, bio, specialization, experience, phone };
     if (profile_image) updateData.profile_image = profile_image;
     
-    await update('teachers', teacher_id, updateData);
-    res.json({ success: true, message: 'تم تحديث الملف الشخصي' });
+    const { data, error } = await supabase
+      .from('teachers')
+      .update(updateData)
+      .eq('id', parseInt(teacher_id))
+      .select();
+    
+    if (error) throw error;
+    
+    res.json({ success: true, message: 'تم تحديث الملف الشخصي', user: data[0] });
   } catch (error) {
     res.json({ success: false, error: error.message });
   }
@@ -423,7 +445,9 @@ app.get('/api/waiting-count/:offer_id', async (req, res) => {
   res.json({ count: count || 0 });
 });
 
-// ============= نظام البث المباشر =============
+// ============= نظام البث المباشر مع إشعارات تلقائية =============
+
+// دخول الأستاذ إلى البث
 app.post('/api/stream/enter-teacher/:offer_id', async (req, res) => {
   const { offer_id, teacher_id } = req.body;
   const offer = await getOne('offers', 'id', offer_id);
@@ -432,23 +456,149 @@ app.post('/api/stream/enter-teacher/:offer_id', async (req, res) => {
   res.json({ success: true, room_name: offer.room_name });
 });
 
+// إضافة الطلاب إلى البث - مع إشعارات تلقائية
 app.post('/api/stream/add-students/:offer_id', async (req, res) => {
   const { offer_id, teacher_id } = req.body;
   const offer = await getOne('offers', 'id', offer_id);
   if (!offer || offer.teacher_id != teacher_id) return res.json({ success: false });
   
+  // تغيير حالة العرض إلى بث مباشر
   await update('offers', offer_id, { status: 'live' });
   
-  const { data: waitingStudents } = await supabase.from('waiting_room').select('student_id').eq('offer_id', offer_id);
+  // جلب جميع الطلاب المنتظرين
+  const { data: waitingStudents } = await supabase
+    .from('waiting_room')
+    .select('student_id')
+    .eq('offer_id', offer_id);
+  
+  const addedStudents = [];
   
   for (const student of waitingStudents || []) {
+    // إضافة الطالب إلى البث المباشر
     await insert('active_stream', { offer_id, student_id: student.student_id });
-    await supabase.from('waiting_room').delete().eq('offer_id', offer_id).eq('student_id', student.student_id);
+    
+    // إضافة إشعار للطالب (يمكن تخزينه في قاعدة بيانات للإشعارات)
+    await insert('notifications', {
+      user_id: student.student_id,
+      user_type: 'student',
+      title: '🔴 البث المباشر بدأ!',
+      message: `الحصة "${offer.subject_name}" قد بدأت الآن. انضم إلى البث المباشر.`,
+      offer_id: offer_id,
+      is_read: false,
+      created_at: new Date().toISOString()
+    });
+    
+    addedStudents.push(student.student_id);
+    
+    // حذف الطالب من غرفة الانتظار
+    await supabase
+      .from('waiting_room')
+      .delete()
+      .eq('offer_id', offer_id)
+      .eq('student_id', student.student_id);
   }
   
-  res.json({ success: true, students_count: waitingStudents?.length || 0 });
+  res.json({ success: true, students_count: addedStudents.length, students: addedStudents });
 });
 
+// التحقق من الإشعارات للطالب
+app.get('/api/notifications/:student_id', async (req, res) => {
+  const { data } = await supabase
+    .from('notifications')
+    .select('*')
+    .eq('user_id', req.params.student_id)
+    .eq('user_type', 'student')
+    .order('created_at', { ascending: false })
+    .limit(20);
+  res.json(data || []);
+});
+
+// تحديث حالة الإشعار كمقروء
+app.post('/api/notifications/read/:notification_id', async (req, res) => {
+  await update('notifications', req.params.notification_id, { is_read: true });
+  res.json({ success: true });
+});
+
+// حذف إشعار
+app.delete('/api/notifications/:notification_id', async (req, res) => {
+  await remove('notifications', 'id', req.params.notification_id);
+  res.json({ success: true });
+});
+
+// حالة البث للطالب - مع إمكانية الانضمام التلقائي
+app.get('/api/student/stream-status/:offer_id/:student_id', async (req, res) => {
+  const offer = await getOne('offers', 'id', req.params.offer_id);
+  if (!offer) return res.json({ can_join: false, status: 'not_found' });
+  
+  // إذا كان البث مباشر
+  if (offer.status === 'live') {
+    // التحقق من أن الطالب مفعل في البث
+    const { data: active } = await supabase
+      .from('active_stream')
+      .select('*')
+      .eq('offer_id', req.params.offer_id)
+      .eq('student_id', req.params.student_id)
+      .single();
+    
+    if (active) {
+      // تحديث الإشعار كمقروء تلقائياً
+      await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('offer_id', req.params.offer_id)
+        .eq('user_id', req.params.student_id);
+      
+      return res.json({ can_join: true, room_name: offer.room_name, status: 'live' });
+    }
+    return res.json({ can_join: false, status: 'not_active' });
+  } 
+  // إذا كان الأستاذ جاهز (في غرفة الانتظار)
+  else if (offer.status === 'teacher_ready') {
+    const session = await getOne('sessions', 'offer_id', req.params.offer_id);
+    if (session && session.payment_status === 'paid' && session.student_id == req.params.student_id) {
+      // التأكد من وجود الطالب في غرفة الانتظار
+      const { data: existingWaiting } = await supabase
+        .from('waiting_room')
+        .select('*')
+        .eq('offer_id', req.params.offer_id)
+        .eq('student_id', req.params.student_id)
+        .maybeSingle();
+      
+      if (!existingWaiting) {
+        await insert('waiting_room', { offer_id: req.params.offer_id, student_id: req.params.student_id });
+      }
+      return res.json({ can_join: false, is_waiting: true, status: 'waiting' });
+    }
+    return res.json({ can_join: false, payment_required: true, status: 'payment_required' });
+  }
+  // إذا كان العرض قادم
+  else if (offer.status === 'upcoming') {
+    const session = await getOne('sessions', 'offer_id', req.params.offer_id);
+    if (session && session.payment_status === 'paid' && session.student_id == req.params.student_id) {
+      return res.json({ can_join: false, is_upcoming: true, status: 'upcoming', offer_date: offer.offer_date });
+    }
+    return res.json({ can_join: false, payment_required: true, status: 'payment_required' });
+  }
+  
+  return res.json({ can_join: false, status: 'unknown' });
+});
+
+// قائمة انتظار الطلاب للأستاذ
+app.get('/api/stream/waiting-list/:offer_id/:teacher_id', async (req, res) => {
+  const { data } = await supabase
+    .from('waiting_room')
+    .select('*, students:student_id (full_name, email)')
+    .eq('offer_id', req.params.offer_id);
+  
+  const formatted = (data || []).map(w => ({
+    ...w,
+    full_name: w.students?.full_name,
+    email: w.students?.email
+  }));
+  res.json(formatted);
+});
+
+// إنهاء البث
 app.post('/api/stream/end/:offer_id', async (req, res) => {
   await update('offers', req.params.offer_id, { status: 'completed' });
   await supabase.from('active_stream').delete().eq('offer_id', req.params.offer_id);
@@ -456,43 +606,22 @@ app.post('/api/stream/end/:offer_id', async (req, res) => {
   res.json({ success: true });
 });
 
+// حالة البث العامة
 app.get('/api/stream/status/:offer_id', async (req, res) => {
   const offer = await getOne('offers', 'id', req.params.offer_id);
   res.json({ status: offer?.status || 'not_found', room_name: offer?.room_name });
 });
 
-app.get('/api/student/stream-status/:offer_id/:student_id', async (req, res) => {
-  const offer = await getOne('offers', 'id', req.params.offer_id);
-  if (!offer) return res.json({ can_join: false });
-  
-  if (offer.status === 'live') {
-    const { data: active } = await supabase.from('active_stream').select('*').eq('offer_id', req.params.offer_id).eq('student_id', req.params.student_id).single();
-    if (active) return res.json({ can_join: true, room_name: offer.room_name });
-    return res.json({ can_join: false });
-  } else if (offer.status === 'upcoming' || offer.status === 'teacher_ready') {
-    const session = await getOne('sessions', 'offer_id', req.params.offer_id);
-    if (session && session.payment_status === 'paid' && session.student_id == req.params.student_id) {
-      await insert('waiting_room', { offer_id: req.params.offer_id, student_id: req.params.student_id });
-      return res.json({ can_join: false, is_waiting: true });
-    }
-    return res.json({ can_join: false, payment_required: true });
-  }
-  return res.json({ can_join: false });
-});
+// ============= صفحات البث =============
 
-app.get('/api/stream/waiting-list/:offer_id/:teacher_id', async (req, res) => {
-  const { data } = await supabase.from('waiting_room').select('*, students:student_id (full_name, email)').eq('offer_id', req.params.offer_id);
-  res.json(data || []);
-});
-
-// صفحات البث
+// صفحة بث الأستاذ
 app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
   const offer = await getOne('offers', 'id', req.params.offer_id);
   if (!offer || offer.teacher_id != req.params.teacher_id) return res.redirect('/teacher-dashboard.html');
   res.send(`
     <!DOCTYPE html>
     <html lang="ar">
-    <head><meta charset="UTF-8"><title>بث مباشر</title><script src="https://meet.jit.si/external_api.js"></script>
+    <head><meta charset="UTF-8"><title>بث مباشر - الأستاذ</title><script src="https://meet.jit.si/external_api.js"></script>
     <style>
       *{margin:0;padding:0}body{font-family:Cairo,sans-serif;background:#0a0a1a}
       .header{background:#0f3460;color:white;padding:12px 24px;display:flex;justify-content:space-between;position:fixed;top:0;left:0;right:0;z-index:100}
@@ -500,62 +629,126 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
       .btn-green{background:#10b981}
       #jitsi-container{position:fixed;top:60px;left:0;right:0;bottom:0}
       .info{background:#f59e0b;padding:8px 16px;border-radius:30px}
+      .student-item{display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid #e2e8f0}
+      .waiting-panel{position:fixed;left:20px;top:80px;width:280px;background:white;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:200;max-height:400px;overflow-y:auto}
+      .waiting-header{background:#0f5cbf;color:white;padding:12px;border-radius:12px 12px 0 0;font-weight:700}
+      .waiting-list{padding:8px}
+      .add-btn{background:#10b981;color:white;border:none;padding:4px 12px;border-radius:20px;cursor:pointer;font-size:0.7rem}
     </style>
     </head>
     <body>
     <div class="header">
-      <div><span class="info">👨‍🏫 أنت المضيف</span></div>
+      <div><span class="info">👨‍🏫 أنت المضيف | ${escapeHtml(offer.subject_name)}</span></div>
       <div>
         <span id="waitingCount" class="info">⏳ جاري التحميل...</span>
-        <button id="addBtn" class="btn btn-green" onclick="addStudents()" style="display:none">➕ إضافة الطلاب</button>
         <button class="btn" onclick="endStream()">⏹️ إنهاء البث</button>
         <button class="btn" onclick="leaveStream()">🚪 مغادرة</button>
       </div>
     </div>
+    <div id="waitingPanel" class="waiting-panel" style="display:none">
+      <div class="waiting-header">⏳ الطلاب المنتظرون <span id="panelCount">0</span></div>
+      <div id="waitingList" class="waiting-list"></div>
+      <button id="addAllBtn" class="btn-green" style="width:calc(100% - 16px); margin:8px; padding:8px;" onclick="addAllStudents()">➕ إضافة الكل إلى البث</button>
+    </div>
     <div id="jitsi-container"></div>
     <script>
       let studentsAdded=false;
-      const api=new JitsiMeetExternalAPI('meet.jit.si',{roomName:'${offer.room_name}',width:'100%',height:window.innerHeight-60,parentNode:document.querySelector('#jitsi-container'),userInfo:{displayName:'👨‍🏫 الأستاذ'}});
-      async function loadWaitingCount(){
+      let roomName = '${offer.room_name}';
+      let offerId = ${req.params.offer_id};
+      let teacherId = ${req.params.teacher_id};
+      
+      const api=new JitsiMeetExternalAPI('meet.jit.si',{
+        roomName:roomName,
+        width:'100%',
+        height:window.innerHeight-60,
+        parentNode:document.querySelector('#jitsi-container'),
+        userInfo:{displayName:'👨‍🏫 الأستاذ ${escapeHtml(offer.teacher_name)}'}
+      });
+      
+      async function loadWaitingList(){
         try{
-          const res=await fetch('/api/stream/waiting-list/${req.params.offer_id}/${req.params.teacher_id}');
+          const res=await fetch('/api/stream/waiting-list/'+offerId+'/'+teacherId);
           const students=await res.json();
           const count=students?.length||0;
           document.getElementById('waitingCount').innerHTML=\`⏳ \${count} طالب ينتظرون\`;
-          if(count>0 && !studentsAdded) document.getElementById('addBtn').style.display='inline-block';
+          
+          if(count>0){
+            document.getElementById('waitingPanel').style.display='block';
+            document.getElementById('panelCount').innerText=count;
+            let html='';
+            students.forEach(s=>{
+              html+=\`<div class="student-item">
+                <div><strong>\${escapeHtml(s.full_name)}</strong><br><small>\${s.email}</small></div>
+                <button class="add-btn" onclick="addStudent(\${s.student_id})">➕ إضافة</button>
+              </div>\`;
+            });
+            document.getElementById('waitingList').innerHTML=html;
+          }else{
+            document.getElementById('waitingPanel').style.display='none';
+          }
         }catch(e){}
       }
-      async function addStudents(){
-        if(confirm('إضافة الطلاب إلى البث؟')){
-          const res=await fetch('/api/stream/add-students/${req.params.offer_id}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({offer_id:${req.params.offer_id},teacher_id:${req.params.teacher_id}})});
+      
+      async function addStudent(studentId){
+        if(confirm('إضافة الطالب إلى البث؟')){
+          const res=await fetch('/api/stream/add-students/'+offerId,{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({offer_id:offerId,teacher_id:teacherId})
+          });
           const data=await res.json();
           if(data.success){
-            studentsAdded=true;
-            document.getElementById('addBtn').style.display='none';
-            alert(\`✅ تم إضافة \${data.students_count} طالب\`);
+            alert('✅ تم إضافة الطالب');
+            loadWaitingList();
           }
         }
       }
+      
+      async function addAllStudents(){
+        if(confirm('إضافة جميع الطلاب إلى البث؟')){
+          const res=await fetch('/api/stream/add-students/'+offerId,{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({offer_id:offerId,teacher_id:teacherId})
+          });
+          const data=await res.json();
+          if(data.success){
+            alert(\`✅ تم إضافة \${data.students_count} طالب\`);
+            studentsAdded=true;
+            loadWaitingList();
+          }
+        }
+      }
+      
       function leaveStream(){api.dispose();window.location.href='/teacher-dashboard.html';}
+      
       async function endStream(){
         if(confirm('إنهاء البث؟')){
-          await fetch('/api/stream/end/${req.params.offer_id}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({offer_id:${req.params.offer_id},teacher_id:${req.params.teacher_id}})});
+          await fetch('/api/stream/end/'+offerId,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({offer_id:offerId,teacher_id:teacherId})});
           api.dispose();window.location.href='/teacher-dashboard.html';
         }
       }
-      loadWaitingCount();
-      setInterval(loadWaitingCount,3000);
+      
+      function escapeHtml(text){if(!text)return '';const div=document.createElement('div');div.textContent=text;return div.innerHTML;}
+      
+      loadWaitingList();
+      setInterval(loadWaitingList,5000);
     </script>
     </body>
     </html>
   `);
 });
 
+// دخول الأستاذ إلى غرفة البث
 app.get('/api/enter-teacher-stream/:offer_id/:teacher_id', async (req, res) => {
-  await axios.post(`http://localhost:${PORT}/api/stream/enter-teacher/${req.params.offer_id}`, { offer_id: parseInt(req.params.offer_id), teacher_id: parseInt(req.params.teacher_id) }).catch(e=>console.log(e));
+  await axios.post(`http://localhost:${PORT}/api/stream/enter-teacher/${req.params.offer_id}`, { 
+    offer_id: parseInt(req.params.offer_id), 
+    teacher_id: parseInt(req.params.teacher_id) 
+  }).catch(e=>console.log(e));
   res.redirect(`/api/teacher-stream/${req.params.offer_id}/${req.params.teacher_id}`);
 });
 
+// صفحة انضمام الطالب إلى البث
 app.get('/api/join-stream/:offer_id/:student_id', async (req, res) => {
   const offer = await getOne('offers', 'id', req.params.offer_id);
   if (!offer || offer.status !== 'live') return res.redirect('/student-dashboard.html');
@@ -570,17 +763,24 @@ app.get('/api/join-stream/:offer_id/:student_id', async (req, res) => {
       .header{background:#0f3460;color:white;padding:12px 24px;display:flex;justify-content:space-between;position:fixed;top:0;left:0;right:0;z-index:100}
       .btn{background:#ef4444;color:white;border:none;padding:8px 20px;border-radius:30px;cursor:pointer}
       #jitsi-container{position:fixed;top:60px;left:0;right:0;bottom:0}
-      .badge{background:#f59e0b;padding:5px 15px;border-radius:30px}
+      .badge{background:#10b981;padding:5px 15px;border-radius:30px}
     </style>
     </head>
     <body>
     <div class="header">
-      <div><span class="badge">👨‍🎓 أنت طالب - مشاهدة فقط</span></div>
+      <div><span class="badge">🎓 أنت طالب - ${escapeHtml(offer.subject_name)}</span></div>
       <button class="btn" onclick="leaveStream()">🚪 مغادرة</button>
     </div>
     <div id="jitsi-container"></div>
     <script>
-      const api=new JitsiMeetExternalAPI('meet.jit.si',{roomName:'${offer.room_name}',width:'100%',height:window.innerHeight-60,parentNode:document.querySelector('#jitsi-container'),userInfo:{displayName:'👨‍🎓 طالب'},configOverwrite:{startWithVideoMuted:true,startWithAudioMuted:true}});
+      const api=new JitsiMeetExternalAPI('meet.jit.si',{
+        roomName:'${offer.room_name}',
+        width:'100%',
+        height:window.innerHeight-60,
+        parentNode:document.querySelector('#jitsi-container'),
+        userInfo:{displayName:'👨‍🎓 طالب'},
+        configOverwrite:{startWithVideoMuted:true,startWithAudioMuted:true}
+      });
       function leaveStream(){api.dispose();window.location.href='/student-dashboard.html';}
     </script>
     </body>
@@ -588,9 +788,18 @@ app.get('/api/join-stream/:offer_id/:student_id', async (req, res) => {
   `);
 });
 
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 // ============= تشغيل الخادم =============
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 الخادم يعمل على http://localhost:${PORT}`);
   console.log(`✅ العروض المجانية: حجز مباشر`);
   console.log(`💰 العروض المدفوعة: عبر Chargily`);
+  console.log(`📸 مجلد الصور: uploads/profiles/`);
+  console.log(`🔔 نظام الإشعارات: تم تفعيله`);
 });
