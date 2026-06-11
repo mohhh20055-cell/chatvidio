@@ -179,12 +179,6 @@
             box-shadow: 0 1px 2px rgba(0,0,0,0.1);
         }
         .card-title { font-weight: 700; margin-bottom: 12px; }
-        .booking-item {
-            padding: 10px 0;
-            border-bottom: 1px solid #e4e6eb;
-        }
-        .booking-subject { font-weight: 600; font-size: 0.9rem; }
-        .booking-date { font-size: 0.7rem; color: #65676b; margin: 4px 0; }
         .join-stream-btn {
             background: #10b981;
             color: white;
@@ -400,9 +394,10 @@
         function updateUI() {
             if (!userData) return;
             const userName = userData.full_name || 'طالب';
-            const userImage = userData.profile_image ? `/uploads/profiles/${userData.profile_image}` : 'https://via.placeholder.com/80';
+            // استخدام profile_url من Supabase Storage
+            const userImage = userData.profile_url || 'https://via.placeholder.com/80';
             document.getElementById('navUserName').innerText = userName.split(' ')[0];
-            document.getElementById('navAvatar').src = userImage.replace('80', '28');
+            document.getElementById('navAvatar').src = userImage;
             document.getElementById('sidebarName').innerText = userName;
             document.getElementById('sidebarEmail').innerText = userData.email || '';
             document.getElementById('sidebarAvatar').src = userImage;
@@ -447,7 +442,8 @@
             for (const offer of offers) {
                 const offerDate = new Date(offer.offer_date);
                 const isFree = offer.is_free === 1;
-                const teacherImage = offer.teacher_profile_image ? `/uploads/profiles/${offer.teacher_profile_image}` : 'https://via.placeholder.com/50';
+                // استخدام profile_url من Supabase Storage
+                const teacherImage = offer.teacher_profile_url || 'https://via.placeholder.com/50';
                 
                 html += `
                     <div class="offer-card">
@@ -514,7 +510,8 @@
             }
             let html = '';
             for (const teacher of teachers) {
-                const teacherImage = teacher.profile_image ? `/uploads/profiles/${teacher.profile_image}` : 'https://via.placeholder.com/60';
+                // استخدام profile_url من Supabase Storage
+                const teacherImage = teacher.profile_url || 'https://via.placeholder.com/60';
                 html += `
                     <div class="teacher-card" onclick="showTeacherProfile(${teacher.id})">
                         <img src="${teacherImage}" class="teacher-avatar">
@@ -532,7 +529,7 @@
             try {
                 const res = await fetch(`/api/teacher/${teacherId}`);
                 const teacher = await res.json();
-                const teacherImage = teacher.profile_image ? `/uploads/profiles/${teacher.profile_image}` : 'https://via.placeholder.com/100';
+                const teacherImage = teacher.profile_url || 'https://via.placeholder.com/100';
                 document.getElementById('teacherModalName').innerText = teacher.full_name;
                 document.getElementById('teacherModalBody').innerHTML = `
                     <div style="text-align: center;">
@@ -571,7 +568,7 @@
                 const offerDate = new Date(booking.offer_date);
                 const isPaid = booking.is_free === 1 || booking.payment_status === 'paid';
                 const isLive = booking.offer_status === 'live';
-                const teacherImage = booking.teacher_image ? `/uploads/profiles/${booking.teacher_image}` : 'https://via.placeholder.com/40';
+                const teacherImage = booking.teacher_image_url || 'https://via.placeholder.com/40';
                 
                 html += `
                     <div style="background: #f8f9fa; border-radius: 12px; padding: 15px;">
@@ -689,7 +686,6 @@
             } catch(e) { showNotification('حدث خطأ', 'error'); }
         }
 
-        // ============= نظام الإشعارات =============
         async function loadNotifications() {
             try {
                 const res = await fetch(`/api/notifications/${studentId}/student`);
@@ -748,10 +744,8 @@
         function logout() { localStorage.clear(); window.location.href = '/'; }
         function escapeHtml(text) { if (!text) return ''; const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
 
-        // بدء التطبيق
         loadUserData().then(() => { showSection('offers'); });
         
-        // تحديث دوري
         setInterval(() => { 
             if (currentSection === 'offers') loadOffers(); 
             else if (currentSection === 'bookings') loadMyBookings();
