@@ -53,6 +53,7 @@
             .nav-links a { padding: 5px 10px; font-size: 14px; }
             .teachers-grid, .offers-grid { grid-template-columns: 1fr; }
         }
+        .error-message { color: #ef4444; text-align: center; padding: 20px; }
     </style>
 </head>
 <body>
@@ -198,7 +199,6 @@
             document.getElementById('loginSection').style.display = 'none';
             setActiveTab('liveTab');
             await loadLiveStreams();
-            setInterval(loadLiveStreams, 5000);
         }
 
         function showLogin() {
@@ -232,23 +232,29 @@
         }
 
         async function loadPublicTeachers() {
+            const container = document.getElementById('teachersList');
+            container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
             try {
                 const res = await fetch('/api/public/teachers');
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                }
                 const teachers = await res.json();
-                const container = document.getElementById('teachersList');
-                if (teachers.length === 0) {
+                console.log('الأساتذة:', teachers);
+                
+                if (!teachers || teachers.length === 0) {
                     container.innerHTML = '<p style="text-align:center">لا يوجد أساتذة معتمدون حالياً</p>';
                     return;
                 }
                 let html = '';
                 teachers.forEach(t => {
-                    const imageUrl = t.profile_image ? `/uploads/${t.profile_image}` : 'https://via.placeholder.com/100';
+                    const imageUrl = t.profile_url || 'https://via.placeholder.com/100';
                     html += `<div class="teacher-card" onclick="viewTeacherProfile(${t.id})">
                         <img src="${imageUrl}" class="teacher-image" onerror="this.src='https://via.placeholder.com/100'">
-                        <h3>${t.full_name}</h3>
-                        <p><i class="fas fa-book"></i> ${t.specialization || 'تخصص عام'}</p>
+                        <h3>${escapeHtml(t.full_name)}</h3>
+                        <p><i class="fas fa-book"></i> ${escapeHtml(t.specialization || 'تخصص عام')}</p>
                         <p><i class="fas fa-briefcase"></i> ${t.experience || '0'} سنة خبرة</p>
-                        <p><i class="fas fa-align-left"></i> ${t.bio ? t.bio.substring(0, 80) + '...' : 'لا توجد نبذة'}</p>
+                        <p><i class="fas fa-align-left"></i> ${t.bio ? escapeHtml(t.bio.substring(0, 80)) + '...' : 'لا توجد نبذة'}</p>
                         <button class="view-profile-btn" onclick="event.stopPropagation(); viewTeacherProfile(${t.id})">
                             <i class="fas fa-eye"></i> زيارة صفحة الأستاذ
                         </button>
@@ -256,33 +262,39 @@
                 });
                 container.innerHTML = html;
             } catch(e) {
-                console.log(e);
-                document.getElementById('teachersList').innerHTML = '<p style="text-align:center">حدث خطأ في تحميل البيانات</p>';
+                console.error('خطأ في تحميل الأساتذة:', e);
+                container.innerHTML = `<p class="error-message">حدث خطأ في تحميل البيانات: ${e.message}</p>`;
             }
         }
 
         async function loadPublicOffers() {
+            const container = document.getElementById('offersListPublic');
+            container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
             try {
                 const res = await fetch('/api/public/offers');
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                }
                 const offers = await res.json();
-                const container = document.getElementById('offersListPublic');
-                if (offers.length === 0) {
+                console.log('العروض:', offers);
+                
+                if (!offers || offers.length === 0) {
                     container.innerHTML = '<p style="text-align:center">لا توجد عروض متاحة حالياً</p>';
                     return;
                 }
                 let html = '';
                 offers.forEach(o => {
                     const offerDate = new Date(o.offer_date);
-                    const imageUrl = o.teacher_profile_image ? `/uploads/${o.teacher_profile_image}` : 'https://via.placeholder.com/80';
+                    const imageUrl = o.teacher_profile_url || 'https://via.placeholder.com/80';
                     html += `<div class="offer-card">
                         <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px; cursor: pointer;" onclick="viewTeacherProfile(${o.teacher_id})">
-                            <img src="${imageUrl}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;">
+                            <img src="${imageUrl}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;" onerror="this.src='https://via.placeholder.com/60'">
                             <div>
-                                <h3 style="margin-bottom: 5px; color:#0f5cbf;">${o.teacher_name}</h3>
-                                <p><i class="fas fa-book"></i> ${o.teacher_specialization || 'تخصص عام'}</p>
+                                <h3 style="margin-bottom: 5px; color:#0f5cbf;">${escapeHtml(o.teacher_name)}</h3>
+                                <p><i class="fas fa-book"></i> ${escapeHtml(o.teacher_specialization || 'تخصص عام')}</p>
                             </div>
                         </div>
-                        <p><strong>${o.subject_name}</strong></p>
+                        <p><strong>${escapeHtml(o.subject_name)}</strong></p>
                         <p><i class="fas fa-calendar"></i> ${offerDate.toLocaleString('ar')}</p>
                         <p><i class="fas fa-clock"></i> ${o.duration} دقيقة</p>
                         ${o.is_free ? '<span class="free-tag"><i class="fas fa-gift"></i> مجانية</span>' : '<span class="price-tag"><i class="fas fa-money-bill"></i> ' + o.price + ' دج</span>'}
@@ -293,39 +305,39 @@
                 });
                 container.innerHTML = html;
             } catch(e) {
-                console.log(e);
-                document.getElementById('offersListPublic').innerHTML = '<p style="text-align:center">حدث خطأ في تحميل البيانات</p>';
+                console.error('خطأ في تحميل العروض:', e);
+                container.innerHTML = `<p class="error-message">حدث خطأ في تحميل البيانات: ${e.message}</p>`;
             }
         }
 
         async function loadLiveStreams() {
+            const container = document.getElementById('liveOffersList');
             try {
                 const res = await fetch('/api/live-offers');
                 const offers = await res.json();
                 const liveCount = document.getElementById('liveCount');
-                if (offers.length > 0) {
+                if (offers && offers.length > 0) {
                     liveCount.style.display = 'inline-block';
                     liveCount.innerText = offers.length;
                 } else {
                     liveCount.style.display = 'none';
                 }
-                const container = document.getElementById('liveOffersList');
-                if (!offers.length) {
+                if (!offers || offers.length === 0) {
                     container.innerHTML = '<p style="text-align:center">لا يوجد بث مباشر حالياً</p>';
                     return;
                 }
                 let html = '';
                 offers.forEach(o => {
-                    const imageUrl = o.teacher_profile_image ? `/uploads/${o.teacher_profile_image}` : 'https://via.placeholder.com/80';
+                    const imageUrl = o.teacher_profile_url || 'https://via.placeholder.com/80';
                     html += `<div class="offer-card">
                         <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px; cursor: pointer;" onclick="viewTeacherProfile(${o.teacher_id})">
-                            <img src="${imageUrl}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;">
+                            <img src="${imageUrl}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;" onerror="this.src='https://via.placeholder.com/60'">
                             <div>
-                                <h3 style="margin-bottom: 5px; color:#0f5cbf;">${o.teacher_name}</h3>
-                                <p><i class="fas fa-book"></i> ${o.teacher_specialization || 'تخصص عام'}</p>
+                                <h3 style="margin-bottom: 5px; color:#0f5cbf;">${escapeHtml(o.teacher_name)}</h3>
+                                <p><i class="fas fa-book"></i> ${escapeHtml(o.teacher_specialization || 'تخصص عام')}</p>
                             </div>
                         </div>
-                        <p><strong>${o.subject_name}</strong></p>
+                        <p><strong>${escapeHtml(o.subject_name)}</strong></p>
                         <span class="live-badge" style="display:inline-block; margin-bottom:10px;">🔴 بث مباشر</span>
                         <button class="btn-primary" onclick="viewTeacherProfile(${o.teacher_id})" style="width:100%">
                             <i class="fas fa-eye"></i> زيارة صفحة الأستاذ
@@ -334,7 +346,8 @@
                 });
                 container.innerHTML = html;
             } catch(e) {
-                console.log(e);
+                console.error('خطأ في تحميل البث المباشر:', e);
+                container.innerHTML = '<p style="text-align:center">لا يوجد بث مباشر حالياً</p>';
             }
         }
 
@@ -376,11 +389,9 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    // تخزين البيانات في localStorage
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('userData', JSON.stringify(data.user));
                     
-                    // تخزين التوكن المخصص حسب الدور
                     if (data.user.role === 'admin') {
                         localStorage.setItem('adminToken', data.token);
                         window.location.href = '/admin.html';
@@ -455,9 +466,15 @@
             }
         }
 
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         showHome();
-        loadLiveStreams();
-        setInterval(loadLiveStreams, 10000);
+        setInterval(loadLiveStreams, 30000);
     </script>
 </body>
 </html>
