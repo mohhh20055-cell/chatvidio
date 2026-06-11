@@ -29,7 +29,7 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname);
-    const uniqueName = Date.now() + '-' + Math.round(Math.random()  * 1E9) + ext;
+    const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + ext;
     cb(null, uniqueName);
   }
 });
@@ -125,7 +125,7 @@ app.post('/api/teacher/register', upload.single('profile_image'), async (req, re
 
     await insert('teachers', {
       full_name, email, password: hashedPassword, phone, specialization, bio, experience,
-      profile_image, status: 'pending', balance: 0
+      profile_image, status: 'pending', balance: 0, total_earned: 0, total_withdrawn: 0, pending_withdraw: 0
     });
 
     res.json({ success: true, message: 'تم إرسال طلبك، سيتم مراجعته من قبل الإدارة' });
@@ -156,7 +156,7 @@ app.post('/api/student/register', async (req, res) => {
   }
 });
 
-// تحديث بيانات الطالب (الاسم والهاتف فقط)
+// تحديث بيانات الطالب
 app.post('/api/student/update-profile', upload.single('profile_image'), async (req, res) => {
   try {
     const { student_id, full_name, phone } = req.body;
@@ -197,7 +197,7 @@ app.get('/api/student/:student_id', async (req, res) => {
   }
 });
 
-// تحديث بيانات الأستاذ (فقط الصورة - يمنع تغيير المعلومات الشخصية)
+// تحديث بيانات الأستاذ (فقط الصورة)
 app.post('/api/teacher/update-profile', upload.single('profile_image'), async (req, res) => {
   try {
     const { teacher_id } = req.body;
@@ -289,20 +289,57 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// ADMIN Routes
+// ============= ADMIN Routes =============
+
+// جلب الأساتذة المنتظرين
 app.get('/api/admin/pending-teachers', async (req, res) => {
-  const { data } = await supabase.from('teachers').select('*').eq('status', 'pending');
-  res.json(data || []);
+  try {
+    const { data } = await supabase
+      .from('teachers')
+      .select('*')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+    res.json(data || []);
+  } catch (error) {
+    console.error('❌ خطأ:', error.message);
+    res.json([]);
+  }
 });
 
+// جلب الأساتذة المقبولين
+app.get('/api/admin/approved-teachers', async (req, res) => {
+  try {
+    const { data } = await supabase
+      .from('teachers')
+      .select('*')
+      .eq('status', 'approved')
+      .order('created_at', { ascending: false });
+    res.json(data || []);
+  } catch (error) {
+    console.error('❌ خطأ:', error.message);
+    res.json([]);
+  }
+});
+
+// قبول أستاذ
 app.post('/api/admin/approve-teacher/:id', async (req, res) => {
-  await update('teachers', req.params.id, { status: 'approved' });
-  res.json({ success: true });
+  try {
+    await update('teachers', req.params.id, { status: 'approved' });
+    res.json({ success: true });
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
 });
 
+// رفض أستاذ
 app.post('/api/admin/reject-teacher/:id', async (req, res) => {
-  await update('teachers', req.params.id, { status: 'rejected' });
-  res.json({ success: true });
+  try {
+    const { reason } = req.body;
+    await update('teachers', req.params.id, { status: 'rejected', rejection_reason: reason });
+    res.json({ success: true });
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
 });
 
 // ============= نظام العروض =============
@@ -394,21 +431,20 @@ app.post('/api/booking/create', async (req, res) => {
 app.get('/api/payment/success/:session_id', async (req, res) => {
   const { session_id } = req.params;
   
-  // جلب معلومات الجلسة
   const session = await getOne('sessions', 'id', session_id);
   if (session) {
-    // تحديث حالة الدفع
     await update('sessions', session_id, { payment_status: 'paid' });
     
-    // جلب معلومات العرض
     const offer = await getOne('offers', 'id', session.offer_id);
     if (offer && !offer.is_free) {
-      // تحديث رصيد الأستاذ (بعد خصم عمولة المنصة 10%)
       const teacher = await getOne('teachers', 'id', offer.teacher_id);
-      const commission = offer.price * 0.1; // 10% عمولة
+      const commission = offer.price * 0.1;
       const teacherEarned = offer.price - commission;
       
-      await update('teachers', offer.teacher_id, { balance: (teacher.balance || 0) + teacherEarned });
+      await update('teachers', offer.teacher_id, { 
+        balance: (teacher.balance || 0) + teacherEarned,
+        total_earned: (teacher.total_earned || 0) + teacherEarned
+      });
       await update('sessions', session_id, { teacher_earned: teacherEarned });
     }
     
@@ -472,18 +508,16 @@ app.get('/api/waiting-count/:offer_id', async (req, res) => {
 
 // ============= نظام الرصيد وسحب الأرباح =============
 
-// جلب رصيد الأستاذ والمدفوعات المستحقة
 app.get('/api/teacher/balance/:teacher_id', async (req, res) => {
   try {
     const teacher = await getOne('teachers', 'id', req.params.teacher_id);
     if (!teacher) return res.json({ error: 'أستاذ غير موجود' });
     
-    // جلب المدفوعات الناجحة
     const { data: paidSessions } = await supabase
       .from('sessions')
       .select('*, offers:offer_id (subject_name)')
-      .eq('offer_id', req.params.teacher_id)
       .eq('payment_status', 'paid')
+      .eq('offer_id', req.params.teacher_id)
       .order('created_at', { ascending: false });
     
     res.json({
@@ -496,7 +530,6 @@ app.get('/api/teacher/balance/:teacher_id', async (req, res) => {
   }
 });
 
-// تقديم طلب سحب رصيد
 app.post('/api/teacher/withdraw-request', async (req, res) => {
   try {
     const { teacher_id, amount, ccp_account } = req.body;
@@ -516,7 +549,6 @@ app.post('/api/teacher/withdraw-request', async (req, res) => {
       return res.json({ success: false, error: 'الرصيد غير كافٍ' });
     }
     
-    // إنشاء طلب سحب
     const withdrawRequest = await insert('withdraw_requests', {
       teacher_id: parseInt(teacher_id),
       amount: parseFloat(amount),
@@ -525,7 +557,6 @@ app.post('/api/teacher/withdraw-request', async (req, res) => {
       created_at: new Date().toISOString()
     });
     
-    // تجميد المبلغ مؤقتاً
     await update('teachers', teacher_id, { 
       balance: (teacher.balance || 0) - amount,
       pending_withdraw: (teacher.pending_withdraw || 0) + amount
@@ -537,7 +568,6 @@ app.post('/api/teacher/withdraw-request', async (req, res) => {
   }
 });
 
-// جلب طلبات السحب (للأستاذ)
 app.get('/api/teacher/withdraw-requests/:teacher_id', async (req, res) => {
   try {
     const { data } = await supabase
@@ -551,7 +581,6 @@ app.get('/api/teacher/withdraw-requests/:teacher_id', async (req, res) => {
   }
 });
 
-// ADMIN: جلب جميع طلبات السحب
 app.get('/api/admin/withdraw-requests', async (req, res) => {
   const { data } = await supabase
     .from('withdraw_requests')
@@ -561,7 +590,6 @@ app.get('/api/admin/withdraw-requests', async (req, res) => {
   res.json(data || []);
 });
 
-// ADMIN: معالجة طلب سحب (قبول)
 app.post('/api/admin/withdraw-requests/:id/approve', async (req, res) => {
   try {
     const { id } = req.params;
@@ -574,14 +602,12 @@ app.post('/api/admin/withdraw-requests/:id/approve', async (req, res) => {
       processed_at: new Date().toISOString()
     });
     
-    // تحديث إجمالي الأرباح المسحوبة للأستاذ
     const teacher = await getOne('teachers', 'id', request.teacher_id);
     await update('teachers', request.teacher_id, {
       total_withdrawn: (teacher.total_withdrawn || 0) + request.amount,
       pending_withdraw: (teacher.pending_withdraw || 0) - request.amount
     });
     
-    // إضافة إشعار للأستاذ
     await insert('notifications', {
       user_id: request.teacher_id,
       user_type: 'teacher',
@@ -597,7 +623,6 @@ app.post('/api/admin/withdraw-requests/:id/approve', async (req, res) => {
   }
 });
 
-// ADMIN: رفض طلب سحب
 app.post('/api/admin/withdraw-requests/:id/reject', async (req, res) => {
   try {
     const { id } = req.params;
@@ -612,14 +637,12 @@ app.post('/api/admin/withdraw-requests/:id/reject', async (req, res) => {
       processed_at: new Date().toISOString()
     });
     
-    // إعادة المبلغ إلى رصيد الأستاذ
     const teacher = await getOne('teachers', 'id', request.teacher_id);
     await update('teachers', request.teacher_id, {
       balance: (teacher.balance || 0) + request.amount,
       pending_withdraw: (teacher.pending_withdraw || 0) - request.amount
     });
     
-    // إضافة إشعار للأستاذ
     await insert('notifications', {
       user_id: request.teacher_id,
       user_type: 'teacher',
@@ -800,7 +823,7 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
     </head>
     <body>
     <div class="header">
-      <div><span class="info">👨‍🏫 أنت المضيف | ${escapeHtml(offer.subject_name)}</span></div>
+      <div><span class="info">👨‍🏫 أنت المضيف</span></div>
       <div>
         <span id="waitingCount" class="info">⏳ جاري التحميل...</span>
         <button class="btn" onclick="endStream()">⏹️ إنهاء البث</button>
@@ -928,7 +951,7 @@ app.get('/api/join-stream/:offer_id/:student_id', async (req, res) => {
     </head>
     <body>
     <div class="header">
-      <div><span class="badge">🎓 أنت طالب - ${escapeHtml(offer.subject_name)}</span></div>
+      <div><span class="badge">🎓 أنت طالب</span></div>
       <button class="btn" onclick="leaveStream()">🚪 مغادرة</button>
     </div>
     <div id="jitsi-container"></div>
