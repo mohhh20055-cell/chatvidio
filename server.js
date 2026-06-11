@@ -342,6 +342,39 @@ app.post('/api/admin/reject-teacher/:id', async (req, res) => {
   }
 });
 
+// حذف أستاذ (مع جميع بياناته)
+app.delete('/api/admin/delete-teacher/:id', async (req, res) => {
+  try {
+    const teacherId = req.params.id;
+    
+    // حذف الجلسات المرتبطة
+    await supabase.from('sessions').delete().eq('teacher_id', teacherId);
+    
+    // حذف غرف الانتظار المرتبطة
+    await supabase.from('waiting_room').delete().eq('teacher_id', teacherId);
+    
+    // حذف البث المباشر المرتبط
+    await supabase.from('active_stream').delete().eq('teacher_id', teacherId);
+    
+    // حذف العروض المرتبطة
+    await supabase.from('offers').delete().eq('teacher_id', teacherId);
+    
+    // حذف طلبات السحب المرتبطة
+    await supabase.from('withdraw_requests').delete().eq('teacher_id', teacherId);
+    
+    // حذف الإشعارات المرتبطة
+    await supabase.from('notifications').delete().eq('user_id', teacherId).eq('user_type', 'teacher');
+    
+    // حذف الأستاذ نفسه
+    await supabase.from('teachers').delete().eq('id', teacherId);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ خطأ في حذف الأستاذ:', error.message);
+    res.json({ success: false, error: error.message });
+  }
+});
+
 // ============= نظام العروض =============
 app.post('/api/offer/create', async (req, res) => {
   const { teacher_id, subject_name, duration, offer_date, price, is_free } = req.body;
@@ -985,5 +1018,5 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`💰 العروض المدفوعة: عبر Chargily`);
   console.log(`📸 مجلد الصور: uploads/profiles/`);
   console.log(`💰 نظام الرصيد وسحب الأرباح: تم تفعيله`);
-  console.log(`👨‍💼 ADMIN Routes: تم تفعيلها`);
+  console.log(`👨‍💼 ADMIN Routes: تم تفعيلها (قبول/رفض/حذف الأساتذة)`);
 });
