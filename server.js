@@ -129,6 +129,76 @@ async function remove(table, column, value) {
   return true;
 }
 
+// ============= الصفحات العامة (للواجهة الرئيسية) =============
+
+// جلب الأساتذة المقبولين للصفحة الرئيسية
+app.get('/api/public/teachers', async (req, res) => {
+  try {
+    const { data } = await supabase
+      .from('teachers')
+      .select('id, full_name, specialization, bio, experience, profile_url')
+      .eq('status', 'approved')
+      .order('created_at', { ascending: false });
+    res.json(data || []);
+  } catch (error) {
+    console.error('❌ خطأ:', error.message);
+    res.json([]);
+  }
+});
+
+// جلب العروض المتاحة للصفحة الرئيسية
+app.get('/api/public/offers', async (req, res) => {
+  try {
+    const { data } = await supabase
+      .from('offers')
+      .select('*, teachers:teacher_id (id, full_name, specialization, profile_url)')
+      .eq('status', 'upcoming')
+      .gt('offer_date', new Date().toISOString())
+      .order('offer_date', { ascending: true });
+    
+    const formatted = (data || []).map(o => ({
+      id: o.id,
+      subject_name: o.subject_name,
+      duration: o.duration,
+      offer_date: o.offer_date,
+      price: o.price,
+      is_free: o.is_free,
+      teacher_id: o.teachers?.id,
+      teacher_name: o.teachers?.full_name,
+      teacher_specialization: o.teachers?.specialization,
+      teacher_profile_url: o.teachers?.profile_url
+    }));
+    res.json(formatted);
+  } catch (error) {
+    console.error('❌ خطأ:', error.message);
+    res.json([]);
+  }
+});
+
+// جلب العروض المباشرة
+app.get('/api/live-offers', async (req, res) => {
+  try {
+    const { data } = await supabase
+      .from('offers')
+      .select('*, teachers:teacher_id (id, full_name, specialization, profile_url)')
+      .eq('status', 'live')
+      .order('offer_date', { ascending: false });
+    
+    const formatted = (data || []).map(o => ({
+      id: o.id,
+      subject_name: o.subject_name,
+      teacher_id: o.teachers?.id,
+      teacher_name: o.teachers?.full_name,
+      teacher_specialization: o.teachers?.specialization,
+      teacher_profile_url: o.teachers?.profile_url
+    }));
+    res.json(formatted);
+  } catch (error) {
+    console.error('❌ خطأ:', error.message);
+    res.json([]);
+  }
+});
+
 // ============= Routes =============
 
 // تسجيل أستاذ جديد
@@ -199,7 +269,6 @@ app.post('/api/student/update-profile', upload.single('profile_image'), async (r
     
     console.log('📝 تحديث ملف الطالب:', { student_id, full_name, phone });
     
-    // جلب الصورة القديمة
     const oldStudent = await getOne('students', 'id', student_id);
     
     if (req.file) {
@@ -251,7 +320,6 @@ app.post('/api/teacher/update-profile', upload.single('profile_image'), async (r
       return res.json({ success: false, error: 'الرجاء اختيار صورة' });
     }
     
-    // جلب الصورة القديمة
     const oldTeacher = await getOne('teachers', 'id', teacher_id);
     
     const uploaded = await uploadToSupabase(req.file, 'teachers', oldTeacher?.profile_image);
@@ -394,7 +462,6 @@ app.delete('/api/admin/delete-teacher/:id', async (req, res) => {
   try {
     const teacherId = req.params.id;
     
-    // جلب الأستاذ لحذف صورته من التخزين
     const teacher = await getOne('teachers', 'id', teacherId);
     if (teacher && teacher.profile_image) {
       await supabase.storage.from('profiles').remove([`teachers/${teacher.profile_image}`]);
@@ -1059,4 +1126,5 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`📸 تخزين الصور: Supabase Storage`);
   console.log(`💰 نظام الرصيد وسحب الأرباح: تم تفعيله`);
   console.log(`👨‍💼 ADMIN Routes: تم تفعيلها`);
+  console.log(`🌐 الصفحات العامة: تم تفعيلها (/api/public/teachers, /api/public/offers, /api/live-offers)`);
 });
