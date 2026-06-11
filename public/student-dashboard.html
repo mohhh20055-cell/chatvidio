@@ -316,7 +316,14 @@
                 </div>
             </div>
         </div>
-
+<!-- قسم الإشعارات - أضفه داخل right-sidebar -->
+<div class="right-card">
+    <div class="card-title">
+        <i class="fas fa-bell"></i> الإشعارات
+        <span id="unreadCount" style="background:#ef4444; color:white; padding:2px 8px; border-radius:20px; font-size:0.7rem; margin-right:8px;">0</span>
+    </div>
+    <div id="notificationsList"></div>
+</div>
         <div class="content-area">
             <div id="offersSection">
                 <div class="section-title"><i class="fas fa-calendar-alt"></i> العروض المتوفرة</div>
@@ -700,7 +707,57 @@
         function escapeHtml(text) { if (!text) return ''; const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
 
         loadUserData().then(() => { showSection('offers'); });
-        setInterval(() => { if (currentSection === 'offers') loadOffers(); else if (currentSection === 'bookings') loadMyBookings(); }, 30000);
+       setInterval(() => { if (currentSection === 'offers') loadOffers(); else if (currentSection === 'bookings') loadMyBookings(); }, 30000);
+        // جلب الإشعارات
+async function loadNotifications() {
+    try {
+        const res = await fetch(`/api/notifications/${studentId}`);
+        const notifications = await res.json();
+        renderNotifications(notifications);
+    } catch(e) { console.log(e); }
+}
+
+function renderNotifications(notifications) {
+    const container = document.getElementById('notificationsList');
+    const unreadCount = notifications.filter(n => !n.is_read).length;
+    document.getElementById('unreadCount').innerText = unreadCount;
+    
+    if (notifications.length === 0) {
+        container.innerHTML = '<p style="font-size:0.8rem; color:#65676b; text-align:center;">لا توجد إشعارات</p>';
+        return;
+    }
+    
+    let html = '';
+    for (const notif of notifications.slice(0, 10)) {
+        html += `
+            <div style="padding: 10px 0; border-bottom: 1px solid #e4e6eb; ${!notif.is_read ? 'background: #e8f4fd; margin: 0 -8px; padding: 10px 8px; border-radius: 8px;' : ''}">
+                <div style="font-weight: 600; font-size: 0.85rem;">${escapeHtml(notif.title)}</div>
+                <div style="font-size: 0.75rem; color: #65676b; margin: 4px 0;">${escapeHtml(notif.message)}</div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+                    <span style="font-size: 0.65rem; color: #999;">${new Date(notif.created_at).toLocaleTimeString()}</span>
+                    ${notif.offer_id ? `<button class="join-stream-btn" style="font-size:0.65rem; padding:3px 10px;" onclick="joinFromNotification(${notif.offer_id})">انضم الآن</button>` : ''}
+                </div>
+            </div>
+        `;
+    }
+    container.innerHTML = html;
+}
+
+async function joinFromNotification(offerId) {
+    // التحقق من حالة البث أولاً
+    const res = await fetch(`/api/student/stream-status/${offerId}/${studentId}`);
+    const data = await res.json();
+    if (data.can_join) {
+        window.open(`/api/join-stream/${offerId}/${studentId}`, '_blank');
+    } else {
+        showNotification('البث غير متاح حالياً', 'warning');
+        showSection('bookings');
+    }
+}
+
+// استدعاء الإشعارات في loadMyBookings و loadOffers
+// أضف هذا السطر داخل الدوال:
+await loadNotifications();
     </script>
 </body>
 </html>
