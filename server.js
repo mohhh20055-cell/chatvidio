@@ -4,7 +4,6 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 const cors = require('cors');
 const multer = require('multer');
-const fs = require('fs');
 const axios = require('axios');
 const { createClient } = require('@supabase/supabase-js');
 
@@ -18,28 +17,54 @@ const supabaseKey = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6Ikp
 console.log('🔌 الاتصال بـ Supabase:', supabaseUrl);
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// إعداد رفع الملفات
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    let dir = './uploads';
-    if (file.fieldname === 'profile_image') dir = './uploads/profiles';
-    if (file.fieldname === 'cover_image') dir = './uploads/covers';
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + ext;
-    cb(null, uniqueName);
-  }
-});
-const upload = multer({ storage: storage, limits: { fileSize: 20 * 1024 * 1024 } });
+// ============= إعداد Multer (للملفات المؤقتة فقط) =============
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage, limits: { fileSize: 5 * 1024 * 1024 } }); // 5MB max
 
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
-app.use('/uploads', express.static('uploads'));
+
+// ============= دالة رفع الصورة إلى Supabase Storage =============
+async function uploadToSupabase(file, folder, oldFileName = null) {
+  try {
+    if (!file || !file.buffer) return null;
+    
+    const fileExt = path.extname(file.originalname);
+    const fileName = `${Date.now()}-${Math.round(Math.random() * 1E9)}${fileExt}`;
+    const filePath = `${folder}/${fileName}`;
+    
+    // حذف الصورة القديمة إذا وجدت
+    if (oldFileName) {
+      const oldPath = `${folder}/${oldFileName}`;
+      await supabase.storage.from('profiles').remove([oldPath]);
+    }
+    
+    // رفع الصورة الجديدة
+    const { data, error } = await supabase.storage
+      .from('profiles')
+      .upload(filePath, file.buffer, {
+        contentType: file.mimetype,
+        cacheControl: '3600'
+      });
+    
+    if (error) throw error;
+    
+    // الحصول على الرابط العام
+    const { data: publicUrl } = supabase.storage
+      .from('profiles')
+      .getPublicUrl(filePath);
+    
+    return {
+      filename: fileName,
+      url: publicUrl.publicUrl
+    };
+  } catch (error) {
+    console.error('❌ خطأ في رفع الصورة:', error.message);
+    return null;
+  }
+}
 
 // ============= Chargily API =============
 const CHARGILY_API_KEY = 'test_sk_2vm1gIkToN70ERrg4SUE1j65gkZcexbPFjHzLUT7';
@@ -121,11 +146,20 @@ app.post('/api/teacher/register', upload.single('profile_image'), async (req, re
     }
 
     const hashedPassword = bcrypt.hashSync(password, 10);
-    const profile_image = req.file ? req.file.filename : null;
+    let profile_image = null;
+    let profile_url = null;
+    
+    if (req.file) {
+      const uploaded = await uploadToSupabase(req.file, 'teachers');
+      if (uploaded) {
+        profile_image = uploaded.filename;
+        profile_url = uploaded.url;
+      }
+    }
 
     await insert('teachers', {
       full_name, email, password: hashedPassword, phone, specialization, bio, experience,
-      profile_image, status: 'pending', balance: 0, total_earned: 0, total_withdrawn: 0, pending_withdraw: 0
+      profile_image, profile_url, status: 'pending', balance: 0, total_earned: 0, total_withdrawn: 0, pending_withdraw: 0
     });
 
     res.json({ success: true, message: 'تم إرسال طلبك، سيتم مراجعته من قبل الإدارة' });
@@ -161,17 +195,26 @@ app.post('/api/student/update-profile', upload.single('profile_image'), async (r
   try {
     const { student_id, full_name, phone } = req.body;
     let profile_image = null;
+    let profile_url = null;
     
     console.log('📝 تحديث ملف الطالب:', { student_id, full_name, phone });
+    
+    // جلب الصورة القديمة
+    const oldStudent = await getOne('students', 'id', student_id);
+    
     if (req.file) {
-      profile_image = req.file.filename;
-      console.log('📸 صورة جديدة:', profile_image);
+      const uploaded = await uploadToSupabase(req.file, 'students', oldStudent?.profile_image);
+      if (uploaded) {
+        profile_image = uploaded.filename;
+        profile_url = uploaded.url;
+      }
     }
     
     const updateData = {};
     if (full_name) updateData.full_name = full_name;
     if (phone) updateData.phone = phone;
     if (profile_image) updateData.profile_image = profile_image;
+    if (profile_url) updateData.profile_url = profile_url;
     
     const { data, error } = await supabase
       .from('students')
@@ -201,17 +244,25 @@ app.get('/api/student/:student_id', async (req, res) => {
 app.post('/api/teacher/update-profile', upload.single('profile_image'), async (req, res) => {
   try {
     const { teacher_id } = req.body;
-    let profile_image = null;
     
     console.log('📝 تحديث صورة الأستاذ:', { teacher_id });
-    if (req.file) {
-      profile_image = req.file.filename;
-      console.log('📸 صورة جديدة للأستاذ:', profile_image);
-    } else {
+    
+    if (!req.file) {
       return res.json({ success: false, error: 'الرجاء اختيار صورة' });
     }
     
-    const updateData = { profile_image: profile_image };
+    // جلب الصورة القديمة
+    const oldTeacher = await getOne('teachers', 'id', teacher_id);
+    
+    const uploaded = await uploadToSupabase(req.file, 'teachers', oldTeacher?.profile_image);
+    if (!uploaded) {
+      return res.json({ success: false, error: 'فشل رفع الصورة' });
+    }
+    
+    const updateData = { 
+      profile_image: uploaded.filename,
+      profile_url: uploaded.url
+    };
     
     const { data, error } = await supabase
       .from('teachers')
@@ -241,7 +292,7 @@ app.get('/api/teacher/:teacher_id', async (req, res) => {
 app.get('/api/teachers', async (req, res) => {
   const { data } = await supabase
     .from('teachers')
-    .select('id, full_name, specialization, bio, experience, profile_image')
+    .select('id, full_name, specialization, bio, experience, profile_image, profile_url')
     .eq('status', 'approved')
     .order('created_at', { ascending: false });
   res.json(data || []);
@@ -282,6 +333,7 @@ app.post('/api/login', async (req, res) => {
       name: user.full_name, 
       role: userRole, 
       profile_image: user.profile_image,
+      profile_url: user.profile_url,
       balance: user.balance || 0
     } });
   } catch (error) {
@@ -291,7 +343,6 @@ app.post('/api/login', async (req, res) => {
 
 // ============= ADMIN Routes =============
 
-// جلب الأساتذة المنتظرين
 app.get('/api/admin/pending-teachers', async (req, res) => {
   try {
     const { data } = await supabase
@@ -306,7 +357,6 @@ app.get('/api/admin/pending-teachers', async (req, res) => {
   }
 });
 
-// جلب الأساتذة المقبولين
 app.get('/api/admin/approved-teachers', async (req, res) => {
   try {
     const { data } = await supabase
@@ -321,7 +371,6 @@ app.get('/api/admin/approved-teachers', async (req, res) => {
   }
 });
 
-// قبول أستاذ
 app.post('/api/admin/approve-teacher/:id', async (req, res) => {
   try {
     await update('teachers', req.params.id, { status: 'approved' });
@@ -331,7 +380,6 @@ app.post('/api/admin/approve-teacher/:id', async (req, res) => {
   }
 });
 
-// رفض أستاذ
 app.post('/api/admin/reject-teacher/:id', async (req, res) => {
   try {
     const { reason } = req.body;
@@ -342,30 +390,22 @@ app.post('/api/admin/reject-teacher/:id', async (req, res) => {
   }
 });
 
-// حذف أستاذ (مع جميع بياناته)
 app.delete('/api/admin/delete-teacher/:id', async (req, res) => {
   try {
     const teacherId = req.params.id;
     
-    // حذف الجلسات المرتبطة
+    // جلب الأستاذ لحذف صورته من التخزين
+    const teacher = await getOne('teachers', 'id', teacherId);
+    if (teacher && teacher.profile_image) {
+      await supabase.storage.from('profiles').remove([`teachers/${teacher.profile_image}`]);
+    }
+    
     await supabase.from('sessions').delete().eq('teacher_id', teacherId);
-    
-    // حذف غرف الانتظار المرتبطة
     await supabase.from('waiting_room').delete().eq('teacher_id', teacherId);
-    
-    // حذف البث المباشر المرتبط
     await supabase.from('active_stream').delete().eq('teacher_id', teacherId);
-    
-    // حذف العروض المرتبطة
     await supabase.from('offers').delete().eq('teacher_id', teacherId);
-    
-    // حذف طلبات السحب المرتبطة
     await supabase.from('withdraw_requests').delete().eq('teacher_id', teacherId);
-    
-    // حذف الإشعارات المرتبطة
     await supabase.from('notifications').delete().eq('user_id', teacherId).eq('user_type', 'teacher');
-    
-    // حذف الأستاذ نفسه
     await supabase.from('teachers').delete().eq('id', teacherId);
     
     res.json({ success: true });
@@ -389,7 +429,7 @@ app.post('/api/offer/create', async (req, res) => {
 app.get('/api/offers', async (req, res) => {
   const { data } = await supabase
     .from('offers')
-    .select('*, teachers:teacher_id (id, full_name, specialization, profile_image)')
+    .select('*, teachers:teacher_id (id, full_name, specialization, profile_image, profile_url)')
     .eq('status', 'upcoming')
     .gt('offer_date', new Date().toISOString())
     .order('offer_date', { ascending: true });
@@ -399,6 +439,7 @@ app.get('/api/offers', async (req, res) => {
     teacher_name: o.teachers?.full_name,
     teacher_specialization: o.teachers?.specialization,
     teacher_profile_image: o.teachers?.profile_image,
+    teacher_profile_url: o.teachers?.profile_url,
     teacher_id: o.teachers?.id
   }));
   res.json(formatted);
@@ -433,14 +474,12 @@ app.post('/api/booking/create', async (req, res) => {
     const { data: existing } = await supabase.from('sessions').select('*').eq('offer_id', offer_id).eq('student_id', student_id).maybeSingle();
     if (existing) return res.json({ success: false, error: 'مسجل بالفعل' });
     
-    // عرض مجاني
     if (offer.is_free === 1 || offer.price === 0) {
       const session = await insert('sessions', { offer_id, student_id, payment_status: 'paid', payment_amount: 0, teacher_earned: 0 });
       await insert('waiting_room', { offer_id, student_id });
       return res.json({ success: true, session_id: session.id, is_free: true });
     }
     
-    // عرض مدفوع
     const session = await insert('sessions', { offer_id, student_id, payment_status: 'pending', payment_amount: offer.price, teacher_earned: 0 });
     
     const student = await getOne('students', 'id', student_id);
@@ -514,7 +553,7 @@ app.get('/api/payment/failure/:session_id', async (req, res) => {
 app.get('/api/student/bookings/:student_id', async (req, res) => {
   const { data } = await supabase
     .from('sessions')
-    .select('*, offers:offer_id (id, subject_name, offer_date, duration, price, is_free, status, room_name, teachers:teacher_id (id, full_name, profile_image))')
+    .select('*, offers:offer_id (id, subject_name, offer_date, duration, price, is_free, status, room_name, teachers:teacher_id (id, full_name, profile_image, profile_url))')
     .eq('student_id', req.params.student_id)
     .order('created_at', { ascending: false });
   
@@ -529,7 +568,8 @@ app.get('/api/student/bookings/:student_id', async (req, res) => {
     room_name: s.offers?.room_name,
     teacher_id: s.offers?.teachers?.id,
     teacher_name: s.offers?.teachers?.full_name,
-    teacher_image: s.offers?.teachers?.profile_image
+    teacher_image: s.offers?.teachers?.profile_image,
+    teacher_image_url: s.offers?.teachers?.profile_url
   }));
   res.json(formatted);
 });
@@ -1016,7 +1056,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 الخادم يعمل على http://localhost:${PORT}`);
   console.log(`✅ العروض المجانية: حجز مباشر`);
   console.log(`💰 العروض المدفوعة: عبر Chargily`);
-  console.log(`📸 مجلد الصور: uploads/profiles/`);
+  console.log(`📸 تخزين الصور: Supabase Storage`);
   console.log(`💰 نظام الرصيد وسحب الأرباح: تم تفعيله`);
-  console.log(`👨‍💼 ADMIN Routes: تم تفعيلها (قبول/رفض/حذف الأساتذة)`);
+  console.log(`👨‍💼 ADMIN Routes: تم تفعيلها`);
 });
