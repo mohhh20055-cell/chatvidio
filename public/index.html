@@ -273,9 +273,6 @@
                 if (data.success) {
                     showNotification('تم إرسال رابط إعادة التعيين إلى بريدك الإلكتروني', 'success');
                     hideForgotPassword();
-                    if (data.resetUrl) {
-                        console.log('رابط إعادة التعيين:', data.resetUrl);
-                    }
                 } else {
                     showNotification(data.error, 'error');
                 }
@@ -299,7 +296,7 @@
 
         async function loadPublicTeachers() {
             const container = document.getElementById('teachersList');
-            container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+            container.innerHTML = '<div class="loading" style="text-align:center; padding:40px;"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
             try {
                 const res = await fetch('/api/public/teachers');
                 if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
@@ -326,13 +323,13 @@
                 container.innerHTML = html;
             } catch(e) {
                 console.error(e);
-                container.innerHTML = '<p class="error-message">حدث خطأ في تحميل البيانات</p>';
+                container.innerHTML = '<p style="text-align:center; color:#ef4444;">حدث خطأ في تحميل البيانات</p>';
             }
         }
 
         async function loadPublicOffers() {
             const container = document.getElementById('offersListPublic');
-            container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+            container.innerHTML = '<div class="loading" style="text-align:center; padding:40px;"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
             try {
                 const res = await fetch('/api/public/offers');
                 if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
@@ -366,7 +363,7 @@
                 container.innerHTML = html;
             } catch(e) {
                 console.error(e);
-                container.innerHTML = '<p class="error-message">حدث خطأ في تحميل البيانات</p>';
+                container.innerHTML = '<p style="text-align:center; color:#ef4444;">حدث خطأ في تحميل البيانات</p>';
             }
         }
 
@@ -490,7 +487,7 @@
                 });
                 const data = await res.json();
                 if (data.success) { 
-                    showNotification('تم التسجيل بنجاح! يمكنك تسجيل الدخول الآن'); 
+                    showNotification('تم التسجيل بنجاح! يمكنك تسجيل الدخول الآن', 'success'); 
                     switchTab('login'); 
                 } else { 
                     showNotification(data.error, 'error'); 
