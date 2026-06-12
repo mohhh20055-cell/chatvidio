@@ -48,12 +48,15 @@
         .view-profile-btn { background: #0f5cbf; color: white; border: none; padding: 8px 20px; border-radius: 25px; cursor: pointer; margin-top: 15px; width: 100%; font-weight: 600; }
         .notification-toast { position: fixed; bottom: 30px; right: 30px; background: #10b981; color: white; padding: 15px 25px; border-radius: 15px; z-index: 2000; animation: slideIn 0.5s ease; display: none; }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .forgot-link { display: block; text-align: center; margin-top: 15px; color: #0f5cbf; text-decoration: none; cursor: pointer; font-size: 0.9rem; }
+        .forgot-link:hover { text-decoration: underline; }
+        .back-link { display: block; text-align: center; margin-top: 15px; color: #0f5cbf; text-decoration: none; cursor: pointer; font-size: 0.9rem; }
+        .back-link:hover { text-decoration: underline; }
         @media (max-width: 768px) {
             .hero-content h1 { font-size: 1.8rem; }
             .nav-links a { padding: 5px 10px; font-size: 14px; }
             .teachers-grid, .offers-grid { grid-template-columns: 1fr; }
         }
-        .error-message { color: #ef4444; text-align: center; padding: 20px; }
     </style>
 </head>
 <body>
@@ -115,6 +118,21 @@
                     <option value="teacher">أستاذ</option>
                 </select>
                 <button class="btn-primary" onclick="login()">دخول</button>
+                <a href="#" class="forgot-link" onclick="showForgotPassword()"><i class="fas fa-key"></i> نسيت كلمة المرور؟</a>
+            </div>
+
+            <div id="forgotPasswordTab" class="form-container" style="display: none;">
+                <h3><i class="fas fa-key"></i> استعادة كلمة المرور</h3>
+                <p style="color: #64748b; margin-bottom: 15px;">أدخل بريدك الإلكتروني وسنرسل لك رابطاً لإعادة تعيين كلمة المرور</p>
+                <input type="email" id="resetEmail" placeholder="البريد الإلكتروني">
+                <select id="resetRole">
+                    <option value="student">طالب</option>
+                    <option value="teacher">أستاذ</option>
+                </select>
+                <button class="btn-primary" onclick="sendResetLink()" style="width:100%">
+                    <i class="fas fa-paper-plane"></i> إرسال رابط إعادة التعيين
+                </button>
+                <a href="#" class="back-link" onclick="hideForgotPassword()"><i class="fas fa-arrow-right"></i> العودة إلى تسجيل الدخول</a>
             </div>
 
             <div id="studentRegisterTab" class="form-container" style="display: none;">
@@ -221,6 +239,54 @@
             switchTab('teacher-register');
         }
 
+        function showForgotPassword() {
+            document.getElementById('loginTab').style.display = 'none';
+            document.getElementById('forgotPasswordTab').style.display = 'block';
+        }
+
+        function hideForgotPassword() {
+            document.getElementById('forgotPasswordTab').style.display = 'none';
+            document.getElementById('loginTab').style.display = 'block';
+        }
+
+        async function sendResetLink() {
+            const email = document.getElementById('resetEmail').value;
+            const role = document.getElementById('resetRole').value;
+            
+            if (!email) {
+                showNotification('الرجاء إدخال البريد الإلكتروني', 'error');
+                return;
+            }
+            
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإرسال...';
+            
+            try {
+                const res = await fetch('/api/forgot-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, role })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    showNotification('تم إرسال رابط إعادة التعيين إلى بريدك الإلكتروني', 'success');
+                    hideForgotPassword();
+                    if (data.resetUrl) {
+                        console.log('رابط إعادة التعيين:', data.resetUrl);
+                    }
+                } else {
+                    showNotification(data.error, 'error');
+                }
+            } catch(e) {
+                showNotification('حدث خطأ', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-paper-plane"></i> إرسال رابط إعادة التعيين';
+            }
+        }
+
         function setActiveTab(tabId) {
             const tabs = ['homeTab', 'teachersTab', 'offersTab', 'liveTab', 'loginTabNav'];
             tabs.forEach(id => {
@@ -236,11 +302,8 @@
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
             try {
                 const res = await fetch('/api/public/teachers');
-                if (!res.ok) {
-                    throw new Error(`HTTP error! status: ${res.status}`);
-                }
+                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
                 const teachers = await res.json();
-                console.log('الأساتذة:', teachers);
                 
                 if (!teachers || teachers.length === 0) {
                     container.innerHTML = '<p style="text-align:center">لا يوجد أساتذة معتمدون حالياً</p>';
@@ -262,8 +325,8 @@
                 });
                 container.innerHTML = html;
             } catch(e) {
-                console.error('خطأ في تحميل الأساتذة:', e);
-                container.innerHTML = `<p class="error-message">حدث خطأ في تحميل البيانات: ${e.message}</p>`;
+                console.error(e);
+                container.innerHTML = '<p class="error-message">حدث خطأ في تحميل البيانات</p>';
             }
         }
 
@@ -272,11 +335,8 @@
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
             try {
                 const res = await fetch('/api/public/offers');
-                if (!res.ok) {
-                    throw new Error(`HTTP error! status: ${res.status}`);
-                }
+                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
                 const offers = await res.json();
-                console.log('العروض:', offers);
                 
                 if (!offers || offers.length === 0) {
                     container.innerHTML = '<p style="text-align:center">لا توجد عروض متاحة حالياً</p>';
@@ -305,8 +365,8 @@
                 });
                 container.innerHTML = html;
             } catch(e) {
-                console.error('خطأ في تحميل العروض:', e);
-                container.innerHTML = `<p class="error-message">حدث خطأ في تحميل البيانات: ${e.message}</p>`;
+                console.error(e);
+                container.innerHTML = '<p class="error-message">حدث خطأ في تحميل البيانات</p>';
             }
         }
 
@@ -346,7 +406,7 @@
                 });
                 container.innerHTML = html;
             } catch(e) {
-                console.error('خطأ في تحميل البث المباشر:', e);
+                console.error(e);
                 container.innerHTML = '<p style="text-align:center">لا يوجد بث مباشر حالياً</p>';
             }
         }
@@ -357,11 +417,12 @@
 
         function switchTab(tab) {
             document.getElementById('loginTab').style.display = 'none';
+            document.getElementById('forgotPasswordTab').style.display = 'none';
             document.getElementById('studentRegisterTab').style.display = 'none';
             document.getElementById('teacherRegisterTab').style.display = 'none';
             if (tab === 'login') document.getElementById('loginTab').style.display = 'block';
             else if (tab === 'student-register') document.getElementById('studentRegisterTab').style.display = 'block';
-            else document.getElementById('teacherRegisterTab').style.display = 'block';
+            else if (tab === 'teacher-register') document.getElementById('teacherRegisterTab').style.display = 'block';
             
             document.querySelectorAll('.tab-btn').forEach((btn, i) => {
                 btn.classList.remove('active');
@@ -456,7 +517,7 @@
                 const res = await fetch('/api/teacher/register', { method: 'POST', body: formData });
                 const data = await res.json();
                 if (data.success) { 
-                    showNotification('تم إرسال طلبك بنجاح! سيتم مراجعته'); 
+                    showNotification('تم إرسال طلبك بنجاح! سيتم مراجعته', 'success'); 
                     switchTab('login'); 
                 } else { 
                     showNotification(data.error, 'error'); 
