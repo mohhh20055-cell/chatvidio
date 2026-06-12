@@ -17,9 +17,9 @@ const supabaseKey = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6Ikp
 console.log('🔌 الاتصال بـ Supabase:', supabaseUrl);
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// ============= إعداد Multer (للملفات المؤقتة فقط) =============
+// ============= إعداد Multer =============
 const storage = multer.memoryStorage();
-const upload = multer({ storage: storage, limits: { fileSize: 5 * 1024 * 1024 } }); // 5MB max
+const upload = multer({ storage: storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
 app.use(cors());
 app.use(express.json());
@@ -35,13 +35,11 @@ async function uploadToSupabase(file, folder, oldFileName = null) {
     const fileName = `${Date.now()}-${Math.round(Math.random() * 1E9)}${fileExt}`;
     const filePath = `${folder}/${fileName}`;
     
-    // حذف الصورة القديمة إذا وجدت
     if (oldFileName) {
       const oldPath = `${folder}/${oldFileName}`;
       await supabase.storage.from('profiles').remove([oldPath]);
     }
     
-    // رفع الصورة الجديدة
     const { data, error } = await supabase.storage
       .from('profiles')
       .upload(filePath, file.buffer, {
@@ -51,7 +49,6 @@ async function uploadToSupabase(file, folder, oldFileName = null) {
     
     if (error) throw error;
     
-    // الحصول على الرابط العام
     const { data: publicUrl } = supabase.storage
       .from('profiles')
       .getPublicUrl(filePath);
@@ -129,9 +126,7 @@ async function remove(table, column, value) {
   return true;
 }
 
-// ============= الصفحات العامة (للواجهة الرئيسية) =============
-
-// جلب الأساتذة المقبولين للصفحة الرئيسية
+// ============= الصفحات العامة =============
 app.get('/api/public/teachers', async (req, res) => {
   try {
     const { data } = await supabase
@@ -146,7 +141,6 @@ app.get('/api/public/teachers', async (req, res) => {
   }
 });
 
-// جلب العروض المتاحة للصفحة الرئيسية
 app.get('/api/public/offers', async (req, res) => {
   try {
     const { data } = await supabase
@@ -175,7 +169,6 @@ app.get('/api/public/offers', async (req, res) => {
   }
 });
 
-// جلب العروض المباشرة
 app.get('/api/live-offers', async (req, res) => {
   try {
     const { data } = await supabase
@@ -196,6 +189,137 @@ app.get('/api/live-offers', async (req, res) => {
   } catch (error) {
     console.error('❌ خطأ:', error.message);
     res.json([]);
+  }
+});
+
+// ============= نظام نسيت كلمة المرور =============
+
+// إرسال رابط إعادة تعيين كلمة المرور
+app.post('/api/forgot-password', async (req, res) => {
+  try {
+    const { email, role } = req.body;
+    
+    if (!email || !role) {
+      return res.json({ success: false, error: 'البريد الإلكتروني والدور مطلوبان' });
+    }
+    
+    let user = null;
+    if (role === 'student') {
+      user = await getOne('students', 'email', email);
+    } else if (role === 'teacher') {
+      user = await getOne('teachers', 'email', email);
+    }
+    
+    if (!user) {
+      return res.json({ success: false, error: 'لا يوجد حساب بهذا البريد الإلكتروني' });
+    }
+    
+    const resetToken = Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 1);
+    
+    await insert('password_resets', {
+      email: email,
+      role: role,
+      token: resetToken,
+      expires_at: expiresAt.toISOString(),
+      used: false,
+      created_at: new Date().toISOString()
+    });
+    
+    const baseUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+    const resetUrl = `${baseUrl}/reset-password.html?token=${resetToken}&email=${email}&role=${role}`;
+    
+    console.log('🔗 رابط إعادة التعيين:', resetUrl);
+    
+    res.json({ 
+      success: true, 
+      message: 'تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني',
+      resetUrl: resetUrl
+    });
+    
+  } catch (error) {
+    console.error('❌ خطأ:', error.message);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// التحقق من صحة رمز إعادة التعيين
+app.post('/api/verify-reset-token', async (req, res) => {
+  try {
+    const { token, email, role } = req.body;
+    
+    const { data: resetRecord } = await supabase
+      .from('password_resets')
+      .select('*')
+      .eq('token', token)
+      .eq('email', email)
+      .eq('role', role)
+      .eq('used', false)
+      .single();
+    
+    if (!resetRecord) {
+      return res.json({ success: false, error: 'رابط إعادة التعيين غير صالح أو تم استخدامه بالفعل' });
+    }
+    
+    const expiresAt = new Date(resetRecord.expires_at);
+    if (expiresAt < new Date()) {
+      return res.json({ success: false, error: 'انتهت صلاحية رابط إعادة التعيين' });
+    }
+    
+    res.json({ success: true });
+    
+  } catch (error) {
+    console.error('❌ خطأ:', error.message);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// إعادة تعيين كلمة المرور
+app.post('/api/reset-password', async (req, res) => {
+  try {
+    const { token, email, role, new_password } = req.body;
+    
+    if (!new_password || new_password.length < 6) {
+      return res.json({ success: false, error: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' });
+    }
+    
+    const { data: resetRecord } = await supabase
+      .from('password_resets')
+      .select('*')
+      .eq('token', token)
+      .eq('email', email)
+      .eq('role', role)
+      .eq('used', false)
+      .single();
+    
+    if (!resetRecord) {
+      return res.json({ success: false, error: 'رابط إعادة التعيين غير صالح' });
+    }
+    
+    const expiresAt = new Date(resetRecord.expires_at);
+    if (expiresAt < new Date()) {
+      return res.json({ success: false, error: 'انتهت صلاحية رابط إعادة التعيين' });
+    }
+    
+    const hashedPassword = bcrypt.hashSync(new_password, 10);
+    const tableName = role === 'student' ? 'students' : 'teachers';
+    
+    await supabase
+      .from(tableName)
+      .update({ password: hashedPassword })
+      .eq('email', email);
+    
+    await supabase
+      .from('password_resets')
+      .update({ used: true })
+      .eq('token', token);
+    
+    res.json({ success: true, message: 'تم تغيير كلمة المرور بنجاح' });
+    
+  } catch (error) {
+    console.error('❌ خطأ:', error.message);
+    res.json({ success: false, error: error.message });
   }
 });
 
@@ -1126,5 +1250,6 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`📸 تخزين الصور: Supabase Storage`);
   console.log(`💰 نظام الرصيد وسحب الأرباح: تم تفعيله`);
   console.log(`👨‍💼 ADMIN Routes: تم تفعيلها`);
-  console.log(`🌐 الصفحات العامة: تم تفعيلها (/api/public/teachers, /api/public/offers, /api/live-offers)`);
+  console.log(`🌐 الصفحات العامة: تم تفعيلها`);
+  console.log(`🔐 نظام استعادة كلمة المرور: تم تفعيله`);
 });
