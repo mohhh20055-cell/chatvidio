@@ -7,6 +7,9 @@ const multer = require('multer');
 const axios = require('axios');
 const { createClient } = require('@supabase/supabase-js');
 
+// إضافة Brevo
+const brevo = require('@getbrevo/brevo');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -16,6 +19,49 @@ const supabaseKey = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6Ikp
 
 console.log('🔌 الاتصال بـ Supabase:', supabaseUrl);
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+// ============= إعداد Brevo =============
+const brevoApiKey = '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';
+
+// دالة إرسال بريد إلكتروني
+async function sendResetEmail(toEmail, toName, resetUrl) {
+    try {
+        let apiInstance = new brevo.TransactionalEmailsApi();
+        let apiKey = apiInstance.authentications['apiKey'];
+        apiKey.apiKey = brevoApiKey;
+        
+        let sendSmtpEmail = new brevo.SendSmtpEmail();
+        sendSmtpEmail.subject = "إعادة تعيين كلمة المرور - منصة التعليم";
+        sendSmtpEmail.htmlContent = `
+            <!DOCTYPE html>
+            <html dir="rtl" lang="ar">
+            <head><meta charset="UTF-8"></head>
+            <body style="font-family: 'Cairo', Arial, sans-serif; text-align: center; padding: 20px;">
+                <div style="max-width: 500px; margin: 0 auto; background: #f8f9fa; border-radius: 20px; padding: 30px;">
+                    <h2 style="color: #0f5cbf;">منصة التعليم</h2>
+                    <div style="font-size: 3rem;">🔐</div>
+                    <p style="font-size: 1.1rem; color: #333;">لقد طلبت إعادة تعيين كلمة المرور الخاصة بك.</p>
+                    <p>اضغط على الرابط أدناه لإعادة تعيين كلمة المرور:</p>
+                    <a href="${resetUrl}" style="background: #0f5cbf; color: white; padding: 12px 25px; text-decoration: none; border-radius: 30px; display: inline-block; margin: 20px 0;">إعادة تعيين كلمة المرور</a>
+                    <p style="color: #666; font-size: 0.8rem;">هذا الرابط صالح لمدة ساعة واحدة.</p>
+                    <p style="color: #999; font-size: 0.8rem;">إذا لم تطلب ذلك، يرجى تجاهل هذا البريد.</p>
+                    <hr style="margin: 20px 0;">
+                    <p style="color: #999; font-size: 0.7rem;">© 2024 منصة التعليم - جميع الحقوق محفوظة</p>
+                </div>
+            </body>
+            </html>
+        `;
+        sendSmtpEmail.sender = { name: "منصة التعليم", email: "noreply@education-platform.com" };
+        sendSmtpEmail.to = [{ email: toEmail, name: toName }];
+        
+        const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
+        console.log('✅ تم إرسال البريد بنجاح:', result);
+        return true;
+    } catch (error) {
+        console.error('❌ خطأ في إرسال البريد:', error);
+        return false;
+    }
+}
 
 // ============= إعداد Multer =============
 const storage = multer.memoryStorage();
@@ -232,11 +278,14 @@ app.post('/api/forgot-password', async (req, res) => {
     
     console.log('🔗 رابط إعادة التعيين:', resetUrl);
     
-    res.json({ 
-      success: true, 
-      message: 'تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني',
-      resetUrl: resetUrl
-    });
+    // إرسال البريد الإلكتروني
+    const emailSent = await sendResetEmail(email, user.full_name, resetUrl);
+    
+    if (emailSent) {
+      res.json({ success: true, message: 'تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني' });
+    } else {
+      res.json({ success: true, message: `رابط إعادة التعيين: ${resetUrl}`, showDirectLink: true, resetUrl: resetUrl });
+    }
     
   } catch (error) {
     console.error('❌ خطأ:', error.message);
@@ -1251,5 +1300,5 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`💰 نظام الرصيد وسحب الأرباح: تم تفعيله`);
   console.log(`👨‍💼 ADMIN Routes: تم تفعيلها`);
   console.log(`🌐 الصفحات العامة: تم تفعيلها`);
-  console.log(`🔐 نظام استعادة كلمة المرور: تم تفعيله`);
+  console.log(`🔐 نظام استعادة كلمة المرور: تم تفعيله مع Brevo`);
 });
