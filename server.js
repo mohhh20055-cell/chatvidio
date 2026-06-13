@@ -6,12 +6,13 @@ const cors = require('cors');
 const multer = require('multer');
 const axios = require('axios');
 const { createClient } = require('@supabase/supabase-js');
-
-// إضافة Brevo
-const brevo = require('@getbrevo/brevo');
+const { Resend } = require('resend');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// ============= تهيئة Resend =============
+const resend = new Resend('re_YmsDA3MB_9JfuECE85DKBdhsgUGwK11mR');
 
 // ============= تهيئة Supabase =============
 const supabaseUrl = process.env.SUPABASE_URL || 'https://pvtphjcnafwphuzmzihe.supabase.co';
@@ -19,49 +20,6 @@ const supabaseKey = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6Ikp
 
 console.log('🔌 الاتصال بـ Supabase:', supabaseUrl);
 const supabase = createClient(supabaseUrl, supabaseKey);
-
-// ============= إعداد Brevo =============
-const brevoApiKey = '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';
-
-// دالة إرسال بريد إلكتروني
-async function sendResetEmail(toEmail, toName, resetUrl) {
-    try {
-        let apiInstance = new brevo.TransactionalEmailsApi();
-        let apiKey = apiInstance.authentications['apiKey'];
-        apiKey.apiKey = brevoApiKey;
-        
-        let sendSmtpEmail = new brevo.SendSmtpEmail();
-        sendSmtpEmail.subject = "إعادة تعيين كلمة المرور - منصة التعليم";
-        sendSmtpEmail.htmlContent = `
-            <!DOCTYPE html>
-            <html dir="rtl" lang="ar">
-            <head><meta charset="UTF-8"></head>
-            <body style="font-family: 'Cairo', Arial, sans-serif; text-align: center; padding: 20px;">
-                <div style="max-width: 500px; margin: 0 auto; background: #f8f9fa; border-radius: 20px; padding: 30px;">
-                    <h2 style="color: #0f5cbf;">منصة التعليم</h2>
-                    <div style="font-size: 3rem;">🔐</div>
-                    <p style="font-size: 1.1rem; color: #333;">لقد طلبت إعادة تعيين كلمة المرور الخاصة بك.</p>
-                    <p>اضغط على الرابط أدناه لإعادة تعيين كلمة المرور:</p>
-                    <a href="${resetUrl}" style="background: #0f5cbf; color: white; padding: 12px 25px; text-decoration: none; border-radius: 30px; display: inline-block; margin: 20px 0;">إعادة تعيين كلمة المرور</a>
-                    <p style="color: #666; font-size: 0.8rem;">هذا الرابط صالح لمدة ساعة واحدة.</p>
-                    <p style="color: #999; font-size: 0.8rem;">إذا لم تطلب ذلك، يرجى تجاهل هذا البريد.</p>
-                    <hr style="margin: 20px 0;">
-                    <p style="color: #999; font-size: 0.7rem;">© 2024 منصة التعليم - جميع الحقوق محفوظة</p>
-                </div>
-            </body>
-            </html>
-        `;
-        sendSmtpEmail.sender = { name: "منصة التعليم", email: "noreply@education-platform.com" };
-        sendSmtpEmail.to = [{ email: toEmail, name: toName }];
-        
-        const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
-        console.log('✅ تم إرسال البريد بنجاح:', result);
-        return true;
-    } catch (error) {
-        console.error('❌ خطأ في إرسال البريد:', error);
-        return false;
-    }
-}
 
 // ============= إعداد Multer =============
 const storage = multer.memoryStorage();
@@ -71,6 +29,70 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
+
+// ============= دالة إرسال البريد عبر Resend =============
+async function sendResetEmail(toEmail, toName, resetUrl) {
+    try {
+        console.log(`📧 محاولة إرسال بريد إلى: ${toEmail}`);
+        
+        const { data, error } = await resend.emails.send({
+            from: 'Acme <onboarding@resend.dev>',
+            to: [toEmail],
+            subject: 'إعادة تعيين كلمة المرور - منصة التعليم',
+            html: `
+                <!DOCTYPE html>
+                <html dir="rtl" lang="ar">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>إعادة تعيين كلمة المرور</title>
+                </head>
+                <body style="font-family: 'Cairo', Tahoma, Arial, sans-serif; background-color: #f5f7fa; padding: 40px; margin: 0;">
+                    <div style="max-width: 550px; margin: 0 auto; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                        <div style="background: linear-gradient(135deg, #0f5cbf, #1e3c72); padding: 30px; text-align: center;">
+                            <div style="font-size: 50px;">🎓</div>
+                            <h1 style="color: white; margin: 10px 0 0; font-size: 24px;">منصة التعليم</h1>
+                        </div>
+                        <div style="padding: 30px;">
+                            <h2 style="color: #1e3c72; margin-bottom: 20px; text-align: center;">إعادة تعيين كلمة المرور</h2>
+                            <p style="color: #4a5568; line-height: 1.6; margin-bottom: 20px; text-align: center;">
+                                مرحباً <strong>${toName}</strong>،
+                            </p>
+                            <p style="color: #4a5568; line-height: 1.6; margin-bottom: 25px; text-align: center;">
+                                لقد تلقينا طلباً لإعادة تعيين كلمة المرور الخاصة بك. انقر على الزر أدناه لإنشاء كلمة مرور جديدة:
+                            </p>
+                            <div style="text-align: center; margin-bottom: 30px;">
+                                <a href="${resetUrl}" style="background: #0f5cbf; color: white; padding: 12px 35px; text-decoration: none; border-radius: 40px; font-weight: 600; display: inline-block;">إعادة تعيين كلمة المرور</a>
+                            </div>
+                            <p style="color: #718096; font-size: 12px; text-align: center; margin-top: 20px;">
+                                هذا الرابط صالح لمدة <strong>ساعة واحدة</strong> فقط.
+                            </p>
+                            <p style="color: #a0aec0; font-size: 11px; text-align: center; margin-top: 15px;">
+                                إذا لم تطلب إعادة تعيين كلمة المرور، يرجى تجاهل هذا البريد.
+                            </p>
+                            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+                            <p style="color: #a0aec0; font-size: 10px; text-align: center;">
+                                © 2024 منصة التعليم - جميع الحقوق محفوظة
+                            </p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `
+        });
+        
+        if (error) {
+            console.error('❌ خطأ في إرسال البريد:', error);
+            return false;
+        }
+        
+        console.log('✅ تم إرسال البريد بنجاح:', data);
+        return true;
+    } catch (error) {
+        console.error('❌ خطأ في إرسال البريد:', error.message);
+        return false;
+    }
+}
 
 // ============= دالة رفع الصورة إلى Supabase Storage =============
 async function uploadToSupabase(file, folder, oldFileName = null) {
@@ -278,13 +300,18 @@ app.post('/api/forgot-password', async (req, res) => {
     
     console.log('🔗 رابط إعادة التعيين:', resetUrl);
     
-    // إرسال البريد الإلكتروني
+    // إرسال البريد عبر Resend
     const emailSent = await sendResetEmail(email, user.full_name, resetUrl);
     
     if (emailSent) {
       res.json({ success: true, message: 'تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني' });
     } else {
-      res.json({ success: true, message: `رابط إعادة التعيين: ${resetUrl}`, showDirectLink: true, resetUrl: resetUrl });
+      res.json({ 
+        success: true, 
+        message: `⚠️ لم نتمكن من إرسال البريد. الرابط الخاص بك: ${resetUrl}`,
+        showDirectLink: true,
+        resetUrl: resetUrl
+      });
     }
     
   } catch (error) {
@@ -1300,5 +1327,5 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`💰 نظام الرصيد وسحب الأرباح: تم تفعيله`);
   console.log(`👨‍💼 ADMIN Routes: تم تفعيلها`);
   console.log(`🌐 الصفحات العامة: تم تفعيلها`);
-  console.log(`🔐 نظام استعادة كلمة المرور: تم تفعيله مع Brevo`);
+  console.log(`🔐 نظام استعادة كلمة المرور: تم تفعيله مع Resend`);
 });
