@@ -16,8 +16,8 @@ const PORT = process.env.PORT || 3000;
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 const resendApiKey = process.env.RESEND_API_KEY;
-const CHARGILY_API_KEY = process.env.CHARGILY_API_KEY;
-const CHARGILY_API_URL = process.env.CHARGILY_API_URL || 'https://pay.chargily.net/test/api/v2';
+const CHARGILY_API_KEY = process.env.CHARGILY_API_KEY || 'test_sk_2vm1gIkToN70ERrg4SUE1j65gkZcexbPFjHzLUT7';
+const CHARGILY_API_URL = process.env.CHARGILY_API_URL || 'https://pay.chargily.net/test/api/pay-v2';
 
 // التحقق من وجود المتغيرات الأساسية
 if (!supabaseUrl || !supabaseKey) {
@@ -27,11 +27,6 @@ if (!supabaseUrl || !supabaseKey) {
 
 if (!resendApiKey) {
   console.error('❌ خطأ: متغير RESEND_API_KEY غير موجود في البيئة');
-  process.exit(1);
-}
-
-if (!CHARGILY_API_KEY) {
-  console.error('❌ خطأ: متغير CHARGILY_API_KEY غير موجود في البيئة');
   process.exit(1);
 }
 
@@ -128,7 +123,7 @@ async function uploadToSupabase(file, folder, oldFileName = null) {
   }
 }
 
-// ============= Chargily API مع تجاوز Cloudflare =============
+// ============= Chargily API - الإعدادات الصحيحة =============
 async function createChargilyCheckout(amount, studentName, studentEmail, studentPhone, description, successUrl, failureUrl) {
   try {
     let finalAmount = amount;
@@ -141,7 +136,11 @@ async function createChargilyCheckout(amount, studentName, studentEmail, student
       failure_url: failureUrl,
       locale: 'ar',
       description: description,
-      metadata: { student_name: studentName, student_email: studentEmail, type: 'wallet_deposit' }
+      metadata: { 
+        student_name: studentName, 
+        student_email: studentEmail, 
+        type: 'wallet_deposit' 
+      }
     };
     
     console.log('💰 إنشاء دفع للمبلغ:', finalAmount, 'DZD');
@@ -152,12 +151,9 @@ async function createChargilyCheckout(amount, studentName, studentEmail, student
       headers: { 
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Referer': 'https://pay.chargily.dz/',
-        'Origin': 'https://pay.chargily.dz'
+        'Authorization': `Bearer ${CHARGILY_API_KEY}`
       },
-      timeout: 30000,
-      httpsAgent: new https.Agent({ rejectUnauthorized: false })
+      timeout: 30000
     });
     
     if (response.data && response.data.checkout_url) {
