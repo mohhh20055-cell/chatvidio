@@ -19,9 +19,9 @@ const supabaseKey = process.env.SUPABASE_KEY;
 // Resend
 const resendApiKey = process.env.RESEND_API_KEY;
 
-// Chargily
+// ============= Chargily API =============
 const CHARGILY_API_KEY = process.env.CHARGILY_API_KEY;
-const CHARGILY_API_URL = process.env.CHARGILY_API_URL || 'https://pay.chargily.net/test/api/v2';
+const CHARGILY_API_URL = process.env.CHARGILY_API_URL || 'https://pay.chargily.dz/api/v2';
 
 // التحقق من وجود المتغيرات الأساسية
 if (!supabaseUrl || !supabaseKey) {
