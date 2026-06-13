@@ -1378,7 +1378,7 @@ app.post('/api/admin/withdraw-requests/:id/reject', async (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 الخادم يعمل على http://localhost:${PORT}`);
   console.log(`✅ العروض المجانية: حجز مباشر`);
-  console.log(`💰 نظام الرصيد: تم تفعيله (شحن + سحب)');
+  console.log(`💰 نظام الرصيد: تم تفعيله (شحن + سحب)`);
   console.log(`📸 تخزين الصور: Supabase Storage`);
   console.log(`👨‍💼 ADMIN Routes: تم تفعيلها`);
   console.log(`🔐 نظام استعادة كلمة المرور: تم تفعيله مع Resend`);
