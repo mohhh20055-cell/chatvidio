@@ -237,6 +237,72 @@ app.get('/api/live-offers', async (req, res) => {
   }
 });
 
+// ============= نظام رسائل الدعم =============
+
+// إرسال رسالة دعم
+app.post('/api/support/send', async (req, res) => {
+  try {
+    const { name, email, phone, subject, message } = req.body;
+    
+    if (!name || !email || !subject || !message) {
+      return res.json({ success: false, error: 'جميع الحقول مطلوبة' });
+    }
+    
+    await insert('support_messages', {
+      name: name,
+      email: email,
+      phone: phone || null,
+      subject: subject,
+      message: message,
+      status: 'unread',
+      created_at: new Date().toISOString()
+    });
+    
+    console.log(`📧 رسالة دعم جديدة من ${name} (${email}): ${subject}`);
+    
+    res.json({ success: true, message: 'تم إرسال رسالتك بنجاح' });
+  } catch (error) {
+    console.error('❌ خطأ:', error.message);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// ADMIN: جلب جميع رسائل الدعم
+app.get('/api/admin/support-messages', async (req, res) => {
+  try {
+    const { data } = await supabase
+      .from('support_messages')
+      .select('*')
+      .order('created_at', { ascending: false });
+    res.json(data || []);
+  } catch (error) {
+    console.error('❌ خطأ:', error.message);
+    res.json([]);
+  }
+});
+
+// ADMIN: تحديث حالة رسالة (تحديد كمقروءة)
+app.put('/api/admin/support-messages/:id/read', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await update('support_messages', id, { status: 'read' });
+    res.json({ success: true });
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// ADMIN: حذف رسالة
+app.delete('/api/admin/support-messages/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await remove('support_messages', 'id', id);
+    res.json({ success: true });
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
+});
+
 // ============= نظام الرصيد (Wallet) =============
 
 // جلب رصيد الطالب وسجل المعاملات
@@ -1472,4 +1538,5 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`📸 تخزين الصور: Supabase Storage`);
   console.log(`👨‍💼 ADMIN Routes: تم تفعيلها`);
   console.log(`🔐 نظام استعادة كلمة المرور: تم تفعيله مع Resend`);
+  console.log(`💬 نظام رسائل الدعم: تم تفعيله`);
 });
