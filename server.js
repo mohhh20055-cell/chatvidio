@@ -239,26 +239,26 @@ app.get('/api/live-offers', async (req, res) => {
 
 // ============= نظام الرصيد (Wallet) =============
 
-// جلب رصيد الطالب
+// جلب رصيد الطالب وسجل المعاملات
 app.get('/api/student/wallet/:student_id', async (req, res) => {
   try {
     const student = await getOne('students', 'id', req.params.student_id);
     if (!student) return res.json({ error: 'طالب غير موجود' });
     
-    // جلب آخر 10 معاملات
     const { data: transactions } = await supabase
       .from('wallet_transactions')
       .select('*')
       .eq('student_id', req.params.student_id)
       .order('created_at', { ascending: false })
-      .limit(10);
+      .limit(20);
     
     res.json({
       balance: student.wallet_balance || 0,
       transactions: transactions || []
     });
   } catch (error) {
-    res.json({ error: error.message });
+    console.error('❌ خطأ:', error.message);
+    res.json({ error: error.message, transactions: [] });
   }
 });
 
@@ -274,13 +274,12 @@ app.post('/api/student/wallet/deposit', async (req, res) => {
     const student = await getOne('students', 'id', student_id);
     if (!student) return res.json({ success: false, error: 'طالب غير موجود' });
     
-    // إنشاء معاملة pending
     const transaction = await insert('wallet_transactions', {
       student_id: student_id,
       amount: amount,
       type: 'deposit',
       status: 'pending',
-      description: `شحن رصيد بقيمة ${amount} دج`,
+      description: `محاولة شحن رصيد بقيمة ${amount} دج`,
       created_at: new Date().toISOString()
     });
     
@@ -302,10 +301,11 @@ app.post('/api/student/wallet/deposit', async (req, res) => {
       await update('wallet_transactions', transaction.id, { chargily_checkout_id: checkout.checkout_id });
       return res.json({ success: true, checkout_url: checkout.checkout_url, transaction_id: transaction.id });
     } else {
-      await update('wallet_transactions', transaction.id, { status: 'failed' });
+      await update('wallet_transactions', transaction.id, { status: 'failed', description: `فشل الشحن: ${checkout.error}` });
       return res.json({ success: false, error: checkout.error });
     }
   } catch (error) {
+    console.error('❌ خطأ:', error.message);
     res.json({ success: false, error: error.message });
   }
 });
@@ -314,45 +314,82 @@ app.post('/api/student/wallet/deposit', async (req, res) => {
 app.get('/api/wallet/deposit/success/:transaction_id', async (req, res) => {
   const { transaction_id } = req.params;
   
-  const transaction = await getOne('wallet_transactions', 'id', transaction_id);
-  if (transaction && transaction.status === 'pending') {
-    // تحديث حالة المعاملة
-    await update('wallet_transactions', transaction_id, { status: 'completed' });
+  try {
+    const transaction = await getOne('wallet_transactions', 'id', transaction_id);
+    if (!transaction) {
+      return res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="UTF-8"><title>خطأ</title>
+        <style>body{font-family:Cairo;background:#0f5cbf;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}.card{background:white;padding:40px;border-radius:20px;text-align:center}</style>
+        </head>
+        <body><div class="card"><h1>❌ خطأ</h1><p>المعاملة غير موجودة</p><a href="/student-dashboard.html">العودة</a></div></body>
+        </html>
+      `);
+    }
     
-    // إضافة الرصيد للطالب
-    const student = await getOne('students', 'id', transaction.student_id);
-    const newBalance = (student.wallet_balance || 0) + transaction.amount;
-    await update('students', transaction.student_id, { wallet_balance: newBalance });
+    if (transaction.status === 'pending') {
+      await update('wallet_transactions', transaction_id, { status: 'completed', description: `تم شحن الرصيد بنجاح بمبلغ ${transaction.amount} دج` });
+      
+      const student = await getOne('students', 'id', transaction.student_id);
+      const newBalance = (student.wallet_balance || 0) + transaction.amount;
+      await update('students', transaction.student_id, { wallet_balance: newBalance });
+    }
+    
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="UTF-8"><title>تم شحن الرصيد</title>
+      <style>body{font-family:Cairo;background:#0f5cbf;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}.card{background:white;padding:40px;border-radius:20px;text-align:center}.btn{background:#10b981;color:white;padding:12px 25px;border-radius:30px;text-decoration:none;display:inline-block;margin-top:20px}</style>
+      </head>
+      <body>
+      <div class="card"><h1>✅ تم شحن الرصيد بنجاح!</h1><p>تم إضافة ${transaction?.amount || 0} دج إلى رصيدك</p><a href="/student-dashboard.html" class="btn">العودة للوحة</a></div>
+      </body>
+      </html>
+    `);
+  } catch (error) {
+    console.error('❌ خطأ:', error.message);
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="UTF-8"><title>خطأ</title>
+      <style>body{font-family:Cairo;background:#0f5cbf;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}.card{background:white;padding:40px;border-radius:20px;text-align:center}</style>
+      </head>
+      <body><div class="card"><h1>❌ حدث خطأ</h1><p>${error.message}</p><a href="/student-dashboard.html">العودة</a></div></body>
+      </html>
+    `);
   }
-  
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head><meta charset="UTF-8"><title>تم شحن الرصيد</title>
-    <style>body{font-family:Cairo;background:#0f5cbf;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}.card{background:white;padding:40px;border-radius:20px;text-align:center}.btn{background:#10b981;color:white;padding:12px 25px;border-radius:30px;text-decoration:none;display:inline-block;margin-top:20px}</style>
-    </head>
-    <body>
-    <div class="card"><h1>✅ تم شحن الرصيد بنجاح!</h1><p>تم إضافة ${transaction?.amount || 0} دج إلى رصيدك</p><a href="/student-dashboard.html" class="btn">العودة للوحة</a></div>
-    </body>
-    </html>
-  `);
 });
 
+// فشل شحن الرصيد
 app.get('/api/wallet/deposit/failure/:transaction_id', async (req, res) => {
   const { transaction_id } = req.params;
-  await update('wallet_transactions', transaction_id, { status: 'failed' });
   
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head><meta charset="UTF-8"><title>فشل الشحن</title>
-    <style>body{font-family:Cairo;background:#0f5cbf;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}.card{background:white;padding:40px;border-radius:20px;text-align:center}.btn{background:#0f5cbf;color:white;padding:12px 25px;border-radius:30px;text-decoration:none;display:inline-block;margin-top:20px}</style>
-    </head>
-    <body>
-    <div class="card"><h1>❌ فشل شحن الرصيد!</h1><p>حدث خطأ أثناء عملية الشحن</p><a href="/student-dashboard.html" class="btn">المحاولة مرة أخرى</a></div>
-    </body>
-    </html>
-  `);
+  try {
+    await update('wallet_transactions', transaction_id, { status: 'failed', description: 'فشلت عملية الدفع' });
+    
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="UTF-8"><title>فشل الشحن</title>
+      <style>body{font-family:Cairo;background:#0f5cbf;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}.card{background:white;padding:40px;border-radius:20px;text-align:center}.btn{background:#0f5cbf;color:white;padding:12px 25px;border-radius:30px;text-decoration:none;display:inline-block;margin-top:20px}</style>
+      </head>
+      <body>
+      <div class="card"><h1>❌ فشل شحن الرصيد!</h1><p>حدث خطأ أثناء عملية الشحن</p><a href="/student-dashboard.html" class="btn">المحاولة مرة أخرى</a></div>
+      </body>
+      </html>
+    `);
+  } catch (error) {
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="UTF-8"><title>خطأ</title>
+      <style>body{font-family:Cairo;background:#0f5cbf;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}.card{background:white;padding:40px;border-radius:20px;text-align:center}</style>
+      </head>
+      <body><div class="card"><h1>❌ حدث خطأ</h1><a href="/student-dashboard.html">العودة</a></div></body>
+      </html>
+    `);
+  }
 });
 
 // ============= نظام الحجز باستخدام الرصيد =============
@@ -368,7 +405,14 @@ app.post('/api/booking/create', async (req, res) => {
     
     // عرض مجاني
     if (offer.is_free === 1 || offer.price === 0) {
-      const session = await insert('sessions', { offer_id, student_id, payment_status: 'paid', payment_amount: 0, teacher_earned: 0 });
+      const session = await insert('sessions', { 
+        offer_id, 
+        student_id, 
+        payment_status: 'paid', 
+        payment_amount: 0, 
+        teacher_earned: 0,
+        paid_from_wallet: false
+      });
       await insert('waiting_room', { offer_id, student_id });
       return res.json({ success: true, session_id: session.id, is_free: true });
     }
@@ -902,6 +946,204 @@ app.delete('/api/offer/delete/:offer_id', async (req, res) => {
   res.json({ success: true });
 });
 
+// جلب حجوزات الطالب
+app.get('/api/student/bookings/:student_id', async (req, res) => {
+  try {
+    const { data } = await supabase
+      .from('sessions')
+      .select('*, offers:offer_id (id, subject_name, offer_date, duration, price, is_free, status, room_name, teachers:teacher_id (id, full_name, profile_image, profile_url))')
+      .eq('student_id', req.params.student_id)
+      .order('created_at', { ascending: false });
+    
+    if (!data) {
+      return res.json([]);
+    }
+    
+    const formatted = data.map(s => ({
+      id: s.id,
+      offer_id: s.offer_id,
+      student_id: s.student_id,
+      payment_status: s.payment_status,
+      payment_amount: s.payment_amount,
+      paid_from_wallet: s.paid_from_wallet || false,
+      created_at: s.created_at,
+      subject_name: s.offers?.subject_name,
+      offer_date: s.offers?.offer_date,
+      duration: s.offers?.duration,
+      price: s.offers?.price,
+      is_free: s.offers?.is_free,
+      offer_status: s.offers?.status,
+      room_name: s.offers?.room_name,
+      teacher_id: s.offers?.teachers?.id,
+      teacher_name: s.offers?.teachers?.full_name,
+      teacher_image: s.offers?.teachers?.profile_image,
+      teacher_image_url: s.offers?.teachers?.profile_url
+    }));
+    
+    res.json(formatted);
+  } catch (error) {
+    console.error('❌ خطأ في جلب الحجوزات:', error.message);
+    res.json([]);
+  }
+});
+
+app.get('/api/waiting-count/:offer_id', async (req, res) => {
+  const { count } = await supabase.from('waiting_room').select('*', { count: 'exact', head: true }).eq('offer_id', req.params.offer_id);
+  res.json({ count: count || 0 });
+});
+
+// ============= نظام الرصيد والأرباح للأستاذ =============
+
+app.get('/api/teacher/balance/:teacher_id', async (req, res) => {
+  try {
+    const teacher = await getOne('teachers', 'id', req.params.teacher_id);
+    if (!teacher) return res.json({ error: 'أستاذ غير موجود' });
+    
+    const { data: paidSessions } = await supabase
+      .from('sessions')
+      .select('*, offers:offer_id (subject_name)')
+      .eq('payment_status', 'paid')
+      .eq('offer_id', req.params.teacher_id)
+      .order('created_at', { ascending: false });
+    
+    res.json({
+      balance: teacher.balance || 0,
+      total_earned: teacher.total_earned || 0,
+      sessions: paidSessions || []
+    });
+  } catch (error) {
+    res.json({ error: error.message });
+  }
+});
+
+app.post('/api/teacher/withdraw-request', async (req, res) => {
+  try {
+    const { teacher_id, amount, ccp_account } = req.body;
+    
+    if (!amount || amount <= 0) {
+      return res.json({ success: false, error: 'المبلغ غير صالح' });
+    }
+    
+    if (!ccp_account || ccp_account.length < 10) {
+      return res.json({ success: false, error: 'رقم حساب CCP غير صالح' });
+    }
+    
+    const teacher = await getOne('teachers', 'id', teacher_id);
+    if (!teacher) return res.json({ success: false, error: 'أستاذ غير موجود' });
+    
+    if ((teacher.balance || 0) < amount) {
+      return res.json({ success: false, error: 'الرصيد غير كافٍ' });
+    }
+    
+    const withdrawRequest = await insert('withdraw_requests', {
+      teacher_id: parseInt(teacher_id),
+      amount: parseFloat(amount),
+      ccp_account: ccp_account,
+      status: 'pending',
+      created_at: new Date().toISOString()
+    });
+    
+    await update('teachers', teacher_id, { 
+      balance: (teacher.balance || 0) - amount,
+      pending_withdraw: (teacher.pending_withdraw || 0) + amount
+    });
+    
+    res.json({ success: true, request: withdrawRequest });
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
+});
+
+app.get('/api/teacher/withdraw-requests/:teacher_id', async (req, res) => {
+  try {
+    const { data } = await supabase
+      .from('withdraw_requests')
+      .select('*')
+      .eq('teacher_id', req.params.teacher_id)
+      .order('created_at', { ascending: false });
+    res.json(data || []);
+  } catch (error) {
+    res.json([]);
+  }
+});
+
+app.get('/api/admin/withdraw-requests', async (req, res) => {
+  const { data } = await supabase
+    .from('withdraw_requests')
+    .select('*, teachers:teacher_id (full_name, email, phone)')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true });
+  res.json(data || []);
+});
+
+app.post('/api/admin/withdraw-requests/:id/approve', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const request = await getOne('withdraw_requests', 'id', id);
+    if (!request) return res.json({ success: false, error: 'الطلب غير موجود' });
+    
+    await update('withdraw_requests', id, { 
+      status: 'completed',
+      processed_at: new Date().toISOString()
+    });
+    
+    const teacher = await getOne('teachers', 'id', request.teacher_id);
+    await update('teachers', request.teacher_id, {
+      total_withdrawn: (teacher.total_withdrawn || 0) + request.amount,
+      pending_withdraw: (teacher.pending_withdraw || 0) - request.amount
+    });
+    
+    await insert('notifications', {
+      user_id: request.teacher_id,
+      user_type: 'teacher',
+      title: '✅ تمت معالجة طلب السحب',
+      message: `تم تحويل مبلغ ${request.amount} دج إلى حسابك ${request.ccp_account}`,
+      is_read: false,
+      created_at: new Date().toISOString()
+    });
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/admin/withdraw-requests/:id/reject', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    
+    const request = await getOne('withdraw_requests', 'id', id);
+    if (!request) return res.json({ success: false, error: 'الطلب غير موجود' });
+    
+    await update('withdraw_requests', id, { 
+      status: 'rejected',
+      rejection_reason: reason || 'لم يتم تحديد سبب',
+      processed_at: new Date().toISOString()
+    });
+    
+    const teacher = await getOne('teachers', 'id', request.teacher_id);
+    await update('teachers', request.teacher_id, {
+      balance: (teacher.balance || 0) + request.amount,
+      pending_withdraw: (teacher.pending_withdraw || 0) - request.amount
+    });
+    
+    await insert('notifications', {
+      user_id: request.teacher_id,
+      user_type: 'teacher',
+      title: '❌ تم رفض طلب السحب',
+      message: `تم رفض طلب سحب مبلغ ${request.amount} دج. السبب: ${reason || 'لم يتم تحديد سبب'}`,
+      is_read: false,
+      created_at: new Date().toISOString()
+    });
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
+});
+
 // ============= نظام البث المباشر =============
 
 app.post('/api/stream/enter-teacher/:offer_id', async (req, res) => {
@@ -1221,158 +1463,6 @@ function escapeHtml(text) {
   div.textContent = text;
   return div.innerHTML;
 }
-
-// ============= نظام الرصيد والأرباح للأستاذ (نفسه) =============
-
-app.get('/api/teacher/balance/:teacher_id', async (req, res) => {
-  try {
-    const teacher = await getOne('teachers', 'id', req.params.teacher_id);
-    if (!teacher) return res.json({ error: 'أستاذ غير موجود' });
-    
-    const { data: paidSessions } = await supabase
-      .from('sessions')
-      .select('*, offers:offer_id (subject_name)')
-      .eq('payment_status', 'paid')
-      .eq('offer_id', req.params.teacher_id)
-      .order('created_at', { ascending: false });
-    
-    res.json({
-      balance: teacher.balance || 0,
-      total_earned: teacher.total_earned || 0,
-      sessions: paidSessions || []
-    });
-  } catch (error) {
-    res.json({ error: error.message });
-  }
-});
-
-app.post('/api/teacher/withdraw-request', async (req, res) => {
-  try {
-    const { teacher_id, amount, ccp_account } = req.body;
-    
-    if (!amount || amount <= 0) {
-      return res.json({ success: false, error: 'المبلغ غير صالح' });
-    }
-    
-    if (!ccp_account || ccp_account.length < 10) {
-      return res.json({ success: false, error: 'رقم حساب CCP غير صالح' });
-    }
-    
-    const teacher = await getOne('teachers', 'id', teacher_id);
-    if (!teacher) return res.json({ success: false, error: 'أستاذ غير موجود' });
-    
-    if ((teacher.balance || 0) < amount) {
-      return res.json({ success: false, error: 'الرصيد غير كافٍ' });
-    }
-    
-    const withdrawRequest = await insert('withdraw_requests', {
-      teacher_id: parseInt(teacher_id),
-      amount: parseFloat(amount),
-      ccp_account: ccp_account,
-      status: 'pending',
-      created_at: new Date().toISOString()
-    });
-    
-    await update('teachers', teacher_id, { 
-      balance: (teacher.balance || 0) - amount,
-      pending_withdraw: (teacher.pending_withdraw || 0) + amount
-    });
-    
-    res.json({ success: true, request: withdrawRequest });
-  } catch (error) {
-    res.json({ success: false, error: error.message });
-  }
-});
-
-app.get('/api/teacher/withdraw-requests/:teacher_id', async (req, res) => {
-  try {
-    const { data } = await supabase
-      .from('withdraw_requests')
-      .select('*')
-      .eq('teacher_id', req.params.teacher_id)
-      .order('created_at', { ascending: false });
-    res.json(data || []);
-  } catch (error) {
-    res.json([]);
-  }
-});
-
-app.get('/api/admin/withdraw-requests', async (req, res) => {
-  const { data } = await supabase
-    .from('withdraw_requests')
-    .select('*, teachers:teacher_id (full_name, email, phone)')
-    .eq('status', 'pending')
-    .order('created_at', { ascending: true });
-  res.json(data || []);
-});
-
-app.post('/api/admin/withdraw-requests/:id/approve', async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    const request = await getOne('withdraw_requests', 'id', id);
-    if (!request) return res.json({ success: false, error: 'الطلب غير موجود' });
-    
-    await update('withdraw_requests', id, { 
-      status: 'completed',
-      processed_at: new Date().toISOString()
-    });
-    
-    const teacher = await getOne('teachers', 'id', request.teacher_id);
-    await update('teachers', request.teacher_id, {
-      total_withdrawn: (teacher.total_withdrawn || 0) + request.amount,
-      pending_withdraw: (teacher.pending_withdraw || 0) - request.amount
-    });
-    
-    await insert('notifications', {
-      user_id: request.teacher_id,
-      user_type: 'teacher',
-      title: '✅ تمت معالجة طلب السحب',
-      message: `تم تحويل مبلغ ${request.amount} دج إلى حسابك ${request.ccp_account}`,
-      is_read: false,
-      created_at: new Date().toISOString()
-    });
-    
-    res.json({ success: true });
-  } catch (error) {
-    res.json({ success: false, error: error.message });
-  }
-});
-
-app.post('/api/admin/withdraw-requests/:id/reject', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { reason } = req.body;
-    
-    const request = await getOne('withdraw_requests', 'id', id);
-    if (!request) return res.json({ success: false, error: 'الطلب غير موجود' });
-    
-    await update('withdraw_requests', id, { 
-      status: 'rejected',
-      rejection_reason: reason || 'لم يتم تحديد سبب',
-      processed_at: new Date().toISOString()
-    });
-    
-    const teacher = await getOne('teachers', 'id', request.teacher_id);
-    await update('teachers', request.teacher_id, {
-      balance: (teacher.balance || 0) + request.amount,
-      pending_withdraw: (teacher.pending_withdraw || 0) - request.amount
-    });
-    
-    await insert('notifications', {
-      user_id: request.teacher_id,
-      user_type: 'teacher',
-      title: '❌ تم رفض طلب السحب',
-      message: `تم رفض طلب سحب مبلغ ${request.amount} دج. السبب: ${reason || 'لم يتم تحديد سبب'}`,
-      is_read: false,
-      created_at: new Date().toISOString()
-    });
-    
-    res.json({ success: true });
-  } catch (error) {
-    res.json({ success: false, error: error.message });
-  }
-});
 
 // ============= تشغيل الخادم =============
 app.listen(PORT, '0.0.0.0', () => {
