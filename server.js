@@ -1,4 +1,4 @@
-اعطني ملف السرفر كاملا وملف الادمن كاملا require('dotenv').config();
+require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const bcrypt = require('bcryptjs');
