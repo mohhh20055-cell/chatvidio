@@ -36,45 +36,22 @@ async function sendResetEmail(toEmail, toName, resetUrl) {
         console.log(`📧 محاولة إرسال بريد إلى: ${toEmail}`);
         
         const { data, error } = await resend.emails.send({
-            from: 'Acme <onboarding@resend.dev>',
+            from: 'منصة التعليم <onboarding@resend.dev>',
             to: [toEmail],
             subject: 'إعادة تعيين كلمة المرور - منصة التعليم',
             html: `
                 <!DOCTYPE html>
                 <html dir="rtl" lang="ar">
-                <head>
-                    <meta charset="UTF-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <title>إعادة تعيين كلمة المرور</title>
-                </head>
-                <body style="font-family: 'Cairo', Tahoma, Arial, sans-serif; background-color: #f5f7fa; padding: 40px; margin: 0;">
-                    <div style="max-width: 550px; margin: 0 auto; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-                        <div style="background: linear-gradient(135deg, #0f5cbf, #1e3c72); padding: 30px; text-align: center;">
-                            <div style="font-size: 50px;">🎓</div>
-                            <h1 style="color: white; margin: 10px 0 0; font-size: 24px;">منصة التعليم</h1>
-                        </div>
-                        <div style="padding: 30px;">
-                            <h2 style="color: #1e3c72; margin-bottom: 20px; text-align: center;">إعادة تعيين كلمة المرور</h2>
-                            <p style="color: #4a5568; line-height: 1.6; margin-bottom: 20px; text-align: center;">
-                                مرحباً <strong>${toName}</strong>،
-                            </p>
-                            <p style="color: #4a5568; line-height: 1.6; margin-bottom: 25px; text-align: center;">
-                                لقد تلقينا طلباً لإعادة تعيين كلمة المرور الخاصة بك. انقر على الزر أدناه لإنشاء كلمة مرور جديدة:
-                            </p>
-                            <div style="text-align: center; margin-bottom: 30px;">
-                                <a href="${resetUrl}" style="background: #0f5cbf; color: white; padding: 12px 35px; text-decoration: none; border-radius: 40px; font-weight: 600; display: inline-block;">إعادة تعيين كلمة المرور</a>
-                            </div>
-                            <p style="color: #718096; font-size: 12px; text-align: center; margin-top: 20px;">
-                                هذا الرابط صالح لمدة <strong>ساعة واحدة</strong> فقط.
-                            </p>
-                            <p style="color: #a0aec0; font-size: 11px; text-align: center; margin-top: 15px;">
-                                إذا لم تطلب إعادة تعيين كلمة المرور، يرجى تجاهل هذا البريد.
-                            </p>
-                            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
-                            <p style="color: #a0aec0; font-size: 10px; text-align: center;">
-                                © 2024 منصة التعليم - جميع الحقوق محفوظة
-                            </p>
-                        </div>
+                <head><meta charset="UTF-8"></head>
+                <body style="font-family: 'Cairo', Arial, sans-serif; text-align: center; padding: 20px;">
+                    <div style="max-width: 500px; margin: 0 auto; background: #f8f9fa; border-radius: 20px; padding: 30px;">
+                        <h2 style="color: #0f5cbf;">منصة التعليم</h2>
+                        <div style="font-size: 3rem;">🔐</div>
+                        <p style="font-size: 1.1rem; color: #333;">لقد طلبت إعادة تعيين كلمة المرور الخاصة بك.</p>
+                        <p>اضغط على الرابط أدناه لإعادة تعيين كلمة المرور:</p>
+                        <a href="${resetUrl}" style="background: #0f5cbf; color: white; padding: 12px 25px; text-decoration: none; border-radius: 30px; display: inline-block; margin: 20px 0;">إعادة تعيين كلمة المرور</a>
+                        <p style="color: #666; font-size: 0.8rem;">هذا الرابط صالح لمدة ساعة واحدة.</p>
+                        <p style="color: #999; font-size: 0.8rem;">إذا لم تطلب ذلك، يرجى تجاهل هذا البريد.</p>
                     </div>
                 </body>
                 </html>
@@ -135,7 +112,7 @@ async function uploadToSupabase(file, folder, oldFileName = null) {
 const CHARGILY_API_KEY = 'test_sk_2vm1gIkToN70ERrg4SUE1j65gkZcexbPFjHzLUT7';
 const CHARGILY_API_URL = 'https://pay.chargily.net/test/api/v2';
 
-async function createChargilyCheckout(amount, studentName, studentEmail, studentPhone, offerName, successUrl, failureUrl) {
+async function createChargilyCheckout(amount, studentName, studentEmail, studentPhone, description, successUrl, failureUrl) {
   try {
     let finalAmount = amount;
     if (finalAmount < 50) finalAmount = 50;
@@ -146,8 +123,8 @@ async function createChargilyCheckout(amount, studentName, studentEmail, student
       success_url: successUrl,
       failure_url: failureUrl,
       locale: 'ar',
-      description: offerName,
-      metadata: { student_name: studentName, student_email: studentEmail, offer_name: offerName }
+      description: description,
+      metadata: { student_name: studentName, student_email: studentEmail, type: 'wallet_deposit' }
     };
     
     const response = await axios.post(`${CHARGILY_API_URL}/checkouts`, checkoutData, {
@@ -156,7 +133,7 @@ async function createChargilyCheckout(amount, studentName, studentEmail, student
     });
     
     if (response.data && response.data.checkout_url) {
-      return { success: true, checkout_url: response.data.checkout_url };
+      return { success: true, checkout_url: response.data.checkout_url, checkout_id: response.data.id };
     }
     throw new Error('لم يتم استلام رابط الدفع');
   } catch (error) {
@@ -260,9 +237,207 @@ app.get('/api/live-offers', async (req, res) => {
   }
 });
 
+// ============= نظام الرصيد (Wallet) =============
+
+// جلب رصيد الطالب
+app.get('/api/student/wallet/:student_id', async (req, res) => {
+  try {
+    const student = await getOne('students', 'id', req.params.student_id);
+    if (!student) return res.json({ error: 'طالب غير موجود' });
+    
+    // جلب آخر 10 معاملات
+    const { data: transactions } = await supabase
+      .from('wallet_transactions')
+      .select('*')
+      .eq('student_id', req.params.student_id)
+      .order('created_at', { ascending: false })
+      .limit(10);
+    
+    res.json({
+      balance: student.wallet_balance || 0,
+      transactions: transactions || []
+    });
+  } catch (error) {
+    res.json({ error: error.message });
+  }
+});
+
+// شحن الرصيد
+app.post('/api/student/wallet/deposit', async (req, res) => {
+  try {
+    const { student_id, amount } = req.body;
+    
+    if (!amount || amount < 100) {
+      return res.json({ success: false, error: 'المبلغ يجب أن لا يقل عن 100 دج' });
+    }
+    
+    const student = await getOne('students', 'id', student_id);
+    if (!student) return res.json({ success: false, error: 'طالب غير موجود' });
+    
+    // إنشاء معاملة pending
+    const transaction = await insert('wallet_transactions', {
+      student_id: student_id,
+      amount: amount,
+      type: 'deposit',
+      status: 'pending',
+      description: `شحن رصيد بقيمة ${amount} دج`,
+      created_at: new Date().toISOString()
+    });
+    
+    const baseUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+    const successUrl = `${baseUrl}/api/wallet/deposit/success/${transaction.id}`;
+    const failureUrl = `${baseUrl}/api/wallet/deposit/failure/${transaction.id}`;
+    
+    const checkout = await createChargilyCheckout(
+      amount,
+      student.full_name,
+      student.email,
+      student.phone,
+      `شحن رصيد منصة التعليم - ${amount} دج`,
+      successUrl,
+      failureUrl
+    );
+    
+    if (checkout.success && checkout.checkout_url) {
+      await update('wallet_transactions', transaction.id, { chargily_checkout_id: checkout.checkout_id });
+      return res.json({ success: true, checkout_url: checkout.checkout_url, transaction_id: transaction.id });
+    } else {
+      await update('wallet_transactions', transaction.id, { status: 'failed' });
+      return res.json({ success: false, error: checkout.error });
+    }
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// تأكيد شحن الرصيد بعد الدفع الناجح
+app.get('/api/wallet/deposit/success/:transaction_id', async (req, res) => {
+  const { transaction_id } = req.params;
+  
+  const transaction = await getOne('wallet_transactions', 'id', transaction_id);
+  if (transaction && transaction.status === 'pending') {
+    // تحديث حالة المعاملة
+    await update('wallet_transactions', transaction_id, { status: 'completed' });
+    
+    // إضافة الرصيد للطالب
+    const student = await getOne('students', 'id', transaction.student_id);
+    const newBalance = (student.wallet_balance || 0) + transaction.amount;
+    await update('students', transaction.student_id, { wallet_balance: newBalance });
+  }
+  
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="UTF-8"><title>تم شحن الرصيد</title>
+    <style>body{font-family:Cairo;background:#0f5cbf;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}.card{background:white;padding:40px;border-radius:20px;text-align:center}.btn{background:#10b981;color:white;padding:12px 25px;border-radius:30px;text-decoration:none;display:inline-block;margin-top:20px}</style>
+    </head>
+    <body>
+    <div class="card"><h1>✅ تم شحن الرصيد بنجاح!</h1><p>تم إضافة ${transaction?.amount || 0} دج إلى رصيدك</p><a href="/student-dashboard.html" class="btn">العودة للوحة</a></div>
+    </body>
+    </html>
+  `);
+});
+
+app.get('/api/wallet/deposit/failure/:transaction_id', async (req, res) => {
+  const { transaction_id } = req.params;
+  await update('wallet_transactions', transaction_id, { status: 'failed' });
+  
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="UTF-8"><title>فشل الشحن</title>
+    <style>body{font-family:Cairo;background:#0f5cbf;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}.card{background:white;padding:40px;border-radius:20px;text-align:center}.btn{background:#0f5cbf;color:white;padding:12px 25px;border-radius:30px;text-decoration:none;display:inline-block;margin-top:20px}</style>
+    </head>
+    <body>
+    <div class="card"><h1>❌ فشل شحن الرصيد!</h1><p>حدث خطأ أثناء عملية الشحن</p><a href="/student-dashboard.html" class="btn">المحاولة مرة أخرى</a></div>
+    </body>
+    </html>
+  `);
+});
+
+// ============= نظام الحجز باستخدام الرصيد =============
+app.post('/api/booking/create', async (req, res) => {
+  const { offer_id, student_id } = req.body;
+  
+  try {
+    const offer = await getOne('offers', 'id', offer_id);
+    if (!offer) return res.json({ success: false, error: 'العرض غير موجود' });
+    
+    const { data: existing } = await supabase.from('sessions').select('*').eq('offer_id', offer_id).eq('student_id', student_id).maybeSingle();
+    if (existing) return res.json({ success: false, error: 'مسجل بالفعل' });
+    
+    // عرض مجاني
+    if (offer.is_free === 1 || offer.price === 0) {
+      const session = await insert('sessions', { offer_id, student_id, payment_status: 'paid', payment_amount: 0, teacher_earned: 0 });
+      await insert('waiting_room', { offer_id, student_id });
+      return res.json({ success: true, session_id: session.id, is_free: true });
+    }
+    
+    // عرض مدفوع - استخدام الرصيد
+    const student = await getOne('students', 'id', student_id);
+    const currentBalance = student.wallet_balance || 0;
+    
+    if (currentBalance < offer.price) {
+      return res.json({ 
+        success: false, 
+        error: `رصيدك غير كافٍ. رصيدك الحالي: ${currentBalance} دج. سعر الحصة: ${offer.price} دج`,
+        insufficient_balance: true,
+        needed: offer.price - currentBalance
+      });
+    }
+    
+    // خصم الرصيد
+    const newBalance = currentBalance - offer.price;
+    await update('students', student_id, { wallet_balance: newBalance });
+    
+    // تسجيل عملية سحب من المحفظة
+    await insert('wallet_transactions', {
+      student_id: student_id,
+      amount: offer.price,
+      type: 'withdraw',
+      status: 'completed',
+      description: `حجز حصة: ${offer.subject_name}`,
+      created_at: new Date().toISOString()
+    });
+    
+    // إنشاء الجلسة
+    const session = await insert('sessions', { 
+      offer_id, 
+      student_id, 
+      payment_status: 'paid', 
+      payment_amount: offer.price, 
+      teacher_earned: 0,
+      paid_from_wallet: true
+    });
+    
+    // إضافة الطالب إلى غرفة الانتظار
+    await insert('waiting_room', { offer_id, student_id });
+    
+    // تحديث رصيد الأستاذ (بعد خصم العمولة)
+    const teacher = await getOne('teachers', 'id', offer.teacher_id);
+    const commission = offer.price * 0.1;
+    const teacherEarned = offer.price - commission;
+    await update('teachers', offer.teacher_id, { 
+      balance: (teacher.balance || 0) + teacherEarned,
+      total_earned: (teacher.total_earned || 0) + teacherEarned
+    });
+    await update('sessions', session.id, { teacher_earned: teacherEarned });
+    
+    return res.json({ 
+      success: true, 
+      session_id: session.id, 
+      new_balance: newBalance,
+      message: `تم حجز الحصة بنجاح. تم خصم ${offer.price} دج من رصيدك. الرصيد المتبقي: ${newBalance} دج`
+    });
+    
+  } catch (error) {
+    console.error('❌ خطأ في معالجة الحجز:', error);
+    return res.json({ success: false, error: error.message });
+  }
+});
+
 // ============= نظام نسيت كلمة المرور =============
 
-// إرسال رابط إعادة تعيين كلمة المرور
 app.post('/api/forgot-password', async (req, res) => {
   try {
     const { email, role } = req.body;
@@ -300,7 +475,6 @@ app.post('/api/forgot-password', async (req, res) => {
     
     console.log('🔗 رابط إعادة التعيين:', resetUrl);
     
-    // إرسال البريد عبر Resend
     const emailSent = await sendResetEmail(email, user.full_name, resetUrl);
     
     if (emailSent) {
@@ -320,7 +494,6 @@ app.post('/api/forgot-password', async (req, res) => {
   }
 });
 
-// التحقق من صحة رمز إعادة التعيين
 app.post('/api/verify-reset-token', async (req, res) => {
   try {
     const { token, email, role } = req.body;
@@ -351,7 +524,6 @@ app.post('/api/verify-reset-token', async (req, res) => {
   }
 });
 
-// إعادة تعيين كلمة المرور
 app.post('/api/reset-password', async (req, res) => {
   try {
     const { token, email, role, new_password } = req.body;
@@ -452,7 +624,7 @@ app.post('/api/student/register', async (req, res) => {
     }
 
     const hashedPassword = bcrypt.hashSync(password, 10);
-    await insert('students', { full_name, email, password: hashedPassword, phone });
+    await insert('students', { full_name, email, password: hashedPassword, phone, wallet_balance: 0 });
 
     res.json({ success: true, message: 'تم التسجيل بنجاح' });
   } catch (error) {
@@ -602,7 +774,7 @@ app.post('/api/login', async (req, res) => {
       role: userRole, 
       profile_image: user.profile_image,
       profile_url: user.profile_url,
-      balance: user.balance || 0
+      balance: user.wallet_balance || user.balance || 0
     } });
   } catch (error) {
     res.json({ success: false, error: error.message });
@@ -728,274 +900,6 @@ app.delete('/api/offer/delete/:offer_id', async (req, res) => {
   await supabase.from('active_stream').delete().eq('offer_id', req.params.offer_id);
   await supabase.from('offers').delete().eq('id', req.params.offer_id);
   res.json({ success: true });
-});
-
-// ============= نظام الحجز =============
-app.post('/api/booking/create', async (req, res) => {
-  const { offer_id, student_id } = req.body;
-  
-  try {
-    const offer = await getOne('offers', 'id', offer_id);
-    if (!offer) return res.json({ success: false, error: 'العرض غير موجود' });
-    
-    const { data: existing } = await supabase.from('sessions').select('*').eq('offer_id', offer_id).eq('student_id', student_id).maybeSingle();
-    if (existing) return res.json({ success: false, error: 'مسجل بالفعل' });
-    
-    if (offer.is_free === 1 || offer.price === 0) {
-      const session = await insert('sessions', { offer_id, student_id, payment_status: 'paid', payment_amount: 0, teacher_earned: 0 });
-      await insert('waiting_room', { offer_id, student_id });
-      return res.json({ success: true, session_id: session.id, is_free: true });
-    }
-    
-    const session = await insert('sessions', { offer_id, student_id, payment_status: 'pending', payment_amount: offer.price, teacher_earned: 0 });
-    
-    const student = await getOne('students', 'id', student_id);
-    const baseUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
-    const successUrl = `${baseUrl}/api/payment/success/${session.id}`;
-    const failureUrl = `${baseUrl}/api/payment/failure/${session.id}`;
-    
-    const checkout = await createChargilyCheckout(offer.price, student.full_name, student.email, student.phone, offer.subject_name, successUrl, failureUrl);
-    
-    if (checkout.success && checkout.checkout_url) {
-      await update('sessions', session.id, { chargily_checkout_url: checkout.checkout_url });
-      return res.json({ success: true, session_id: session.id, checkout_url: checkout.checkout_url });
-    } else {
-      return res.json({ success: false, error: checkout.error });
-    }
-  } catch (error) {
-    return res.json({ success: false, error: error.message });
-  }
-});
-
-app.get('/api/payment/success/:session_id', async (req, res) => {
-  const { session_id } = req.params;
-  
-  const session = await getOne('sessions', 'id', session_id);
-  if (session) {
-    await update('sessions', session_id, { payment_status: 'paid' });
-    
-    const offer = await getOne('offers', 'id', session.offer_id);
-    if (offer && !offer.is_free) {
-      const teacher = await getOne('teachers', 'id', offer.teacher_id);
-      const commission = offer.price * 0.1;
-      const teacherEarned = offer.price - commission;
-      
-      await update('teachers', offer.teacher_id, { 
-        balance: (teacher.balance || 0) + teacherEarned,
-        total_earned: (teacher.total_earned || 0) + teacherEarned
-      });
-      await update('sessions', session_id, { teacher_earned: teacherEarned });
-    }
-    
-    await insert('waiting_room', { offer_id: session.offer_id, student_id: session.student_id });
-  }
-  
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head><meta charset="UTF-8"><title>تم الدفع</title>
-    <style>body{font-family:Cairo;background:#0f5cbf;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}.card{background:white;padding:40px;border-radius:20px;text-align:center}.btn{background:#10b981;color:white;padding:12px 25px;border-radius:30px;text-decoration:none;display:inline-block;margin-top:20px}</style>
-    </head>
-    <body>
-    <div class="card"><h1>✅ تم الدفع بنجاح!</h1><p>تم تأكيد حجزك</p><a href="/student-dashboard.html" class="btn">العودة للوحة</a></div>
-    </body>
-    </html>
-  `);
-});
-
-app.get('/api/payment/failure/:session_id', async (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head><meta charset="UTF-8"><title>فشل الدفع</title>
-    <style>body{font-family:Cairo;background:#0f5cbf;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}.card{background:white;padding:40px;border-radius:20px;text-align:center}.btn{background:#0f5cbf;color:white;padding:12px 25px;border-radius:30px;text-decoration:none;display:inline-block;margin-top:20px}</style>
-    </head>
-    <body>
-    <div class="card"><h1>❌ فشل الدفع!</h1><p>حدث خطأ</p><a href="/student-dashboard.html" class="btn">المحاولة مرة أخرى</a></div>
-    </body>
-    </html>
-  `);
-});
-
-app.get('/api/student/bookings/:student_id', async (req, res) => {
-  const { data } = await supabase
-    .from('sessions')
-    .select('*, offers:offer_id (id, subject_name, offer_date, duration, price, is_free, status, room_name, teachers:teacher_id (id, full_name, profile_image, profile_url))')
-    .eq('student_id', req.params.student_id)
-    .order('created_at', { ascending: false });
-  
-  const formatted = (data || []).map(s => ({
-    ...s,
-    subject_name: s.offers?.subject_name,
-    offer_date: s.offers?.offer_date,
-    duration: s.offers?.duration,
-    price: s.offers?.price,
-    is_free: s.offers?.is_free,
-    offer_status: s.offers?.status,
-    room_name: s.offers?.room_name,
-    teacher_id: s.offers?.teachers?.id,
-    teacher_name: s.offers?.teachers?.full_name,
-    teacher_image: s.offers?.teachers?.profile_image,
-    teacher_image_url: s.offers?.teachers?.profile_url
-  }));
-  res.json(formatted);
-});
-
-app.get('/api/waiting-count/:offer_id', async (req, res) => {
-  const { count } = await supabase.from('waiting_room').select('*', { count: 'exact', head: true }).eq('offer_id', req.params.offer_id);
-  res.json({ count: count || 0 });
-});
-
-// ============= نظام الرصيد وسحب الأرباح =============
-
-app.get('/api/teacher/balance/:teacher_id', async (req, res) => {
-  try {
-    const teacher = await getOne('teachers', 'id', req.params.teacher_id);
-    if (!teacher) return res.json({ error: 'أستاذ غير موجود' });
-    
-    const { data: paidSessions } = await supabase
-      .from('sessions')
-      .select('*, offers:offer_id (subject_name)')
-      .eq('payment_status', 'paid')
-      .eq('offer_id', req.params.teacher_id)
-      .order('created_at', { ascending: false });
-    
-    res.json({
-      balance: teacher.balance || 0,
-      total_earned: teacher.total_earned || 0,
-      sessions: paidSessions || []
-    });
-  } catch (error) {
-    res.json({ error: error.message });
-  }
-});
-
-app.post('/api/teacher/withdraw-request', async (req, res) => {
-  try {
-    const { teacher_id, amount, ccp_account } = req.body;
-    
-    if (!amount || amount <= 0) {
-      return res.json({ success: false, error: 'المبلغ غير صالح' });
-    }
-    
-    if (!ccp_account || ccp_account.length < 10) {
-      return res.json({ success: false, error: 'رقم حساب CCP غير صالح' });
-    }
-    
-    const teacher = await getOne('teachers', 'id', teacher_id);
-    if (!teacher) return res.json({ success: false, error: 'أستاذ غير موجود' });
-    
-    if ((teacher.balance || 0) < amount) {
-      return res.json({ success: false, error: 'الرصيد غير كافٍ' });
-    }
-    
-    const withdrawRequest = await insert('withdraw_requests', {
-      teacher_id: parseInt(teacher_id),
-      amount: parseFloat(amount),
-      ccp_account: ccp_account,
-      status: 'pending',
-      created_at: new Date().toISOString()
-    });
-    
-    await update('teachers', teacher_id, { 
-      balance: (teacher.balance || 0) - amount,
-      pending_withdraw: (teacher.pending_withdraw || 0) + amount
-    });
-    
-    res.json({ success: true, request: withdrawRequest });
-  } catch (error) {
-    res.json({ success: false, error: error.message });
-  }
-});
-
-app.get('/api/teacher/withdraw-requests/:teacher_id', async (req, res) => {
-  try {
-    const { data } = await supabase
-      .from('withdraw_requests')
-      .select('*')
-      .eq('teacher_id', req.params.teacher_id)
-      .order('created_at', { ascending: false });
-    res.json(data || []);
-  } catch (error) {
-    res.json([]);
-  }
-});
-
-app.get('/api/admin/withdraw-requests', async (req, res) => {
-  const { data } = await supabase
-    .from('withdraw_requests')
-    .select('*, teachers:teacher_id (full_name, email, phone)')
-    .eq('status', 'pending')
-    .order('created_at', { ascending: true });
-  res.json(data || []);
-});
-
-app.post('/api/admin/withdraw-requests/:id/approve', async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    const request = await getOne('withdraw_requests', 'id', id);
-    if (!request) return res.json({ success: false, error: 'الطلب غير موجود' });
-    
-    await update('withdraw_requests', id, { 
-      status: 'completed',
-      processed_at: new Date().toISOString()
-    });
-    
-    const teacher = await getOne('teachers', 'id', request.teacher_id);
-    await update('teachers', request.teacher_id, {
-      total_withdrawn: (teacher.total_withdrawn || 0) + request.amount,
-      pending_withdraw: (teacher.pending_withdraw || 0) - request.amount
-    });
-    
-    await insert('notifications', {
-      user_id: request.teacher_id,
-      user_type: 'teacher',
-      title: '✅ تمت معالجة طلب السحب',
-      message: `تم تحويل مبلغ ${request.amount} دج إلى حسابك ${request.ccp_account}`,
-      is_read: false,
-      created_at: new Date().toISOString()
-    });
-    
-    res.json({ success: true });
-  } catch (error) {
-    res.json({ success: false, error: error.message });
-  }
-});
-
-app.post('/api/admin/withdraw-requests/:id/reject', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { reason } = req.body;
-    
-    const request = await getOne('withdraw_requests', 'id', id);
-    if (!request) return res.json({ success: false, error: 'الطلب غير موجود' });
-    
-    await update('withdraw_requests', id, { 
-      status: 'rejected',
-      rejection_reason: reason || 'لم يتم تحديد سبب',
-      processed_at: new Date().toISOString()
-    });
-    
-    const teacher = await getOne('teachers', 'id', request.teacher_id);
-    await update('teachers', request.teacher_id, {
-      balance: (teacher.balance || 0) + request.amount,
-      pending_withdraw: (teacher.pending_withdraw || 0) - request.amount
-    });
-    
-    await insert('notifications', {
-      user_id: request.teacher_id,
-      user_type: 'teacher',
-      title: '❌ تم رفض طلب السحب',
-      message: `تم رفض طلب سحب مبلغ ${request.amount} دج. السبب: ${reason || 'لم يتم تحديد سبب'}`,
-      is_read: false,
-      created_at: new Date().toISOString()
-    });
-    
-    res.json({ success: true });
-  } catch (error) {
-    res.json({ success: false, error: error.message });
-  }
 });
 
 // ============= نظام البث المباشر =============
@@ -1318,14 +1222,164 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+// ============= نظام الرصيد والأرباح للأستاذ (نفسه) =============
+
+app.get('/api/teacher/balance/:teacher_id', async (req, res) => {
+  try {
+    const teacher = await getOne('teachers', 'id', req.params.teacher_id);
+    if (!teacher) return res.json({ error: 'أستاذ غير موجود' });
+    
+    const { data: paidSessions } = await supabase
+      .from('sessions')
+      .select('*, offers:offer_id (subject_name)')
+      .eq('payment_status', 'paid')
+      .eq('offer_id', req.params.teacher_id)
+      .order('created_at', { ascending: false });
+    
+    res.json({
+      balance: teacher.balance || 0,
+      total_earned: teacher.total_earned || 0,
+      sessions: paidSessions || []
+    });
+  } catch (error) {
+    res.json({ error: error.message });
+  }
+});
+
+app.post('/api/teacher/withdraw-request', async (req, res) => {
+  try {
+    const { teacher_id, amount, ccp_account } = req.body;
+    
+    if (!amount || amount <= 0) {
+      return res.json({ success: false, error: 'المبلغ غير صالح' });
+    }
+    
+    if (!ccp_account || ccp_account.length < 10) {
+      return res.json({ success: false, error: 'رقم حساب CCP غير صالح' });
+    }
+    
+    const teacher = await getOne('teachers', 'id', teacher_id);
+    if (!teacher) return res.json({ success: false, error: 'أستاذ غير موجود' });
+    
+    if ((teacher.balance || 0) < amount) {
+      return res.json({ success: false, error: 'الرصيد غير كافٍ' });
+    }
+    
+    const withdrawRequest = await insert('withdraw_requests', {
+      teacher_id: parseInt(teacher_id),
+      amount: parseFloat(amount),
+      ccp_account: ccp_account,
+      status: 'pending',
+      created_at: new Date().toISOString()
+    });
+    
+    await update('teachers', teacher_id, { 
+      balance: (teacher.balance || 0) - amount,
+      pending_withdraw: (teacher.pending_withdraw || 0) + amount
+    });
+    
+    res.json({ success: true, request: withdrawRequest });
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
+});
+
+app.get('/api/teacher/withdraw-requests/:teacher_id', async (req, res) => {
+  try {
+    const { data } = await supabase
+      .from('withdraw_requests')
+      .select('*')
+      .eq('teacher_id', req.params.teacher_id)
+      .order('created_at', { ascending: false });
+    res.json(data || []);
+  } catch (error) {
+    res.json([]);
+  }
+});
+
+app.get('/api/admin/withdraw-requests', async (req, res) => {
+  const { data } = await supabase
+    .from('withdraw_requests')
+    .select('*, teachers:teacher_id (full_name, email, phone)')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true });
+  res.json(data || []);
+});
+
+app.post('/api/admin/withdraw-requests/:id/approve', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const request = await getOne('withdraw_requests', 'id', id);
+    if (!request) return res.json({ success: false, error: 'الطلب غير موجود' });
+    
+    await update('withdraw_requests', id, { 
+      status: 'completed',
+      processed_at: new Date().toISOString()
+    });
+    
+    const teacher = await getOne('teachers', 'id', request.teacher_id);
+    await update('teachers', request.teacher_id, {
+      total_withdrawn: (teacher.total_withdrawn || 0) + request.amount,
+      pending_withdraw: (teacher.pending_withdraw || 0) - request.amount
+    });
+    
+    await insert('notifications', {
+      user_id: request.teacher_id,
+      user_type: 'teacher',
+      title: '✅ تمت معالجة طلب السحب',
+      message: `تم تحويل مبلغ ${request.amount} دج إلى حسابك ${request.ccp_account}`,
+      is_read: false,
+      created_at: new Date().toISOString()
+    });
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/admin/withdraw-requests/:id/reject', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    
+    const request = await getOne('withdraw_requests', 'id', id);
+    if (!request) return res.json({ success: false, error: 'الطلب غير موجود' });
+    
+    await update('withdraw_requests', id, { 
+      status: 'rejected',
+      rejection_reason: reason || 'لم يتم تحديد سبب',
+      processed_at: new Date().toISOString()
+    });
+    
+    const teacher = await getOne('teachers', 'id', request.teacher_id);
+    await update('teachers', request.teacher_id, {
+      balance: (teacher.balance || 0) + request.amount,
+      pending_withdraw: (teacher.pending_withdraw || 0) - request.amount
+    });
+    
+    await insert('notifications', {
+      user_id: request.teacher_id,
+      user_type: 'teacher',
+      title: '❌ تم رفض طلب السحب',
+      message: `تم رفض طلب سحب مبلغ ${request.amount} دج. السبب: ${reason || 'لم يتم تحديد سبب'}`,
+      is_read: false,
+      created_at: new Date().toISOString()
+    });
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
+});
+
 // ============= تشغيل الخادم =============
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 الخادم يعمل على http://localhost:${PORT}`);
   console.log(`✅ العروض المجانية: حجز مباشر`);
-  console.log(`💰 العروض المدفوعة: عبر Chargily`);
+  console.log(`💰 نظام الرصيد: تم تفعيله (شحن + سحب)');
   console.log(`📸 تخزين الصور: Supabase Storage`);
-  console.log(`💰 نظام الرصيد وسحب الأرباح: تم تفعيله`);
   console.log(`👨‍💼 ADMIN Routes: تم تفعيلها`);
-  console.log(`🌐 الصفحات العامة: تم تفعيلها`);
   console.log(`🔐 نظام استعادة كلمة المرور: تم تفعيله مع Resend`);
 });
