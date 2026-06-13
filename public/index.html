@@ -14,9 +14,11 @@
         .logo { font-size: 1.8rem; font-weight: 800; }
         .logo i { color: #0f5cbf; margin-left: 10px; }
         .logo .highlight { background: linear-gradient(135deg, #0f5cbf, #1e3c72); background-clip: text; -webkit-background-clip: text; color: transparent; }
-        .nav-links { display: flex; gap: 15px; flex-wrap: wrap; }
+        .nav-links { display: flex; gap: 15px; flex-wrap: wrap; align-items: center; }
         .nav-links a { text-decoration: none; color: #4a5568; font-weight: 600; cursor: pointer; padding: 8px 15px; border-radius: 30px; transition: 0.3s; }
         .nav-links a:hover, .nav-links a.active { background: #0f5cbf; color: white; }
+        .download-app-btn { background: #10b981; color: white; border: none; padding: 8px 18px; border-radius: 30px; cursor: pointer; font-weight: 600; transition: 0.3s; }
+        .download-app-btn:hover { background: #059669; transform: translateY(-2px); }
         .hero { max-width: 1200px; margin: 50px auto; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 40px; }
         .hero-content { flex: 1; }
         .hero-content h1 { font-size: 2.5rem; margin-bottom: 20px; }
@@ -27,6 +29,8 @@
         .btn-primary:hover { background: #0b4a9c; transform: translateY(-2px); }
         .btn-outline { background: transparent; border: 2px solid #0f5cbf; color: #0f5cbf; padding: 10px 28px; border-radius: 40px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: 0.3s; }
         .btn-outline:hover { background: #0f5cbf10; }
+        .btn-success { background: #10b981; color: white; border: none; padding: 12px 30px; border-radius: 40px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: 0.3s; }
+        .btn-success:hover { background: #059669; transform: translateY(-2px); }
         .section-container { max-width: 1200px; margin: 50px auto; padding: 0 20px; }
         .section-title { font-size: 2rem; margin-bottom: 30px; text-align: center; color: #1e3c72; }
         .teachers-grid, .offers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; }
@@ -52,6 +56,12 @@
         .forgot-link:hover { text-decoration: underline; }
         .back-link { display: block; text-align: center; margin-top: 15px; color: #0f5cbf; text-decoration: none; cursor: pointer; font-size: 0.9rem; }
         .back-link:hover { text-decoration: underline; }
+        .support-card { background: white; border-radius: 20px; padding: 30px; margin: 30px auto; max-width: 800px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .support-card h3 { color: #1e3c72; margin-bottom: 20px; text-align: center; }
+        .support-card .form-group { margin-bottom: 15px; }
+        .support-card label { display: block; margin-bottom: 8px; font-weight: 600; color: #4a5568; }
+        .support-card input, .support-card textarea { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 12px; font-family: 'Cairo', sans-serif; }
+        .support-card textarea { resize: vertical; min-height: 120px; }
         @media (max-width: 768px) {
             .hero-content h1 { font-size: 1.8rem; }
             .nav-links a { padding: 5px 10px; font-size: 14px; }
@@ -69,6 +79,7 @@
                 <a onclick="showOffers()" id="offersTab">العروض المتاحة</a>
                 <a onclick="showLiveStreams()" id="liveTab">بث مباشر <span id="liveCount" class="live-badge" style="display:none; padding:2px 8px;">0</span></a>
                 <a onclick="showLogin()" id="loginTabNav">تسجيل الدخول</a>
+                <button class="download-app-btn" onclick="showDownloadApp()"><i class="fas fa-download"></i> تحميل التطبيق</button>
             </div>
         </div>
     </nav>
@@ -82,6 +93,7 @@
                     <button class="btn-primary" onclick="showTeachers()"><i class="fas fa-users"></i> تعرف على أساتذتنا</button>
                     <button class="btn-outline" onclick="showOffers()"><i class="fas fa-calendar-alt"></i> استعرض العروض</button>
                     <button class="btn-outline" onclick="showTeacherRegister()"><i class="fas fa-chalkboard-user"></i> انضم كأستاذ</button>
+                    <button class="btn-success" onclick="showSupport()"><i class="fas fa-headset"></i> تواصل مع الدعم</button>
                 </div>
             </div>
             <div class="hero-image"><i class="fas fa-laptop-code" style="font-size:250px; color:#0f5cbf20;"></i></div>
@@ -162,6 +174,55 @@
                 <button class="btn-primary" onclick="registerTeacher()">تقديم الطلب</button>
             </div>
         </section>
+
+        <section id="downloadAppSection" class="section-container" style="display: none;">
+            <div class="support-card" style="text-align: center;">
+                <i class="fas fa-mobile-alt" style="font-size: 4rem; color: #0f5cbf; margin-bottom: 20px;"></i>
+                <h2>تحميل تطبيق منصة التعليم</h2>
+                <p style="margin: 20px 0; color: #4a5568;">حمل التطبيق واستمتع بتجربة أفضل للدروس الخصوصية عبر الفيديو</p>
+                <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 30px;">
+                    <button class="btn-primary" onclick="downloadAndroidApp()" style="background: #3ddc84; padding: 15px 30px;">
+                        <i class="fab fa-android" style="font-size: 1.5rem;"></i> تحميل لنظام Android
+                    </button>
+                    <button class="btn-primary" onclick="downloadIOSApp()" style="background: #000; padding: 15px 30px;">
+                        <i class="fab fa-apple" style="font-size: 1.5rem;"></i> قريباً لنظام iOS
+                    </button>
+                </div>
+                <p style="margin-top: 30px; font-size: 0.8rem; color: #718096;">
+                    أو يمكنك تثبيت التطبيق مباشرة من المتصفح: 
+                    <strong>القائمة → تثبيت التطبيق (Install App)</strong>
+                </p>
+            </div>
+        </section>
+
+        <section id="supportSection" class="section-container" style="display: none;">
+            <div class="support-card">
+                <h3><i class="fas fa-headset"></i> تواصل مع الدعم الفني</h3>
+                <form id="supportForm">
+                    <div class="form-group">
+                        <label>الاسم الكامل</label>
+                        <input type="text" id="supportName" placeholder="أدخل اسمك" required>
+                    </div>
+                    <div class="form-group">
+                        <label>البريد الإلكتروني</label>
+                        <input type="email" id="supportEmail" placeholder="بريدك الإلكتروني" required>
+                    </div>
+                    <div class="form-group">
+                        <label>رقم الهاتف (اختياري)</label>
+                        <input type="tel" id="supportPhone" placeholder="رقم الهاتف">
+                    </div>
+                    <div class="form-group">
+                        <label>الموضوع</label>
+                        <input type="text" id="supportSubject" placeholder="موضوع الرسالة" required>
+                    </div>
+                    <div class="form-group">
+                        <label>الرسالة</label>
+                        <textarea id="supportMessage" placeholder="اكتب رسالتك هنا..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn-primary" style="width: 100%;"><i class="fas fa-paper-plane"></i> إرسال الرسالة</button>
+                </form>
+            </div>
+        </section>
     </main>
 
     <footer>
@@ -186,8 +247,84 @@
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('downloadAppSection').style.display = 'none';
+            document.getElementById('supportSection').style.display = 'none';
             setActiveTab('homeTab');
         }
+
+        function showDownloadApp() {
+            document.getElementById('homeSection').style.display = 'none';
+            document.getElementById('teachersSection').style.display = 'none';
+            document.getElementById('offersSection').style.display = 'none';
+            document.getElementById('liveSection').style.display = 'none';
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('downloadAppSection').style.display = 'block';
+            document.getElementById('supportSection').style.display = 'none';
+            setActiveTab('');
+        }
+
+        function showSupport() {
+            document.getElementById('homeSection').style.display = 'none';
+            document.getElementById('teachersSection').style.display = 'none';
+            document.getElementById('offersSection').style.display = 'none';
+            document.getElementById('liveSection').style.display = 'none';
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('downloadAppSection').style.display = 'none';
+            document.getElementById('supportSection').style.display = 'block';
+            setActiveTab('');
+        }
+
+        function downloadAndroidApp() {
+            // رابط تحميل التطبيق (APK)
+            // ضع رابط APK الخاص بك هنا
+            window.location.href = '/download/app.apk';
+            showNotification('جاري تحميل التطبيق...', 'success');
+        }
+
+        function downloadIOSApp() {
+            showNotification('تطبيق iOS قيد التطوير، قريباً', 'warning');
+        }
+
+        // إرسال رسالة الدعم
+        document.getElementById('supportForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('supportName').value;
+            const email = document.getElementById('supportEmail').value;
+            const phone = document.getElementById('supportPhone').value;
+            const subject = document.getElementById('supportSubject').value;
+            const message = document.getElementById('supportMessage').value;
+            
+            if (!name || !email || !subject || !message) {
+                showNotification('الرجاء ملء جميع الحقول المطلوبة', 'error');
+                return;
+            }
+            
+            const btn = e.target.querySelector('button');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإرسال...';
+            
+            try {
+                const res = await fetch('/api/support/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, phone, subject, message })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    showNotification('تم إرسال رسالتك بنجاح! سيتم الرد عليك قريباً', 'success');
+                    document.getElementById('supportForm').reset();
+                } else {
+                    showNotification(data.error || 'حدث خطأ', 'error');
+                }
+            } catch(e) {
+                showNotification('حدث خطأ في الاتصال', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-paper-plane"></i> إرسال الرسالة';
+            }
+        });
 
         async function showTeachers() {
             document.getElementById('homeSection').style.display = 'none';
@@ -195,6 +332,8 @@
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('downloadAppSection').style.display = 'none';
+            document.getElementById('supportSection').style.display = 'none';
             setActiveTab('teachersTab');
             await loadPublicTeachers();
         }
@@ -205,6 +344,8 @@
             document.getElementById('offersSection').style.display = 'block';
             document.getElementById('liveSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('downloadAppSection').style.display = 'none';
+            document.getElementById('supportSection').style.display = 'none';
             setActiveTab('offersTab');
             await loadPublicOffers();
         }
@@ -215,6 +356,8 @@
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'block';
             document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('downloadAppSection').style.display = 'none';
+            document.getElementById('supportSection').style.display = 'none';
             setActiveTab('liveTab');
             await loadLiveStreams();
         }
@@ -225,6 +368,8 @@
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'block';
+            document.getElementById('downloadAppSection').style.display = 'none';
+            document.getElementById('supportSection').style.display = 'none';
             setActiveTab('loginTabNav');
             switchTab('login');
         }
@@ -235,6 +380,8 @@
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'block';
+            document.getElementById('downloadAppSection').style.display = 'none';
+            document.getElementById('supportSection').style.display = 'none';
             setActiveTab('loginTabNav');
             switchTab('teacher-register');
         }
