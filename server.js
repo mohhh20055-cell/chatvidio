@@ -147,16 +147,45 @@ async function createChargilyCheckout(amount, studentName, studentEmail, student
     console.log('📡 إرسال طلب إلى Chargily...');
     console.log('📍 عنوان API:', CHARGILY_API_URL);
     
-    const response = await axios.post(`${CHARGILY_API_URL}/checkouts`, checkoutData, {
-      headers: { 
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${CHARGILY_API_KEY}`
-      },
-      timeout: 30000
-    });
+    // تجربة طرق مصادقة مختلفة
+    let response;
+    try {
+      // المحاولة الأولى: Bearer token
+      response = await axios.post(`${CHARGILY_API_URL}/checkouts`, checkoutData, {
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${CHARGILY_API_KEY}`
+        },
+        timeout: 30000
+      });
+    } catch (firstError) {
+      console.log('⚠️ المحاولة الأولى فشلت، نحاول بطريقة ثانية...');
+      try {
+        // المحاولة الثانية: X-Authorization
+        response = await axios.post(`${CHARGILY_API_URL}/checkouts`, checkoutData, {
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Authorization': CHARGILY_API_KEY
+          },
+          timeout: 30000
+        });
+      } catch (secondError) {
+        console.log('⚠️ المحاولة الثانية فشلت، نحاول بطريقة ثالثة...');
+        // المحاولة الثالثة: Api-Key
+        response = await axios.post(`${CHARGILY_API_URL}/checkouts`, checkoutData, {
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Api-Key': CHARGILY_API_KEY
+          },
+          timeout: 30000
+        });
+      }
+    }
     
-    if (response.data && response.data.checkout_url) {
+    if (response && response.data && response.data.checkout_url) {
       console.log('✅ تم إنشاء رابط الدفع:', response.data.checkout_url);
       return { success: true, checkout_url: response.data.checkout_url, checkout_id: response.data.id };
     }
