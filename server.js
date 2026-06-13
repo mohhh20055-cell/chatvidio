@@ -1,40 +1,25 @@
-require('dotenv').config();
+اعطني ملف السرفر كاملا وملف الادمن كاملا require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const cors = require('cors');
 const multer = require('multer');
 const axios = require('axios');
-const https = require('https');
 const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ============= قراءة المتغيرات البيئية =============
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
-const resendApiKey = process.env.RESEND_API_KEY;
-const CHARGILY_API_KEY = process.env.CHARGILY_API_KEY || 'test_sk_2vm1gIkToN70ERrg4SUE1j65gkZcexbPFjHzLUT7';
-const CHARGILY_API_URL = process.env.CHARGILY_API_URL || 'https://pay.chargily.net/test/api/v2';
+// ============= تهيئة Resend =============
+const resend = new Resend('re_YmsDA3MB_9JfuECE85DKBdhsgUGwK11mR');
 
-// التحقق من وجود المتغيرات الأساسية
-if (!supabaseUrl || !supabaseKey) {
-  console.error('❌ خطأ: متغيرات Supabase غير موجودة في البيئة');
-  process.exit(1);
-}
-
-if (!resendApiKey) {
-  console.error('❌ خطأ: متغير RESEND_API_KEY غير موجود في البيئة');
-  process.exit(1);
-}
+// ============= تهيئة Supabase =============
+const supabaseUrl = process.env.SUPABASE_URL || 'https://pvtphjcnafwphuzmzihe.supabase.co';
+const supabaseKey = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2dHBoamNuYWZ3cGh1em16aWhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTA0ODgsImV4cCI6MjA5NjU2NjQ4OH0.iyDo5UnNM7mAFFjZfNSr2Z8tpdI4FiHAfabJU1uAVEk';
 
 console.log('🔌 الاتصال بـ Supabase:', supabaseUrl);
 const supabase = createClient(supabaseUrl, supabaseKey);
-
-// ============= تهيئة Resend =============
-const resend = new Resend(resendApiKey);
 
 // ============= إعداد Multer =============
 const storage = multer.memoryStorage();
@@ -123,7 +108,10 @@ async function uploadToSupabase(file, folder, oldFileName = null) {
   }
 }
 
-// ============= Chargily API - الإعدادات الصحيحة =============
+// ============= Chargily API =============
+const CHARGILY_API_KEY = 'test_sk_2vm1gIkToN70ERrg4SUE1j65gkZcexbPFjHzLUT7';
+const CHARGILY_API_URL = 'https://pay.chargily.net/test/api/v2';
+
 async function createChargilyCheckout(amount, studentName, studentEmail, studentPhone, description, successUrl, failureUrl) {
   try {
     let finalAmount = amount;
@@ -136,57 +124,15 @@ async function createChargilyCheckout(amount, studentName, studentEmail, student
       failure_url: failureUrl,
       locale: 'ar',
       description: description,
-      metadata: { 
-        student_name: studentName, 
-        student_email: studentEmail, 
-        type: 'wallet_deposit' 
-      }
+      metadata: { student_name: studentName, student_email: studentEmail, type: 'wallet_deposit' }
     };
     
-    console.log('💰 إنشاء دفع للمبلغ:', finalAmount, 'DZD');
-    console.log('📡 إرسال طلب إلى Chargily...');
-    console.log('📍 عنوان API:', CHARGILY_API_URL);
+    const response = await axios.post(`${CHARGILY_API_URL}/checkouts`, checkoutData, {
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${CHARGILY_API_KEY}` },
+      timeout: 30000
+    });
     
-    // تجربة طرق مصادقة مختلفة
-    let response;
-    try {
-      // المحاولة الأولى: Bearer token
-      response = await axios.post(`${CHARGILY_API_URL}/checkouts`, checkoutData, {
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${CHARGILY_API_KEY}`
-        },
-        timeout: 30000
-      });
-    } catch (firstError) {
-      console.log('⚠️ المحاولة الأولى فشلت، نحاول بطريقة ثانية...');
-      try {
-        // المحاولة الثانية: X-Authorization
-        response = await axios.post(`${CHARGILY_API_URL}/checkouts`, checkoutData, {
-          headers: { 
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-Authorization': CHARGILY_API_KEY
-          },
-          timeout: 30000
-        });
-      } catch (secondError) {
-        console.log('⚠️ المحاولة الثانية فشلت، نحاول بطريقة ثالثة...');
-        // المحاولة الثالثة: Api-Key
-        response = await axios.post(`${CHARGILY_API_URL}/checkouts`, checkoutData, {
-          headers: { 
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Api-Key': CHARGILY_API_KEY
-          },
-          timeout: 30000
-        });
-      }
-    }
-    
-    if (response && response.data && response.data.checkout_url) {
-      console.log('✅ تم إنشاء رابط الدفع:', response.data.checkout_url);
+    if (response.data && response.data.checkout_url) {
       return { success: true, checkout_url: response.data.checkout_url, checkout_id: response.data.id };
     }
     throw new Error('لم يتم استلام رابط الدفع');
@@ -288,72 +234,6 @@ app.get('/api/live-offers', async (req, res) => {
   } catch (error) {
     console.error('❌ خطأ:', error.message);
     res.json([]);
-  }
-});
-
-// ============= نظام رسائل الدعم =============
-
-// إرسال رسالة دعم
-app.post('/api/support/send', async (req, res) => {
-  try {
-    const { name, email, phone, subject, message } = req.body;
-    
-    if (!name || !email || !subject || !message) {
-      return res.json({ success: false, error: 'جميع الحقول مطلوبة' });
-    }
-    
-    await insert('support_messages', {
-      name: name,
-      email: email,
-      phone: phone || null,
-      subject: subject,
-      message: message,
-      status: 'unread',
-      created_at: new Date().toISOString()
-    });
-    
-    console.log(`📧 رسالة دعم جديدة من ${name} (${email}): ${subject}`);
-    
-    res.json({ success: true, message: 'تم إرسال رسالتك بنجاح' });
-  } catch (error) {
-    console.error('❌ خطأ:', error.message);
-    res.json({ success: false, error: error.message });
-  }
-});
-
-// ADMIN: جلب جميع رسائل الدعم
-app.get('/api/admin/support-messages', async (req, res) => {
-  try {
-    const { data } = await supabase
-      .from('support_messages')
-      .select('*')
-      .order('created_at', { ascending: false });
-    res.json(data || []);
-  } catch (error) {
-    console.error('❌ خطأ:', error.message);
-    res.json([]);
-  }
-});
-
-// ADMIN: تحديث حالة رسالة (تحديد كمقروءة)
-app.put('/api/admin/support-messages/:id/read', async (req, res) => {
-  try {
-    const { id } = req.params;
-    await update('support_messages', id, { status: 'read' });
-    res.json({ success: true });
-  } catch (error) {
-    res.json({ success: false, error: error.message });
-  }
-});
-
-// ADMIN: حذف رسالة
-app.delete('/api/admin/support-messages/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    await remove('support_messages', 'id', id);
-    res.json({ success: true });
-  } catch (error) {
-    res.json({ success: false, error: error.message });
   }
 });
 
@@ -1592,7 +1472,4 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`📸 تخزين الصور: Supabase Storage`);
   console.log(`👨‍💼 ADMIN Routes: تم تفعيلها`);
   console.log(`🔐 نظام استعادة كلمة المرور: تم تفعيله مع Resend`);
-  console.log(`💬 نظام رسائل الدعم: تم تفعيله`);
-  console.log(`🔒 تم استخدام المتغيرات البيئية للمعلومات الحساسة`);
-  console.log(`💳 Chargily API: ${CHARGILY_API_URL}`);
 });
