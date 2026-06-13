@@ -1,4 +1,4 @@
-ساضيف المعلومات الحساسه كمتغيرات داخل استضافه راندر لمنع الاختراق عدل السرفر واعطني لملف كاملا require('dotenv').config();
+ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const bcrypt = require('bcryptjs');
