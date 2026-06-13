@@ -1,4 +1,4 @@
- require('dotenv').config();
+require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const bcrypt = require('bcryptjs');
@@ -11,15 +11,39 @@ const { Resend } = require('resend');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ============= تهيئة Resend =============
-const resend = new Resend('re_YmsDA3MB_9JfuECE85DKBdhsgUGwK11mR');
+// ============= قراءة المتغيرات البيئية =============
+// Supabase
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
 
-// ============= تهيئة Supabase =============
-const supabaseUrl = process.env.SUPABASE_URL || 'https://pvtphjcnafwphuzmzihe.supabase.co';
-const supabaseKey = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2dHBoamNuYWZ3cGh1em16aWhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTA0ODgsImV4cCI6MjA5NjU2NjQ4OH0.iyDo5UnNM7mAFFjZfNSr2Z8tpdI4FiHAfabJU1uAVEk';
+// Resend
+const resendApiKey = process.env.RESEND_API_KEY;
+
+// Chargily
+const CHARGILY_API_KEY = process.env.CHARGILY_API_KEY;
+const CHARGILY_API_URL = process.env.CHARGILY_API_URL || 'https://pay.chargily.net/test/api/v2';
+
+// التحقق من وجود المتغيرات الأساسية
+if (!supabaseUrl || !supabaseKey) {
+  console.error('❌ خطأ: متغيرات Supabase غير موجودة في البيئة');
+  process.exit(1);
+}
+
+if (!resendApiKey) {
+  console.error('❌ خطأ: متغير RESEND_API_KEY غير موجود في البيئة');
+  process.exit(1);
+}
+
+if (!CHARGILY_API_KEY) {
+  console.error('❌ خطأ: متغير CHARGILY_API_KEY غير موجود في البيئة');
+  process.exit(1);
+}
 
 console.log('🔌 الاتصال بـ Supabase:', supabaseUrl);
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+// ============= تهيئة Resend =============
+const resend = new Resend(resendApiKey);
 
 // ============= إعداد Multer =============
 const storage = multer.memoryStorage();
@@ -109,9 +133,6 @@ async function uploadToSupabase(file, folder, oldFileName = null) {
 }
 
 // ============= Chargily API =============
-const CHARGILY_API_KEY = 'test_sk_2vm1gIkToN70ERrg4SUE1j65gkZcexbPFjHzLUT7';
-const CHARGILY_API_URL = 'https://pay.chargily.net/test/api/v2';
-
 async function createChargilyCheckout(amount, studentName, studentEmail, studentPhone, description, successUrl, failureUrl) {
   try {
     let finalAmount = amount;
@@ -1539,4 +1560,5 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`👨‍💼 ADMIN Routes: تم تفعيلها`);
   console.log(`🔐 نظام استعادة كلمة المرور: تم تفعيله مع Resend`);
   console.log(`💬 نظام رسائل الدعم: تم تفعيله`);
+  console.log(`🔒 تم استخدام المتغيرات البيئية للمعلومات الحساسة`);
 });
