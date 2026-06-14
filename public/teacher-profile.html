@@ -184,6 +184,52 @@
     <div id="notificationToast" class="notification-toast"></div>
 
     <script>
+        // ============= جلب بيانات المستخدم من الجلسة الحالية =============
+        let userData = null;
+        let studentToken = null;
+        let token = null;
+        let isLoggedIn = false;
+        let studentId = null;
+        let userRole = null;
+
+        function loadSessionData() {
+            try {
+                const storedData = localStorage.getItem('userData');
+                if (storedData) {
+                    userData = JSON.parse(storedData);
+                    studentId = userData.id;
+                    userRole = userData.role;
+                }
+                
+                studentToken = localStorage.getItem('studentToken');
+                token = localStorage.getItem('token');
+                
+                // التحقق من صحة الجلسة: إذا كان هناك توكن أو بيانات مستخدم
+                isLoggedIn = !!(studentToken || token || (userData && userData.id));
+                
+                console.log('🔍 بيانات الجلسة:', { 
+                    isLoggedIn, 
+                    studentId, 
+                    userRole,
+                    hasStudentToken: !!studentToken,
+                    hasToken: !!token
+                });
+                
+                return { isLoggedIn, studentId, userRole, userData };
+            } catch(e) {
+                console.error('خطأ في قراءة الجلسة:', e);
+                return { isLoggedIn: false, studentId: null, userRole: null, userData: null };
+            }
+        }
+
+        // تحميل بيانات الجلسة فوراً
+        let session = loadSessionData();
+        isLoggedIn = session.isLoggedIn;
+        studentId = session.studentId;
+        userRole = session.userRole;
+        userData = session.userData;
+
+        // ============= باقي الكود =============
         const urlParams = new URLSearchParams(window.location.search);
         const teacherId = urlParams.get('id');
         
@@ -198,17 +244,8 @@
             `;
         }
         
-        let userData = JSON.parse(localStorage.getItem('userData') || '{}');
-        let studentToken = localStorage.getItem('studentToken');
-        let token = localStorage.getItem('token');
-        
-        let isLoggedIn = !!(studentToken || token || userData.id);
-        let studentId = userData.id;
-        let userRole = userData.role;
         let isFollowing = false;
         let activeCommentPostId = null;
-        
-        console.log('🔍 حالة تسجيل الدخول:', { isLoggedIn, studentId, userRole });
 
         function showNotification(message, type = 'success') {
             const toast = document.getElementById('notificationToast');
@@ -243,7 +280,6 @@
                     return;
                 }
                 
-                // استخدام profile_url من Supabase Storage
                 const imageUrl = teacher.profile_url || 'https://via.placeholder.com/150';
                 
                 let socialHtml = '';
@@ -255,6 +291,7 @@
                 let followButtonHtml = '';
                 let messageButtonHtml = '';
                 
+                // ✅ إذا كان المستخدم مسجلاً للدخول ودوره طالب
                 if (isLoggedIn && userRole === 'student') {
                     await checkFollowStatus();
                     followButtonHtml = `<button id="followBtn" class="follow-btn ${isFollowing ? 'following' : ''}" onclick="toggleFollow()">
@@ -321,6 +358,11 @@
         }
 
         function showMessageModal() {
+            if (!isLoggedIn || userRole !== 'student') {
+                showNotification('يرجى تسجيل الدخول كطالب أولاً', 'error');
+                window.location.href = '/';
+                return;
+            }
             document.getElementById('modalOverlay').style.display = 'block';
             document.getElementById('messageModal').style.display = 'block';
             document.getElementById('messageText').value = '';
@@ -332,6 +374,12 @@
         }
 
         async function sendMessage() {
+            if (!isLoggedIn || userRole !== 'student') {
+                showNotification('يرجى تسجيل الدخول كطالب أولاً', 'error');
+                window.location.href = '/';
+                return;
+            }
+            
             const message = document.getElementById('messageText').value.trim();
             if (!message) {
                 showNotification('الرجاء كتابة رسالتك', 'error');
@@ -364,7 +412,7 @@
         }
 
         async function checkFollowStatus() {
-            if (!isLoggedIn) return;
+            if (!isLoggedIn || userRole !== 'student') return;
             try {
                 const res = await fetch(`/api/check-follow/${studentId}/${teacherId}`);
                 const data = await res.json();
@@ -373,7 +421,11 @@
         }
 
         async function toggleFollow() {
-            if (!isLoggedIn) { showNotification('يرجى تسجيل الدخول أولاً', 'error'); return; }
+            if (!isLoggedIn || userRole !== 'student') { 
+                showNotification('يرجى تسجيل الدخول أولاً', 'error');
+                window.location.href = '/';
+                return; 
+            }
             const url = isFollowing ? '/api/unfollow' : '/api/follow';
             await fetch(url, {
                 method: 'POST',
@@ -435,7 +487,11 @@
         }
 
         async function toggleLike(postId) {
-            if (!isLoggedIn || userRole !== 'student') { showNotification('يرجى تسجيل الدخول كطالب أولاً', 'error'); return; }
+            if (!isLoggedIn || userRole !== 'student') { 
+                showNotification('يرجى تسجيل الدخول كطالب أولاً', 'error');
+                window.location.href = '/';
+                return; 
+            }
             const btn = document.querySelector(`#post-${postId} .like-btn`);
             const isLiked = btn.classList.contains('liked');
             const url = isLiked ? '/api/post/unlike' : '/api/post/like';
@@ -452,7 +508,11 @@
         }
 
         function showCommentModal(postId) {
-            if (!isLoggedIn || userRole !== 'student') { showNotification('يرجى تسجيل الدخول كطالب أولاً', 'error'); return; }
+            if (!isLoggedIn || userRole !== 'student') { 
+                showNotification('يرجى تسجيل الدخول كطالب أولاً', 'error');
+                window.location.href = '/';
+                return; 
+            }
             activeCommentPostId = postId;
             document.getElementById('modalOverlay').style.display = 'block';
             document.getElementById('commentModal').style.display = 'block';
