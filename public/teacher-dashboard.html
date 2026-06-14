@@ -451,7 +451,6 @@
         function updateUI() {
             if (!userData) return;
             const userName = userData.full_name || 'أستاذ';
-            // استخدام profile_url من Supabase Storage
             const userImage = userData.profile_url || 'https://via.placeholder.com/80';
             document.getElementById('navUserName').innerText = userName.split(' ')[0];
             document.getElementById('navAvatar').src = userImage;
