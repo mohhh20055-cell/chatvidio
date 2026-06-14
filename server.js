@@ -38,7 +38,7 @@ const resend = new Resend(resendApiKey);
 
 // ============= إعداد Multer =============
 const storage = multer.memoryStorage();
-const upload = multer({ storage: storage, limits: { fileSize: 5 * 1024 * 1024 } });
+const upload = multer({ storage: storage, limits: { fileSize: 10 * 1024 * 1024 } }); // زيادة الحجم إلى 10MB
 
 app.use(cors());
 app.use(express.json());
@@ -107,7 +107,10 @@ async function uploadToSupabase(file, folder, oldFileName = null) {
         cacheControl: '3600'
       });
     
-    if (error) throw error;
+    if (error) {
+      console.error('❌ خطأ في رفع الصورة:', error);
+      return null;
+    }
     
     const { data: publicUrl } = supabase.storage
       .from('profiles')
@@ -123,7 +126,7 @@ async function uploadToSupabase(file, folder, oldFileName = null) {
   }
 }
 
-// ============= Chargily API - الإعدادات الصحيحة =============
+// ============= Chargily API =============
 async function createChargilyCheckout(amount, studentName, studentEmail, studentPhone, description, successUrl, failureUrl) {
   try {
     let finalAmount = amount;
@@ -144,13 +147,10 @@ async function createChargilyCheckout(amount, studentName, studentEmail, student
     };
     
     console.log('💰 إنشاء دفع للمبلغ:', finalAmount, 'DZD');
-    console.log('📡 إرسال طلب إلى Chargily...');
     console.log('📍 عنوان API:', CHARGILY_API_URL);
     
-    // تجربة طرق مصادقة مختلفة
     let response;
     try {
-      // المحاولة الأولى: Bearer token
       response = await axios.post(`${CHARGILY_API_URL}/checkouts`, checkoutData, {
         headers: { 
           'Content-Type': 'application/json',
@@ -162,7 +162,6 @@ async function createChargilyCheckout(amount, studentName, studentEmail, student
     } catch (firstError) {
       console.log('⚠️ المحاولة الأولى فشلت، نحاول بطريقة ثانية...');
       try {
-        // المحاولة الثانية: X-Authorization
         response = await axios.post(`${CHARGILY_API_URL}/checkouts`, checkoutData, {
           headers: { 
             'Content-Type': 'application/json',
@@ -173,7 +172,6 @@ async function createChargilyCheckout(amount, studentName, studentEmail, student
         });
       } catch (secondError) {
         console.log('⚠️ المحاولة الثانية فشلت، نحاول بطريقة ثالثة...');
-        // المحاولة الثالثة: Api-Key
         response = await axios.post(`${CHARGILY_API_URL}/checkouts`, checkoutData, {
           headers: { 
             'Content-Type': 'application/json',
@@ -292,8 +290,6 @@ app.get('/api/live-offers', async (req, res) => {
 });
 
 // ============= نظام رسائل الدعم =============
-
-// إرسال رسالة دعم
 app.post('/api/support/send', async (req, res) => {
   try {
     const { name, email, phone, subject, message } = req.body;
@@ -335,7 +331,7 @@ app.get('/api/admin/support-messages', async (req, res) => {
   }
 });
 
-// ADMIN: تحديث حالة رسالة (تحديد كمقروءة)
+// ADMIN: تحديث حالة رسالة
 app.put('/api/admin/support-messages/:id/read', async (req, res) => {
   try {
     const { id } = req.params;
@@ -358,8 +354,6 @@ app.delete('/api/admin/support-messages/:id', async (req, res) => {
 });
 
 // ============= نظام الرصيد (Wallet) =============
-
-// جلب رصيد الطالب وسجل المعاملات
 app.get('/api/student/wallet/:student_id', async (req, res) => {
   try {
     const student = await getOne('students', 'id', req.params.student_id);
@@ -382,7 +376,6 @@ app.get('/api/student/wallet/:student_id', async (req, res) => {
   }
 });
 
-// شحن الرصيد
 app.post('/api/student/wallet/deposit', async (req, res) => {
   try {
     const { student_id, amount } = req.body;
@@ -430,7 +423,6 @@ app.post('/api/student/wallet/deposit', async (req, res) => {
   }
 });
 
-// تأكيد شحن الرصيد بعد الدفع الناجح
 app.get('/api/wallet/deposit/success/:transaction_id', async (req, res) => {
   const { transaction_id } = req.params;
   
@@ -481,7 +473,6 @@ app.get('/api/wallet/deposit/success/:transaction_id', async (req, res) => {
   }
 });
 
-// فشل شحن الرصيد
 app.get('/api/wallet/deposit/failure/:transaction_id', async (req, res) => {
   const { transaction_id } = req.params;
   
@@ -512,7 +503,7 @@ app.get('/api/wallet/deposit/failure/:transaction_id', async (req, res) => {
   }
 });
 
-// ============= نظام الحجز باستخدام الرصيد =============
+// ============= نظام الحجز =============
 app.post('/api/booking/create', async (req, res) => {
   const { offer_id, student_id } = req.body;
   
@@ -523,7 +514,6 @@ app.post('/api/booking/create', async (req, res) => {
     const { data: existing } = await supabase.from('sessions').select('*').eq('offer_id', offer_id).eq('student_id', student_id).maybeSingle();
     if (existing) return res.json({ success: false, error: 'مسجل بالفعل' });
     
-    // عرض مجاني
     if (offer.is_free === 1 || offer.price === 0) {
       const session = await insert('sessions', { 
         offer_id, 
@@ -537,7 +527,6 @@ app.post('/api/booking/create', async (req, res) => {
       return res.json({ success: true, session_id: session.id, is_free: true });
     }
     
-    // عرض مدفوع - استخدام الرصيد
     const student = await getOne('students', 'id', student_id);
     const currentBalance = student.wallet_balance || 0;
     
@@ -550,11 +539,9 @@ app.post('/api/booking/create', async (req, res) => {
       });
     }
     
-    // خصم الرصيد
     const newBalance = currentBalance - offer.price;
     await update('students', student_id, { wallet_balance: newBalance });
     
-    // تسجيل عملية سحب من المحفظة
     await insert('wallet_transactions', {
       student_id: student_id,
       amount: offer.price,
@@ -564,7 +551,6 @@ app.post('/api/booking/create', async (req, res) => {
       created_at: new Date().toISOString()
     });
     
-    // إنشاء الجلسة
     const session = await insert('sessions', { 
       offer_id, 
       student_id, 
@@ -574,10 +560,8 @@ app.post('/api/booking/create', async (req, res) => {
       paid_from_wallet: true
     });
     
-    // إضافة الطالب إلى غرفة الانتظار
     await insert('waiting_room', { offer_id, student_id });
     
-    // تحديث رصيد الأستاذ (بعد خصم العمولة)
     const teacher = await getOne('teachers', 'id', offer.teacher_id);
     const commission = offer.price * 0.1;
     const teacherEarned = offer.price - commission;
@@ -601,7 +585,6 @@ app.post('/api/booking/create', async (req, res) => {
 });
 
 // ============= نظام نسيت كلمة المرور =============
-
 app.post('/api/forgot-password', async (req, res) => {
   try {
     const { email, role } = req.body;
@@ -735,41 +718,195 @@ app.post('/api/reset-password', async (req, res) => {
   }
 });
 
+// ============= نظام المراسلات =============
+app.post('/api/messages/send', async (req, res) => {
+  try {
+    const { sender_id, sender_type, receiver_id, receiver_type, message } = req.body;
+    
+    if (!message || message.trim() === '') {
+      return res.json({ success: false, error: 'الرسالة لا يمكن أن تكون فارغة' });
+    }
+    
+    const newMessage = await insert('messages', {
+      sender_id, sender_type, receiver_id, receiver_type,
+      message: message.trim(),
+      created_at: new Date().toISOString(),
+      is_read: false
+    });
+    
+    await insert('notifications', {
+      user_id: receiver_id,
+      user_type: receiver_type,
+      title: '📩 رسالة جديدة',
+      message: `لديك رسالة جديدة`,
+      is_read: false,
+      created_at: new Date().toISOString()
+    });
+    
+    res.json({ success: true, message: newMessage });
+  } catch (error) {
+    console.error('❌ خطأ:', error.message);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+app.get('/api/messages/conversations/:user_id/:user_type', async (req, res) => {
+  try {
+    const { user_id, user_type } = req.params;
+    
+    const { data } = await supabase
+      .from('messages')
+      .select('*')
+      .or(`sender_id.eq.${user_id},receiver_id.eq.${user_id}`)
+      .order('created_at', { ascending: false });
+    
+    const conversations = {};
+    for (const msg of data || []) {
+      const otherId = msg.sender_id == user_id ? msg.receiver_id : msg.sender_id;
+      const otherType = msg.sender_id == user_id ? msg.receiver_type : msg.sender_type;
+      const key = `${otherId}-${otherType}`;
+      
+      if (!conversations[key] || msg.created_at > conversations[key].last_message_date) {
+        let otherName = 'مستخدم';
+        if (otherType === 'teacher') {
+          const teacher = await getOne('teachers', 'id', otherId);
+          otherName = teacher?.full_name || 'أستاذ';
+        } else {
+          const student = await getOne('students', 'id', otherId);
+          otherName = student?.full_name || 'طالب';
+        }
+        
+        conversations[key] = {
+          other_id: otherId,
+          other_type: otherType,
+          other_name: otherName,
+          other_image: null,
+          last_message: msg.message,
+          last_message_date: msg.created_at,
+          unread_count: (!msg.is_read && msg.receiver_id == user_id) ? 1 : 0
+        };
+      } else if (!msg.is_read && msg.receiver_id == user_id) {
+        conversations[key].unread_count++;
+      }
+    }
+    
+    res.json(Object.values(conversations));
+  } catch (error) {
+    console.error('❌ خطأ:', error.message);
+    res.json([]);
+  }
+});
+
+app.get('/api/messages/:user_id/:user_type/:other_id/:other_type', async (req, res) => {
+  try {
+    const { user_id, user_type, other_id, other_type } = req.params;
+    
+    const { data } = await supabase
+      .from('messages')
+      .select('*')
+      .or(`and(sender_id.eq.${user_id},receiver_id.eq.${other_id}),and(sender_id.eq.${other_id},receiver_id.eq.${user_id})`)
+      .order('created_at', { ascending: true });
+    
+    await supabase
+      .from('messages')
+      .update({ is_read: true })
+      .eq('receiver_id', user_id)
+      .eq('sender_id', other_id);
+    
+    res.json(data || []);
+  } catch (error) {
+    console.error('❌ خطأ:', error.message);
+    res.json([]);
+  }
+});
+
 // ============= Routes =============
 
-// تسجيل أستاذ جديد
-app.post('/api/teacher/register', upload.single('profile_image'), async (req, res) => {
+// تسجيل أستاذ جديد (المسار المطلوب)
+app.post('/api/teacher/register', upload.fields([
+  { name: 'profile_image', maxCount: 1 },
+  { name: 'diploma_image', maxCount: 1 },
+  { name: 'id_image', maxCount: 1 }
+]), async (req, res) => {
   try {
+    console.log('📝 استلام طلب تسجيل أستاذ جديد');
+    console.log('📦 البيانات:', req.body);
+    console.log('📎 الملفات:', req.files ? Object.keys(req.files) : 'لا توجد ملفات');
+    
     const { full_name, email, password, phone, specialization, bio, experience } = req.body;
     
+    // التحقق من الحقول المطلوبة
     if (!full_name || !email || !password || !phone || !specialization || !bio || !experience) {
+      console.log('❌ حقول ناقصة:', { full_name, email, phone, specialization, bio, experience });
       return res.json({ success: false, error: 'يرجى ملء جميع الحقول المطلوبة' });
     }
 
+    // التحقق من وجود البريد الإلكتروني
     const existingTeacher = await getOne('teachers', 'email', email);
     if (existingTeacher) {
+      console.log('❌ البريد الإلكتروني موجود مسبقاً:', email);
       return res.json({ success: false, error: 'البريد الإلكتروني مستخدم مسبقاً' });
     }
 
+    // تشفير كلمة المرور
     const hashedPassword = bcrypt.hashSync(password, 10);
+    
+    // رفع الصور
     let profile_image = null;
     let profile_url = null;
+    let diploma_image = null;
+    let id_image = null;
     
-    if (req.file) {
-      const uploaded = await uploadToSupabase(req.file, 'teachers');
+    if (req.files['profile_image'] && req.files['profile_image'][0]) {
+      const uploaded = await uploadToSupabase(req.files['profile_image'][0], 'teachers');
       if (uploaded) {
         profile_image = uploaded.filename;
         profile_url = uploaded.url;
+        console.log('✅ تم رفع الصورة الشخصية:', profile_url);
+      }
+    }
+    
+    if (req.files['diploma_image'] && req.files['diploma_image'][0]) {
+      const uploaded = await uploadToSupabase(req.files['diploma_image'][0], 'diplomas');
+      if (uploaded) {
+        diploma_image = uploaded.filename;
+        console.log('✅ تم رفع صورة الدبلوم');
+      }
+    }
+    
+    if (req.files['id_image'] && req.files['id_image'][0]) {
+      const uploaded = await uploadToSupabase(req.files['id_image'][0], 'ids');
+      if (uploaded) {
+        id_image = uploaded.filename;
+        console.log('✅ تم رفع صورة بطاقة الهوية');
       }
     }
 
-    await insert('teachers', {
-      full_name, email, password: hashedPassword, phone, specialization, bio, experience,
-      profile_image, profile_url, status: 'pending', balance: 0, total_earned: 0, total_withdrawn: 0, pending_withdraw: 0
+    // إدراج البيانات في قاعدة البيانات
+    const newTeacher = await insert('teachers', {
+      full_name, 
+      email, 
+      password: hashedPassword, 
+      phone, 
+      specialization, 
+      bio, 
+      experience,
+      profile_image, 
+      profile_url,
+      diploma_image,
+      id_image,
+      status: 'pending', 
+      balance: 0, 
+      total_earned: 0, 
+      total_withdrawn: 0, 
+      pending_withdraw: 0
     });
 
+    console.log('✅ تم تسجيل الأستاذ بنجاح:', newTeacher.id);
     res.json({ success: true, message: 'تم إرسال طلبك، سيتم مراجعته من قبل الإدارة' });
+    
   } catch (error) {
+    console.error('❌ خطأ في تسجيل الأستاذ:', error.message);
     res.json({ success: false, error: error.message });
   }
 });
@@ -792,6 +929,7 @@ app.post('/api/student/register', async (req, res) => {
 
     res.json({ success: true, message: 'تم التسجيل بنجاح' });
   } catch (error) {
+    console.error('❌ خطأ:', error.message);
     res.json({ success: false, error: error.message });
   }
 });
@@ -907,6 +1045,8 @@ app.post('/api/login', async (req, res) => {
   try {
     const { email, password, role } = req.body;
     
+    console.log(`📝 محاولة تسجيل دخول: ${email} كـ ${role}`);
+    
     if (email === 'admin@platform.com' && password === 'admin123') {
       return res.json({ success: true, token: 'admin_token', user: { id: 0, name: 'مدير المنصة', role: 'admin' } });
     }
@@ -946,7 +1086,6 @@ app.post('/api/login', async (req, res) => {
 });
 
 // ============= ADMIN Routes =============
-
 app.get('/api/admin/pending-teachers', async (req, res) => {
   try {
     const { data } = await supabase
@@ -1113,7 +1252,6 @@ app.get('/api/waiting-count/:offer_id', async (req, res) => {
 });
 
 // ============= نظام الرصيد والأرباح للأستاذ =============
-
 app.get('/api/teacher/balance/:teacher_id', async (req, res) => {
   try {
     const teacher = await getOne('teachers', 'id', req.params.teacher_id);
@@ -1265,7 +1403,6 @@ app.post('/api/admin/withdraw-requests/:id/reject', async (req, res) => {
 });
 
 // ============= نظام البث المباشر =============
-
 app.post('/api/stream/enter-teacher/:offer_id', async (req, res) => {
   const { offer_id, teacher_id } = req.body;
   const offer = await getOne('offers', 'id', offer_id);
@@ -1405,7 +1542,6 @@ app.post('/api/notifications/read/:notification_id', async (req, res) => {
 });
 
 // ============= صفحات البث =============
-
 app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
   const offer = await getOne('offers', 'id', req.params.offer_id);
   if (!offer || offer.teacher_id != req.params.teacher_id) return res.redirect('/teacher-dashboard.html');
@@ -1593,6 +1729,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`👨‍💼 ADMIN Routes: تم تفعيلها`);
   console.log(`🔐 نظام استعادة كلمة المرور: تم تفعيله مع Resend`);
   console.log(`💬 نظام رسائل الدعم: تم تفعيله`);
+  console.log(`💬 نظام المراسلات: تم تفعيله`);
   console.log(`🔒 تم استخدام المتغيرات البيئية للمعلومات الحساسة`);
   console.log(`💳 Chargily API: ${CHARGILY_API_URL}`);
 });
