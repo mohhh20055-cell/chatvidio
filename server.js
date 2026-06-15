@@ -38,7 +38,7 @@ const resend = new Resend(resendApiKey);
 
 // ============= إعداد Multer =============
 const storage = multer.memoryStorage();
-const upload = multer({ storage: storage, limits: { fileSize: 10 * 1024 * 1024 } }); // زيادة الحجم إلى 10MB
+const upload = multer({ storage: storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
 app.use(cors());
 app.use(express.json());
@@ -286,6 +286,214 @@ app.get('/api/live-offers', async (req, res) => {
   } catch (error) {
     console.error('❌ خطأ:', error.message);
     res.json([]);
+  }
+});
+
+// ============= نظام المنشورات =============
+// مسار إنشاء منشور جديد
+app.post('/api/post/create', upload.fields([
+  { name: 'image', maxCount: 1 },
+  { name: 'file', maxCount: 1 }
+]), async (req, res) => {
+  try {
+    const { teacher_id, title, content, link_url } = req.body;
+    let image_url = null, file_url = null;
+    
+    if (req.files['image'] && req.files['image'][0]) {
+      const uploaded = await uploadToSupabase(req.files['image'][0], 'posts');
+      if (uploaded) image_url = uploaded.url;
+    }
+    if (req.files['file'] && req.files['file'][0]) {
+      const uploaded = await uploadToSupabase(req.files['file'][0], 'files');
+      if (uploaded) file_url = uploaded.url;
+    }
+    
+    await insert('posts', {
+      teacher_id: parseInt(teacher_id),
+      title,
+      content,
+      image_url,
+      file_url,
+      link_url,
+      likes: 0,
+      created_at: new Date().toISOString()
+    });
+    
+    res.json({ success: true, message: 'تم نشر الدرس بنجاح' });
+  } catch (error) {
+    console.error('❌ خطأ:', error.message);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// مسار جلب منشورات أستاذ معين
+app.get('/api/posts/:teacher_id', async (req, res) => {
+  try {
+    const { data } = await supabase
+      .from('posts')
+      .select('*')
+      .eq('teacher_id', req.params.teacher_id)
+      .order('created_at', { ascending: false });
+    
+    // جلب عدد الإعجابات والتعليقات لكل منشور
+    const postsWithCounts = await Promise.all((data || []).map(async (post) => {
+      const { count: likesCount } = await supabase
+        .from('post_likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('post_id', post.id);
+      
+      const { count: commentsCount } = await supabase
+        .from('post_comments')
+        .select('*', { count: 'exact', head: true })
+        .eq('post_id', post.id);
+      
+      return { ...post, likes_count: likesCount || 0, comments_count: commentsCount || 0 };
+    }));
+    
+    res.json(postsWithCounts);
+  } catch (error) {
+    console.error('❌ خطأ في جلب المنشورات:', error.message);
+    res.json([]);
+  }
+});
+
+// مسار جلب منشور واحد مع تعليقاته
+app.get('/api/post/:post_id', async (req, res) => {
+  try {
+    const { data: post } = await supabase
+      .from('posts')
+      .select('*, teachers:teacher_id (full_name, profile_url)')
+      .eq('id', req.params.post_id)
+      .single();
+    
+    if (!post) return res.json({ error: 'المنشور غير موجود' });
+    
+    const { data: comments } = await supabase
+      .from('post_comments')
+      .select('*, students:student_id (full_name, profile_url)')
+      .eq('post_id', req.params.post_id)
+      .order('created_at', { ascending: true });
+    
+    res.json({
+      ...post,
+      teacher_name: post.teachers?.full_name,
+      teacher_image: post.teachers?.profile_url,
+      comments: comments || []
+    });
+  } catch (error) {
+    console.error('❌ خطأ:', error.message);
+    res.json({ error: error.message });
+  }
+});
+
+// مسار الإعجاب بمنشور
+app.post('/api/post/like', async (req, res) => {
+  try {
+    const { post_id, student_id } = req.body;
+    await insert('post_likes', { post_id, student_id });
+    
+    const { count } = await supabase
+      .from('post_likes')
+      .select('*', { count: 'exact', head: true })
+      .eq('post_id', post_id);
+    
+    await update('posts', post_id, { likes: count });
+    res.json({ success: true, liked: true });
+  } catch (error) {
+    res.json({ success: false });
+  }
+});
+
+// مسار إلغاء الإعجاب بمنشور
+app.post('/api/post/unlike', async (req, res) => {
+  try {
+    const { post_id, student_id } = req.body;
+    await supabase.from('post_likes').delete().eq('post_id', post_id).eq('student_id', student_id);
+    
+    const { count } = await supabase
+      .from('post_likes')
+      .select('*', { count: 'exact', head: true })
+      .eq('post_id', post_id);
+    
+    await update('posts', post_id, { likes: count });
+    res.json({ success: true, liked: false });
+  } catch (error) {
+    res.json({ success: false });
+  }
+});
+
+// مسار التحقق من حالة الإعجاب
+app.get('/api/post/check-like/:post_id/:student_id', async (req, res) => {
+  try {
+    const { data } = await supabase
+      .from('post_likes')
+      .select('*')
+      .eq('post_id', req.params.post_id)
+      .eq('student_id', req.params.student_id)
+      .single();
+    res.json({ liked: !!data });
+  } catch (error) {
+    res.json({ liked: false });
+  }
+});
+
+// مسار إضافة تعليق
+app.post('/api/post/comment', async (req, res) => {
+  try {
+    const { post_id, student_id, comment } = req.body;
+    if (!comment || comment.trim() === '') {
+      return res.json({ success: false, error: 'التعليق لا يمكن أن يكون فارغاً' });
+    }
+    
+    await insert('post_comments', { post_id, student_id, comment, created_at: new Date().toISOString() });
+    
+    const { count } = await supabase
+      .from('post_comments')
+      .select('*', { count: 'exact', head: true })
+      .eq('post_id', post_id);
+    
+    await update('posts', post_id, { comments_count: count });
+    res.json({ success: true });
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// مسار حذف تعليق
+app.delete('/api/post/comment/:comment_id', async (req, res) => {
+  try {
+    const { comment_id } = req.params;
+    const { teacher_id, post_id } = req.body;
+    
+    const post = await getOne('posts', 'id', post_id);
+    if (!post || post.teacher_id != teacher_id) {
+      return res.json({ success: false, error: 'غير مصرح لك' });
+    }
+    
+    await remove('post_comments', 'id', comment_id);
+    res.json({ success: true });
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// مسار حذف منشور
+app.delete('/api/post/:post_id', async (req, res) => {
+  try {
+    const { post_id } = req.params;
+    const { teacher_id } = req.body;
+    
+    const post = await getOne('posts', 'id', post_id);
+    if (!post || post.teacher_id != teacher_id) {
+      return res.json({ success: false, error: 'غير مصرح لك' });
+    }
+    
+    await supabase.from('post_likes').delete().eq('post_id', post_id);
+    await supabase.from('post_comments').delete().eq('post_id', post_id);
+    await remove('posts', 'id', post_id);
+    res.json({ success: true });
+  } catch (error) {
+    res.json({ success: false, error: error.message });
   }
 });
 
@@ -822,7 +1030,7 @@ app.get('/api/messages/:user_id/:user_type/:other_id/:other_type', async (req, r
 
 // ============= Routes =============
 
-// تسجيل أستاذ جديد (المسار المطلوب)
+// تسجيل أستاذ جديد
 app.post('/api/teacher/register', upload.fields([
   { name: 'profile_image', maxCount: 1 },
   { name: 'diploma_image', maxCount: 1 },
@@ -830,28 +1038,19 @@ app.post('/api/teacher/register', upload.fields([
 ]), async (req, res) => {
   try {
     console.log('📝 استلام طلب تسجيل أستاذ جديد');
-    console.log('📦 البيانات:', req.body);
-    console.log('📎 الملفات:', req.files ? Object.keys(req.files) : 'لا توجد ملفات');
     
     const { full_name, email, password, phone, specialization, bio, experience } = req.body;
     
-    // التحقق من الحقول المطلوبة
     if (!full_name || !email || !password || !phone || !specialization || !bio || !experience) {
-      console.log('❌ حقول ناقصة:', { full_name, email, phone, specialization, bio, experience });
       return res.json({ success: false, error: 'يرجى ملء جميع الحقول المطلوبة' });
     }
 
-    // التحقق من وجود البريد الإلكتروني
     const existingTeacher = await getOne('teachers', 'email', email);
     if (existingTeacher) {
-      console.log('❌ البريد الإلكتروني موجود مسبقاً:', email);
       return res.json({ success: false, error: 'البريد الإلكتروني مستخدم مسبقاً' });
     }
 
-    // تشفير كلمة المرور
     const hashedPassword = bcrypt.hashSync(password, 10);
-    
-    // رفع الصور
     let profile_image = null;
     let profile_url = null;
     let diploma_image = null;
@@ -862,51 +1061,28 @@ app.post('/api/teacher/register', upload.fields([
       if (uploaded) {
         profile_image = uploaded.filename;
         profile_url = uploaded.url;
-        console.log('✅ تم رفع الصورة الشخصية:', profile_url);
       }
     }
     
     if (req.files['diploma_image'] && req.files['diploma_image'][0]) {
       const uploaded = await uploadToSupabase(req.files['diploma_image'][0], 'diplomas');
-      if (uploaded) {
-        diploma_image = uploaded.filename;
-        console.log('✅ تم رفع صورة الدبلوم');
-      }
+      if (uploaded) diploma_image = uploaded.filename;
     }
     
     if (req.files['id_image'] && req.files['id_image'][0]) {
       const uploaded = await uploadToSupabase(req.files['id_image'][0], 'ids');
-      if (uploaded) {
-        id_image = uploaded.filename;
-        console.log('✅ تم رفع صورة بطاقة الهوية');
-      }
+      if (uploaded) id_image = uploaded.filename;
     }
 
-    // إدراج البيانات في قاعدة البيانات
-    const newTeacher = await insert('teachers', {
-      full_name, 
-      email, 
-      password: hashedPassword, 
-      phone, 
-      specialization, 
-      bio, 
-      experience,
-      profile_image, 
-      profile_url,
-      diploma_image,
-      id_image,
-      status: 'pending', 
-      balance: 0, 
-      total_earned: 0, 
-      total_withdrawn: 0, 
-      pending_withdraw: 0
+    await insert('teachers', {
+      full_name, email, password: hashedPassword, phone, specialization, bio, experience,
+      profile_image, profile_url, diploma_image, id_image,
+      status: 'pending', balance: 0, total_earned: 0, total_withdrawn: 0, pending_withdraw: 0
     });
 
-    console.log('✅ تم تسجيل الأستاذ بنجاح:', newTeacher.id);
     res.json({ success: true, message: 'تم إرسال طلبك، سيتم مراجعته من قبل الإدارة' });
-    
   } catch (error) {
-    console.error('❌ خطأ في تسجيل الأستاذ:', error.message);
+    console.error('❌ خطأ:', error.message);
     res.json({ success: false, error: error.message });
   }
 });
@@ -940,8 +1116,6 @@ app.post('/api/student/update-profile', upload.single('profile_image'), async (r
     const { student_id, full_name, phone } = req.body;
     let profile_image = null;
     let profile_url = null;
-    
-    console.log('📝 تحديث ملف الطالب:', { student_id, full_name, phone });
     
     const oldStudent = await getOne('students', 'id', student_id);
     
@@ -988,18 +1162,13 @@ app.post('/api/teacher/update-profile', upload.single('profile_image'), async (r
   try {
     const { teacher_id } = req.body;
     
-    console.log('📝 تحديث صورة الأستاذ:', { teacher_id });
-    
     if (!req.file) {
       return res.json({ success: false, error: 'الرجاء اختيار صورة' });
     }
     
     const oldTeacher = await getOne('teachers', 'id', teacher_id);
-    
     const uploaded = await uploadToSupabase(req.file, 'teachers', oldTeacher?.profile_image);
-    if (!uploaded) {
-      return res.json({ success: false, error: 'فشل رفع الصورة' });
-    }
+    if (!uploaded) return res.json({ success: false, error: 'فشل رفع الصورة' });
     
     const updateData = { 
       profile_image: uploaded.filename,
@@ -1214,9 +1383,7 @@ app.get('/api/student/bookings/:student_id', async (req, res) => {
       .eq('student_id', req.params.student_id)
       .order('created_at', { ascending: false });
     
-    if (!data) {
-      return res.json([]);
-    }
+    if (!data) return res.json([]);
     
     const formatted = data.map(s => ({
       id: s.id,
@@ -1730,6 +1897,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🔐 نظام استعادة كلمة المرور: تم تفعيله مع Resend`);
   console.log(`💬 نظام رسائل الدعم: تم تفعيله`);
   console.log(`💬 نظام المراسلات: تم تفعيله`);
+  console.log(`📝 نظام المنشورات: تم تفعيله`);
   console.log(`🔒 تم استخدام المتغيرات البيئية للمعلومات الحساسة`);
   console.log(`💳 Chargily API: ${CHARGILY_API_URL}`);
 });
