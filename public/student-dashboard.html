@@ -2,23 +2,30 @@
 <html lang="ar">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes, viewport-fit=cover">
     <title>لوحة الطالب - منصة التعليم</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Cairo', sans-serif; background: #f0f2f5; }
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background: #f0f2f5; 
+            overflow-x: hidden;
+            width: 100%;
+        }
 
+        /* ===== NAV (responsive) ===== */
         .facebook-nav {
             background: white;
-            padding: 8px 16px;
+            padding: 8px 12px;
             box-shadow: 0 1px 2px rgba(0,0,0,0.1);
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             z-index: 100;
+            width: 100%;
         }
         .nav-content {
             max-width: 1200px;
@@ -26,160 +33,127 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: nowrap;
+            gap: 6px;
         }
         .nav-logo {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             cursor: pointer;
+            flex-shrink: 0;
         }
-        .nav-logo i { font-size: 2rem; color: #0f5cbf; }
-        .nav-logo span { font-size: 1.5rem; font-weight: 800; color: #0f5cbf; }
-        .nav-icons { display: flex; gap: 8px; align-items: center; }
+        .nav-logo i { font-size: 1.6rem; color: #0f5cbf; }
+        .nav-logo span { font-size: 1.2rem; font-weight: 800; color: #0f5cbf; white-space: nowrap; }
+        .nav-icons { 
+            display: flex; 
+            gap: 4px; 
+            align-items: center; 
+            flex-shrink: 0;
+        }
         .nav-icon-btn {
             background: #e4e6eb;
             border: none;
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
             cursor: pointer;
-            font-size: 1.2rem;
+            font-size: 1rem;
             transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
         }
         .nav-icon-btn:hover, .nav-icon-btn.active { background: #0f5cbf; color: white; }
         .user-menu {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             background: #e4e6eb;
-            padding: 5px 12px;
+            padding: 4px 10px 4px 6px;
             border-radius: 30px;
             cursor: pointer;
+            flex-shrink: 0;
         }
-        .user-menu img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
-        .user-menu span { font-weight: 600; font-size: 0.9rem; }
+        .user-menu img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
+        .user-menu span { font-weight: 600; font-size: 0.8rem; max-width: 50px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .user-menu i { font-size: 0.7rem; }
 
+        /* ===== MAIN WRAPPER (responsive grid) ===== */
         .main-wrapper {
             max-width: 1200px;
             margin: 70px auto 20px;
-            padding: 0 16px;
+            padding: 0 12px;
             display: grid;
-            grid-template-columns: 300px 1fr 300px;
-            gap: 20px;
-        }
-
-        .left-sidebar { position: sticky; top: 80px; height: fit-content; }
-        .profile-card {
-            background: white;
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 16px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-        .profile-avatar {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            object-fit: cover;
-            margin-bottom: 12px;
-            border: 3px solid #0f5cbf;
-            cursor: pointer;
-        }
-        .profile-name { font-size: 1.2rem; font-weight: 700; margin-bottom: 4px; }
-        .profile-email { color: #65676b; font-size: 0.8rem; margin-bottom: 12px; }
-        .edit-profile-btn {
-            background: #e4e6eb;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-weight: 600;
+            grid-template-columns: 1fr;
+            gap: 16px;
             width: 100%;
         }
-        .wallet-card {
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 16px;
-            text-align: center;
-        }
-        .wallet-amount {
-            font-size: 2rem;
-            font-weight: 800;
-            margin: 10px 0;
-        }
-        .deposit-btn {
-            background: rgba(255,255,255,0.2);
-            color: white;
-            border: 2px solid white;
-            padding: 8px 16px;
-            border-radius: 25px;
-            cursor: pointer;
-            font-weight: 600;
-            margin-top: 10px;
-            width: 100%;
-        }
-        .deposit-btn:hover {
-            background: white;
-            color: #059669;
-        }
-        .shortcut-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .shortcut-item:hover { background: #f0f2f5; }
-        .shortcut-icon {
-            width: 36px;
-            height: 36px;
-            background: #e4e6eb;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #0f5cbf;
+
+        /* ===== SIDEBARS (hidden on mobile, shown on desktop) ===== */
+        .left-sidebar, .right-sidebar {
+            display: none;
         }
 
-        .content-area { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-        .section-title { font-size: 1.3rem; font-weight: 700; margin-bottom: 20px; border-right: 3px solid #0f5cbf; padding-right: 12px; }
+        /* ===== CONTENT AREA (full width on mobile) ===== */
+        .content-area { 
+            background: white; 
+            border-radius: 12px; 
+            padding: 16px; 
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1); 
+            width: 100%;
+            overflow: hidden;
+        }
+        .section-title { 
+            font-size: 1.1rem; 
+            font-weight: 700; 
+            margin-bottom: 16px; 
+            border-right: 3px solid #0f5cbf; 
+            padding-right: 10px; 
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* ===== CARDS GRID (responsive) ===== */
         .offers-grid, .teachers-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 20px;
+            grid-template-columns: 1fr;
+            gap: 14px;
         }
+
         .offer-card, .teacher-card {
             background: #f8f9fa;
             border-radius: 12px;
-            padding: 16px;
+            padding: 14px;
             transition: transform 0.2s, box-shadow 0.2s;
             cursor: pointer;
+            border: 1px solid #eee;
         }
-        .offer-card:hover, .teacher-card:hover { transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .offer-title { font-weight: 700; font-size: 1.1rem; margin-bottom: 8px; color: #0f5cbf; }
-        .offer-info { font-size: 0.85rem; color: #65676b; margin: 5px 0; display: flex; align-items: center; gap: 8px; }
-        .free-badge { background: #10b981; color: white; padding: 2px 8px; border-radius: 20px; font-size: 0.7rem; display: inline-block; }
-        .paid-badge { background: #0f5cbf; color: white; padding: 2px 8px; border-radius: 20px; font-size: 0.7rem; display: inline-block; }
+        .offer-card:hover, .teacher-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .offer-title { font-weight: 700; font-size: 1rem; margin-bottom: 6px; color: #0f5cbf; }
+        .offer-info { font-size: 0.8rem; color: #65676b; margin: 4px 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .free-badge { background: #10b981; color: white; padding: 2px 10px; border-radius: 20px; font-size: 0.65rem; display: inline-block; }
+        .paid-badge { background: #0f5cbf; color: white; padding: 2px 10px; border-radius: 20px; font-size: 0.65rem; display: inline-block; }
         .book-btn {
             background: #0f5cbf;
             color: white;
             border: none;
-            padding: 8px 16px;
+            padding: 8px 14px;
             border-radius: 25px;
             cursor: pointer;
             width: 100%;
-            margin-top: 12px;
+            margin-top: 10px;
             font-weight: 600;
+            font-size: 0.85rem;
         }
         .book-btn.free { background: #10b981; }
         .book-btn:hover { opacity: 0.9; }
-        .teacher-avatar { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; }
-        .teacher-name { font-weight: 700; font-size: 1rem; }
+        .book-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .teacher-avatar { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; margin-bottom: 8px; }
+        .teacher-name { font-weight: 700; font-size: 0.95rem; }
         .teacher-specialty { font-size: 0.75rem; color: #65676b; }
         .view-btn {
             background: #e4e6eb;
@@ -189,33 +163,65 @@
             cursor: pointer;
             margin-top: 10px;
             width: 100%;
+            font-size: 0.8rem;
         }
+
         .insufficient-balance {
             color: #ef4444;
             font-size: 0.7rem;
-            margin-top: 8px;
-            display: none;
+            margin-top: 6px;
+            display: block;
         }
 
-        .right-sidebar { position: sticky; top: 80px; height: fit-content; }
-        .right-card {
-            background: white;
+        /* ===== MOBILE WALLET (visible only on small screens) ===== */
+        .mobile-wallet {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
             border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 16px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 14px;
+            width: 100%;
         }
-        .card-title { font-weight: 700; margin-bottom: 12px; }
+        .mobile-wallet .wallet-amount {
+            font-size: 1.4rem;
+            font-weight: 800;
+        }
+        .mobile-deposit-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 2px solid white;
+            padding: 6px 16px;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        /* ===== BOOKINGS & TRANSACTIONS ===== */
+        .booking-item, .transaction-item {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 10px;
+            border: 1px solid #eee;
+        }
         .join-stream-btn {
             background: #10b981;
             color: white;
             border: none;
-            padding: 4px 12px;
+            padding: 5px 14px;
             border-radius: 20px;
             font-size: 0.7rem;
             cursor: pointer;
+            margin-top: 6px;
         }
 
+        /* ===== MODALS (responsive) ===== */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -234,53 +240,229 @@
             transform: translate(-50%, -50%);
             background: white;
             border-radius: 16px;
-            width: 90%;
+            width: 92%;
             max-width: 500px;
             z-index: 1001;
             overflow: hidden;
+            max-height: 90vh;
+            overflow-y: auto;
         }
         .modal-header {
-            padding: 16px;
+            padding: 14px 16px;
             border-bottom: 1px solid #e4e6eb;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-        .modal-body { padding: 20px; }
+        .modal-header h3 { font-size: 1.1rem; }
+        .modal-body { padding: 16px; }
         .modal-body input, .modal-body textarea {
             width: 100%;
             padding: 10px;
-            margin: 10px 0;
+            margin: 8px 0;
             border: 1px solid #e4e6eb;
             border-radius: 8px;
             font-family: 'Cairo', sans-serif;
+            font-size: 0.95rem;
         }
-        .modal-footer { padding: 12px 16px; border-top: 1px solid #e4e6eb; display: flex; gap: 10px; justify-content: flex-end; }
-        .save-btn { background: #0f5cbf; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; }
-        .cancel-btn { background: #e4e6eb; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; }
-        .close-modal { background: none; border: none; font-size: 1.5rem; cursor: pointer; }
+        .modal-footer { 
+            padding: 12px 16px; 
+            border-top: 1px solid #e4e6eb; 
+            display: flex; 
+            gap: 10px; 
+            justify-content: flex-end; 
+            flex-wrap: wrap;
+        }
+        .save-btn { background: #0f5cbf; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; }
+        .cancel-btn { background: #e4e6eb; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; }
+        .close-modal { background: none; border: none; font-size: 1.8rem; cursor: pointer; line-height: 1; padding: 0 4px; }
 
+        /* ===== TOAST ===== */
         .notification-toast {
             position: fixed;
             bottom: 20px;
             right: 20px;
+            left: 20px;
             background: #10b981;
             color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
+            padding: 12px 18px;
+            border-radius: 12px;
             z-index: 2000;
             display: none;
             animation: slideIn 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            font-size: 0.9rem;
+            max-width: 400px;
+            margin: 0 auto;
         }
         @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
-        .loading { text-align: center; padding: 40px; color: #65676b; }
+        .loading { text-align: center; padding: 30px; color: #65676b; }
 
-        @media (max-width: 900px) {
-            .main-wrapper { grid-template-columns: 1fr; }
-            .left-sidebar, .right-sidebar { display: none; }
+        /* ===== RIGHT SIDEBAR (desktop only) ===== */
+        .right-sidebar { position: sticky; top: 80px; height: fit-content; }
+        .right-card {
+            background: white;
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 14px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .card-title { font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+        /* ===== LEFT SIDEBAR (desktop only) ===== */
+        .left-sidebar { position: sticky; top: 80px; height: fit-content; }
+        .profile-card {
+            background: white;
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 14px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .profile-avatar {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 10px;
+            border: 3px solid #0f5cbf;
+            cursor: pointer;
+        }
+        .profile-name { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
+        .profile-email { color: #65676b; font-size: 0.75rem; margin-bottom: 10px; word-break: break-all; }
+        .edit-profile-btn {
+            background: #e4e6eb;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            width: 100%;
+            font-size: 0.85rem;
+        }
+        .wallet-card {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 14px;
+            text-align: center;
+        }
+        .wallet-amount {
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin: 8px 0;
+        }
+        .deposit-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 2px solid white;
+            padding: 6px 14px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 8px;
+            width: 100%;
+            font-size: 0.85rem;
+        }
+        .deposit-btn:hover {
+            background: white;
+            color: #059669;
+        }
+        .shortcut-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            text-align: right;
+        }
+        .shortcut-item:hover { background: #f0f2f5; }
+        .shortcut-icon {
+            width: 34px;
+            height: 34px;
+            background: #e4e6eb;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #0f5cbf;
+            flex-shrink: 0;
+        }
+
+        /* ===== RESPONSIVE BREAKPOINTS ===== */
+        @media (min-width: 600px) {
+            .offers-grid, .teachers-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (min-width: 768px) {
+            .main-wrapper {
+                grid-template-columns: 240px 1fr 240px;
+                gap: 18px;
+                padding: 0 16px;
+            }
+            .left-sidebar, .right-sidebar { display: block; }
+            .mobile-wallet { display: none; }
+            .offers-grid, .teachers-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .nav-logo i { font-size: 1.8rem; }
+            .nav-logo span { font-size: 1.3rem; }
+        }
+
+        @media (min-width: 992px) {
+            .main-wrapper {
+                grid-template-columns: 280px 1fr 280px;
+                gap: 20px;
+                padding: 0 20px;
+            }
+            .offers-grid, .teachers-grid {
+                grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            }
+            .nav-icon-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 1.1rem;
+            }
+            .content-area { padding: 20px; }
+        }
+
+        @media (min-width: 1200px) {
+            .main-wrapper {
+                grid-template-columns: 300px 1fr 300px;
+                gap: 24px;
+            }
+        }
+
+        /* ===== Fix for very small screens ===== */
+        @media (max-width: 400px) {
+            .nav-logo span { font-size: 0.9rem; }
+            .nav-logo i { font-size: 1.3rem; }
+            .nav-icon-btn { width: 30px; height: 30px; font-size: 0.8rem; }
+            .user-menu span { max-width: 35px; font-size: 0.7rem; }
+            .user-menu { padding: 3px 8px 3px 4px; }
+            .user-menu img { width: 22px; height: 22px; }
+            .content-area { padding: 12px; }
+            .section-title { font-size: 1rem; }
+            .offer-card, .teacher-card { padding: 12px; }
+            .mobile-wallet .wallet-amount { font-size: 1.2rem; }
+            .mobile-deposit-btn { font-size: 0.7rem; padding: 4px 12px; }
+        }
+
+        /* ===== Fix for landscape mobile ===== */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .facebook-nav { padding: 4px 10px; min-height: 44px; }
+            .main-wrapper { margin-top: 52px; }
+            .profile-avatar { width: 50px; height: 50px; }
+            .left-sidebar { top: 56px; }
+            .right-sidebar { top: 56px; }
         }
     </style>
 </head>
@@ -298,13 +480,14 @@
                 <div class="user-menu" onclick="logout()">
                     <img id="navAvatar" src="https://via.placeholder.com/28">
                     <span id="navUserName"></span>
-                    <i class="fas fa-sign-out-alt" style="font-size: 0.8rem;"></i>
+                    <i class="fas fa-sign-out-alt" style="font-size: 0.7rem;"></i>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="main-wrapper">
+        <!-- LEFT SIDEBAR -->
         <div class="left-sidebar">
             <div class="profile-card">
                 <img id="sidebarAvatar" class="profile-avatar" src="https://via.placeholder.com/80">
@@ -313,9 +496,9 @@
                 <button class="edit-profile-btn" onclick="showEditProfileModal()"><i class="fas fa-edit"></i> تعديل الملف الشخصي</button>
             </div>
             <div class="wallet-card">
-                <i class="fas fa-wallet" style="font-size: 1.5rem;"></i>
+                <i class="fas fa-wallet" style="font-size: 1.3rem;"></i>
                 <div class="wallet-amount" id="walletAmount">0 دج</div>
-                <div>الرصيد المتاح</div>
+                <div style="font-size: 0.8rem;">الرصيد المتاح</div>
                 <button class="deposit-btn" onclick="showDepositModal()"><i class="fas fa-plus-circle"></i> شحن الرصيد</button>
             </div>
             <div class="profile-card">
@@ -338,7 +521,14 @@
             </div>
         </div>
 
+        <!-- CONTENT -->
         <div class="content-area">
+            <!-- Mobile Wallet -->
+            <div class="mobile-wallet">
+                <div><i class="fas fa-wallet"></i> <span class="wallet-amount" id="mobileWalletAmount">0 دج</span></div>
+                <button class="mobile-deposit-btn" onclick="showDepositModal()"><i class="fas fa-plus-circle"></i> شحن</button>
+            </div>
+
             <div id="offersSection">
                 <div class="section-title"><i class="fas fa-calendar-alt"></i> العروض المتوفرة</div>
                 <div id="offersList" class="offers-grid"></div>
@@ -357,6 +547,7 @@
             </div>
         </div>
 
+        <!-- RIGHT SIDEBAR -->
         <div class="right-sidebar">
             <div class="right-card">
                 <div class="card-title">
@@ -376,6 +567,7 @@
         </div>
     </div>
 
+    <!-- MODALS -->
     <div id="modalOverlay" class="modal-overlay"></div>
     
     <div id="editProfileModal" class="modal">
@@ -400,7 +592,7 @@
             <button class="close-modal" onclick="closeDepositModal()">&times;</button>
         </div>
         <div class="modal-body">
-            <p>الحد الأدنى للشحن: 100 دج</p>
+            <p style="font-size:0.9rem;">الحد الأدنى للشحن: 100 دج</p>
             <input type="number" id="depositAmount" placeholder="المبلغ" min="100">
         </div>
         <div class="modal-footer">
@@ -463,6 +655,7 @@
                 const data = await res.json();
                 currentBalance = data.balance || 0;
                 document.getElementById('walletAmount').innerText = currentBalance + ' دج';
+                document.getElementById('mobileWalletAmount').innerText = currentBalance + ' دج';
             } catch(e) { console.log(e); }
         }
 
@@ -500,7 +693,7 @@
         function renderOffers(offers) {
             const container = document.getElementById('offersList');
             if (offers.length === 0) {
-                container.innerHTML = '<p style="text-align:center; padding:40px;">لا توجد عروض متاحة حالياً</p>';
+                container.innerHTML = '<p style="text-align:center; padding:30px;">لا توجد عروض متاحة حالياً</p>';
                 return;
             }
             let html = '';
@@ -511,19 +704,19 @@
                 
                 html += `
                     <div class="offer-card">
-                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
-                            <img src="${teacherImage}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                            <img src="${teacherImage}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;">
                             <div>
-                                <div style="font-weight: 600; font-size: 0.9rem;">${escapeHtml(offer.teacher_name)}</div>
-                                <div style="font-size: 0.7rem; color: #65676b;">${offer.teacher_specialization || 'تخصص عام'}</div>
+                                <div style="font-weight: 600; font-size: 0.85rem;">${escapeHtml(offer.teacher_name)}</div>
+                                <div style="font-size: 0.65rem; color: #65676b;">${offer.teacher_specialization || 'تخصص عام'}</div>
                             </div>
                         </div>
                         <div class="offer-title">${escapeHtml(offer.subject_name)}</div>
                         <div class="offer-info"><i class="fas fa-calendar"></i> ${offerDate.toLocaleDateString('ar')}</div>
                         <div class="offer-info"><i class="fas fa-clock"></i> ${offerDate.toLocaleTimeString('ar')} | ${offer.duration} دقيقة</div>
                         <div class="offer-info">${isFree ? '<span class="free-badge"><i class="fas fa-gift"></i> مجانية</span>' : `<span class="paid-badge"><i class="fas fa-money-bill"></i> ${offer.price} دج</span>`}</div>
-                        ${!isFree && currentBalance < offer.price ? `<div class="insufficient-balance" style="color:#ef4444; font-size:0.7rem; display:block;">⚠️ رصيدك غير كافٍ. رصيدك: ${currentBalance} دج</div>` : ''}
-                        <button class="book-btn ${isFree ? 'free' : ''}" onclick="bookOffer(${offer.id}, ${isFree}, ${offer.price})">
+                        ${!isFree && currentBalance < offer.price ? `<div class="insufficient-balance">⚠️ رصيدك غير كافٍ. رصيدك: ${currentBalance} دج</div>` : ''}
+                        <button class="book-btn ${isFree ? 'free' : ''}" onclick="bookOffer(${offer.id}, ${isFree}, ${offer.price})" ${(!isFree && currentBalance < offer.price) ? 'disabled' : ''}>
                             ${isFree ? 'تسجيل مجاني' : (currentBalance >= offer.price ? 'حجز (باستخدام الرصيد)' : 'رصيد غير كافٍ')}
                         </button>
                     </div>
@@ -582,7 +775,7 @@
         function renderTeachers(teachers) {
             const container = document.getElementById('teachersList');
             if (teachers.length === 0) {
-                container.innerHTML = '<p style="text-align:center; padding:40px;">لا يوجد أساتذة حالياً</p>';
+                container.innerHTML = '<p style="text-align:center; padding:30px;">لا يوجد أساتذة حالياً</p>';
                 return;
             }
             let html = '';
@@ -609,7 +802,7 @@
                 document.getElementById('teacherModalName').innerText = teacher.full_name;
                 document.getElementById('teacherModalBody').innerHTML = `
                     <div style="text-align: center;">
-                        <img src="${teacherImage}" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 15px;">
+                        <img src="${teacherImage}" style="width: 90px; height: 90px; border-radius: 50%; object-fit: cover; margin-bottom: 12px;">
                         <p><strong><i class="fas fa-graduation-cap"></i> التخصص:</strong> ${teacher.specialization || 'غير محدد'}</p>
                         <p><strong><i class="fas fa-briefcase"></i> الخبرة:</strong> ${teacher.experience || '0'} سنة</p>
                         <p><strong><i class="fas fa-phone"></i> الهاتف:</strong> ${teacher.phone || 'غير محدد'}</p>
@@ -635,10 +828,10 @@
         function renderBookings(bookings) {
             const container = document.getElementById('bookingsList');
             if (bookings.length === 0) {
-                container.innerHTML = '<p style="text-align:center; padding:40px;">لا توجد حجوزات حالياً</p>';
+                container.innerHTML = '<p style="text-align:center; padding:30px;">لا توجد حجوزات حالياً</p>';
                 return;
             }
-            let html = '<div style="display: flex; flex-direction: column; gap: 15px;">';
+            let html = '<div style="display: flex; flex-direction: column; gap: 12px;">';
             for (const booking of bookings) {
                 const offerDate = new Date(booking.offer_date);
                 const isPaid = booking.is_free === 1 || booking.payment_status === 'paid';
@@ -646,18 +839,18 @@
                 const teacherImage = booking.teacher_image_url || 'https://via.placeholder.com/40';
                 
                 html += `
-                    <div style="background: #f8f9fa; border-radius: 12px; padding: 15px;">
-                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
-                            <img src="${teacherImage}" style="width: 40px; height: 40px; border-radius: 50%;">
+                    <div class="booking-item">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                            <img src="${teacherImage}" style="width: 36px; height: 36px; border-radius: 50%;">
                             <div>
-                                <div style="font-weight: 700;">${escapeHtml(booking.teacher_name)}</div>
-                                <div style="font-size: 0.75rem; color: #65676b;">${booking.subject_name}</div>
+                                <div style="font-weight: 700; font-size: 0.95rem;">${escapeHtml(booking.teacher_name)}</div>
+                                <div style="font-size: 0.7rem; color: #65676b;">${booking.subject_name}</div>
                             </div>
                         </div>
-                        <div style="font-size: 0.85rem; margin: 8px 0;"><i class="fas fa-calendar"></i> ${offerDate.toLocaleString('ar')}</div>
-                        <div style="font-size: 0.85rem; margin: 8px 0;"><i class="fas fa-clock"></i> ${booking.duration} دقيقة</div>
-                        <div style="font-size: 0.85rem;">${booking.is_free ? '🎁 مجانية' : `💰 ${booking.price} دج (مدفوع من الرصيد)`}</div>
-                        ${isLive && isPaid ? `<button class="join-stream-btn" style="margin-top: 12px; width: 100%;" onclick="joinLiveStream(${booking.offer_id})"><i class="fas fa-video"></i> انضم للبث المباشر</button>` : ''}
+                        <div style="font-size: 0.8rem; margin: 6px 0;"><i class="fas fa-calendar"></i> ${offerDate.toLocaleString('ar')}</div>
+                        <div style="font-size: 0.8rem; margin: 6px 0;"><i class="fas fa-clock"></i> ${booking.duration} دقيقة</div>
+                        <div style="font-size: 0.8rem;">${booking.is_free ? '🎁 مجانية' : `💰 ${booking.price} دج (مدفوع من الرصيد)`}</div>
+                        ${isLive && isPaid ? `<button class="join-stream-btn" style="margin-top: 10px; width: 100%;" onclick="joinLiveStream(${booking.offer_id})"><i class="fas fa-video"></i> انضم للبث المباشر</button>` : ''}
                     </div>
                 `;
             }
@@ -674,7 +867,7 @@
                 const transactions = data.transactions || [];
                 
                 if (transactions.length === 0) {
-                    container.innerHTML = '<p style="text-align:center; padding:40px;">لا توجد معاملات سابقة</p>';
+                    container.innerHTML = '<p style="text-align:center; padding:30px;">لا توجد معاملات سابقة</p>';
                     return;
                 }
                 
@@ -683,15 +876,15 @@
                     const date = new Date(t.created_at);
                     const isDeposit = t.type === 'deposit';
                     html += `
-                        <div style="background: #f8f9fa; border-radius: 12px; padding: 15px; display: flex; justify-content: space-between; align-items: center;">
+                        <div class="transaction-item" style="display: flex; justify-content: space-between; align-items: center;">
                             <div>
                                 <div style="font-weight: 700; ${isDeposit ? 'color:#10b981' : 'color:#ef4444'}">
                                     ${isDeposit ? '➕ شحن رصيد' : '➖ خصم رصيد'}
                                 </div>
-                                <div style="font-size: 0.7rem; color: #65676b;">${date.toLocaleString('ar')}</div>
-                                <div style="font-size: 0.75rem; margin-top: 5px;">${t.description || ''}</div>
+                                <div style="font-size: 0.65rem; color: #65676b;">${date.toLocaleString('ar')}</div>
+                                <div style="font-size: 0.7rem; margin-top: 4px;">${t.description || ''}</div>
                             </div>
-                            <div style="font-size: 1.2rem; font-weight: 700; ${isDeposit ? 'color:#10b981' : 'color:#ef4444'}">
+                            <div style="font-size: 1.1rem; font-weight: 700; ${isDeposit ? 'color:#10b981' : 'color:#ef4444'}">
                                 ${isDeposit ? '+' : '-'} ${t.amount} دج
                             </div>
                         </div>
@@ -706,7 +899,7 @@
             const freeOffers = offers.filter(o => o.is_free === 1).slice(0, 5);
             const container = document.getElementById('freeOffersSidebar');
             if (freeOffers.length === 0) {
-                container.innerHTML = '<p style="font-size:0.8rem; color:#65676b;">لا توجد عروض مجانية</p>';
+                container.innerHTML = '<p style="font-size:0.75rem; color:#65676b;">لا توجد عروض مجانية</p>';
                 return;
             }
             let html = '';
@@ -714,9 +907,9 @@
                 const offerDate = new Date(offer.offer_date);
                 html += `
                     <div style="padding: 8px 0; border-bottom: 1px solid #e4e6eb;">
-                        <div style="font-weight: 600; font-size: 0.85rem;">${escapeHtml(offer.subject_name)}</div>
-                        <div style="font-size: 0.7rem; color: #65676b;">${offerDate.toLocaleDateString('ar')}</div>
-                        <button style="background:#10b981; color:white; border:none; padding:4px 12px; border-radius:20px; font-size:0.7rem; margin-top:5px; cursor:pointer;" onclick="quickBookFree(${offer.id})">حجز مجاني</button>
+                        <div style="font-weight: 600; font-size: 0.8rem;">${escapeHtml(offer.subject_name)}</div>
+                        <div style="font-size: 0.65rem; color: #65676b;">${offerDate.toLocaleDateString('ar')}</div>
+                        <button style="background:#10b981; color:white; border:none; padding:4px 12px; border-radius:20px; font-size:0.65rem; margin-top:4px; cursor:pointer;" onclick="quickBookFree(${offer.id})">حجز مجاني</button>
                     </div>
                 `;
             }
@@ -731,7 +924,7 @@
             const upcoming = bookings.filter(b => new Date(b.offer_date) > new Date() && (b.is_free === 1 || b.payment_status === 'paid')).slice(0, 5);
             const container = document.getElementById('upcomingBookings');
             if (upcoming.length === 0) {
-                container.innerHTML = '<p style="font-size:0.8rem; color:#65676b;">لا توجد حصص قادمة</p>';
+                container.innerHTML = '<p style="font-size:0.75rem; color:#65676b;">لا توجد حصص قادمة</p>';
                 return;
             }
             let html = '';
@@ -739,9 +932,9 @@
                 const offerDate = new Date(b.offer_date);
                 html += `
                     <div style="padding: 8px 0; border-bottom: 1px solid #e4e6eb;">
-                        <div style="font-weight: 600; font-size: 0.85rem;">${escapeHtml(b.subject_name)}</div>
-                        <div style="font-size: 0.7rem; color: #65676b;">${offerDate.toLocaleDateString('ar')}</div>
-                        ${b.offer_status === 'live' ? `<button class="join-stream-btn" style="margin-top:5px;" onclick="joinLiveStream(${b.offer_id})">انضم</button>` : ''}
+                        <div style="font-weight: 600; font-size: 0.8rem;">${escapeHtml(b.subject_name)}</div>
+                        <div style="font-size: 0.65rem; color: #65676b;">${offerDate.toLocaleDateString('ar')}</div>
+                        ${b.offer_status === 'live' ? `<button class="join-stream-btn" style="margin-top:4px;" onclick="joinLiveStream(${b.offer_id})">انضم</button>` : ''}
                     </div>
                 `;
             }
@@ -836,19 +1029,19 @@
             document.getElementById('unreadCount').innerText = unreadCount;
             
             if (!notifications || notifications.length === 0) {
-                container.innerHTML = '<p style="font-size:0.8rem; color:#65676b; text-align:center;">لا توجد إشعارات</p>';
+                container.innerHTML = '<p style="font-size:0.75rem; color:#65676b; text-align:center;">لا توجد إشعارات</p>';
                 return;
             }
             
             let html = '';
             for (const notif of notifications.slice(0, 10)) {
                 html += `
-                    <div style="padding: 10px 0; border-bottom: 1px solid #e4e6eb; ${!notif.is_read ? 'background: #e8f4fd; margin: 0 -8px; padding: 10px 8px; border-radius: 8px;' : ''}">
-                        <div style="font-weight: 600; font-size: 0.85rem;">${escapeHtml(notif.title)}</div>
-                        <div style="font-size: 0.75rem; color: #65676b; margin: 4px 0;">${escapeHtml(notif.message)}</div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
-                            <span style="font-size: 0.65rem; color: #999;">${new Date(notif.created_at).toLocaleTimeString()}</span>
-                            ${notif.offer_id ? `<button class="join-stream-btn" style="font-size:0.65rem; padding:3px 10px;" onclick="joinFromNotification(${notif.offer_id})">انضم الآن</button>` : ''}
+                    <div style="padding: 8px 0; border-bottom: 1px solid #e4e6eb; ${!notif.is_read ? 'background: #e8f4fd; margin: 0 -8px; padding: 8px; border-radius: 8px;' : ''}">
+                        <div style="font-weight: 600; font-size: 0.8rem;">${escapeHtml(notif.title)}</div>
+                        <div style="font-size: 0.7rem; color: #65676b; margin: 4px 0;">${escapeHtml(notif.message)}</div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                            <span style="font-size: 0.6rem; color: #999;">${new Date(notif.created_at).toLocaleTimeString()}</span>
+                            ${notif.offer_id ? `<button class="join-stream-btn" style="font-size:0.6rem; padding:2px 10px;" onclick="joinFromNotification(${notif.offer_id})">انضم الآن</button>` : ''}
                         </div>
                     </div>
                 `;
