@@ -15,7 +15,6 @@
             width: 100%;
         }
 
-        /* ===== NAV (responsive) ===== */
         .facebook-nav {
             background: white;
             padding: 6px 10px;
@@ -81,7 +80,6 @@
         .user-menu span { font-weight: 600; font-size: 0.7rem; max-width: 45px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .user-menu i { font-size: 0.65rem; }
 
-        /* ===== MAIN WRAPPER (responsive) ===== */
         .main-wrapper {
             max-width: 1200px;
             margin: 62px auto 16px;
@@ -92,12 +90,10 @@
             width: 100%;
         }
 
-        /* ===== SIDEBAR (hidden on mobile) ===== */
         .left-sidebar {
             display: none;
         }
 
-        /* ===== CONTENT AREA (full width) ===== */
         .content-area {
             background: white;
             border-radius: 14px;
@@ -117,7 +113,6 @@
             gap: 8px;
         }
 
-        /* ===== BUTTONS (responsive) ===== */
         .section-actions {
             display: flex;
             gap: 8px;
@@ -145,7 +140,6 @@
         }
         .delete-expired-btn:hover { background: #dc2626; }
 
-        /* ===== CARDS GRID (responsive) ===== */
         .offers-grid {
             display: grid;
             grid-template-columns: 1fr;
@@ -207,7 +201,6 @@
             font-weight: 600;
         }
 
-        /* ===== BUTTONS INSIDE CARDS ===== */
         .start-stream-btn, .delete-btn, .message-teacher-btn, .view-btn {
             border: none;
             padding: 6px 12px;
@@ -234,7 +227,6 @@
         }
         .message-teacher-btn:hover { background: #1e3c72; }
 
-        /* ===== MOBILE WALLET ===== */
         .mobile-balance {
             background: linear-gradient(135deg, #0f5cbf, #1e3c72);
             color: white;
@@ -263,7 +255,6 @@
             font-size: 0.75rem;
         }
 
-        /* ===== EARNINGS TABLE (responsive) ===== */
         .earnings-table {
             width: 100%;
             border-collapse: collapse;
@@ -280,7 +271,6 @@
             font-weight: 700;
         }
 
-        /* ===== REQUESTS ===== */
         .requests-list {
             max-height: 300px;
             overflow-y: auto;
@@ -390,7 +380,7 @@
         }
         .back-to-list:hover { text-decoration: underline; }
 
-        /* ===== MODALS (responsive) ===== */
+        /* ===== MODALS ===== */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -498,7 +488,6 @@
             width: 100%;
         }
 
-        /* ===== SIDEBAR STYLES (desktop only) ===== */
         .left-sidebar { position: sticky; top: 72px; height: fit-content; }
         .profile-card {
             background: white;
@@ -573,7 +562,6 @@
             flex-shrink: 0;
         }
 
-        /* ===== RESPONSIVE BREAKPOINTS ===== */
         @media (min-width: 500px) {
             .offers-grid { grid-template-columns: repeat(2, 1fr); }
             .teachers-grid { grid-template-columns: repeat(2, 1fr); }
@@ -611,14 +599,6 @@
             .nav-icon-btn { width: 40px; height: 40px; font-size: 1.1rem; }
         }
 
-        @media (min-width: 1200px) {
-            .main-wrapper {
-                grid-template-columns: 300px 1fr;
-                gap: 24px;
-            }
-        }
-
-        /* ===== VERY SMALL SCREENS ===== */
         @media (max-width: 400px) {
             .nav-logo span { font-size: 0.8rem; }
             .nav-logo i { font-size: 1.2rem; }
@@ -634,14 +614,6 @@
             .earnings-table th, .earnings-table td { padding: 4px; font-size: 0.7rem; }
             .chat-input-area input { font-size: 0.8rem; padding: 8px 12px; }
             .chat-input-area button { font-size: 0.7rem; padding: 6px 12px; }
-        }
-
-        /* ===== LANDSCAPE MOBILE ===== */
-        @media (max-height: 500px) and (orientation: landscape) {
-            .facebook-nav { padding: 4px 8px; min-height: 44px; }
-            .main-wrapper { margin-top: 50px; }
-            .left-sidebar { top: 52px; }
-            .profile-avatar { width: 50px; height: 50px; }
         }
     </style>
 </head>
@@ -668,7 +640,6 @@
     </div>
 
     <div class="main-wrapper">
-        <!-- LEFT SIDEBAR -->
         <div class="left-sidebar">
             <div class="profile-card">
                 <img id="sidebarAvatar" class="profile-avatar" src="https://via.placeholder.com/80">
@@ -710,9 +681,7 @@
             </div>
         </div>
 
-        <!-- CONTENT -->
         <div class="content-area">
-            <!-- Mobile Balance -->
             <div class="mobile-balance">
                 <div><i class="fas fa-wallet"></i> <span class="balance-amount" id="mobileBalanceAmount">0 دج</span></div>
                 <button class="mobile-withdraw-btn" onclick="showWithdrawModal()"><i class="fas fa-hand-holding-usd"></i> سحب</button>
@@ -896,20 +865,40 @@
             } catch(e) { showNotification('حدث خطأ', 'error'); }
         }
 
+        // ===== دوال الرسائل المُصلحة =====
+        
+        // دالة بدء المحادثة مع أستاذ آخر
         function startChatWithTeacher(otherId, otherName, otherImage) {
-            currentChatTeacher = { id: otherId, name: otherName, image: otherImage };
-            loadConversationMessages(otherId);
+            // حفظ بيانات الأستاذ الآخر
+            currentChatTeacher = { 
+                id: otherId, 
+                name: otherName, 
+                image: otherImage || 'https://via.placeholder.com/40' 
+            };
+            
+            // عرض واجهة الدردشة وإخفاء قائمة المحادثات
             document.getElementById('conversationsList').style.display = 'none';
             document.getElementById('chatView').style.display = 'block';
+            
+            // عرض معلومات الأستاذ في رأس الدردشة
             document.getElementById('chatHeader').innerHTML = `
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <img src="${otherImage}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                <div style="display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #e4e6eb;">
+                    <img src="${currentChatTeacher.image}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #0f5cbf;">
                     <div>
-                        <div style="font-weight: 700; font-size: 0.95rem;">${escapeHtml(otherName)}</div>
+                        <div style="font-weight: 700; font-size: 0.95rem;">${escapeHtml(currentChatTeacher.name)}</div>
                         <div style="font-size: 0.7rem; color: #65676b;">أستاذ</div>
                     </div>
                 </div>
             `;
+            
+            // تفريغ حقل إدخال الرسالة
+            document.getElementById('messageInput').value = '';
+            
+            // جلب رسائل المحادثة
+            loadConversationMessages(otherId);
+            
+            // التأكد من أن القسم الخاص بالرسائل ظاهر
+            showSection('messages');
         }
 
         async function loadConversationMessages(otherId) {
@@ -919,13 +908,16 @@
                 const res = await fetch(`/api/messages/${teacherId}/teacher/${otherId}/teacher`);
                 const messages = await res.json();
                 renderChatMessages(messages);
-            } catch(e) { console.log(e); container.innerHTML = '<p style="text-align:center; padding:20px;">حدث خطأ</p>'; }
+            } catch(e) { 
+                console.log(e); 
+                container.innerHTML = '<p style="text-align:center; padding:20px; color:#ef4444;">حدث خطأ في تحميل الرسائل</p>'; 
+            }
         }
 
         function renderChatMessages(messages) {
             const container = document.getElementById('chatMessages');
             if (!messages || messages.length === 0) {
-                container.innerHTML = '<p style="text-align:center; color:#65676b; padding:20px;">لا توجد رسائل بعد</p>';
+                container.innerHTML = '<p style="text-align:center; color:#65676b; padding:20px;">لا توجد رسائل بعد. ابدأ المحادثة!</p>';
                 return;
             }
             let html = '';
@@ -947,8 +939,14 @@
 
         async function sendMessageToTeacher() {
             const message = document.getElementById('messageInput').value.trim();
-            if (!message) { showNotification('الرجاء كتابة رسالة', 'error'); return; }
-            if (!currentChatTeacher) return;
+            if (!message) { 
+                showNotification('الرجاء كتابة رسالة', 'error'); 
+                return; 
+            }
+            if (!currentChatTeacher) {
+                showNotification('الرجاء اختيار مستلم الرسالة', 'error');
+                return;
+            }
             
             try {
                 const res = await fetch('/api/messages/send', {
@@ -970,7 +968,9 @@
                 } else {
                     showNotification(data.error || 'حدث خطأ', 'error');
                 }
-            } catch(e) { showNotification('حدث خطأ', 'error'); }
+            } catch(e) { 
+                showNotification('حدث خطأ في الإرسال', 'error'); 
+            }
         }
 
         async function loadConversations() {
@@ -981,7 +981,10 @@
                 const conversations = await res.json();
                 currentConversations = conversations;
                 renderConversations(conversations);
-            } catch(e) { console.log(e); container.innerHTML = '<p style="text-align:center; padding:20px;">حدث خطأ</p>'; }
+            } catch(e) { 
+                console.log(e); 
+                container.innerHTML = '<p style="text-align:center; padding:20px; color:#ef4444;">حدث خطأ</p>'; 
+            }
         }
 
         function renderConversations(conversations) {
@@ -1007,15 +1010,15 @@
         }
 
         async function openConversation(otherId, otherName, otherImage) {
-            currentChatTeacher = { id: otherId, name: otherName, image: otherImage };
+            currentChatTeacher = { id: otherId, name: otherName, image: otherImage || 'https://via.placeholder.com/40' };
             await loadConversationMessages(otherId);
             document.getElementById('conversationsList').style.display = 'none';
             document.getElementById('chatView').style.display = 'block';
             document.getElementById('chatHeader').innerHTML = `
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <img src="${otherImage}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                <div style="display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #e4e6eb;">
+                    <img src="${currentChatTeacher.image}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #0f5cbf;">
                     <div>
-                        <div style="font-weight: 700; font-size: 0.95rem;">${escapeHtml(otherName)}</div>
+                        <div style="font-weight: 700; font-size: 0.95rem;">${escapeHtml(currentChatTeacher.name)}</div>
                         <div style="font-size: 0.7rem; color: #65676b;">أستاذ</div>
                     </div>
                 </div>
@@ -1027,6 +1030,8 @@
             document.getElementById('chatView').style.display = 'none';
             loadConversations();
         }
+
+        // ===== باقي الدوال =====
 
         async function loadBalance() {
             try {
