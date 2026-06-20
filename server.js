@@ -1951,3 +1951,124 @@ app.get('/api/public/students-count', async (req, res) => {
     res.json({ count: 0 });
   }
 });
+// ============= نظام الكابتشا =============
+// تخزين مؤقت للكابتشا في الذاكرة (سيتم فقدانها عند إعادة التشغيل)
+// في الإنتاج، استخدم Redis أو قاعدة بيانات
+const captchaStore = {};
+
+// إنشاء كابتشا جديدة
+function generateCaptcha() {
+    // إنشاء كود عشوائي مكون من 6 أرقام وحروف
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+}
+
+// إنشاء صورة كابتشا نصية بسيطة
+function generateCaptchaImage(code) {
+    // إنشاء صورة SVG بسيطة للكابتشا
+    const colors = ['#0f5cbf', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899'];
+    const bgColors = ['#f0f4ff', '#f0fdf4', '#f5f3ff', '#fffbeb', '#fef2f2', '#fdf2f8'];
+    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+    const randomBg = bgColors[Math.floor(Math.random() * bgColors.length)];
+    
+    // إضافة تشويش عشوائي
+    let noise = '';
+    for (let i = 0; i < 20; i++) {
+        const x = Math.random() * 200;
+        const y = Math.random() * 60;
+        noise += `<line x1="${x}" y1="${y}" x2="${x + Math.random() * 20}" y2="${y + Math.random() * 20}" stroke="${colors[Math.floor(Math.random() * colors.length)]}" stroke-width="1" opacity="0.3"/>`;
+    }
+    
+    // إنشاء SVG للكابتشا
+    const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="200" height="60" viewBox="0 0 200 60">
+            <rect width="200" height="60" fill="${randomBg}" rx="8"/>
+            ${noise}
+            <text x="100" y="40" font-family="Arial, sans-serif" font-size="28" font-weight="bold" 
+                  fill="${randomColor}" text-anchor="middle" letter-spacing="5">
+                ${code.split('').map((char, i) => {
+                    const angle = (Math.random() - 0.5) * 20;
+                    return `<tspan x="${20 + i * 30}" y="40" transform="rotate(${angle}, ${20 + i * 30}, 40)">${char}</tspan>`;
+                }).join('')}
+            </text>
+            ${Array.from({length: 5}, (_, i) => {
+                const x = Math.random() * 200;
+                const y = Math.random() * 60;
+                return `<circle cx="${x}" cy="${y}" r="${Math.random() * 3 + 1}" fill="${colors[Math.floor(Math.random() * colors.length)]}" opacity="0.5"/>`;
+            }).join('')}
+        </svg>
+    `;
+    return svg;
+}
+
+// مسار إنشاء كابتشا جديدة
+app.get('/api/captcha/generate', (req, res) => {
+    const code = generateCaptcha();
+    const captchaId = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+    
+    // تخزين الكود مع وقت الانتهاء (5 دقائق)
+    captchaStore[captchaId] = {
+        code: code,
+        expires: Date.now() + 5 * 60 * 1000 // 5 دقائق
+    };
+    
+    // تنظيف الكابتشا المنتهية
+    const now = Date.now();
+    Object.keys(captchaStore).forEach(key => {
+        if (captchaStore[key].expires < now) {
+            delete captchaStore[key];
+        }
+    });
+    
+    const svg = generateCaptchaImage(code);
+    
+    res.json({
+        captcha_id: captchaId,
+        image: svg,
+        expires_in: 300 // 5 دقائق بالثواني
+    });
+});
+
+// مسار التحقق من الكابتشا
+app.post('/api/captcha/verify', (req, res) => {
+    const { captcha_id, captcha_code } = req.body;
+    
+    if (!captcha_id || !captcha_code) {
+        return res.json({ success: false, error: 'الرجاء إدخال رمز التحقق' });
+    }
+    
+    const stored = captchaStore[captcha_id];
+    
+    if (!stored) {
+        return res.json({ success: false, error: 'انتهت صلاحية رمز التحقق، يرجى تحديث الصورة' });
+    }
+    
+    if (Date.now() > stored.expires) {
+        delete captchaStore[captcha_id];
+        return res.json({ success: false, error: 'انتهت صلاحية رمز التحقق، يرجى تحديث الصورة' });
+    }
+    
+    // مقارنة الكود (تجاهل حالة الأحرف)
+    if (stored.code.toLowerCase() === captcha_code.toLowerCase().trim()) {
+        // حذف الكابتشا بعد الاستخدام الناجح
+        delete captchaStore[captcha_id];
+        return res.json({ success: true });
+    } else {
+        return res.json({ success: false, error: 'رمز التحقق غير صحيح، يرجى المحاولة مرة أخرى' });
+    }
+});
+
+// إضافة الكابتشا إلى واجهة الإحصائيات العامة (اختياري)
+// يمكنك إضافة مسار لتنظيف الكابتشا المنتهية تلقائياً
+setInterval(() => {
+    const now = Date.now();
+    Object.keys(captchaStore).forEach(key => {
+        if (captchaStore[key].expires < now) {
+            delete captchaStore[key];
+        }
+    });
+}, 60000); // كل دقيقة
