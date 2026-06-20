@@ -1901,3 +1901,53 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🔒 تم استخدام المتغيرات البيئية للمعلومات الحساسة`);
   console.log(`💳 Chargily API: ${CHARGILY_API_URL}`);
 });
+// ============= إحصائيات عامة =============
+app.get('/api/public/stats', async (req, res) => {
+  try {
+    // عدد الأساتذة المعتمدين
+    const { count: teachersCount } = await supabase
+      .from('teachers')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'approved');
+    
+    // عدد العروض المتاحة (قادمة)
+    const { count: offersCount } = await supabase
+      .from('offers')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'upcoming')
+      .gt('offer_date', new Date().toISOString());
+    
+    // عدد البث المباشر
+    const { count: liveCount } = await supabase
+      .from('offers')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'live');
+    
+    // عدد الطلاب المسجلين
+    const { count: studentsCount } = await supabase
+      .from('students')
+      .select('*', { count: 'exact', head: true });
+    
+    res.json({
+      teachers: teachersCount || 0,
+      offers: offersCount || 0,
+      live: liveCount || 0,
+      students: studentsCount || 0
+    });
+  } catch (error) {
+    console.error('❌ خطأ في جلب الإحصائيات:', error.message);
+    res.json({ teachers: 0, offers: 0, live: 0, students: 0 });
+  }
+});
+
+// واجهة منفردة لعدد الطلاب (للتوافق مع الكود القديم)
+app.get('/api/public/students-count', async (req, res) => {
+  try {
+    const { count } = await supabase
+      .from('students')
+      .select('*', { count: 'exact', head: true });
+    res.json({ count: count || 0 });
+  } catch (error) {
+    res.json({ count: 0 });
+  }
+});
