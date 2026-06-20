@@ -20,7 +20,6 @@
         .download-app-btn { background: #10b981; color: white; border: none; padding: 8px 18px; border-radius: 30px; cursor: pointer; font-weight: 600; transition: 0.3s; }
         .download-app-btn:hover { background: #059669; transform: translateY(-2px); }
         
-        /* Hero Section */
         .hero { max-width: 1200px; margin: 50px auto; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 40px; }
         .hero-content { flex: 1; }
         .hero-content h1 { font-size: 2.5rem; margin-bottom: 20px; }
@@ -28,15 +27,12 @@
         .hero-content p { font-size: 1.1rem; color: #4a5568; margin-bottom: 30px; }
         .hero-buttons { display: flex; gap: 15px; flex-wrap: wrap; }
         
-        /* Stats Cards */
         .stats-container { display: flex; gap: 20px; flex-wrap: wrap; margin: 30px 0; }
         .stat-card { background: white; border-radius: 20px; padding: 25px 35px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); text-align: center; flex: 1; min-width: 150px; transition: 0.3s; }
         .stat-card:hover { transform: translateY(-5px); box-shadow: 0 12px 30px rgba(0,0,0,0.12); }
         .stat-card .number { font-size: 2.5rem; font-weight: 800; color: #0f5cbf; }
         .stat-card .label { font-size: 1rem; color: #4a5568; margin-top: 5px; }
         .stat-card .icon { font-size: 2rem; color: #0f5cbf; margin-bottom: 10px; display: block; }
-        .stat-card .loading-number { opacity: 0.5; animation: pulse-number 1s infinite; }
-        @keyframes pulse-number { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
         
         .btn-primary { background: #0f5cbf; color: white; border: none; padding: 12px 30px; border-radius: 40px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: 0.3s; }
         .btn-primary:hover { background: #0b4a9c; transform: translateY(-2px); }
@@ -62,6 +58,82 @@
         .form-container input, .form-container select, .form-container textarea { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #cbd5e1; border-radius: 12px; font-family: 'Cairo', sans-serif; }
         .form-container input[type="file"] { padding: 8px; }
         
+        /* ===== كابتشا ===== */
+        .captcha-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            background: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+        .captcha-container .captcha-image {
+            flex-shrink: 0;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid #0f5cbf;
+            background: white;
+        }
+        .captcha-container .captcha-image svg {
+            display: block;
+            width: 150px;
+            height: 50px;
+        }
+        .captcha-container .captcha-input {
+            flex: 1;
+            min-width: 120px;
+        }
+        .captcha-container .captcha-input input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-family: 'Cairo', sans-serif;
+            font-size: 0.95rem;
+            direction: ltr;
+            text-align: center;
+            letter-spacing: 3px;
+        }
+        .captcha-container .captcha-input input:focus {
+            border-color: #0f5cbf;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(15, 92, 191, 0.1);
+        }
+        .captcha-refresh-btn {
+            background: #e2e8f0;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2rem;
+            color: #4a5568;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .captcha-refresh-btn:hover {
+            background: #0f5cbf;
+            color: white;
+            transform: rotate(180deg);
+        }
+        .captcha-error {
+            color: #ef4444;
+            font-size: 0.8rem;
+            margin-top: -10px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        .captcha-error.show {
+            display: block;
+        }
+        
         footer { text-align: center; padding: 30px; background: #1e2a3e; color: #94a3b8; margin-top: 50px; }
         .price-tag { background: #10b981; color: white; padding: 5px 12px; border-radius: 20px; display: inline-block; margin-top: 10px; }
         .free-tag { background: #f59e0b; color: white; padding: 5px 12px; border-radius: 20px; display: inline-block; margin-top: 10px; }
@@ -80,6 +152,7 @@
         .support-card textarea { resize: vertical; min-height: 120px; }
         .hero-image { flex: 1; text-align: center; }
         .hero-image i { font-size: 200px; color: #0f5cbf15; }
+        
         @media (max-width: 768px) {
             .hero-content h1 { font-size: 1.8rem; }
             .nav-links a { padding: 5px 10px; font-size: 14px; }
@@ -87,6 +160,8 @@
             .stats-container { flex-direction: column; }
             .stat-card { min-width: auto; }
             .hero-image i { font-size: 120px; }
+            .captcha-container { flex-direction: column; align-items: stretch; }
+            .captcha-container .captcha-image svg { width: 100%; height: 45px; }
         }
     </style>
 </head>
@@ -111,7 +186,6 @@
                 <h1>تعلم مع أفضل الأساتذة <span class="highlight">في الجزائر</span></h1>
                 <p>دروس خصوصية عبر الفيديو مع نخبة من الأساتذة المعتمدين. ادفع عبر شارجيلي بسهولة وأمان</p>
                 
-                <!-- Stats Cards - الأعداد يتم جلبها من السيرفر -->
                 <div class="stats-container">
                     <div class="stat-card">
                         <span class="icon"><i class="fas fa-chalkboard-user"></i></span>
@@ -169,6 +243,7 @@
                 <button class="tab-btn" onclick="switchTab('teacher-register')">تسجيل أستاذ</button>
             </div>
 
+            <!-- ===== تسجيل الدخول ===== -->
             <div id="loginTab" class="form-container">
                 <h3>تسجيل الدخول</h3>
                 <input type="email" id="loginEmail" placeholder="البريد الإلكتروني">
@@ -177,6 +252,19 @@
                     <option value="student">طالب</option>
                     <option value="teacher">أستاذ</option>
                 </select>
+                
+                <!-- كابتشا تسجيل الدخول -->
+                <div id="loginCaptchaContainer" class="captcha-container">
+                    <div class="captcha-image" id="loginCaptchaImage" onclick="refreshCaptcha('login')"></div>
+                    <div class="captcha-input">
+                        <input type="text" id="loginCaptchaInput" placeholder="أدخل الرمز" maxlength="6" dir="ltr">
+                    </div>
+                    <button class="captcha-refresh-btn" onclick="refreshCaptcha('login')" title="تحديث الرمز">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+                <div id="loginCaptchaError" class="captcha-error"></div>
+                
                 <button class="btn-primary" onclick="login()">دخول</button>
                 <a href="#" class="forgot-link" onclick="showForgotPassword()"><i class="fas fa-key"></i> نسيت كلمة المرور؟</a>
             </div>
@@ -195,15 +283,30 @@
                 <a href="#" class="back-link" onclick="hideForgotPassword()"><i class="fas fa-arrow-right"></i> العودة إلى تسجيل الدخول</a>
             </div>
 
+            <!-- ===== تسجيل طالب ===== -->
             <div id="studentRegisterTab" class="form-container" style="display: none;">
                 <h3>تسجيل طالب جديد</h3>
                 <input type="text" id="studentName" placeholder="الاسم الكامل">
                 <input type="email" id="studentEmail" placeholder="البريد الإلكتروني">
                 <input type="password" id="studentPassword" placeholder="كلمة المرور">
                 <input type="tel" id="studentPhone" placeholder="رقم الهاتف">
+                
+                <!-- كابتشا تسجيل الطالب -->
+                <div id="studentCaptchaContainer" class="captcha-container">
+                    <div class="captcha-image" id="studentCaptchaImage" onclick="refreshCaptcha('student')"></div>
+                    <div class="captcha-input">
+                        <input type="text" id="studentCaptchaInput" placeholder="أدخل الرمز" maxlength="6" dir="ltr">
+                    </div>
+                    <button class="captcha-refresh-btn" onclick="refreshCaptcha('student')" title="تحديث الرمز">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+                <div id="studentCaptchaError" class="captcha-error"></div>
+                
                 <button class="btn-primary" onclick="registerStudent()">تسجيل</button>
             </div>
 
+            <!-- ===== تسجيل أستاذ ===== -->
             <div id="teacherRegisterTab" class="form-container" style="display: none;">
                 <h3>تقديم طلب أستاذ</h3>
                 <input type="text" id="teacherName" placeholder="الاسم الكامل" required>
@@ -219,6 +322,19 @@
                 <input type="file" id="diplomaImage" accept="image/*">
                 <label><i class="fas fa-id-card"></i> صورة بطاقة الهوية</label>
                 <input type="file" id="idImage" accept="image/*">
+                
+                <!-- كابتشا تسجيل الأستاذ -->
+                <div id="teacherCaptchaContainer" class="captcha-container">
+                    <div class="captcha-image" id="teacherCaptchaImage" onclick="refreshCaptcha('teacher')"></div>
+                    <div class="captcha-input">
+                        <input type="text" id="teacherCaptchaInput" placeholder="أدخل الرمز" maxlength="6" dir="ltr">
+                    </div>
+                    <button class="captcha-refresh-btn" onclick="refreshCaptcha('teacher')" title="تحديث الرمز">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+                <div id="teacherCaptchaError" class="captcha-error"></div>
+                
                 <button class="btn-primary" onclick="registerTeacher()">تقديم الطلب</button>
             </div>
         </section>
@@ -281,6 +397,109 @@
     <div id="notificationToast" class="notification-toast"></div>
 
     <script>
+        // ===== متغيرات الكابتشا =====
+        const captchaData = {
+            login: { id: null, image: null },
+            student: { id: null, image: null },
+            teacher: { id: null, image: null }
+        };
+
+        // ===== دوال الكابتشا =====
+        async function refreshCaptcha(type) {
+            try {
+                const response = await fetch('/api/captcha/generate');
+                const data = await response.json();
+                
+                if (data.captcha_id && data.image) {
+                    captchaData[type].id = data.captcha_id;
+                    captchaData[type].image = data.image;
+                    
+                    const imageContainer = document.getElementById(`${type}CaptchaImage`);
+                    if (imageContainer) {
+                        imageContainer.innerHTML = data.image;
+                    }
+                    
+                    // تفريغ حقل الإدخال
+                    const input = document.getElementById(`${type}CaptchaInput`);
+                    if (input) input.value = '';
+                    
+                    // إخفاء أي خطأ سابق
+                    const errorEl = document.getElementById(`${type}CaptchaError`);
+                    if (errorEl) {
+                        errorEl.classList.remove('show');
+                        errorEl.textContent = '';
+                    }
+                }
+            } catch (error) {
+                console.error('❌ خطأ في تحميل الكابتشا:', error);
+            }
+        }
+
+        async function verifyCaptcha(type) {
+            const input = document.getElementById(`${type}CaptchaInput`);
+            const errorEl = document.getElementById(`${type}CaptchaError`);
+            
+            if (!input || !input.value.trim()) {
+                if (errorEl) {
+                    errorEl.textContent = '⚠️ الرجاء إدخال رمز التحقق';
+                    errorEl.classList.add('show');
+                }
+                return false;
+            }
+            
+            const code = input.value.trim();
+            const captchaId = captchaData[type].id;
+            
+            if (!captchaId) {
+                if (errorEl) {
+                    errorEl.textContent = '⚠️ الرجاء تحديث رمز التحقق';
+                    errorEl.classList.add('show');
+                }
+                return false;
+            }
+            
+            try {
+                const response = await fetch('/api/captcha/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ captcha_id: captchaId, captcha_code: code })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (errorEl) {
+                        errorEl.classList.remove('show');
+                        errorEl.textContent = '';
+                    }
+                    return true;
+                } else {
+                    if (errorEl) {
+                        errorEl.textContent = '❌ ' + (data.error || 'رمز التحقق غير صحيح');
+                        errorEl.classList.add('show');
+                    }
+                    // تحديث الكابتشا تلقائياً بعد فشل التحقق
+                    await refreshCaptcha(type);
+                    return false;
+                }
+            } catch (error) {
+                console.error('❌ خطأ في التحقق من الكابتشا:', error);
+                if (errorEl) {
+                    errorEl.textContent = '⚠️ حدث خطأ في التحقق';
+                    errorEl.classList.add('show');
+                }
+                return false;
+            }
+        }
+
+        // ===== تحميل الكابتشا عند عرض النماذج =====
+        function loadCaptchas() {
+            refreshCaptcha('login');
+            refreshCaptcha('student');
+            refreshCaptcha('teacher');
+        }
+
+        // ===== دوال الإشعارات =====
         function showNotification(message, type = 'success') {
             const toast = document.getElementById('notificationToast');
             toast.style.background = type === 'success' ? '#10b981' : '#ef4444';
@@ -289,27 +508,18 @@
             setTimeout(() => { toast.style.display = 'none'; }, 5000);
         }
 
-        // ===== جلب الإحصائيات من السيرفر =====
+        // ===== جلب الإحصائيات =====
         async function loadStats() {
             try {
-                console.log('📊 جاري جلب الإحصائيات من السيرفر...');
-                
                 const response = await fetch('/api/public/stats');
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const stats = await response.json();
-                console.log('📊 الإحصائيات المستلمة:', stats);
                 
-                // تحديث الأعداد في الواجهة
                 document.getElementById('teacherCount').innerText = stats.teachers || 0;
                 document.getElementById('offerCount').innerText = stats.offers || 0;
                 document.getElementById('liveCountStat').innerText = stats.live || 0;
                 document.getElementById('studentCount').innerText = stats.students || 0;
                 
-                // تحديث عدد البث المباشر في شريط التنقل
                 const liveBadge = document.getElementById('liveCount');
                 if (stats.live > 0) {
                     liveBadge.style.display = 'inline-block';
@@ -317,10 +527,8 @@
                 } else {
                     liveBadge.style.display = 'none';
                 }
-                
             } catch (error) {
                 console.error('❌ خطأ في جلب الإحصائيات:', error);
-                // عرض قيم افتراضية في حالة الخطأ
                 document.getElementById('teacherCount').innerText = '?';
                 document.getElementById('offerCount').innerText = '?';
                 document.getElementById('liveCountStat').innerText = '?';
@@ -328,6 +536,7 @@
             }
         }
 
+        // ===== دوال التنقل =====
         function showHome() {
             document.getElementById('homeSection').style.display = 'flex';
             document.getElementById('teachersSection').style.display = 'none';
@@ -457,6 +666,8 @@
             document.getElementById('supportSection').style.display = 'none';
             setActiveTab('loginTabNav');
             switchTab('login');
+            // تحميل الكابتشا عند عرض نموذج تسجيل الدخول
+            setTimeout(loadCaptchas, 100);
         }
 
         function showTeacherRegister() {
@@ -469,6 +680,7 @@
             document.getElementById('supportSection').style.display = 'none';
             setActiveTab('loginTabNav');
             switchTab('teacher-register');
+            setTimeout(loadCaptchas, 100);
         }
 
         function showForgotPassword() {
@@ -659,8 +871,12 @@
                     btn.classList.add('active');
                 }
             });
+            
+            // تحميل الكابتشا عند التبديل
+            setTimeout(loadCaptchas, 100);
         }
 
+        // ===== دوال تسجيل الدخول والتسجيل مع الكابتشا =====
         async function login() {
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
@@ -669,6 +885,12 @@
             if (!email || !password) { 
                 showNotification('يرجى إدخال البريد الإلكتروني وكلمة المرور', 'error'); 
                 return; 
+            }
+            
+            // التحقق من الكابتشا
+            const captchaValid = await verifyCaptcha('login');
+            if (!captchaValid) {
+                return;
             }
             
             try {
@@ -694,6 +916,7 @@
                     }
                 } else { 
                     showNotification(data.error, 'error'); 
+                    refreshCaptcha('login');
                 }
             } catch(e) {
                 showNotification('خطأ في الاتصال بالخادم', 'error');
@@ -708,6 +931,12 @@
             
             if (!full_name || !email || !password || !phone) {
                 showNotification('يرجى ملء جميع الحقول', 'error');
+                return;
+            }
+            
+            // التحقق من الكابتشا
+            const captchaValid = await verifyCaptcha('student');
+            if (!captchaValid) {
                 return;
             }
             
@@ -742,6 +971,12 @@
             if (document.getElementById('diplomaImage').files[0]) formData.append('diploma_image', document.getElementById('diplomaImage').files[0]);
             if (document.getElementById('idImage').files[0]) formData.append('id_image', document.getElementById('idImage').files[0]);
             
+            // التحقق من الكابتشا
+            const captchaValid = await verifyCaptcha('teacher');
+            if (!captchaValid) {
+                return;
+            }
+            
             try {
                 const res = await fetch('/api/teacher/register', { method: 'POST', body: formData });
                 const data = await res.json();
@@ -767,6 +1002,11 @@
         showHome();
         setInterval(loadLiveStreams, 30000);
         setInterval(loadStats, 60000);
+        
+        // تحميل الكابتشا عند تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(loadCaptchas, 500);
+        });
     </script>
 </body>
 </html>
