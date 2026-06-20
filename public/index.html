@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>منصة تعليمية جزائرية | دروس خصوصية عبر الفيديو</title>
+    <title>ZoomDz | منصة تعليمية جزائرية</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -19,18 +19,32 @@
         .nav-links a:hover, .nav-links a.active { background: #0f5cbf; color: white; }
         .download-app-btn { background: #10b981; color: white; border: none; padding: 8px 18px; border-radius: 30px; cursor: pointer; font-weight: 600; transition: 0.3s; }
         .download-app-btn:hover { background: #059669; transform: translateY(-2px); }
+        
+        /* Hero Section */
         .hero { max-width: 1200px; margin: 50px auto; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 40px; }
         .hero-content { flex: 1; }
         .hero-content h1 { font-size: 2.5rem; margin-bottom: 20px; }
         .hero-content .highlight { color: #0f5cbf; }
         .hero-content p { font-size: 1.1rem; color: #4a5568; margin-bottom: 30px; }
         .hero-buttons { display: flex; gap: 15px; flex-wrap: wrap; }
+        
+        /* Stats Cards */
+        .stats-container { display: flex; gap: 20px; flex-wrap: wrap; margin: 30px 0; }
+        .stat-card { background: white; border-radius: 20px; padding: 25px 35px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); text-align: center; flex: 1; min-width: 150px; transition: 0.3s; }
+        .stat-card:hover { transform: translateY(-5px); box-shadow: 0 12px 30px rgba(0,0,0,0.12); }
+        .stat-card .number { font-size: 2.5rem; font-weight: 800; color: #0f5cbf; }
+        .stat-card .label { font-size: 1rem; color: #4a5568; margin-top: 5px; }
+        .stat-card .icon { font-size: 2rem; color: #0f5cbf; margin-bottom: 10px; display: block; }
+        .stat-card .loading-number { opacity: 0.5; animation: pulse-number 1s infinite; }
+        @keyframes pulse-number { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+        
         .btn-primary { background: #0f5cbf; color: white; border: none; padding: 12px 30px; border-radius: 40px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: 0.3s; }
         .btn-primary:hover { background: #0b4a9c; transform: translateY(-2px); }
         .btn-outline { background: transparent; border: 2px solid #0f5cbf; color: #0f5cbf; padding: 10px 28px; border-radius: 40px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: 0.3s; }
         .btn-outline:hover { background: #0f5cbf10; }
         .btn-success { background: #10b981; color: white; border: none; padding: 12px 30px; border-radius: 40px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: 0.3s; }
         .btn-success:hover { background: #059669; transform: translateY(-2px); }
+        
         .section-container { max-width: 1200px; margin: 50px auto; padding: 0 20px; }
         .section-title { font-size: 2rem; margin-bottom: 30px; text-align: center; color: #1e3c72; }
         .teachers-grid, .offers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; }
@@ -39,6 +53,7 @@
         .teacher-image { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 15px; border: 3px solid #0f5cbf; }
         .live-badge { background: #ef4444; color: white; padding: 5px 10px; border-radius: 20px; font-size: 12px; animation: pulse 1s infinite; display: inline-block; }
         @keyframes pulse { 0% { opacity: 0.7; } 50% { opacity: 1; } 100% { opacity: 0.7; } }
+        
         .form-section { max-width: 600px; margin: 50px auto; padding: 0 20px; }
         .form-tabs { display: flex; gap: 10px; justify-content: center; margin-bottom: 30px; flex-wrap: wrap; }
         .tab-btn { padding: 12px 25px; background: #e2e8f0; border: none; border-radius: 40px; cursor: pointer; font-weight: 600; }
@@ -46,6 +61,7 @@
         .form-container { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
         .form-container input, .form-container select, .form-container textarea { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #cbd5e1; border-radius: 12px; font-family: 'Cairo', sans-serif; }
         .form-container input[type="file"] { padding: 8px; }
+        
         footer { text-align: center; padding: 30px; background: #1e2a3e; color: #94a3b8; margin-top: 50px; }
         .price-tag { background: #10b981; color: white; padding: 5px 12px; border-radius: 20px; display: inline-block; margin-top: 10px; }
         .free-tag { background: #f59e0b; color: white; padding: 5px 12px; border-radius: 20px; display: inline-block; margin-top: 10px; }
@@ -62,17 +78,22 @@
         .support-card label { display: block; margin-bottom: 8px; font-weight: 600; color: #4a5568; }
         .support-card input, .support-card textarea { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 12px; font-family: 'Cairo', sans-serif; }
         .support-card textarea { resize: vertical; min-height: 120px; }
+        .hero-image { flex: 1; text-align: center; }
+        .hero-image i { font-size: 200px; color: #0f5cbf15; }
         @media (max-width: 768px) {
             .hero-content h1 { font-size: 1.8rem; }
             .nav-links a { padding: 5px 10px; font-size: 14px; }
             .teachers-grid, .offers-grid { grid-template-columns: 1fr; }
+            .stats-container { flex-direction: column; }
+            .stat-card { min-width: auto; }
+            .hero-image i { font-size: 120px; }
         }
     </style>
 </head>
 <body>
     <nav class="navbar">
         <div class="nav-container">
-            <div class="logo"><i class="fas fa-chalkboard-user"></i><span>منصة<span class="highlight"> التعليم</span></span></div>
+            <div class="logo"><i class="fas fa-chalkboard-user"></i><span>Zoom<span class="highlight">Dz</span></span></div>
             <div class="nav-links">
                 <a onclick="showHome()" id="homeTab" class="active">الرئيسية</a>
                 <a onclick="showTeachers()" id="teachersTab">الأساتذة</a>
@@ -89,6 +110,31 @@
             <div class="hero-content">
                 <h1>تعلم مع أفضل الأساتذة <span class="highlight">في الجزائر</span></h1>
                 <p>دروس خصوصية عبر الفيديو مع نخبة من الأساتذة المعتمدين. ادفع عبر شارجيلي بسهولة وأمان</p>
+                
+                <!-- Stats Cards - الأعداد يتم جلبها من السيرفر -->
+                <div class="stats-container">
+                    <div class="stat-card">
+                        <span class="icon"><i class="fas fa-chalkboard-user"></i></span>
+                        <div class="number" id="teacherCount">0</div>
+                        <div class="label">أستاذ معتمد</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="icon"><i class="fas fa-calendar-alt"></i></span>
+                        <div class="number" id="offerCount">0</div>
+                        <div class="label">عرض متاح</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="icon"><i class="fas fa-video"></i></span>
+                        <div class="number" id="liveCountStat">0</div>
+                        <div class="label">بث مباشر الآن</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="icon"><i class="fas fa-users"></i></span>
+                        <div class="number" id="studentCount">0</div>
+                        <div class="label">طالب مسجل</div>
+                    </div>
+                </div>
+                
                 <div class="hero-buttons">
                     <button class="btn-primary" onclick="showTeachers()"><i class="fas fa-users"></i> تعرف على أساتذتنا</button>
                     <button class="btn-outline" onclick="showOffers()"><i class="fas fa-calendar-alt"></i> استعرض العروض</button>
@@ -96,7 +142,9 @@
                     <button class="btn-success" onclick="showSupport()"><i class="fas fa-headset"></i> تواصل مع الدعم</button>
                 </div>
             </div>
-            <div class="hero-image"><i class="fas fa-laptop-code" style="font-size:250px; color:#0f5cbf20;"></i></div>
+            <div class="hero-image">
+                <i class="fas fa-laptop-code"></i>
+            </div>
         </section>
 
         <section id="teachersSection" class="section-container" style="display: none;">
@@ -178,7 +226,7 @@
         <section id="downloadAppSection" class="section-container" style="display: none;">
             <div class="support-card" style="text-align: center;">
                 <i class="fas fa-mobile-alt" style="font-size: 4rem; color: #0f5cbf; margin-bottom: 20px;"></i>
-                <h2>تحميل تطبيق منصة التعليم</h2>
+                <h2>تحميل تطبيق ZoomDz</h2>
                 <p style="margin: 20px 0; color: #4a5568;">حمل التطبيق واستمتع بتجربة أفضل للدروس الخصوصية عبر الفيديو</p>
                 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 30px;">
                     <button class="btn-primary" onclick="downloadAndroidApp()" style="background: #3ddc84; padding: 15px 30px;">
@@ -226,7 +274,7 @@
     </main>
 
     <footer>
-        <p>© 2024 منصة التعليم الجزائرية - جميع الحقوق محفوظة</p>
+        <p>© 2024 ZoomDz - منصة التعليم الجزائرية - جميع الحقوق محفوظة</p>
         <p><i class="fas fa-credit-card"></i> الدفع عبر شارجيلي | EDAHABIA | CCP</p>
     </footer>
 
@@ -241,6 +289,45 @@
             setTimeout(() => { toast.style.display = 'none'; }, 5000);
         }
 
+        // ===== جلب الإحصائيات من السيرفر =====
+        async function loadStats() {
+            try {
+                console.log('📊 جاري جلب الإحصائيات من السيرفر...');
+                
+                const response = await fetch('/api/public/stats');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const stats = await response.json();
+                console.log('📊 الإحصائيات المستلمة:', stats);
+                
+                // تحديث الأعداد في الواجهة
+                document.getElementById('teacherCount').innerText = stats.teachers || 0;
+                document.getElementById('offerCount').innerText = stats.offers || 0;
+                document.getElementById('liveCountStat').innerText = stats.live || 0;
+                document.getElementById('studentCount').innerText = stats.students || 0;
+                
+                // تحديث عدد البث المباشر في شريط التنقل
+                const liveBadge = document.getElementById('liveCount');
+                if (stats.live > 0) {
+                    liveBadge.style.display = 'inline-block';
+                    liveBadge.innerText = stats.live;
+                } else {
+                    liveBadge.style.display = 'none';
+                }
+                
+            } catch (error) {
+                console.error('❌ خطأ في جلب الإحصائيات:', error);
+                // عرض قيم افتراضية في حالة الخطأ
+                document.getElementById('teacherCount').innerText = '?';
+                document.getElementById('offerCount').innerText = '?';
+                document.getElementById('liveCountStat').innerText = '?';
+                document.getElementById('studentCount').innerText = '?';
+            }
+        }
+
         function showHome() {
             document.getElementById('homeSection').style.display = 'flex';
             document.getElementById('teachersSection').style.display = 'none';
@@ -250,6 +337,7 @@
             document.getElementById('downloadAppSection').style.display = 'none';
             document.getElementById('supportSection').style.display = 'none';
             setActiveTab('homeTab');
+            loadStats();
         }
 
         function showDownloadApp() {
@@ -275,8 +363,6 @@
         }
 
         function downloadAndroidApp() {
-            // رابط تحميل التطبيق (APK)
-            // ضع رابط APK الخاص بك هنا
             window.location.href = '/download/app.apk';
             showNotification('جاري تحميل التطبيق...', 'success');
         }
@@ -285,7 +371,6 @@
             showNotification('تطبيق iOS قيد التطوير، قريباً', 'warning');
         }
 
-        // إرسال رسالة الدعم
         document.getElementById('supportForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -678,8 +763,10 @@
             return div.innerHTML;
         }
 
+        // ===== بدء التشغيل =====
         showHome();
         setInterval(loadLiveStreams, 30000);
+        setInterval(loadStats, 60000);
     </script>
 </body>
 </html>
