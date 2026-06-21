@@ -2071,4 +2071,94 @@ setInterval(() => {
             delete captchaStore[key];
         }
     });
-}, 60000); // كل دقيقة
+}, 60000); // 
+كل دقيقة
+// ===== إرسال إشعار لجميع الطلاب =====
+app.post('/api/admin/send-notification-to-all-students', async (req, res) => {
+  try {
+    const { title, message } = req.body;
+    
+    if (!title || !message) {
+      return res.json({ success: false, error: 'العنوان والمحتوى مطلوبان' });
+    }
+    
+    // جلب جميع الطلاب
+    const { data: students } = await supabase
+      .from('students')
+      .select('id');
+    
+    if (!students || students.length === 0) {
+      return res.json({ success: false, error: 'لا يوجد طلاب مسجلين' });
+    }
+    
+    // إدراج إشعار لكل طالب
+    const notifications = students.map(s => ({
+      user_id: s.id,
+      user_type: 'student',
+      title: title,
+      message: message,
+      is_read: false,
+      created_at: new Date().toISOString()
+    }));
+    
+    // إدراج جميع الإشعارات دفعة واحدة
+    const { error } = await supabase
+      .from('notifications')
+      .insert(notifications);
+    
+    if (error) {
+      console.error('❌ خطأ في إرسال الإشعارات:', error);
+      return res.json({ success: false, error: error.message });
+    }
+    
+    // تسجيل الإشعار المرسل في جدول admin_notifications
+    await supabase
+      .from('admin_notifications')
+      .insert({
+        title: title,
+        message: message,
+        sent_to_all: true,
+        students_count: students.length,
+        created_at: new Date().toISOString()
+      });
+    
+    res.json({ 
+      success: true, 
+      students_count: students.length,
+      message: `تم إرسال الإشعار إلى ${students.length} طالب`
+    });
+    
+  } catch (error) {
+    console.error('❌ خطأ:', error.message);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// ===== جلب الإشعارات المرسلة =====
+app.get('/api/admin/sent-notifications', async (req, res) => {
+  try {
+    const { data } = await supabase
+      .from('admin_notifications')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    res.json(data || []);
+  } catch (error) {
+    console.error('❌ خطأ:', error.message);
+    res.json([]);
+  }
+});
+
+// ===== حذف إشعار مرسل =====
+app.delete('/api/admin/delete-notification/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await supabase
+      .from('admin_notifications')
+      .delete()
+      .eq('id', id);
+    res.json({ success: true });
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
+});
