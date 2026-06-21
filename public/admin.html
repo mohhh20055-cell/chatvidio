@@ -46,6 +46,14 @@
             transition: 0.3s;
         }
         .nav-tab.active { background: #0f5cbf; color: white; }
+        .nav-tab.notification-tab {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .nav-tab.notification-tab.active {
+            background: #0f5cbf;
+            color: white;
+        }
 
         .container { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
         .teachers-grid, .requests-grid, .messages-grid {
@@ -79,6 +87,8 @@
         .btn-complete { background: #0f5cbf; color: white; border: none; padding: 8px 16px; border-radius: 25px; cursor: pointer; }
         .btn-small { background: #0f5cbf; color: white; border: none; padding: 5px 10px; border-radius: 15px; cursor: pointer; margin-top: 5px; width: 100%; }
         .btn-small-danger { background: #ef4444; }
+        .btn-notification { background: #8b5cf6; color: white; border: none; padding: 8px 16px; border-radius: 25px; cursor: pointer; margin: 5px; }
+        .btn-notification:hover { background: #7c3aed; }
         .request-amount { font-size: 1.5rem; font-weight: 700; color: #0f5cbf; }
         .notification-toast {
             position: fixed;
@@ -116,17 +126,37 @@
             background: white;
             border-radius: 16px;
             width: 90%;
-            max-width: 400px;
+            max-width: 500px;
             z-index: 1001;
             overflow: hidden;
+            max-height: 90vh;
+            overflow-y: auto;
         }
         .modal-header { padding: 16px; border-bottom: 1px solid #e4e6eb; }
         .modal-body { padding: 20px; }
-        .modal-body input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #e4e6eb; border-radius: 8px; }
-        .modal-body textarea { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #e4e6eb; border-radius: 8px; font-family: 'Cairo', sans-serif; resize: vertical; }
+        .modal-body input, .modal-body select {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #e4e6eb;
+            border-radius: 8px;
+            font-family: 'Cairo', sans-serif;
+        }
+        .modal-body textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #e4e6eb;
+            border-radius: 8px;
+            font-family: 'Cairo', sans-serif;
+            resize: vertical;
+            min-height: 100px;
+        }
         .modal-footer { padding: 12px 16px; border-top: 1px solid #e4e6eb; display: flex; gap: 10px; justify-content: flex-end; }
         .btn-save { background: #0f5cbf; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; }
+        .btn-save:hover { background: #1e3c72; }
         .btn-cancel { background: #e4e6eb; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; }
+        .btn-cancel:hover { background: #d1d5db; }
         
         .button-group {
             display: flex;
@@ -189,6 +219,40 @@
             max-height: 90%;
             border-radius: 10px;
         }
+        .send-all-btn {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            margin-top: 5px;
+        }
+        .send-all-btn:hover { background: #059669; }
+        .notification-stat {
+            background: #ef4444;
+            color: white;
+            border-radius: 50%;
+            padding: 2px 8px;
+            font-size: 0.7rem;
+            margin-right: 5px;
+        }
+        .notification-card {
+            background: #f0f7ff;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-right: 3px solid #0f5cbf;
+        }
+        .notification-card .notif-title {
+            font-weight: 700;
+            color: #0f5cbf;
+        }
+        .notification-card .notif-date {
+            font-size: 0.7rem;
+            color: #94a3b8;
+        }
     </style>
 </head>
 <body>
@@ -205,6 +269,9 @@
             <button class="nav-tab" onclick="showTab('approved')"><i class="fas fa-check-circle"></i> الأساتذة المقبولون</button>
             <button class="nav-tab" onclick="showTab('withdrawals')"><i class="fas fa-money-bill-wave"></i> طلبات السحب</button>
             <button class="nav-tab" onclick="showTab('support')"><i class="fas fa-envelope"></i> رسائل الدعم</button>
+            <button class="nav-tab notification-tab" onclick="showTab('notifications')" id="notifTab">
+                <i class="fas fa-bell"></i> إرسال إشعارات
+            </button>
         </div>
 
         <div id="pendingTab">
@@ -218,6 +285,33 @@
         </div>
         <div id="supportTab" style="display: none;">
             <div id="supportMessagesList"></div>
+        </div>
+        <div id="notificationsTab" style="display: none;">
+            <div class="notification-card" style="background: #fef3c7; border-color: #f59e0b;">
+                <h3 style="color: #92400e;"><i class="fas fa-info-circle"></i> إرسال إشعارات للطلاب</h3>
+                <p style="color: #78350f; font-size: 0.9rem;">يمكنك إرسال رسائل إشعارات لجميع الطلاب المسجلين في المنصة</p>
+            </div>
+            
+            <div style="background: white; border-radius: 16px; padding: 20px; margin-top: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <h4 style="margin-bottom: 15px; color: #1e3c72;"><i class="fas fa-pen"></i> إنشاء إشعار جديد</h4>
+                <input type="text" id="notificationTitle" placeholder="عنوان الإشعار" style="width:100%; padding:12px; border:1px solid #e4e6eb; border-radius:8px; margin-bottom:10px;">
+                <textarea id="notificationMessage" placeholder="محتوى الإشعار" style="width:100%; padding:12px; border:1px solid #e4e6eb; border-radius:8px; min-height:100px; margin-bottom:10px; font-family:'Cairo',sans-serif;"></textarea>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                    <button class="btn-save" onclick="sendNotificationToAllStudents()" style="padding: 12px 30px;">
+                        <i class="fas fa-paper-plane"></i> إرسال الإشعار للجميع
+                    </button>
+                    <span style="font-size:0.8rem; color:#94a3b8;">
+                        <i class="fas fa-users"></i> سيتم إرسال الإشعار لجميع الطلاب المسجلين
+                    </span>
+                </div>
+            </div>
+
+            <div style="background: white; border-radius: 16px; padding: 20px; margin-top: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <h4 style="margin-bottom: 15px; color: #1e3c72;"><i class="fas fa-history"></i> الإشعارات المرسلة</h4>
+                <div id="sentNotificationsList">
+                    <p style="text-align:center; color:#94a3b8; padding:20px;">لا توجد إشعارات مرسلة بعد</p>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -277,19 +371,138 @@
             document.getElementById('approvedTab').style.display = tab === 'approved' ? 'block' : 'none';
             document.getElementById('withdrawalsTab').style.display = tab === 'withdrawals' ? 'block' : 'none';
             document.getElementById('supportTab').style.display = tab === 'support' ? 'block' : 'none';
+            document.getElementById('notificationsTab').style.display = tab === 'notifications' ? 'block' : 'none';
             
             document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-            if (tab === 'pending') document.querySelector('.nav-tab:nth-child(1)').classList.add('active');
-            else if (tab === 'approved') document.querySelector('.nav-tab:nth-child(2)').classList.add('active');
-            else if (tab === 'withdrawals') document.querySelector('.nav-tab:nth-child(3)').classList.add('active');
-            else document.querySelector('.nav-tab:nth-child(4)').classList.add('active');
+            const tabs = document.querySelectorAll('.nav-tab');
+            if (tab === 'pending') tabs[0].classList.add('active');
+            else if (tab === 'approved') tabs[1].classList.add('active');
+            else if (tab === 'withdrawals') tabs[2].classList.add('active');
+            else if (tab === 'support') tabs[3].classList.add('active');
+            else if (tab === 'notifications') tabs[4].classList.add('active');
             
             if (tab === 'pending') loadPendingTeachers();
             else if (tab === 'approved') loadApprovedTeachers();
             else if (tab === 'withdrawals') loadWithdrawals();
-            else loadSupportMessages();
+            else if (tab === 'support') loadSupportMessages();
+            else if (tab === 'notifications') loadSentNotifications();
         }
 
+        // ===== إرسال إشعار لجميع الطلاب =====
+        async function sendNotificationToAllStudents() {
+            const title = document.getElementById('notificationTitle').value.trim();
+            const message = document.getElementById('notificationMessage').value.trim();
+            
+            if (!title) {
+                showNotification('⚠️ الرجاء إدخال عنوان الإشعار', 'warning');
+                document.getElementById('notificationTitle').focus();
+                return;
+            }
+            if (!message) {
+                showNotification('⚠️ الرجاء إدخال محتوى الإشعار', 'warning');
+                document.getElementById('notificationMessage').focus();
+                return;
+            }
+            
+            if (!confirm(`⚠️ هل أنت متأكد من إرسال الإشعار لجميع الطلاب؟\n\nالعنوان: ${title}\nالمحتوى: ${message}`)) {
+                return;
+            }
+            
+            const btn = document.querySelector('.btn-save');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإرسال...';
+            
+            try {
+                const res = await fetch('/api/admin/send-notification-to-all-students', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, message })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    showNotification(`✅ تم إرسال الإشعار بنجاح إلى ${data.students_count || 0} طالب`, 'success');
+                    document.getElementById('notificationTitle').value = '';
+                    document.getElementById('notificationMessage').value = '';
+                    loadSentNotifications();
+                } else {
+                    showNotification(data.error || '❌ حدث خطأ', 'error');
+                }
+            } catch(e) {
+                showNotification('❌ حدث خطأ في الاتصال', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-paper-plane"></i> إرسال الإشعار للجميع';
+            }
+        }
+
+        // ===== جلب الإشعارات المرسلة =====
+        async function loadSentNotifications() {
+            const container = document.getElementById('sentNotificationsList');
+            container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+            
+            try {
+                const res = await fetch('/api/admin/sent-notifications');
+                const notifications = await res.json();
+                
+                if (!notifications || notifications.length === 0) {
+                    container.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:20px;">لا توجد إشعارات مرسلة بعد</p>';
+                    return;
+                }
+                
+                let html = '';
+                for (const notif of notifications) {
+                    const date = new Date(notif.created_at);
+                    html += `
+                        <div class="notification-card" style="background: #f8fafc; border-right-color: ${notif.sent_to_all ? '#10b981' : '#0f5cbf'};">
+                            <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap;">
+                                <div>
+                                    <div class="notif-title">${escapeHtml(notif.title)}</div>
+                                    <div style="font-size: 0.9rem; color: #334155; margin: 8px 0;">${escapeHtml(notif.message)}</div>
+                                    <div style="display: flex; gap: 10px; flex-wrap: wrap; font-size: 0.75rem; color: #64748b;">
+                                        <span><i class="fas fa-users"></i> أرسل لـ ${notif.sent_to_all ? 'جميع الطلاب' : 'طلاب محددين'}</span>
+                                        <span><i class="fas fa-clock"></i> ${date.toLocaleString('ar')}</span>
+                                        ${notif.students_count ? `<span><i class="fas fa-user"></i> ${notif.students_count} طالب</span>` : ''}
+                                    </div>
+                                </div>
+                                <div>
+                                    <span class="status-badge ${notif.sent_to_all ? 'status-read' : 'status-unread'}" style="font-size:0.6rem;">
+                                        ${notif.sent_to_all ? '✅ للجميع' : '👤 لمجموعة'}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="button-group" style="margin-top: 8px;">
+                                <button class="btn-small" style="background: #ef4444; width: auto; padding: 4px 12px;" onclick="deleteNotification(${notif.id})">
+                                    <i class="fas fa-trash"></i> حذف
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+                container.innerHTML = html;
+            } catch(e) {
+                console.error(e);
+                container.innerHTML = '<p style="text-align:center; color:#ef4444; padding:20px;">❌ حدث خطأ في تحميل الإشعارات</p>';
+            }
+        }
+
+        // ===== حذف إشعار =====
+        async function deleteNotification(id) {
+            if (!confirm('هل أنت متأكد من حذف هذا الإشعار؟')) return;
+            
+            try {
+                const res = await fetch(`/api/admin/delete-notification/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    showNotification('تم حذف الإشعار', 'success');
+                    loadSentNotifications();
+                }
+            } catch(e) {
+                showNotification('حدث خطأ', 'error');
+            }
+        }
+
+        // ===== باقي دوال المدير =====
         async function loadPendingTeachers() {
             const container = document.getElementById('pendingTeachers');
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
@@ -302,7 +515,6 @@
                 }
                 let html = '<div class="teachers-grid">';
                 for (const t of teachers) {
-                    // استخدام profile_url من Supabase Storage بدلاً من المسار القديم
                     const imageUrl = t.profile_url || 'https://via.placeholder.com/80';
                     const diplomaImageUrl = t.diploma_image ? `https://pvtphjcnafwphuzmzihe.supabase.co/storage/v1/object/public/profiles/diplomas/${t.diploma_image}` : null;
                     const idImageUrl = t.id_image ? `https://pvtphjcnafwphuzmzihe.supabase.co/storage/v1/object/public/profiles/ids/${t.id_image}` : null;
