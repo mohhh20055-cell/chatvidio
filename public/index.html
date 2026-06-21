@@ -153,6 +153,117 @@
         .hero-image { flex: 1; text-align: center; }
         .hero-image i { font-size: 200px; color: #0f5cbf15; }
         
+        /* ===== صفحة تحميل التطبيق ===== */
+        .download-app-section {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 0 20px;
+        }
+        .download-card {
+            background: white;
+            border-radius: 24px;
+            padding: 50px 40px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+        .download-card .app-icon {
+            font-size: 5rem;
+            color: #0f5cbf;
+            margin-bottom: 20px;
+        }
+        .download-card h2 {
+            font-size: 2rem;
+            color: #1e3c72;
+            margin-bottom: 15px;
+        }
+        .download-card p {
+            color: #4a5568;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+        }
+        .download-card .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 30px 0;
+            text-align: right;
+        }
+        .download-card .features .feature {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .download-card .features .feature i {
+            color: #10b981;
+            font-size: 1.3rem;
+        }
+        .download-card .features .feature span {
+            font-size: 0.95rem;
+            color: #4a5568;
+        }
+        .download-btn-android {
+            background: #3ddc84;
+            color: #1a1a1a;
+            border: none;
+            padding: 18px 45px;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 15px;
+            margin-top: 10px;
+            box-shadow: 0 4px 15px rgba(61, 220, 132, 0.3);
+        }
+        .download-btn-android:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(61, 220, 132, 0.4);
+        }
+        .download-btn-android i {
+            font-size: 2rem;
+        }
+        .download-card .qr-code {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 16px;
+            display: inline-block;
+        }
+        .download-card .qr-code img {
+            width: 150px;
+            height: 150px;
+            border-radius: 12px;
+        }
+        .download-card .version-info {
+            color: #94a3b8;
+            font-size: 0.8rem;
+            margin-top: 20px;
+        }
+        .download-card .install-instructions {
+            background: #f0f7ff;
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin-top: 20px;
+            text-align: right;
+        }
+        .download-card .install-instructions h4 {
+            color: #0f5cbf;
+            margin-bottom: 10px;
+        }
+        .download-card .install-instructions ol {
+            padding-right: 20px;
+            color: #4a5568;
+            font-size: 0.9rem;
+        }
+        .download-card .install-instructions ol li {
+            margin-bottom: 5px;
+        }
+        
         @media (max-width: 768px) {
             .hero-content h1 { font-size: 1.8rem; }
             .nav-links a { padding: 5px 10px; font-size: 14px; }
@@ -162,6 +273,10 @@
             .hero-image i { font-size: 120px; }
             .captcha-container { flex-direction: column; align-items: stretch; }
             .captcha-container .captcha-image svg { width: 100%; height: 45px; }
+            .download-card { padding: 30px 20px; }
+            .download-card h2 { font-size: 1.5rem; }
+            .download-btn-android { padding: 14px 30px; font-size: 1rem; }
+            .download-card .features { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -243,7 +358,6 @@
                 <button class="tab-btn" onclick="switchTab('teacher-register')">تسجيل أستاذ</button>
             </div>
 
-            <!-- ===== تسجيل الدخول ===== -->
             <div id="loginTab" class="form-container">
                 <h3>تسجيل الدخول</h3>
                 <input type="email" id="loginEmail" placeholder="البريد الإلكتروني">
@@ -253,7 +367,6 @@
                     <option value="teacher">أستاذ</option>
                 </select>
                 
-                <!-- كابتشا تسجيل الدخول -->
                 <div id="loginCaptchaContainer" class="captcha-container">
                     <div class="captcha-image" id="loginCaptchaImage" onclick="refreshCaptcha('login')"></div>
                     <div class="captcha-input">
@@ -283,7 +396,6 @@
                 <a href="#" class="back-link" onclick="hideForgotPassword()"><i class="fas fa-arrow-right"></i> العودة إلى تسجيل الدخول</a>
             </div>
 
-            <!-- ===== تسجيل طالب ===== -->
             <div id="studentRegisterTab" class="form-container" style="display: none;">
                 <h3>تسجيل طالب جديد</h3>
                 <input type="text" id="studentName" placeholder="الاسم الكامل">
@@ -291,7 +403,6 @@
                 <input type="password" id="studentPassword" placeholder="كلمة المرور">
                 <input type="tel" id="studentPhone" placeholder="رقم الهاتف">
                 
-                <!-- كابتشا تسجيل الطالب -->
                 <div id="studentCaptchaContainer" class="captcha-container">
                     <div class="captcha-image" id="studentCaptchaImage" onclick="refreshCaptcha('student')"></div>
                     <div class="captcha-input">
@@ -306,7 +417,6 @@
                 <button class="btn-primary" onclick="registerStudent()">تسجيل</button>
             </div>
 
-            <!-- ===== تسجيل أستاذ ===== -->
             <div id="teacherRegisterTab" class="form-container" style="display: none;">
                 <h3>تقديم طلب أستاذ</h3>
                 <input type="text" id="teacherName" placeholder="الاسم الكامل" required>
@@ -323,7 +433,6 @@
                 <label><i class="fas fa-id-card"></i> صورة بطاقة الهوية</label>
                 <input type="file" id="idImage" accept="image/*">
                 
-                <!-- كابتشا تسجيل الأستاذ -->
                 <div id="teacherCaptchaContainer" class="captcha-container">
                     <div class="captcha-image" id="teacherCaptchaImage" onclick="refreshCaptcha('teacher')"></div>
                     <div class="captcha-input">
@@ -339,23 +448,57 @@
             </div>
         </section>
 
-        <section id="downloadAppSection" class="section-container" style="display: none;">
-            <div class="support-card" style="text-align: center;">
-                <i class="fas fa-mobile-alt" style="font-size: 4rem; color: #0f5cbf; margin-bottom: 20px;"></i>
-                <h2>تحميل تطبيق ZoomDz</h2>
-                <p style="margin: 20px 0; color: #4a5568;">حمل التطبيق واستمتع بتجربة أفضل للدروس الخصوصية عبر الفيديو</p>
-                <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 30px;">
-                    <button class="btn-primary" onclick="downloadAndroidApp()" style="background: #3ddc84; padding: 15px 30px;">
-                        <i class="fab fa-android" style="font-size: 1.5rem;"></i> تحميل لنظام Android
-                    </button>
-                    <button class="btn-primary" onclick="downloadIOSApp()" style="background: #000; padding: 15px 30px;">
-                        <i class="fab fa-apple" style="font-size: 1.5rem;"></i> قريباً لنظام iOS
-                    </button>
+        <!-- ===== صفحة تحميل التطبيق ===== -->
+        <section id="downloadAppSection" class="download-app-section" style="display: none;">
+            <div class="download-card">
+                <div class="app-icon">
+                    <i class="fas fa-chalkboard-user"></i>
                 </div>
-                <p style="margin-top: 30px; font-size: 0.8rem; color: #718096;">
-                    أو يمكنك تثبيت التطبيق مباشرة من المتصفح: 
-                    <strong>القائمة → تثبيت التطبيق (Install App)</strong>
-                </p>
+                <h2>📱 تحميل تطبيق ZoomDz</h2>
+                <p>تطبيق ZoomDz للتعليم عن بعد</p>
+                <p style="color: #10b981; font-weight: 700;">🎓 تعلم مع أفضل الأساتذة في الجزائر</p>
+                
+                <div class="features">
+                    <div class="feature">
+                        <i class="fas fa-video"></i>
+                        <span>دروس فيديو مباشرة</span>
+                    </div>
+                    <div class="feature">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                        <span>أفضل الأساتذة المعتمدين</span>
+                    </div>
+                    <div class="feature">
+                        <i class="fas fa-credit-card"></i>
+                        <span>الدفع عبر شارجيلي</span>
+                    </div>
+                    <div class="feature">
+                        <i class="fas fa-mobile-alt"></i>
+                        <span>تجربة سلسة على الجوال</span>
+                    </div>
+                </div>
+
+                <a href="https://www.appcreator24.com/app4089108-lwkt4d" target="_blank" class="download-btn-android">
+                    <i class="fab fa-android"></i>
+                    تحميل التطبيق الآن
+                </a>
+
+                <div class="qr-code">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://www.appcreator24.com/app4089108-lwkt4d" alt="QR Code">
+                </div>
+
+                <div class="install-instructions">
+                    <h4><i class="fas fa-info-circle"></i> خطوات التثبيت:</h4>
+                    <ol>
+                        <li>اضغط على زر "تحميل التطبيق الآن"</li>
+                        <li>سيتم تحميل ملف APK</li>
+                        <li>افتح الملف واختر "تثبيت"</li>
+                        <li>قد تحتاج إلى تفعيل "التثبيت من مصادر غير معروفة" في إعدادات هاتفك</li>
+                    </ol>
+                </div>
+
+                <div class="version-info">
+                    <i class="fas fa-code-branch"></i> الإصدار 1.0.0 | <i class="fas fa-calendar-alt"></i> آخر تحديث: يونيو 2024
+                </div>
             </div>
         </section>
 
@@ -419,11 +562,9 @@
                         imageContainer.innerHTML = data.image;
                     }
                     
-                    // تفريغ حقل الإدخال
                     const input = document.getElementById(`${type}CaptchaInput`);
                     if (input) input.value = '';
                     
-                    // إخفاء أي خطأ سابق
                     const errorEl = document.getElementById(`${type}CaptchaError`);
                     if (errorEl) {
                         errorEl.classList.remove('show');
@@ -478,7 +619,6 @@
                         errorEl.textContent = '❌ ' + (data.error || 'رمز التحقق غير صحيح');
                         errorEl.classList.add('show');
                     }
-                    // تحديث الكابتشا تلقائياً بعد فشل التحقق
                     await refreshCaptcha(type);
                     return false;
                 }
@@ -492,14 +632,12 @@
             }
         }
 
-        // ===== تحميل الكابتشا عند عرض النماذج =====
         function loadCaptchas() {
             refreshCaptcha('login');
             refreshCaptcha('student');
             refreshCaptcha('teacher');
         }
 
-        // ===== دوال الإشعارات =====
         function showNotification(message, type = 'success') {
             const toast = document.getElementById('notificationToast');
             toast.style.background = type === 'success' ? '#10b981' : '#ef4444';
@@ -508,7 +646,6 @@
             setTimeout(() => { toast.style.display = 'none'; }, 5000);
         }
 
-        // ===== جلب الإحصائيات =====
         async function loadStats() {
             try {
                 const response = await fetch('/api/public/stats');
@@ -536,7 +673,6 @@
             }
         }
 
-        // ===== دوال التنقل =====
         function showHome() {
             document.getElementById('homeSection').style.display = 'flex';
             document.getElementById('teachersSection').style.display = 'none';
@@ -569,15 +705,6 @@
             document.getElementById('downloadAppSection').style.display = 'none';
             document.getElementById('supportSection').style.display = 'block';
             setActiveTab('');
-        }
-
-        function downloadAndroidApp() {
-            window.location.href = '/download/app.apk';
-            showNotification('جاري تحميل التطبيق...', 'success');
-        }
-
-        function downloadIOSApp() {
-            showNotification('تطبيق iOS قيد التطوير، قريباً', 'warning');
         }
 
         document.getElementById('supportForm').addEventListener('submit', async (e) => {
@@ -666,7 +793,6 @@
             document.getElementById('supportSection').style.display = 'none';
             setActiveTab('loginTabNav');
             switchTab('login');
-            // تحميل الكابتشا عند عرض نموذج تسجيل الدخول
             setTimeout(loadCaptchas, 100);
         }
 
@@ -872,11 +998,9 @@
                 }
             });
             
-            // تحميل الكابتشا عند التبديل
             setTimeout(loadCaptchas, 100);
         }
 
-        // ===== دوال تسجيل الدخول والتسجيل مع الكابتشا =====
         async function login() {
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
@@ -887,7 +1011,6 @@
                 return; 
             }
             
-            // التحقق من الكابتشا
             const captchaValid = await verifyCaptcha('login');
             if (!captchaValid) {
                 return;
@@ -934,7 +1057,6 @@
                 return;
             }
             
-            // التحقق من الكابتشا
             const captchaValid = await verifyCaptcha('student');
             if (!captchaValid) {
                 return;
@@ -971,7 +1093,6 @@
             if (document.getElementById('diplomaImage').files[0]) formData.append('diploma_image', document.getElementById('diplomaImage').files[0]);
             if (document.getElementById('idImage').files[0]) formData.append('id_image', document.getElementById('idImage').files[0]);
             
-            // التحقق من الكابتشا
             const captchaValid = await verifyCaptcha('teacher');
             if (!captchaValid) {
                 return;
@@ -1003,7 +1124,6 @@
         setInterval(loadLiveStreams, 30000);
         setInterval(loadStats, 60000);
         
-        // تحميل الكابتشا عند تحميل الصفحة
         document.addEventListener('DOMContentLoaded', () => {
             setTimeout(loadCaptchas, 500);
         });
