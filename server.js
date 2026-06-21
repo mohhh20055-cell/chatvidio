@@ -2072,7 +2072,7 @@ setInterval(() => {
         }
     });
 }, 60000); // 
-كل دقيقة
+
 // ===== إرسال إشعار لجميع الطلاب =====
 app.post('/api/admin/send-notification-to-all-students', async (req, res) => {
   try {
