@@ -375,145 +375,7 @@
             margin-top: 6px;
         }
 
-        /* ===== TRANSACTIONS - NEW STYLES ===== */
-        .transaction-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
-            border-right: 4px solid #e4e6eb;
-            transition: all 0.2s;
-            animation: slideIn 0.3s ease;
-        }
-
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateX(-10px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-
-        .transaction-item.success {
-            border-right-color: #10b981;
-            background: #f0fdf4;
-        }
-
-        .transaction-item.failed {
-            border-right-color: #ef4444;
-            background: #fef2f2;
-        }
-
-        .transaction-info {
-            flex: 1;
-            min-width: 150px;
-        }
-
-        .transaction-title {
-            font-weight: 700;
-            font-size: 0.95rem;
-            color: #1e3c72;
-        }
-
-        .transaction-details {
-            font-size: 0.75rem;
-            color: #65676b;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 4px;
-        }
-
-        .transaction-details i {
-            margin-left: 4px;
-        }
-
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 2px 12px;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            font-weight: 700;
-        }
-
-        .status-badge.success {
-            background: #d1fae5;
-            color: #065f46;
-        }
-
-        .status-badge.failed {
-            background: #fecaca;
-            color: #991b1b;
-        }
-
-        .transaction-actions {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .delete-btn {
-            background: none;
-            border: none;
-            color: #94a3b8;
-            cursor: pointer;
-            font-size: 1rem;
-            padding: 4px 8px;
-            border-radius: 8px;
-            transition: all 0.2s;
-        }
-
-        .delete-btn:hover {
-            color: #ef4444;
-            background: #fef2f2;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: #94a3b8;
-        }
-
-        .empty-state i {
-            font-size: 2.5rem;
-            display: block;
-            margin-bottom: 10px;
-            color: #cbd5e1;
-        }
-
-        /* ===== ADD TRANSACTION BUTTON ===== */
-        .add-transaction-btn {
-            background: #0f5cbf;
-            color: white;
-            border: none;
-            padding: 6px 16px;
-            border-radius: 25px;
-            font-weight: 600;
-            cursor: pointer;
-            font-size: 0.8rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-family: 'Cairo', sans-serif;
-            transition: all 0.2s;
-        }
-
-        .add-transaction-btn:hover {
-            background: #1a6dd4;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(15, 92, 191, 0.3);
-        }
-
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 16px;
-        }
-
-        /* ===== MODALS ===== */
+        /* ===== MODALS (responsive) ===== */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -523,14 +385,7 @@
             bottom: 0;
             background: rgba(0,0,0,0.5);
             z-index: 1000;
-            animation: fadeIn 0.25s ease;
         }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
         .modal {
             display: none;
             position: fixed;
@@ -540,19 +395,12 @@
             background: white;
             border-radius: 16px;
             width: 92%;
-            max-width: 450px;
+            max-width: 500px;
             z-index: 1001;
             overflow: hidden;
             max-height: 90vh;
             overflow-y: auto;
-            animation: modalSlide 0.3s ease;
         }
-
-        @keyframes modalSlide {
-            from { opacity: 0; transform: translate(-50%, -40%); }
-            to { opacity: 1; transform: translate(-50%, -50%); }
-        }
-
         .modal-header {
             padding: 14px 16px;
             border-bottom: 1px solid #e4e6eb;
@@ -560,26 +408,16 @@
             justify-content: space-between;
             align-items: center;
         }
-        .modal-header h3 { font-size: 1.1rem; color: #1e3c72; }
+        .modal-header h3 { font-size: 1.1rem; }
         .modal-body { padding: 16px; }
-        .modal-body input, .modal-body textarea, .modal-body select {
+        .modal-body input, .modal-body textarea {
             width: 100%;
             padding: 10px;
-            margin: 6px 0 14px 0;
+            margin: 8px 0;
             border: 1px solid #e4e6eb;
             border-radius: 8px;
             font-family: 'Cairo', sans-serif;
             font-size: 0.95rem;
-        }
-        .modal-body input:focus, .modal-body select:focus {
-            outline: none;
-            border-color: #0f5cbf;
-            box-shadow: 0 0 0 3px rgba(15,92,191,0.1);
-        }
-        .modal-body label {
-            font-weight: 600;
-            font-size: 0.85rem;
-            color: #1e3c72;
         }
         .modal-footer { 
             padding: 12px 16px; 
@@ -589,62 +427,19 @@
             justify-content: flex-end; 
             flex-wrap: wrap;
         }
-        .save-btn { background: #0f5cbf; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-family: 'Cairo', sans-serif; }
-        .save-btn:hover { background: #1a6dd4; }
-        .cancel-btn { background: #e4e6eb; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-family: 'Cairo', sans-serif; }
-        .cancel-btn:hover { background: #d1d5db; }
-        .close-modal { background: none; border: none; font-size: 1.8rem; cursor: pointer; line-height: 1; padding: 0 4px; color: #94a3b8; }
-        .close-modal:hover { color: #1e3c72; }
-
-        /* Status options in modal */
-        .status-options {
-            display: flex;
-            gap: 10px;
-            margin: 6px 0 14px 0;
-        }
-
-        .status-option {
-            flex: 1;
-            padding: 10px;
-            border: 2px solid #e4e6eb;
-            border-radius: 10px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-weight: 600;
-            font-size: 0.85rem;
-        }
-
-        .status-option:hover {
-            border-color: #94a3b8;
-        }
-
-        .status-option.active-success {
-            border-color: #10b981;
-            background: #f0fdf4;
-            color: #065f46;
-        }
-
-        .status-option.active-failed {
-            border-color: #ef4444;
-            background: #fef2f2;
-            color: #991b1b;
-        }
-
-        .status-option i {
-            display: block;
-            font-size: 1.3rem;
-            margin-bottom: 4px;
-        }
+        .save-btn { background: #0f5cbf; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; }
+        .cancel-btn { background: #e4e6eb; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; }
+        .close-modal { background: none; border: none; font-size: 1.8rem; cursor: pointer; line-height: 1; padding: 0 4px; }
 
         /* ===== TOAST ===== */
         .notification-toast {
             position: fixed;
             bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
+            right: 20px;
+            left: 20px;
+            background: #10b981;
             color: white;
-            padding: 12px 24px;
+            padding: 12px 18px;
             border-radius: 12px;
             z-index: 2000;
             display: none;
@@ -652,80 +447,15 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             font-size: 0.9rem;
             max-width: 400px;
-            width: 90%;
-            text-align: center;
+            margin: 0 auto;
         }
-        .notification-toast.success { background: #10b981; }
-        .notification-toast.error { background: #ef4444; }
-        .notification-toast.warning { background: #f59e0b; }
-
         @keyframes slideIn {
-            from { transform: translateX(-50%) translateY(100%); opacity: 0; }
-            to { transform: translateX(-50%) translateY(0); opacity: 1; }
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
         .loading { text-align: center; padding: 30px; color: #65676b; }
 
-        /* ===== RESPONSIVE BREAKPOINTS ===== */
-        @media (min-width: 600px) {
-            .offers-grid, .teachers-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (min-width: 768px) {
-            .main-wrapper {
-                grid-template-columns: 240px 1fr 240px;
-                gap: 18px;
-                padding: 0 16px;
-            }
-            .left-sidebar, .right-sidebar { display: block; }
-            .mobile-wallet { display: none; }
-            .offers-grid, .teachers-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            .nav-logo i { font-size: 1.8rem; }
-            .nav-logo span { font-size: 1.3rem; }
-        }
-
-        @media (min-width: 992px) {
-            .main-wrapper {
-                grid-template-columns: 280px 1fr 280px;
-                gap: 20px;
-                padding: 0 20px;
-            }
-            .offers-grid, .teachers-grid {
-                grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-            }
-            .nav-icon-btn {
-                width: 40px;
-                height: 40px;
-                font-size: 1.1rem;
-            }
-            .content-area { padding: 20px; }
-            .notification-dropdown {
-                width: 420px;
-                left: 50%;
-                transform: translateX(-50%);
-            }
-        }
-
-        @media (max-width: 400px) {
-            .nav-logo span { font-size: 0.9rem; }
-            .nav-logo i { font-size: 1.3rem; }
-            .nav-icon-btn { width: 30px; height: 30px; font-size: 0.8rem; }
-            .user-menu span { max-width: 35px; font-size: 0.7rem; }
-            .user-menu { padding: 3px 8px 3px 4px; }
-            .user-menu img { width: 22px; height: 22px; }
-            .content-area { padding: 12px; }
-            .section-title { font-size: 1rem; }
-            .offer-card, .teacher-card { padding: 12px; }
-            .transaction-item { flex-direction: column; align-items: stretch; }
-            .transaction-actions { justify-content: flex-end; }
-            .status-options { flex-direction: column; }
-            .modal { width: 95%; }
-        }
-
-        /* ===== RIGHT SIDEBAR ===== */
+        /* ===== RIGHT SIDEBAR (desktop only) - REMOVED NOTIFICATIONS ===== */
         .right-sidebar { position: sticky; top: 80px; height: fit-content; }
         .right-card {
             background: white;
@@ -736,7 +466,7 @@
         }
         .card-title { font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 
-        /* ===== LEFT SIDEBAR ===== */
+        /* ===== LEFT SIDEBAR (desktop only) ===== */
         .left-sidebar { position: sticky; top: 80px; height: fit-content; }
         .profile-card {
             background: white;
@@ -819,6 +549,95 @@
             flex-shrink: 0;
         }
 
+        /* ===== RESPONSIVE BREAKPOINTS ===== */
+        @media (min-width: 600px) {
+            .offers-grid, .teachers-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (min-width: 768px) {
+            .main-wrapper {
+                grid-template-columns: 240px 1fr 240px;
+                gap: 18px;
+                padding: 0 16px;
+            }
+            .left-sidebar, .right-sidebar { display: block; }
+            .mobile-wallet { display: none; }
+            .offers-grid, .teachers-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .nav-logo i { font-size: 1.8rem; }
+            .nav-logo span { font-size: 1.3rem; }
+        }
+
+        @media (min-width: 992px) {
+            .main-wrapper {
+                grid-template-columns: 280px 1fr 280px;
+                gap: 20px;
+                padding: 0 20px;
+            }
+            .offers-grid, .teachers-grid {
+                grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            }
+            .nav-icon-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 1.1rem;
+            }
+            .content-area { padding: 20px; }
+            .notification-dropdown {
+                width: 420px;
+                left: 50%;
+                transform: translateX(-50%);
+            }
+        }
+
+        @media (min-width: 1200px) {
+            .main-wrapper {
+                grid-template-columns: 300px 1fr 300px;
+                gap: 24px;
+            }
+        }
+
+        /* ===== Fix for very small screens ===== */
+        @media (max-width: 400px) {
+            .nav-logo span { font-size: 0.9rem; }
+            .nav-logo i { font-size: 1.3rem; }
+            .nav-icon-btn { width: 30px; height: 30px; font-size: 0.8rem; }
+            .user-menu span { max-width: 35px; font-size: 0.7rem; }
+            .user-menu { padding: 3px 8px 3px 4px; }
+            .user-menu img { width: 22px; height: 22px; }
+            .content-area { padding: 12px; }
+            .section-title { font-size: 1rem; }
+            .offer-card, .teacher-card { padding: 12px; }
+            .mobile-wallet .wallet-amount { font-size: 1.2rem; }
+            .mobile-deposit-btn { font-size: 0.7rem; padding: 4px 12px; }
+            .notification-dropdown {
+                width: 92vw;
+                left: 50%;
+                transform: translateX(-50%);
+                top: 42px;
+            }
+        }
+
+        /* ===== Fix for landscape mobile ===== */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .facebook-nav { padding: 4px 10px; min-height: 44px; }
+            .main-wrapper { margin-top: 52px; }
+            .profile-avatar { width: 50px; height: 50px; }
+            .left-sidebar { top: 56px; }
+            .right-sidebar { top: 56px; }
+            .notification-dropdown {
+                max-height: 300px;
+                top: 40px;
+            }
+            .notification-dropdown-body {
+                max-height: 220px;
+            }
+        }
+
+        /* ===== DROPDOWN OVERLAY ===== */
         .dropdown-overlay {
             display: none;
             position: fixed;
@@ -844,13 +663,14 @@
                 <button class="nav-icon-btn" onclick="showSection('offers')"><i class="fas fa-calendar-alt"></i></button>
                 <button class="nav-icon-btn" onclick="showSection('teachers')"><i class="fas fa-users"></i></button>
                 <button class="nav-icon-btn" onclick="showSection('bookings')"><i class="fas fa-bookmark"></i></button>
-                <button class="nav-icon-btn" onclick="showSection('transactions')"><i class="fas fa-history"></i></button>
                 
+                <!-- ===== NOTIFICATION BELL ===== -->
                 <div class="notification-bell" id="notificationBell" onclick="toggleNotifications(event)">
                     <button class="nav-icon-btn" id="bellBtn">
                         <i class="fas fa-bell"></i>
                         <span class="badge hidden" id="notifBadge">0</span>
                     </button>
+                    <!-- ===== NOTIFICATION DROPDOWN ===== -->
                     <div class="notification-dropdown" id="notifDropdown">
                         <div class="notification-dropdown-header">
                             <h4><i class="fas fa-bell"></i> الإشعارات</h4>
@@ -874,6 +694,7 @@
         </div>
     </div>
 
+    <!-- ===== DROPDOWN OVERLAY ===== -->
     <div class="dropdown-overlay" id="dropdownOverlay" onclick="closeNotifications()"></div>
 
     <div class="main-wrapper">
@@ -932,17 +753,12 @@
                 <div id="bookingsList"></div>
             </div>
             <div id="transactionsSection" style="display: none;">
-                <div class="section-header">
-                    <div class="section-title" style="margin-bottom: 0;"><i class="fas fa-history"></i> سجل المعاملات</div>
-                    <button class="add-transaction-btn" onclick="openAddTransactionModal()">
-                        <i class="fas fa-plus"></i> إضافة معاملة
-                    </button>
-                </div>
+                <div class="section-title"><i class="fas fa-history"></i> سجل المعاملات</div>
                 <div id="transactionsList"></div>
             </div>
         </div>
 
-        <!-- RIGHT SIDEBAR -->
+        <!-- RIGHT SIDEBAR - NO NOTIFICATIONS HERE ANYMORE -->
         <div class="right-sidebar">
             <div class="right-card">
                 <div class="card-title">🎁 عروض مجانية</div>
@@ -997,54 +813,14 @@
         <div class="modal-body" id="teacherModalBody"></div>
     </div>
 
-    <!-- ===== ADD TRANSACTION MODAL ===== -->
-    <div id="addTransactionModal" class="modal">
-        <div class="modal-header">
-            <h3><i class="fas fa-plus-circle"></i> إضافة معاملة جديدة</h3>
-            <button class="close-modal" onclick="closeAddTransactionModal()">&times;</button>
-        </div>
-        <div class="modal-body">
-            <label for="transTitle">عنوان المعاملة</label>
-            <input type="text" id="transTitle" placeholder="مثال: شحن رصيد، شراء حصة..." />
-
-            <label for="transAmount">المبلغ (دج)</label>
-            <input type="number" id="transAmount" placeholder="المبلغ" min="0" />
-
-            <label>حالة المعاملة</label>
-            <div class="status-options">
-                <div class="status-option active-success" id="statusSuccess" onclick="selectTransStatus('success')">
-                    <i class="fas fa-check-circle" style="color:#10b981;"></i>
-                    ناجحة
-                </div>
-                <div class="status-option" id="statusFailed" onclick="selectTransStatus('failed')">
-                    <i class="fas fa-times-circle" style="color:#ef4444;"></i>
-                    فاشلة
-                </div>
-            </div>
-
-            <label for="transNote">ملاحظة (اختياري)</label>
-            <input type="text" id="transNote" placeholder="ملاحظة إضافية..." />
-        </div>
-        <div class="modal-footer">
-            <button class="cancel-btn" onclick="closeAddTransactionModal()">إلغاء</button>
-            <button class="save-btn" id="saveTransBtn" onclick="addTransaction()">إضافة</button>
-        </div>
-    </div>
-
     <div id="notificationToast" class="notification-toast"></div>
 
     <script>
-        // ===== STATE =====
         let userData = null;
         let studentId = null;
         let currentSection = 'offers';
         let currentBalance = 0;
         let notifications = [];
-        let selectedTransStatus = 'success';
-
-        // ===== TRANSACTIONS STATE (local) =====
-        let transactions = [];
-        let nextTransId = 1;
 
         // ===== NOTIFICATION FUNCTIONS =====
         function toggleNotifications(event) {
@@ -1058,6 +834,7 @@
             } else {
                 dropdown.classList.add('show');
                 overlay.classList.add('show');
+                // تحديث الإشعارات عند فتح القائمة
                 loadNotifications();
             }
         }
@@ -1081,7 +858,9 @@
                     loadNotifications();
                     updateBadge(0);
                 }
-            } catch(e) { console.error(e); }
+            } catch(e) {
+                console.error(e);
+            }
         }
 
         function updateBadge(count) {
@@ -1094,175 +873,6 @@
                 badge.classList.add('hidden');
                 badge.classList.remove('pulse');
             }
-        }
-
-        // ===== TRANSACTIONS FUNCTIONS =====
-        function loadTransactionsFromStorage() {
-            const saved = localStorage.getItem('transactionsData');
-            if (saved) {
-                try {
-                    transactions = JSON.parse(saved);
-                    nextTransId = transactions.length > 0 ? Math.max(...transactions.map(t => t.id)) + 1 : 1;
-                } catch (e) {
-                    transactions = [];
-                    nextTransId = 1;
-                }
-            } else {
-                // بيانات افتراضية
-                transactions = [
-                    { id: 1, title: 'شحن رصيد', amount: 500, status: 'success', note: 'تم الشحن بنجاح', createdAt: new Date(Date.now() - 3600000).toISOString() },
-                    { id: 2, title: 'شراء حصة دراسية', amount: 150, status: 'success', note: 'حصة مادة الرياضيات', createdAt: new Date(Date.now() - 7200000).toISOString() },
-                    { id: 3, title: 'سحب رصيد', amount: 200, status: 'failed', note: 'رصيد غير كافٍ', createdAt: new Date(Date.now() - 86400000).toISOString() },
-                ];
-                nextTransId = 4;
-                saveTransactionsToStorage();
-            }
-            renderTransactions();
-        }
-
-        function saveTransactionsToStorage() {
-            localStorage.setItem('transactionsData', JSON.stringify(transactions));
-        }
-
-        function renderTransactions() {
-            const container = document.getElementById('transactionsList');
-            if (!container) return;
-
-            if (transactions.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-inbox"></i>
-                        <p>لا توجد معاملات حتى الآن</p>
-                        <p style="font-size: 0.8rem; margin-top: 8px;">أضف معاملة جديدة بالضغط على الزر أعلاه</p>
-                    </div>
-                `;
-                return;
-            }
-
-            const sorted = [...transactions].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-            let html = '';
-            for (const t of sorted) {
-                const isSuccess = t.status === 'success';
-                const statusText = isSuccess ? 'نجاح العملية' : 'فشل العملية';
-                const statusIcon = isSuccess ? 'fa-check-circle' : 'fa-times-circle';
-                const date = new Date(t.createdAt);
-                const timeStr = date.toLocaleString('ar', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-
-                html += `
-                    <div class="transaction-item ${isSuccess ? 'success' : 'failed'}" id="trans-${t.id}">
-                        <div class="transaction-info">
-                            <div class="transaction-title">${escapeHtml(t.title)}</div>
-                            <div class="transaction-details">
-                                <span><i class="fas fa-money-bill"></i> ${t.amount} دج</span>
-                                <span><i class="fas fa-clock"></i> ${timeStr}</span>
-                                ${t.note ? `<span><i class="fas fa-pen"></i> ${escapeHtml(t.note)}</span>` : ''}
-                                <span class="status-badge ${isSuccess ? 'success' : 'failed'}">
-                                    <i class="fas ${statusIcon}"></i>
-                                    ${statusText}
-                                </span>
-                            </div>
-                        </div>
-                        <div class="transaction-actions">
-                            <button class="delete-btn" onclick="deleteTransaction(${t.id})" title="حذف المعاملة">
-                                <i class="fas fa-trash-alt"></i>
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }
-
-            container.innerHTML = html;
-        }
-
-        function deleteTransaction(id) {
-            if (!confirm('هل أنت متأكد من حذف هذه المعاملة؟')) return;
-
-            transactions = transactions.filter(t => t.id !== id);
-            saveTransactionsToStorage();
-            renderTransactions();
-            showNotification('تم حذف المعاملة بنجاح', 'success');
-        }
-
-        function openAddTransactionModal() {
-            document.getElementById('modalOverlay').style.display = 'block';
-            document.getElementById('addTransactionModal').style.display = 'block';
-            document.getElementById('transTitle').value = '';
-            document.getElementById('transAmount').value = '';
-            document.getElementById('transNote').value = '';
-            selectedTransStatus = 'success';
-            updateTransStatusUI();
-            document.getElementById('saveTransBtn').disabled = false;
-            document.getElementById('saveTransBtn').innerHTML = 'إضافة';
-            document.getElementById('transTitle').focus();
-        }
-
-        function closeAddTransactionModal() {
-            document.getElementById('modalOverlay').style.display = 'none';
-            document.getElementById('addTransactionModal').style.display = 'none';
-        }
-
-        function selectTransStatus(status) {
-            selectedTransStatus = status;
-            updateTransStatusUI();
-        }
-
-        function updateTransStatusUI() {
-            const successEl = document.getElementById('statusSuccess');
-            const failedEl = document.getElementById('statusFailed');
-
-            successEl.className = 'status-option' + (selectedTransStatus === 'success' ? ' active-success' : '');
-            failedEl.className = 'status-option' + (selectedTransStatus === 'failed' ? ' active-failed' : '');
-        }
-
-        function addTransaction() {
-            const title = document.getElementById('transTitle').value.trim();
-            const amount = document.getElementById('transAmount').value.trim();
-            const note = document.getElementById('transNote').value.trim();
-
-            if (!title) {
-                showNotification('الرجاء إدخال عنوان المعاملة', 'error');
-                document.getElementById('transTitle').focus();
-                return;
-            }
-
-            if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
-                showNotification('الرجاء إدخال مبلغ صحيح أكبر من 0', 'error');
-                document.getElementById('transAmount').focus();
-                return;
-            }
-
-            const btn = document.getElementById('saveTransBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري...';
-
-            setTimeout(() => {
-                const newTransaction = {
-                    id: nextTransId++,
-                    title: title,
-                    amount: parseFloat(amount),
-                    status: selectedTransStatus,
-                    note: note || '',
-                    createdAt: new Date().toISOString()
-                };
-
-                transactions.push(newTransaction);
-                saveTransactionsToStorage();
-                renderTransactions();
-                closeAddTransactionModal();
-                showNotification(
-                    `تم إضافة المعاملة "${title}" بنجاح (${selectedTransStatus === 'success' ? 'ناجحة' : 'فاشلة'})`,
-                    'success'
-                );
-                btn.disabled = false;
-                btn.innerHTML = 'إضافة';
-            }, 300);
         }
 
         // ===== MAIN FUNCTIONS =====
@@ -1310,11 +920,10 @@
 
         function showNotification(message, type = 'success') {
             const toast = document.getElementById('notificationToast');
-            toast.className = 'notification-toast ' + type;
-            toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : (type === 'warning' ? 'fa-exclamation-triangle' : 'fa-times-circle')}"></i> ${message}`;
+            toast.style.background = type === 'success' ? '#10b981' : (type === 'warning' ? '#f59e0b' : '#ef4444');
+            toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'}"></i> ${message}`;
             toast.style.display = 'block';
-            clearTimeout(toast._timer);
-            toast._timer = setTimeout(() => { toast.style.display = 'none'; }, 4000);
+            setTimeout(() => { toast.style.display = 'none'; }, 4000);
         }
 
         function showSection(section) {
@@ -1327,7 +936,7 @@
             if (section === 'offers') loadOffers();
             else if (section === 'teachers') loadTeachers();
             else if (section === 'bookings') loadMyBookings();
-            else if (section === 'transactions') renderTransactions();
+            else if (section === 'transactions') loadTransactions();
         }
 
         async function loadOffers() {
@@ -1507,6 +1116,43 @@
             container.innerHTML = html;
         }
 
+        async function loadTransactions() {
+            const container = document.getElementById('transactionsList');
+            container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+            try {
+                const res = await fetch(`/api/student/wallet/${studentId}`);
+                const data = await res.json();
+                const transactions = data.transactions || [];
+                
+                if (transactions.length === 0) {
+                    container.innerHTML = '<p style="text-align:center; padding:30px;">لا توجد معاملات سابقة</p>';
+                    return;
+                }
+                
+                let html = '<div style="display: flex; flex-direction: column; gap: 10px;">';
+                for (const t of transactions) {
+                    const date = new Date(t.created_at);
+                    const isDeposit = t.type === 'deposit';
+                    html += `
+                        <div class="transaction-item" style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-weight: 700; ${isDeposit ? 'color:#10b981' : 'color:#ef4444'}">
+                                    ${isDeposit ? '➕ شحن رصيد' : '➖ خصم رصيد'}
+                                </div>
+                                <div style="font-size: 0.65rem; color: #65676b;">${date.toLocaleString('ar')}</div>
+                                <div style="font-size: 0.7rem; margin-top: 4px;">${t.description || ''}</div>
+                            </div>
+                            <div style="font-size: 1.1rem; font-weight: 700; ${isDeposit ? 'color:#10b981' : 'color:#ef4444'}">
+                                ${isDeposit ? '+' : '-'} ${t.amount} دج
+                            </div>
+                        </div>
+                    `;
+                }
+                html += '</div>';
+                container.innerHTML = html;
+            } catch(e) { showNotification('حدث خطأ', 'error'); }
+        }
+
         function loadFreeOffersSidebar(offers) {
             const freeOffers = offers.filter(o => o.is_free === 1).slice(0, 5);
             const container = document.getElementById('freeOffersSidebar');
@@ -1635,6 +1281,7 @@
                 notifications = data || [];
                 renderNotificationsDropdown(notifications);
                 
+                // تحديث العدد في الشارة
                 const unreadCount = notifications.filter(n => !n.is_read).length;
                 updateBadge(unreadCount);
             } catch(e) { console.log(e); }
@@ -1724,10 +1371,7 @@
         function escapeHtml(text) { if (!text) return ''; const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
 
         // ===== INIT =====
-        loadUserData().then(() => { 
-            showSection('offers');
-            loadTransactionsFromStorage();
-        });
+        loadUserData().then(() => { showSection('offers'); });
         
         setInterval(() => { 
             if (currentSection === 'offers') loadOffers(); 
@@ -1735,6 +1379,7 @@
             loadWallet();
         }, 30000);
         
+        // تحديث الإشعارات كل دقيقة
         setInterval(loadNotifications, 60000);
     </script>
 </body>
