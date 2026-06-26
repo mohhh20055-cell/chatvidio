@@ -15,7 +15,6 @@
             width: 100%;
         }
 
-        /* ===== NAV (responsive) ===== */
         .facebook-nav {
             background: white;
             padding: 8px 12px;
@@ -69,7 +68,6 @@
         }
         .nav-icon-btn:hover, .nav-icon-btn.active { background: #0f5cbf; color: white; }
         
-        /* ===== NOTIFICATION BELL WITH BADGE ===== */
         .notification-bell {
             position: relative;
             cursor: pointer;
@@ -102,7 +100,6 @@
             display: none;
         }
 
-        /* ===== NOTIFICATION DROPDOWN ===== */
         .notification-dropdown {
             display: none;
             position: absolute;
@@ -234,7 +231,6 @@
         .user-menu span { font-weight: 600; font-size: 0.8rem; max-width: 50px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .user-menu i { font-size: 0.7rem; }
 
-        /* ===== MAIN WRAPPER (responsive grid) ===== */
         .main-wrapper {
             max-width: 1200px;
             margin: 70px auto 20px;
@@ -245,12 +241,10 @@
             width: 100%;
         }
 
-        /* ===== SIDEBARS (hidden on mobile, shown on desktop) ===== */
         .left-sidebar, .right-sidebar {
             display: none;
         }
 
-        /* ===== CONTENT AREA (full width on mobile) ===== */
         .content-area { 
             background: white; 
             border-radius: 12px; 
@@ -270,7 +264,6 @@
             gap: 8px;
         }
 
-        /* ===== CARDS GRID (responsive) ===== */
         .offers-grid, .teachers-grid {
             display: grid;
             grid-template-columns: 1fr;
@@ -327,7 +320,6 @@
             display: block;
         }
 
-        /* ===== MOBILE WALLET (visible only on small screens) ===== */
         .mobile-wallet {
             background: linear-gradient(135deg, #10b981, #059669);
             color: white;
@@ -356,7 +348,6 @@
             font-size: 0.8rem;
         }
 
-        /* ===== BOOKINGS & TRANSACTIONS ===== */
         .booking-item, .transaction-item {
             background: #f8f9fa;
             border-radius: 12px;
@@ -375,7 +366,6 @@
             margin-top: 6px;
         }
 
-        /* ===== MODALS (responsive) ===== */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -431,7 +421,6 @@
         .cancel-btn { background: #e4e6eb; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; }
         .close-modal { background: none; border: none; font-size: 1.8rem; cursor: pointer; line-height: 1; padding: 0 4px; }
 
-        /* ===== TOAST ===== */
         .notification-toast {
             position: fixed;
             bottom: 20px;
@@ -455,7 +444,6 @@
         }
         .loading { text-align: center; padding: 30px; color: #65676b; }
 
-        /* ===== RIGHT SIDEBAR (desktop only) - REMOVED NOTIFICATIONS ===== */
         .right-sidebar { position: sticky; top: 80px; height: fit-content; }
         .right-card {
             background: white;
@@ -466,7 +454,6 @@
         }
         .card-title { font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 
-        /* ===== LEFT SIDEBAR (desktop only) ===== */
         .left-sidebar { position: sticky; top: 80px; height: fit-content; }
         .profile-card {
             background: white;
@@ -549,7 +536,19 @@
             flex-shrink: 0;
         }
 
-        /* ===== RESPONSIVE BREAKPOINTS ===== */
+        .dropdown-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 150;
+        }
+        .dropdown-overlay.show {
+            display: block;
+        }
+
         @media (min-width: 600px) {
             .offers-grid, .teachers-grid {
                 grid-template-columns: repeat(2, 1fr);
@@ -600,7 +599,6 @@
             }
         }
 
-        /* ===== Fix for very small screens ===== */
         @media (max-width: 400px) {
             .nav-logo span { font-size: 0.9rem; }
             .nav-logo i { font-size: 1.3rem; }
@@ -621,7 +619,6 @@
             }
         }
 
-        /* ===== Fix for landscape mobile ===== */
         @media (max-height: 500px) and (orientation: landscape) {
             .facebook-nav { padding: 4px 10px; min-height: 44px; }
             .main-wrapper { margin-top: 52px; }
@@ -635,20 +632,6 @@
             .notification-dropdown-body {
                 max-height: 220px;
             }
-        }
-
-        /* ===== DROPDOWN OVERLAY ===== */
-        .dropdown-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            z-index: 150;
-        }
-        .dropdown-overlay.show {
-            display: block;
         }
     </style>
 </head>
@@ -664,17 +647,15 @@
                 <button class="nav-icon-btn" onclick="showSection('teachers')"><i class="fas fa-users"></i></button>
                 <button class="nav-icon-btn" onclick="showSection('bookings')"><i class="fas fa-bookmark"></i></button>
                 
-                <!-- ===== NOTIFICATION BELL ===== -->
                 <div class="notification-bell" id="notificationBell" onclick="toggleNotifications(event)">
                     <button class="nav-icon-btn" id="bellBtn">
                         <i class="fas fa-bell"></i>
                         <span class="badge hidden" id="notifBadge">0</span>
                     </button>
-                    <!-- ===== NOTIFICATION DROPDOWN ===== -->
                     <div class="notification-dropdown" id="notifDropdown">
                         <div class="notification-dropdown-header">
                             <h4><i class="fas fa-bell"></i> الإشعارات</h4>
-                            <button class="mark-all-btn" onclick="markAllAsRead(event)">تحديد الكل كمقروء</button>
+                            <button class="mark-all-btn" id="markAllBtn" onclick="markAllAsRead(event)">تحديد الكل كمقروء</button>
                         </div>
                         <div class="notification-dropdown-body" id="notifDropdownBody">
                             <div class="notification-empty">
@@ -694,11 +675,9 @@
         </div>
     </div>
 
-    <!-- ===== DROPDOWN OVERLAY ===== -->
     <div class="dropdown-overlay" id="dropdownOverlay" onclick="closeNotifications()"></div>
 
     <div class="main-wrapper">
-        <!-- LEFT SIDEBAR -->
         <div class="left-sidebar">
             <div class="profile-card">
                 <img id="sidebarAvatar" class="profile-avatar" src="https://via.placeholder.com/80">
@@ -732,9 +711,7 @@
             </div>
         </div>
 
-        <!-- CONTENT -->
         <div class="content-area">
-            <!-- Mobile Wallet -->
             <div class="mobile-wallet">
                 <div><i class="fas fa-wallet"></i> <span class="wallet-amount" id="mobileWalletAmount">0 دج</span></div>
                 <button class="mobile-deposit-btn" onclick="showDepositModal()"><i class="fas fa-plus-circle"></i> شحن</button>
@@ -758,7 +735,6 @@
             </div>
         </div>
 
-        <!-- RIGHT SIDEBAR - NO NOTIFICATIONS HERE ANYMORE -->
         <div class="right-sidebar">
             <div class="right-card">
                 <div class="card-title">🎁 عروض مجانية</div>
@@ -771,7 +747,6 @@
         </div>
     </div>
 
-    <!-- MODALS -->
     <div id="modalOverlay" class="modal-overlay"></div>
     
     <div id="editProfileModal" class="modal">
@@ -834,7 +809,6 @@
             } else {
                 dropdown.classList.add('show');
                 overlay.classList.add('show');
-                // تحديث الإشعارات عند فتح القائمة
                 loadNotifications();
             }
         }
@@ -844,22 +818,71 @@
             document.getElementById('dropdownOverlay').classList.remove('show');
         }
 
+        // ===== إصلاح دالة تحديد الكل كمقروء =====
         async function markAllAsRead(event) {
-            if (event) event.stopPropagation();
+            if (event) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+            
+            // تعطيل الزر مؤقتاً لمنع الضغط المتكرر
+            const btn = document.getElementById('markAllBtn');
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            btn.textContent = 'جاري...';
+            
             try {
-                const res = await fetch('/api/notifications/mark-all-read', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: studentId, user_type: 'student' })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    showNotification('تم تحديد جميع الإشعارات كمقروءة', 'success');
-                    loadNotifications();
-                    updateBadge(0);
+                // جلب جميع الإشعارات غير المقروءة
+                const unreadNotifications = notifications.filter(n => !n.is_read);
+                
+                if (unreadNotifications.length === 0) {
+                    showNotification('لا توجد إشعارات غير مقروءة', 'warning');
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                    btn.textContent = 'تحديد الكل كمقروء';
+                    return;
                 }
+                
+                // إرسال طلب لكل إشعار على حدة لتحديثه
+                let successCount = 0;
+                let failedCount = 0;
+                
+                for (const notif of unreadNotifications) {
+                    try {
+                        const res = await fetch('/api/notifications/read/' + notif.id, { 
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            successCount++;
+                        } else {
+                            failedCount++;
+                        }
+                    } catch(e) {
+                        failedCount++;
+                        console.error('خطأ في تحديث الإشعار:', notif.id, e);
+                    }
+                }
+                
+                // تحديث واجهة الإشعارات
+                await loadNotifications();
+                
+                // إظهار رسالة نجاح
+                if (successCount > 0) {
+                    showNotification(`✅ تم تحديد ${successCount} إشعار كمقروء${failedCount > 0 ? ` (فشل ${failedCount})` : ''}`, 'success');
+                } else {
+                    showNotification('❌ حدث خطأ في تحديث الإشعارات', 'error');
+                }
+                
             } catch(e) {
-                console.error(e);
+                console.error('❌ خطأ في markAllAsRead:', e);
+                showNotification('❌ حدث خطأ في تحديث الإشعارات', 'error');
+            } finally {
+                // إعادة تفعيل الزر
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.textContent = 'تحديد الكل كمقروء';
             }
         }
 
@@ -1281,7 +1304,6 @@
                 notifications = data || [];
                 renderNotificationsDropdown(notifications);
                 
-                // تحديث العدد في الشارة
                 const unreadCount = notifications.filter(n => !n.is_read).length;
                 updateBadge(unreadCount);
             } catch(e) { console.log(e); }
@@ -1330,7 +1352,7 @@
                 const res = await fetch('/api/notifications/read/' + notifId, { method: 'POST' });
                 const data = await res.json();
                 if (data.success) {
-                    loadNotifications();
+                    await loadNotifications();
                     if (offerId) {
                         joinFromNotification(offerId);
                     }
@@ -1379,7 +1401,6 @@
             loadWallet();
         }, 30000);
         
-        // تحديث الإشعارات كل دقيقة
         setInterval(loadNotifications, 60000);
     </script>
 </body>
