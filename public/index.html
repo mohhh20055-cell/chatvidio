@@ -2,124 +2,609 @@
 <html lang="ar">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>ZoomDz | منصة تعليمية جزائرية</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
+        /* ===== RESET & BASE ===== */
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Cairo', sans-serif; background: linear-gradient(135deg, #f5f7fa 0%, #e9edf2 100%); min-height: 100vh; }
-        .navbar { background: white; padding: 15px 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); position: sticky; top: 0; z-index: 100; }
-        .nav-container { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
-        .logo { font-size: 1.8rem; font-weight: 800; }
-        .logo i { color: #0f5cbf; margin-left: 10px; }
-        .logo .highlight { background: linear-gradient(135deg, #0f5cbf, #1e3c72); background-clip: text; -webkit-background-clip: text; color: transparent; }
-        .nav-links { display: flex; gap: 15px; flex-wrap: wrap; align-items: center; }
-        .nav-links a { text-decoration: none; color: #4a5568; font-weight: 600; cursor: pointer; padding: 8px 15px; border-radius: 30px; transition: 0.3s; }
-        .nav-links a:hover, .nav-links a.active { background: #0f5cbf; color: white; }
-        .download-app-btn { background: #10b981; color: white; border: none; padding: 8px 18px; border-radius: 30px; cursor: pointer; font-weight: 600; transition: 0.3s; }
-        .download-app-btn:hover { background: #059669; transform: translateY(-2px); }
-        
-        .hero { max-width: 1200px; margin: 50px auto; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 40px; }
-        .hero-content { flex: 1; }
-        .hero-content h1 { font-size: 2.5rem; margin-bottom: 20px; }
-        .hero-content .highlight { color: #0f5cbf; }
-        .hero-content p { font-size: 1.1rem; color: #4a5568; margin-bottom: 30px; }
-        .hero-buttons { display: flex; gap: 15px; flex-wrap: wrap; }
-        
-        .stats-container { display: flex; gap: 20px; flex-wrap: wrap; margin: 30px 0; }
-        .stat-card { background: white; border-radius: 20px; padding: 25px 35px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); text-align: center; flex: 1; min-width: 150px; transition: 0.3s; }
-        .stat-card:hover { transform: translateY(-5px); box-shadow: 0 12px 30px rgba(0,0,0,0.12); }
-        .stat-card .number { font-size: 2.5rem; font-weight: 800; color: #0f5cbf; }
-        .stat-card .label { font-size: 1rem; color: #4a5568; margin-top: 5px; }
-        .stat-card .icon { font-size: 2rem; color: #0f5cbf; margin-bottom: 10px; display: block; }
-        
-        .btn-primary { background: #0f5cbf; color: white; border: none; padding: 12px 30px; border-radius: 40px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: 0.3s; }
-        .btn-primary:hover { background: #0b4a9c; transform: translateY(-2px); }
-        .btn-outline { background: transparent; border: 2px solid #0f5cbf; color: #0f5cbf; padding: 10px 28px; border-radius: 40px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: 0.3s; }
-        .btn-outline:hover { background: #0f5cbf10; }
-        .btn-success { background: #10b981; color: white; border: none; padding: 12px 30px; border-radius: 40px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: 0.3s; }
-        .btn-success:hover { background: #059669; transform: translateY(-2px); }
-        
-        .section-container { max-width: 1200px; margin: 50px auto; padding: 0 20px; }
-        .section-title { font-size: 2rem; margin-bottom: 30px; text-align: center; color: #1e3c72; }
-        .teachers-grid, .offers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; }
-        .teacher-card, .offer-card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); transition: 0.3s; text-align: center; cursor: pointer; }
-        .teacher-card:hover, .offer-card:hover { transform: translateY(-5px); box-shadow: 0 12px 30px rgba(0,0,0,0.12); }
-        .teacher-image { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 15px; border: 3px solid #0f5cbf; }
-        .live-badge { background: #ef4444; color: white; padding: 5px 10px; border-radius: 20px; font-size: 12px; animation: pulse 1s infinite; display: inline-block; }
-        @keyframes pulse { 0% { opacity: 0.7; } 50% { opacity: 1; } 100% { opacity: 0.7; } }
-        
-        .form-section { max-width: 600px; margin: 50px auto; padding: 0 20px; }
-        .form-tabs { display: flex; gap: 10px; justify-content: center; margin-bottom: 30px; flex-wrap: wrap; }
-        .tab-btn { padding: 12px 25px; background: #e2e8f0; border: none; border-radius: 40px; cursor: pointer; font-weight: 600; }
-        .tab-btn.active { background: #0f5cbf; color: white; }
-        .form-container { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-        .form-container input, .form-container select, .form-container textarea { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #cbd5e1; border-radius: 12px; font-family: 'Cairo', sans-serif; }
-        .form-container input[type="file"] { padding: 8px; }
-        
-        /* ===== كابتشا ===== */
+        :root {
+            --primary: #0f5cbf;
+            --primary-dark: #0b4a9c;
+            --primary-light: #e8f0fe;
+            --secondary: #10b981;
+            --secondary-dark: #059669;
+            --gradient-main: linear-gradient(135deg, #0f5cbf 0%, #1e3c72 100%);
+            --gradient-secondary: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            --gradient-hero: linear-gradient(135deg, #0f5cbf 0%, #1e3c72 100%);
+            --shadow-sm: 0 2px 8px rgba(0,0,0,0.06);
+            --shadow-md: 0 4px 20px rgba(0,0,0,0.08);
+            --shadow-lg: 0 8px 40px rgba(0,0,0,0.12);
+            --radius-sm: 12px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background: #f0f4f9; 
+            min-height: 100vh;
+            color: #1a2332;
+            overflow-x: hidden;
+        }
+
+        /* ===== SCROLLBAR ===== */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary-dark); }
+
+        /* ===== NAVBAR ===== */
+        .navbar {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(12px);
+            padding: 12px 30px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid rgba(0,0,0,0.04);
+        }
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .logo i { 
+            font-size: 2rem;
+            background: var(--gradient-main);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .logo .highlight { 
+            background: var(--gradient-secondary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .logo span {
+            background: var(--gradient-main);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .nav-links {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .nav-links a {
+            text-decoration: none;
+            color: #4a5568;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 30px;
+            transition: var(--transition);
+            font-size: 0.9rem;
+        }
+        .nav-links a:hover { background: var(--primary-light); color: var(--primary); }
+        .nav-links a.active { 
+            background: var(--primary); 
+            color: white;
+            box-shadow: 0 4px 12px rgba(15, 92, 191, 0.3);
+        }
+        .download-app-btn {
+            background: var(--gradient-secondary);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 700;
+            transition: var(--transition);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+        }
+        .download-app-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
+        }
+
+        /* ===== HERO SECTION ===== */
+        .hero {
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 40px;
+        }
+        .hero-content { flex: 1; min-width: 300px; }
+        .hero-content h1 {
+            font-size: 2.8rem;
+            font-weight: 900;
+            line-height: 1.2;
+            margin-bottom: 20px;
+            color: #1a2332;
+        }
+        .hero-content h1 .highlight {
+            background: var(--gradient-main);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero-content p {
+            font-size: 1.15rem;
+            color: #4a5568;
+            margin-bottom: 30px;
+            line-height: 1.8;
+        }
+        .hero-buttons {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .hero-image {
+            flex: 1;
+            min-width: 250px;
+            text-align: center;
+            position: relative;
+        }
+        .hero-image .floating-icon {
+            font-size: 180px;
+            color: rgba(15, 92, 191, 0.08);
+            animation: float 3s ease-in-out infinite;
+        }
+        .hero-image .badge-float {
+            position: absolute;
+            background: white;
+            border-radius: var(--radius-sm);
+            padding: 12px 18px;
+            box-shadow: var(--shadow-md);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            animation: float 3s ease-in-out infinite 0.5s;
+        }
+        .hero-image .badge-float:nth-child(2) { top: 10%; right: 5%; animation-delay: 0.2s; }
+        .hero-image .badge-float:nth-child(3) { bottom: 15%; left: 5%; animation-delay: 0.8s; }
+        .hero-image .badge-float i { color: var(--secondary); font-size: 1.3rem; }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-12px); }
+        }
+
+        /* ===== BUTTONS ===== */
+        .btn-primary {
+            background: var(--gradient-main);
+            color: white;
+            border: none;
+            padding: 12px 32px;
+            border-radius: 40px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 4px 16px rgba(15, 92, 191, 0.25);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(15, 92, 191, 0.35);
+        }
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 10px 28px;
+            border-radius: 40px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .btn-outline:hover {
+            background: var(--primary);
+            color: white;
+            transform: translateY(-2px);
+        }
+        .btn-success {
+            background: var(--gradient-secondary);
+            color: white;
+            border: none;
+            padding: 12px 32px;
+            border-radius: 40px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.25);
+        }
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.35);
+        }
+
+        /* ===== STATS ===== */
+        .stats-container {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin: 30px 0;
+        }
+        .stat-card {
+            background: white;
+            border-radius: var(--radius-md);
+            padding: 22px 30px;
+            box-shadow: var(--shadow-sm);
+            text-align: center;
+            flex: 1;
+            min-width: 130px;
+            transition: var(--transition);
+            border: 1px solid rgba(0,0,0,0.04);
+        }
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-light);
+        }
+        .stat-card .number {
+            font-size: 2.5rem;
+            font-weight: 900;
+            background: var(--gradient-main);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .stat-card .label {
+            font-size: 0.95rem;
+            color: #4a5568;
+            margin-top: 4px;
+            font-weight: 600;
+        }
+        .stat-card .icon {
+            font-size: 1.8rem;
+            color: var(--primary);
+            margin-bottom: 8px;
+            display: block;
+            opacity: 0.7;
+        }
+
+        /* ===== SECTIONS ===== */
+        .section-container {
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 0 24px;
+        }
+        .section-title {
+            font-size: 2rem;
+            font-weight: 900;
+            margin-bottom: 30px;
+            text-align: center;
+            color: #1a2332;
+            position: relative;
+        }
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 4px;
+            background: var(--gradient-main);
+            border-radius: 10px;
+        }
+        .section-title i { color: var(--primary); margin-left: 10px; }
+
+        /* ===== CARDS ===== */
+        .teachers-grid, .offers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 24px;
+            margin-top: 20px;
+        }
+        .teacher-card, .offer-card {
+            background: white;
+            border-radius: var(--radius-md);
+            padding: 24px;
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+            text-align: center;
+            cursor: pointer;
+            border: 1px solid rgba(0,0,0,0.04);
+            position: relative;
+            overflow: hidden;
+        }
+        .teacher-card::before, .offer-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-main);
+            opacity: 0;
+            transition: var(--transition);
+        }
+        .teacher-card:hover::before, .offer-card:hover::before { opacity: 1; }
+        .teacher-card:hover, .offer-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-light);
+        }
+        .teacher-image {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 14px;
+            border: 3px solid white;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        }
+        .teacher-card h3 { 
+            font-size: 1.1rem; 
+            color: #1a2332;
+            margin-bottom: 4px;
+        }
+        .teacher-card p { 
+            color: #64748b; 
+            font-size: 0.85rem;
+            margin: 4px 0;
+        }
+        .view-profile-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin-top: 14px;
+            width: 100%;
+            font-weight: 700;
+            transition: var(--transition);
+        }
+        .view-profile-btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .offer-card .offer-teacher {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 14px;
+            text-align: right;
+        }
+        .offer-card .offer-teacher img {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .offer-card .offer-teacher h3 {
+            font-size: 0.95rem;
+            color: var(--primary);
+            margin-bottom: 2px;
+        }
+        .offer-card .offer-teacher p {
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+        .offer-card .offer-subject {
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: #1a2332;
+            margin: 8px 0;
+        }
+        .offer-card .offer-details {
+            font-size: 0.85rem;
+            color: #64748b;
+            margin: 4px 0;
+        }
+        .offer-card .offer-details i { 
+            color: var(--primary); 
+            width: 20px;
+        }
+        .price-tag {
+            background: var(--gradient-secondary);
+            color: white;
+            padding: 4px 14px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-top: 8px;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+        .free-tag {
+            background: #f59e0b;
+            color: white;
+            padding: 4px 14px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-top: 8px;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+        .live-badge {
+            background: #ef4444;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            animation: pulse 1.5s infinite;
+            display: inline-block;
+            font-weight: 700;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.7; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.05); }
+        }
+
+        /* ===== FORMS ===== */
+        .form-section {
+            max-width: 560px;
+            margin: 50px auto;
+            padding: 0 20px;
+        }
+        .form-tabs {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        .tab-btn {
+            padding: 10px 24px;
+            background: #edf2f7;
+            border: none;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: 700;
+            transition: var(--transition);
+            font-size: 0.9rem;
+            color: #4a5568;
+        }
+        .tab-btn.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(15, 92, 191, 0.25);
+        }
+        .tab-btn:hover:not(.active) {
+            background: #e2e8f0;
+        }
+        .form-container {
+            background: white;
+            padding: 30px;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid rgba(0,0,0,0.04);
+        }
+        .form-container h3 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #1a2332;
+            font-size: 1.3rem;
+        }
+        .form-container h3 i { color: var(--primary); margin-left: 8px; }
+        .form-container input, 
+        .form-container select, 
+        .form-container textarea {
+            width: 100%;
+            padding: 12px 16px;
+            margin-bottom: 14px;
+            border: 2px solid #edf2f7;
+            border-radius: var(--radius-sm);
+            font-family: 'Cairo', sans-serif;
+            font-size: 0.95rem;
+            transition: var(--transition);
+            background: #fafbfc;
+        }
+        .form-container input:focus, 
+        .form-container select:focus, 
+        .form-container textarea:focus {
+            border-color: var(--primary);
+            outline: none;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(15, 92, 191, 0.06);
+        }
+        .form-container input[type="file"] {
+            padding: 8px 12px;
+            background: white;
+        }
+        .form-container label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #4a5568;
+            font-size: 0.9rem;
+        }
+        .form-container label i { color: var(--primary); margin-left: 6px; }
+
+        /* ===== CAPTCHA ===== */
         .captcha-container {
             display: flex;
             align-items: center;
-            gap: 15px;
-            margin-bottom: 15px;
+            gap: 12px;
+            margin-bottom: 14px;
             flex-wrap: wrap;
-            background: #f8f9fa;
-            padding: 10px 15px;
-            border-radius: 12px;
-            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
+            border: 2px solid #edf2f7;
         }
         .captcha-container .captcha-image {
             flex-shrink: 0;
             border-radius: 8px;
             overflow: hidden;
             cursor: pointer;
-            border: 2px solid #0f5cbf;
+            border: 2px solid var(--primary);
             background: white;
         }
         .captcha-container .captcha-image svg {
             display: block;
-            width: 150px;
-            height: 50px;
+            width: 140px;
+            height: 44px;
         }
         .captcha-container .captcha-input {
             flex: 1;
-            min-width: 120px;
+            min-width: 100px;
         }
         .captcha-container .captcha-input input {
             width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #cbd5e1;
+            padding: 8px 12px;
+            border: 2px solid #edf2f7;
             border-radius: 8px;
             font-family: 'Cairo', sans-serif;
             font-size: 0.95rem;
             direction: ltr;
             text-align: center;
             letter-spacing: 3px;
+            background: white;
+            margin: 0;
         }
         .captcha-container .captcha-input input:focus {
-            border-color: #0f5cbf;
+            border-color: var(--primary);
             outline: none;
-            box-shadow: 0 0 0 3px rgba(15, 92, 191, 0.1);
+            box-shadow: 0 0 0 3px rgba(15, 92, 191, 0.08);
         }
         .captcha-refresh-btn {
-            background: #e2e8f0;
+            background: #edf2f7;
             border: none;
-            width: 40px;
-            height: 40px;
+            width: 38px;
+            height: 38px;
             border-radius: 50%;
             cursor: pointer;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             color: #4a5568;
-            transition: 0.3s;
+            transition: var(--transition);
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
         }
         .captcha-refresh-btn:hover {
-            background: #0f5cbf;
+            background: var(--primary);
             color: white;
             transform: rotate(180deg);
         }
@@ -127,33 +612,82 @@
             color: #ef4444;
             font-size: 0.8rem;
             margin-top: -10px;
-            margin-bottom: 15px;
+            margin-bottom: 14px;
             display: none;
         }
-        .captcha-error.show {
+        .captcha-error.show { display: block; }
+
+        .forgot-link {
             display: block;
+            text-align: center;
+            margin-top: 14px;
+            color: var(--primary);
+            text-decoration: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
         }
-        
-        footer { text-align: center; padding: 30px; background: #1e2a3e; color: #94a3b8; margin-top: 50px; }
-        .price-tag { background: #10b981; color: white; padding: 5px 12px; border-radius: 20px; display: inline-block; margin-top: 10px; }
-        .free-tag { background: #f59e0b; color: white; padding: 5px 12px; border-radius: 20px; display: inline-block; margin-top: 10px; }
-        .view-profile-btn { background: #0f5cbf; color: white; border: none; padding: 8px 20px; border-radius: 25px; cursor: pointer; margin-top: 15px; width: 100%; font-weight: 600; }
-        .notification-toast { position: fixed; bottom: 30px; right: 30px; background: #10b981; color: white; padding: 15px 25px; border-radius: 15px; z-index: 2000; animation: slideIn 0.5s ease; display: none; }
-        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        .forgot-link { display: block; text-align: center; margin-top: 15px; color: #0f5cbf; text-decoration: none; cursor: pointer; font-size: 0.9rem; }
         .forgot-link:hover { text-decoration: underline; }
-        .back-link { display: block; text-align: center; margin-top: 15px; color: #0f5cbf; text-decoration: none; cursor: pointer; font-size: 0.9rem; }
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 14px;
+            color: var(--primary);
+            text-decoration: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
         .back-link:hover { text-decoration: underline; }
-        .support-card { background: white; border-radius: 20px; padding: 30px; margin: 30px auto; max-width: 800px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-        .support-card h3 { color: #1e3c72; margin-bottom: 20px; text-align: center; }
-        .support-card .form-group { margin-bottom: 15px; }
-        .support-card label { display: block; margin-bottom: 8px; font-weight: 600; color: #4a5568; }
-        .support-card input, .support-card textarea { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 12px; font-family: 'Cairo', sans-serif; }
-        .support-card textarea { resize: vertical; min-height: 120px; }
-        .hero-image { flex: 1; text-align: center; }
-        .hero-image i { font-size: 200px; color: #0f5cbf15; }
-        
-        /* ===== صفحة تحميل التطبيق ===== */
+
+        /* ===== SUPPORT ===== */
+        .support-card {
+            background: white;
+            border-radius: var(--radius-md);
+            padding: 30px;
+            margin: 30px auto;
+            max-width: 800px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid rgba(0,0,0,0.04);
+        }
+        .support-card h3 {
+            color: #1a2332;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 1.4rem;
+        }
+        .support-card h3 i { color: var(--primary); margin-left: 8px; }
+        .support-card .form-group { margin-bottom: 16px; }
+        .support-card label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #4a5568;
+        }
+        .support-card input, 
+        .support-card textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #edf2f7;
+            border-radius: var(--radius-sm);
+            font-family: 'Cairo', sans-serif;
+            font-size: 0.95rem;
+            transition: var(--transition);
+            background: #fafbfc;
+        }
+        .support-card input:focus, 
+        .support-card textarea:focus {
+            border-color: var(--primary);
+            outline: none;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(15, 92, 191, 0.06);
+        }
+        .support-card textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        /* ===== DOWNLOAD APP ===== */
         .download-app-section {
             max-width: 800px;
             margin: 50px auto;
@@ -161,98 +695,104 @@
         }
         .download-card {
             background: white;
-            border-radius: 24px;
+            border-radius: var(--radius-lg);
             padding: 50px 40px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            box-shadow: var(--shadow-sm);
             text-align: center;
+            border: 1px solid rgba(0,0,0,0.04);
         }
         .download-card .app-icon {
-            font-size: 5rem;
-            color: #0f5cbf;
-            margin-bottom: 20px;
+            font-size: 4.5rem;
+            background: var(--gradient-main);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 16px;
         }
         .download-card h2 {
             font-size: 2rem;
-            color: #1e3c72;
-            margin-bottom: 15px;
+            color: #1a2332;
+            margin-bottom: 10px;
         }
+        .download-card h2 i { color: var(--primary); }
         .download-card p {
             color: #4a5568;
-            font-size: 1.1rem;
-            margin-bottom: 10px;
+            font-size: 1.05rem;
+            margin-bottom: 8px;
         }
         .download-card .features {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin: 30px 0;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin: 25px 0;
             text-align: right;
         }
         .download-card .features .feature {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 12px;
+            background: #f8fafc;
+            padding: 14px;
+            border-radius: var(--radius-sm);
             display: flex;
             align-items: center;
             gap: 10px;
+            border: 1px solid rgba(0,0,0,0.04);
         }
         .download-card .features .feature i {
-            color: #10b981;
-            font-size: 1.3rem;
+            color: var(--secondary);
+            font-size: 1.2rem;
         }
         .download-card .features .feature span {
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             color: #4a5568;
+            font-weight: 600;
         }
         .download-btn-android {
             background: #3ddc84;
             color: #1a1a1a;
             border: none;
-            padding: 18px 45px;
+            padding: 16px 40px;
             border-radius: 50px;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: 700;
             cursor: pointer;
-            transition: 0.3s;
+            transition: var(--transition);
             display: inline-flex;
             align-items: center;
-            gap: 15px;
-            margin-top: 10px;
-            box-shadow: 0 4px 15px rgba(61, 220, 132, 0.3);
+            gap: 14px;
+            margin-top: 8px;
+            box-shadow: 0 4px 20px rgba(61, 220, 132, 0.35);
         }
         .download-btn-android:hover {
             transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(61, 220, 132, 0.4);
+            box-shadow: 0 8px 30px rgba(61, 220, 132, 0.45);
         }
-        .download-btn-android i {
-            font-size: 2rem;
-        }
+        .download-btn-android i { font-size: 1.8rem; }
         .download-card .qr-code {
-            margin: 30px 0;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 16px;
+            margin: 25px 0;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: var(--radius-sm);
             display: inline-block;
+            border: 1px solid rgba(0,0,0,0.04);
         }
         .download-card .qr-code img {
-            width: 150px;
-            height: 150px;
-            border-radius: 12px;
+            width: 140px;
+            height: 140px;
+            border-radius: 10px;
         }
         .download-card .version-info {
             color: #94a3b8;
             font-size: 0.8rem;
-            margin-top: 20px;
+            margin-top: 16px;
         }
         .download-card .install-instructions {
-            background: #f0f7ff;
-            border-radius: 12px;
-            padding: 15px 20px;
-            margin-top: 20px;
+            background: var(--primary-light);
+            border-radius: var(--radius-sm);
+            padding: 16px 20px;
+            margin-top: 18px;
             text-align: right;
         }
         .download-card .install-instructions h4 {
-            color: #0f5cbf;
+            color: var(--primary);
             margin-bottom: 10px;
         }
         .download-card .install-instructions ol {
@@ -260,42 +800,114 @@
             color: #4a5568;
             font-size: 0.9rem;
         }
-        .download-card .install-instructions ol li {
-            margin-bottom: 5px;
+        .download-card .install-instructions ol li { margin-bottom: 4px; }
+
+        /* ===== FOOTER ===== */
+        footer {
+            text-align: center;
+            padding: 30px;
+            background: #1a2332;
+            color: #94a3b8;
+            margin-top: 50px;
         }
-        
+        footer p { margin: 4px 0; }
+        footer i { color: var(--secondary); }
+
+        /* ===== TOAST ===== */
+        .notification-toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            left: 24px;
+            background: #1a2332;
+            color: white;
+            padding: 14px 20px;
+            border-radius: var(--radius-sm);
+            z-index: 2000;
+            display: none;
+            animation: slideIn 0.3s ease;
+            box-shadow: var(--shadow-lg);
+            font-size: 0.9rem;
+            max-width: 420px;
+            margin: 0 auto;
+            border-right: 4px solid var(--secondary);
+        }
+        .notification-toast.error { border-color: #ef4444; }
+        .notification-toast.warning { border-color: #f59e0b; }
+        @keyframes slideIn {
+            from { transform: translateY(100%) scale(0.95); opacity: 0; }
+            to { transform: translateY(0) scale(1); opacity: 1; }
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #94a3b8;
+        }
+        .loading i { color: var(--primary); }
+
+        /* ===== RESPONSIVE ===== */
         @media (max-width: 768px) {
-            .hero-content h1 { font-size: 1.8rem; }
-            .nav-links a { padding: 5px 10px; font-size: 14px; }
+            .hero-content h1 { font-size: 2rem; }
+            .nav-links a { padding: 6px 12px; font-size: 0.8rem; }
             .teachers-grid, .offers-grid { grid-template-columns: 1fr; }
             .stats-container { flex-direction: column; }
             .stat-card { min-width: auto; }
-            .hero-image i { font-size: 120px; }
-            .captcha-container { flex-direction: column; align-items: stretch; }
-            .captcha-container .captcha-image svg { width: 100%; height: 45px; }
+            .hero-image .floating-icon { font-size: 100px; }
+            .hero-image .badge-float { display: none; }
             .download-card { padding: 30px 20px; }
             .download-card h2 { font-size: 1.5rem; }
-            .download-btn-android { padding: 14px 30px; font-size: 1rem; }
+            .download-btn-android { padding: 12px 24px; font-size: 1rem; }
             .download-card .features { grid-template-columns: 1fr; }
+            .captcha-container { flex-direction: column; align-items: stretch; }
+            .captcha-container .captcha-image svg { width: 100%; height: 40px; }
+            .navbar { padding: 10px 16px; }
+            .logo { font-size: 1.4rem; }
+            .logo i { font-size: 1.5rem; }
+            .section-title { font-size: 1.6rem; }
+        }
+
+        @media (max-width: 400px) {
+            .hero-content h1 { font-size: 1.6rem; }
+            .hero-buttons .btn-primary, 
+            .hero-buttons .btn-outline, 
+            .hero-buttons .btn-success {
+                width: 100%;
+                text-align: center;
+            }
+            .nav-links a { padding: 4px 10px; font-size: 0.75rem; }
+            .download-btn-android { width: 100%; justify-content: center; }
+            .form-container { padding: 20px; }
         }
     </style>
 </head>
 <body>
+    <!-- ===== NAVBAR ===== -->
     <nav class="navbar">
         <div class="nav-container">
-            <div class="logo"><i class="fas fa-chalkboard-user"></i><span>Zoom<span class="highlight">Dz</span></span></div>
+            <div class="logo" onclick="showHome()">
+                <i class="fas fa-graduation-cap"></i>
+                <span>Zoom<span class="highlight">Dz</span></span>
+            </div>
             <div class="nav-links">
                 <a onclick="showHome()" id="homeTab" class="active">الرئيسية</a>
                 <a onclick="showTeachers()" id="teachersTab">الأساتذة</a>
-                <a onclick="showOffers()" id="offersTab">العروض المتاحة</a>
-                <a onclick="showLiveStreams()" id="liveTab">بث مباشر <span id="liveCount" class="live-badge" style="display:none; padding:2px 8px;">0</span></a>
+                <a onclick="showOffers()" id="offersTab">العروض</a>
+                <a onclick="showLiveStreams()" id="liveTab">
+                    بث مباشر 
+                    <span id="liveCount" class="live-badge" style="display:none; padding:2px 10px; font-size:0.6rem;">0</span>
+                </a>
                 <a onclick="showLogin()" id="loginTabNav">تسجيل الدخول</a>
-                <button class="download-app-btn" onclick="showDownloadApp()"><i class="fas fa-download"></i> تحميل التطبيق</button>
+                <button class="download-app-btn" onclick="showDownloadApp()">
+                    <i class="fas fa-download"></i> تحميل التطبيق
+                </button>
             </div>
         </div>
     </nav>
 
+    <!-- ===== MAIN ===== -->
     <main>
+        <!-- ===== HOME SECTION ===== -->
         <section id="homeSection" class="hero">
             <div class="hero-content">
                 <h1>تعلم مع أفضل الأساتذة <span class="highlight">في الجزائر</span></h1>
@@ -332,25 +944,37 @@
                 </div>
             </div>
             <div class="hero-image">
-                <i class="fas fa-laptop-code"></i>
+                <div class="floating-icon"><i class="fas fa-laptop-code"></i></div>
+                <div class="badge-float">
+                    <i class="fas fa-video"></i>
+                    <span>دروس مباشرة</span>
+                </div>
+                <div class="badge-float">
+                    <i class="fas fa-star"></i>
+                    <span>أفضل الأساتذة</span>
+                </div>
             </div>
         </section>
 
+        <!-- ===== TEACHERS SECTION ===== -->
         <section id="teachersSection" class="section-container" style="display: none;">
             <h2 class="section-title"><i class="fas fa-users"></i> أساتذتنا المعتمدون</h2>
             <div id="teachersList" class="teachers-grid"></div>
         </section>
 
+        <!-- ===== OFFERS SECTION ===== -->
         <section id="offersSection" class="section-container" style="display: none;">
             <h2 class="section-title"><i class="fas fa-calendar-alt"></i> العروض المتاحة</h2>
             <div id="offersListPublic" class="offers-grid"></div>
         </section>
 
+        <!-- ===== LIVE SECTION ===== -->
         <section id="liveSection" class="section-container" style="display: none;">
             <h2 class="section-title"><i class="fas fa-video"></i> بث مباشر الآن 🔴</h2>
             <div id="liveOffersList" class="offers-grid"></div>
         </section>
 
+        <!-- ===== LOGIN SECTION ===== -->
         <section id="loginSection" class="form-section" style="display: none;">
             <div class="form-tabs">
                 <button class="tab-btn active" onclick="switchTab('login')">تسجيل الدخول</button>
@@ -358,8 +982,9 @@
                 <button class="tab-btn" onclick="switchTab('teacher-register')">تسجيل أستاذ</button>
             </div>
 
+            <!-- Login Tab -->
             <div id="loginTab" class="form-container">
-                <h3>تسجيل الدخول</h3>
+                <h3><i class="fas fa-sign-in-alt"></i> تسجيل الدخول</h3>
                 <input type="email" id="loginEmail" placeholder="البريد الإلكتروني">
                 <input type="password" id="loginPassword" placeholder="كلمة المرور">
                 <select id="loginRole">
@@ -378,10 +1003,11 @@
                 </div>
                 <div id="loginCaptchaError" class="captcha-error"></div>
                 
-                <button class="btn-primary" onclick="login()">دخول</button>
+                <button class="btn-primary" onclick="login()" style="width:100%;">دخول</button>
                 <a href="#" class="forgot-link" onclick="showForgotPassword()"><i class="fas fa-key"></i> نسيت كلمة المرور؟</a>
             </div>
 
+            <!-- Forgot Password Tab -->
             <div id="forgotPasswordTab" class="form-container" style="display: none;">
                 <h3><i class="fas fa-key"></i> استعادة كلمة المرور</h3>
                 <p style="color: #64748b; margin-bottom: 15px;">أدخل بريدك الإلكتروني وسنرسل لك رابطاً لإعادة تعيين كلمة المرور</p>
@@ -396,8 +1022,9 @@
                 <a href="#" class="back-link" onclick="hideForgotPassword()"><i class="fas fa-arrow-right"></i> العودة إلى تسجيل الدخول</a>
             </div>
 
+            <!-- Student Register Tab -->
             <div id="studentRegisterTab" class="form-container" style="display: none;">
-                <h3>تسجيل طالب جديد</h3>
+                <h3><i class="fas fa-user-plus"></i> تسجيل طالب جديد</h3>
                 <input type="text" id="studentName" placeholder="الاسم الكامل">
                 <input type="email" id="studentEmail" placeholder="البريد الإلكتروني">
                 <input type="password" id="studentPassword" placeholder="كلمة المرور">
@@ -414,11 +1041,12 @@
                 </div>
                 <div id="studentCaptchaError" class="captcha-error"></div>
                 
-                <button class="btn-primary" onclick="registerStudent()">تسجيل</button>
+                <button class="btn-primary" onclick="registerStudent()" style="width:100%;">تسجيل</button>
             </div>
 
+            <!-- Teacher Register Tab -->
             <div id="teacherRegisterTab" class="form-container" style="display: none;">
-                <h3>تقديم طلب أستاذ</h3>
+                <h3><i class="fas fa-chalkboard-user"></i> تقديم طلب أستاذ</h3>
                 <input type="text" id="teacherName" placeholder="الاسم الكامل" required>
                 <input type="email" id="teacherEmail" placeholder="البريد الإلكتروني" required>
                 <input type="password" id="teacherPassword" placeholder="كلمة المرور" required>
@@ -444,19 +1072,16 @@
                 </div>
                 <div id="teacherCaptchaError" class="captcha-error"></div>
                 
-                <button class="btn-primary" onclick="registerTeacher()">تقديم الطلب</button>
+                <button class="btn-primary" onclick="registerTeacher()" style="width:100%;">تقديم الطلب</button>
             </div>
         </section>
 
-        <!-- ===== صفحة تحميل التطبيق ===== -->
+        <!-- ===== DOWNLOAD APP SECTION ===== -->
         <section id="downloadAppSection" class="download-app-section" style="display: none;">
             <div class="download-card">
-                <div class="app-icon">
-                    <i class="fas fa-chalkboard-user"></i>
-                </div>
-                <h2>📱 تحميل تطبيق ZoomDz</h2>
-                <p>تطبيق ZoomDz للتعليم عن بعد</p>
-                <p style="color: #10b981; font-weight: 700;">🎓 تعلم مع أفضل الأساتذة في الجزائر</p>
+                <div class="app-icon"><i class="fas fa-graduation-cap"></i></div>
+                <h2>📱 تحميل تطبيق <span style="color:var(--primary);">ZoomDz</span></h2>
+                <p style="font-weight: 600; color: var(--secondary);">🎓 تعلم مع أفضل الأساتذة في الجزائر</p>
                 
                 <div class="features">
                     <div class="feature">
@@ -502,6 +1127,7 @@
             </div>
         </section>
 
+        <!-- ===== SUPPORT SECTION ===== -->
         <section id="supportSection" class="section-container" style="display: none;">
             <div class="support-card">
                 <h3><i class="fas fa-headset"></i> تواصل مع الدعم الفني</h3>
@@ -532,22 +1158,24 @@
         </section>
     </main>
 
+    <!-- ===== FOOTER ===== -->
     <footer>
         <p>© 2024 ZoomDz - منصة التعليم الجزائرية - جميع الحقوق محفوظة</p>
         <p><i class="fas fa-credit-card"></i> الدفع عبر شارجيلي | EDAHABIA | CCP</p>
     </footer>
 
+    <!-- ===== TOAST ===== -->
     <div id="notificationToast" class="notification-toast"></div>
 
     <script>
-        // ===== متغيرات الكابتشا =====
+        // ===== CAPTCHA VARIABLES =====
         const captchaData = {
             login: { id: null, image: null },
             student: { id: null, image: null },
             teacher: { id: null, image: null }
         };
 
-        // ===== دوال الكابتشا =====
+        // ===== CAPTCHA FUNCTIONS =====
         async function refreshCaptcha(type) {
             try {
                 const response = await fetch('/api/captcha/generate');
@@ -638,14 +1266,18 @@
             refreshCaptcha('teacher');
         }
 
+        // ===== NOTIFICATION =====
         function showNotification(message, type = 'success') {
             const toast = document.getElementById('notificationToast');
-            toast.style.background = type === 'success' ? '#10b981' : '#ef4444';
+            toast.className = 'notification-toast';
+            if (type === 'error') toast.classList.add('error');
+            else if (type === 'warning') toast.classList.add('warning');
             toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'}"></i> ${message}`;
             toast.style.display = 'block';
             setTimeout(() => { toast.style.display = 'none'; }, 5000);
         }
 
+        // ===== STATS =====
         async function loadStats() {
             try {
                 const response = await fetch('/api/public/stats');
@@ -673,6 +1305,7 @@
             }
         }
 
+        // ===== NAVIGATION =====
         function showHome() {
             document.getElementById('homeSection').style.display = 'flex';
             document.getElementById('teachersSection').style.display = 'none';
@@ -707,6 +1340,17 @@
             setActiveTab('');
         }
 
+        function setActiveTab(tabId) {
+            const tabs = ['homeTab', 'teachersTab', 'offersTab', 'liveTab', 'loginTabNav'];
+            tabs.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.remove('active');
+            });
+            const activeEl = document.getElementById(tabId);
+            if (activeEl) activeEl.classList.add('active');
+        }
+
+        // ===== SUPPORT FORM =====
         document.getElementById('supportForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -747,6 +1391,7 @@
             }
         });
 
+        // ===== TEACHERS =====
         async function showTeachers() {
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'block';
@@ -759,6 +1404,40 @@
             await loadPublicTeachers();
         }
 
+        async function loadPublicTeachers() {
+            const container = document.getElementById('teachersList');
+            container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+            try {
+                const res = await fetch('/api/public/teachers');
+                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                const teachers = await res.json();
+                
+                if (!teachers || teachers.length === 0) {
+                    container.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8;">لا يوجد أساتذة معتمدون حالياً</p>';
+                    return;
+                }
+                let html = '';
+                teachers.forEach(t => {
+                    const imageUrl = t.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(t.full_name) + '&background=0f5cbf&color=fff&size=90';
+                    html += `<div class="teacher-card" onclick="viewTeacherProfile(${t.id})">
+                        <img src="${imageUrl}" class="teacher-image" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${escapeHtml(t.full_name)}')+'&background=0f5cbf&color=fff&size=90'">
+                        <h3>${escapeHtml(t.full_name)}</h3>
+                        <p><i class="fas fa-book"></i> ${escapeHtml(t.specialization || 'تخصص عام')}</p>
+                        <p><i class="fas fa-briefcase"></i> ${t.experience || '0'} سنة خبرة</p>
+                        <p style="font-size:0.8rem; color:#64748b;">${t.bio ? escapeHtml(t.bio.substring(0, 80)) + '...' : 'لا توجد نبذة'}</p>
+                        <button class="view-profile-btn" onclick="event.stopPropagation(); viewTeacherProfile(${t.id})">
+                            <i class="fas fa-eye"></i> زيارة صفحة الأستاذ
+                        </button>
+                    </div>`;
+                });
+                container.innerHTML = html;
+            } catch(e) {
+                console.error(e);
+                container.innerHTML = '<p style="text-align:center; padding:40px; color:#ef4444;">❌ حدث خطأ في تحميل البيانات</p>';
+            }
+        }
+
+        // ===== OFFERS =====
         async function showOffers() {
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
@@ -771,6 +1450,49 @@
             await loadPublicOffers();
         }
 
+        async function loadPublicOffers() {
+            const container = document.getElementById('offersListPublic');
+            container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+            try {
+                const res = await fetch('/api/public/offers');
+                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                const offers = await res.json();
+                
+                if (!offers || offers.length === 0) {
+                    container.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8;">لا توجد عروض متاحة حالياً</p>';
+                    return;
+                }
+                let html = '';
+                offers.forEach(o => {
+                    const offerDate = new Date(o.offer_date);
+                    const imageUrl = o.teacher_profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(o.teacher_name) + '&background=0f5cbf&color=fff&size=50';
+                    html += `<div class="offer-card">
+                        <div class="offer-teacher" onclick="viewTeacherProfile(${o.teacher_id})">
+                            <img src="${imageUrl}" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${escapeHtml(o.teacher_name)}')+'&background=0f5cbf&color=fff&size=50'">
+                            <div>
+                                <h3>${escapeHtml(o.teacher_name)}</h3>
+                                <p><i class="fas fa-book"></i> ${escapeHtml(o.teacher_specialization || 'تخصص عام')}</p>
+                            </div>
+                        </div>
+                        <div class="offer-subject">${escapeHtml(o.subject_name)}</div>
+                        <div class="offer-details"><i class="fas fa-calendar-alt"></i> ${offerDate.toLocaleString('ar')}</div>
+                        <div class="offer-details"><i class="fas fa-clock"></i> ${o.duration} دقيقة</div>
+                        <div>
+                            ${o.is_free ? '<span class="free-tag"><i class="fas fa-gift"></i> مجانية</span>' : '<span class="price-tag"><i class="fas fa-money-bill"></i> ' + o.price + ' دج</span>'}
+                        </div>
+                        <button class="view-profile-btn" onclick="viewTeacherProfile(${o.teacher_id})" style="margin-top:14px;">
+                            <i class="fas fa-eye"></i> زيارة صفحة الأستاذ
+                        </button>
+                    </div>`;
+                });
+                container.innerHTML = html;
+            } catch(e) {
+                console.error(e);
+                container.innerHTML = '<p style="text-align:center; padding:40px; color:#ef4444;">❌ حدث خطأ في تحميل البيانات</p>';
+            }
+        }
+
+        // ===== LIVE STREAMS =====
         async function showLiveStreams() {
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
@@ -783,6 +1505,53 @@
             await loadLiveStreams();
         }
 
+        async function loadLiveStreams() {
+            const container = document.getElementById('liveOffersList');
+            try {
+                const res = await fetch('/api/live-offers');
+                const offers = await res.json();
+                const liveCount = document.getElementById('liveCount');
+                if (offers && offers.length > 0) {
+                    liveCount.style.display = 'inline-block';
+                    liveCount.innerText = offers.length;
+                } else {
+                    liveCount.style.display = 'none';
+                }
+                if (!offers || offers.length === 0) {
+                    container.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8;">لا يوجد بث مباشر حالياً</p>';
+                    return;
+                }
+                let html = '';
+                offers.forEach(o => {
+                    const imageUrl = o.teacher_profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(o.teacher_name) + '&background=0f5cbf&color=fff&size=50';
+                    html += `<div class="offer-card">
+                        <div class="offer-teacher" onclick="viewTeacherProfile(${o.teacher_id})">
+                            <img src="${imageUrl}" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${escapeHtml(o.teacher_name)}')+'&background=0f5cbf&color=fff&size=50'">
+                            <div>
+                                <h3>${escapeHtml(o.teacher_name)}</h3>
+                                <p><i class="fas fa-book"></i> ${escapeHtml(o.teacher_specialization || 'تخصص عام')}</p>
+                            </div>
+                        </div>
+                        <div class="offer-subject">${escapeHtml(o.subject_name)}</div>
+                        <span class="live-badge" style="display:inline-block; margin:8px 0;">🔴 بث مباشر</span>
+                        <button class="view-profile-btn" onclick="viewTeacherProfile(${o.teacher_id})" style="margin-top:10px;">
+                            <i class="fas fa-eye"></i> زيارة صفحة الأستاذ
+                        </button>
+                    </div>`;
+                });
+                container.innerHTML = html;
+            } catch(e) {
+                console.error(e);
+                container.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8;">لا يوجد بث مباشر حالياً</p>';
+            }
+        }
+
+        // ===== VIEW TEACHER PROFILE =====
+        function viewTeacherProfile(teacherId) {
+            window.open(`/teacher-profile.html?id=${teacherId}`, '_blank');
+        }
+
+        // ===== LOGIN / REGISTER =====
         function showLogin() {
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
@@ -852,134 +1621,6 @@
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-paper-plane"></i> إرسال رابط إعادة التعيين';
             }
-        }
-
-        function setActiveTab(tabId) {
-            const tabs = ['homeTab', 'teachersTab', 'offersTab', 'liveTab', 'loginTabNav'];
-            tabs.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.classList.remove('active');
-            });
-            const activeEl = document.getElementById(tabId);
-            if (activeEl) activeEl.classList.add('active');
-        }
-
-        async function loadPublicTeachers() {
-            const container = document.getElementById('teachersList');
-            container.innerHTML = '<div class="loading" style="text-align:center; padding:40px;"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
-            try {
-                const res = await fetch('/api/public/teachers');
-                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-                const teachers = await res.json();
-                
-                if (!teachers || teachers.length === 0) {
-                    container.innerHTML = '<p style="text-align:center">لا يوجد أساتذة معتمدون حالياً</p>';
-                    return;
-                }
-                let html = '';
-                teachers.forEach(t => {
-                    const imageUrl = t.profile_url || 'https://via.placeholder.com/100';
-                    html += `<div class="teacher-card" onclick="viewTeacherProfile(${t.id})">
-                        <img src="${imageUrl}" class="teacher-image" onerror="this.src='https://via.placeholder.com/100'">
-                        <h3>${escapeHtml(t.full_name)}</h3>
-                        <p><i class="fas fa-book"></i> ${escapeHtml(t.specialization || 'تخصص عام')}</p>
-                        <p><i class="fas fa-briefcase"></i> ${t.experience || '0'} سنة خبرة</p>
-                        <p><i class="fas fa-align-left"></i> ${t.bio ? escapeHtml(t.bio.substring(0, 80)) + '...' : 'لا توجد نبذة'}</p>
-                        <button class="view-profile-btn" onclick="event.stopPropagation(); viewTeacherProfile(${t.id})">
-                            <i class="fas fa-eye"></i> زيارة صفحة الأستاذ
-                        </button>
-                    </div>`;
-                });
-                container.innerHTML = html;
-            } catch(e) {
-                console.error(e);
-                container.innerHTML = '<p style="text-align:center; color:#ef4444;">حدث خطأ في تحميل البيانات</p>';
-            }
-        }
-
-        async function loadPublicOffers() {
-            const container = document.getElementById('offersListPublic');
-            container.innerHTML = '<div class="loading" style="text-align:center; padding:40px;"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
-            try {
-                const res = await fetch('/api/public/offers');
-                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-                const offers = await res.json();
-                
-                if (!offers || offers.length === 0) {
-                    container.innerHTML = '<p style="text-align:center">لا توجد عروض متاحة حالياً</p>';
-                    return;
-                }
-                let html = '';
-                offers.forEach(o => {
-                    const offerDate = new Date(o.offer_date);
-                    const imageUrl = o.teacher_profile_url || 'https://via.placeholder.com/80';
-                    html += `<div class="offer-card">
-                        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px; cursor: pointer;" onclick="viewTeacherProfile(${o.teacher_id})">
-                            <img src="${imageUrl}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;" onerror="this.src='https://via.placeholder.com/60'">
-                            <div>
-                                <h3 style="margin-bottom: 5px; color:#0f5cbf;">${escapeHtml(o.teacher_name)}</h3>
-                                <p><i class="fas fa-book"></i> ${escapeHtml(o.teacher_specialization || 'تخصص عام')}</p>
-                            </div>
-                        </div>
-                        <p><strong>${escapeHtml(o.subject_name)}</strong></p>
-                        <p><i class="fas fa-calendar"></i> ${offerDate.toLocaleString('ar')}</p>
-                        <p><i class="fas fa-clock"></i> ${o.duration} دقيقة</p>
-                        ${o.is_free ? '<span class="free-tag"><i class="fas fa-gift"></i> مجانية</span>' : '<span class="price-tag"><i class="fas fa-money-bill"></i> ' + o.price + ' دج</span>'}
-                        <button class="btn-primary" onclick="viewTeacherProfile(${o.teacher_id})" style="margin-top:15px; width:100%">
-                            <i class="fas fa-eye"></i> زيارة صفحة الأستاذ
-                        </button>
-                    </div>`;
-                });
-                container.innerHTML = html;
-            } catch(e) {
-                console.error(e);
-                container.innerHTML = '<p style="text-align:center; color:#ef4444;">حدث خطأ في تحميل البيانات</p>';
-            }
-        }
-
-        async function loadLiveStreams() {
-            const container = document.getElementById('liveOffersList');
-            try {
-                const res = await fetch('/api/live-offers');
-                const offers = await res.json();
-                const liveCount = document.getElementById('liveCount');
-                if (offers && offers.length > 0) {
-                    liveCount.style.display = 'inline-block';
-                    liveCount.innerText = offers.length;
-                } else {
-                    liveCount.style.display = 'none';
-                }
-                if (!offers || offers.length === 0) {
-                    container.innerHTML = '<p style="text-align:center">لا يوجد بث مباشر حالياً</p>';
-                    return;
-                }
-                let html = '';
-                offers.forEach(o => {
-                    const imageUrl = o.teacher_profile_url || 'https://via.placeholder.com/80';
-                    html += `<div class="offer-card">
-                        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px; cursor: pointer;" onclick="viewTeacherProfile(${o.teacher_id})">
-                            <img src="${imageUrl}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;" onerror="this.src='https://via.placeholder.com/60'">
-                            <div>
-                                <h3 style="margin-bottom: 5px; color:#0f5cbf;">${escapeHtml(o.teacher_name)}</h3>
-                                <p><i class="fas fa-book"></i> ${escapeHtml(o.teacher_specialization || 'تخصص عام')}</p>
-                            </div>
-                        </div>
-                        <p><strong>${escapeHtml(o.subject_name)}</strong></p>
-                        <span class="live-badge" style="display:inline-block; margin-bottom:10px;">🔴 بث مباشر</span>
-                        <button class="btn-primary" onclick="viewTeacherProfile(${o.teacher_id})" style="width:100%">
-                            <i class="fas fa-eye"></i> زيارة صفحة الأستاذ
-                        </button>
-                    </div>`;
-                });
-                container.innerHTML = html;
-            } catch(e) {
-                console.error(e);
-                container.innerHTML = '<p style="text-align:center">لا يوجد بث مباشر حالياً</p>';
-            }
-        }
-
-        function viewTeacherProfile(teacherId) {
-            window.open(`/teacher-profile.html?id=${teacherId}`, '_blank');
         }
 
         function switchTab(tab) {
@@ -1119,7 +1760,7 @@
             return div.innerHTML;
         }
 
-        // ===== بدء التشغيل =====
+        // ===== INIT =====
         showHome();
         setInterval(loadLiveStreams, 30000);
         setInterval(loadStats, 60000);
