@@ -167,14 +167,6 @@ if (cluster.isMaster) {
         }
         next();
     });
-    const app = express();
-
-// ==== أضف هذا السطر ====
-app.set('trust proxy', true);
-// ======================
-
-app.use(compression({...}));
-
     // ===== تحسين اتصالات HTTP =====
     const httpAgent = new https.Agent({
         keepAlive: true,
