@@ -73,7 +73,7 @@
         .header { 
             background: var(--gradient-hero); 
             color: white; 
-            padding: 40px 30px 30px; 
+            padding: 30px 30px 25px; 
             border-radius: var(--radius-lg); 
             text-align: center; 
             margin-bottom: 30px; 
@@ -104,134 +104,6 @@
             pointer-events: none;
         }
 
-        /* ===== SOCIAL LINKS - محسّن ===== */
-        .social-section {
-            margin: 10px 0 16px;
-            position: relative;
-            z-index: 1;
-        }
-        .social-section .social-label {
-            font-size: 0.7rem;
-            opacity: 0.6;
-            margin-bottom: 8px;
-            display: block;
-            font-weight: 600;
-            letter-spacing: 1px;
-        }
-        .social-links { 
-            display: flex; 
-            justify-content: center; 
-            gap: 12px; 
-            flex-wrap: wrap;
-            position: relative;
-            z-index: 1;
-        }
-        .social-links a { 
-            color: white; 
-            font-size: 1.1rem; 
-            transition: var(--transition);
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(255,255,255,0.12);
-            backdrop-filter: blur(4px);
-            border: 1px solid rgba(255,255,255,0.15);
-            text-decoration: none;
-            position: relative;
-        }
-        .social-links a:hover { 
-            transform: translateY(-4px) scale(1.08);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.25);
-        }
-        .social-links .social-facebook:hover { 
-            background: #1877f2; 
-            border-color: #1877f2; 
-            box-shadow: 0 4px 16px rgba(24, 119, 242, 0.4);
-        }
-        .social-links .social-instagram:hover { 
-            background: #e4405f; 
-            border-color: #e4405f; 
-            box-shadow: 0 4px 16px rgba(228, 64, 95, 0.4);
-        }
-        .social-links .social-linkedin:hover { 
-            background: #0a66c2; 
-            border-color: #0a66c2; 
-            box-shadow: 0 4px 16px rgba(10, 102, 194, 0.4);
-        }
-        .social-links .social-youtube:hover { 
-            background: #ff0000; 
-            border-color: #ff0000; 
-            box-shadow: 0 4px 16px rgba(255, 0, 0, 0.4);
-        }
-        .social-links .social-twitter:hover { 
-            background: #1da1f2; 
-            border-color: #1da1f2; 
-            box-shadow: 0 4px 16px rgba(29, 161, 242, 0.4);
-        }
-        .social-links .social-website:hover { 
-            background: var(--secondary); 
-            border-color: var(--secondary); 
-            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
-        }
-        .social-links .social-tiktok:hover { 
-            background: #000000; 
-            border-color: #000000; 
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-        }
-        .social-links .social-whatsapp:hover { 
-            background: #25D366; 
-            border-color: #25D366; 
-            box-shadow: 0 4px 16px rgba(37, 211, 102, 0.4);
-        }
-        .social-links .social-telegram:hover { 
-            background: #0088cc; 
-            border-color: #0088cc; 
-            box-shadow: 0 4px 16px rgba(0, 136, 204, 0.4);
-        }
-        .social-links .social-snapchat:hover { 
-            background: #FFFC00; 
-            border-color: #FFFC00; 
-            box-shadow: 0 4px 16px rgba(255, 252, 0, 0.4);
-            color: #000;
-        }
-        .social-links .social-github:hover { 
-            background: #333; 
-            border-color: #333; 
-            box-shadow: 0 4px 16px rgba(51, 51, 51, 0.4);
-        }
-
-        .social-links a .social-tooltip {
-            display: none;
-            position: absolute;
-            bottom: -28px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #1a2332;
-            color: white;
-            padding: 2px 10px;
-            border-radius: 6px;
-            font-size: 0.55rem;
-            font-weight: 600;
-            white-space: nowrap;
-        }
-        .social-links a:hover .social-tooltip {
-            display: block;
-        }
-
-        .no-social {
-            font-size: 0.85rem;
-            opacity: 0.6;
-            color: rgba(255,255,255,0.7);
-            font-weight: 400;
-            background: rgba(255,255,255,0.05);
-            padding: 6px 18px;
-            border-radius: 20px;
-            border: 1px dashed rgba(255,255,255,0.1);
-        }
-
         /* ===== PROFILE IMAGE ===== */
         .profile-image { 
             width: 140px; 
@@ -240,7 +112,7 @@
             object-fit: cover; 
             border: 4px solid rgba(255,255,255,0.3);
             box-shadow: 0 8px 30px rgba(0,0,0,0.2);
-            margin-top: -80px; 
+            margin-bottom: 12px;
             cursor: pointer; 
             transition: var(--transition);
             position: relative;
@@ -254,26 +126,156 @@
         /* ===== HEADER TEXT ===== */
         .header h1 { 
             font-size: 1.8rem; 
-            margin: 12px 0 6px;
+            margin: 6px 0 4px;
             font-weight: 900;
             position: relative;
             z-index: 1;
         }
-        .header p { 
+        .header .sub-info {
             font-size: 0.95rem; 
             opacity: 0.9;
-            margin: 4px 0;
+            margin: 3px 0;
             position: relative;
             z-index: 1;
         }
-        .header p i { margin-left: 8px; opacity: 0.7; }
+        .header .sub-info i { margin-left: 8px; opacity: 0.7; }
+
+        /* ===== SOCIAL LINKS - أسفل الصورة ===== */
+        .social-section {
+            margin: 14px 0 8px;
+            position: relative;
+            z-index: 1;
+        }
+        .social-section .social-label {
+            font-size: 0.7rem;
+            opacity: 0.5;
+            margin-bottom: 10px;
+            display: block;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .social-links { 
+            display: flex; 
+            justify-content: center; 
+            gap: 14px; 
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 1;
+        }
+        .social-links a { 
+            color: white; 
+            font-size: 1.2rem; 
+            transition: var(--transition);
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,255,255,0.15);
+            text-decoration: none;
+            position: relative;
+        }
+        .social-links a:hover { 
+            transform: translateY(-4px) scale(1.1);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+        }
+        .social-links .social-facebook:hover { 
+            background: #1877f2; 
+            border-color: #1877f2; 
+            box-shadow: 0 4px 16px rgba(24, 119, 242, 0.5);
+        }
+        .social-links .social-instagram:hover { 
+            background: #e4405f; 
+            border-color: #e4405f; 
+            box-shadow: 0 4px 16px rgba(228, 64, 95, 0.5);
+        }
+        .social-links .social-linkedin:hover { 
+            background: #0a66c2; 
+            border-color: #0a66c2; 
+            box-shadow: 0 4px 16px rgba(10, 102, 194, 0.5);
+        }
+        .social-links .social-youtube:hover { 
+            background: #ff0000; 
+            border-color: #ff0000; 
+            box-shadow: 0 4px 16px rgba(255, 0, 0, 0.5);
+        }
+        .social-links .social-twitter:hover { 
+            background: #1da1f2; 
+            border-color: #1da1f2; 
+            box-shadow: 0 4px 16px rgba(29, 161, 242, 0.5);
+        }
+        .social-links .social-website:hover { 
+            background: var(--secondary); 
+            border-color: var(--secondary); 
+            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.5);
+        }
+        .social-links .social-tiktok:hover { 
+            background: #000000; 
+            border-color: #000000; 
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+        }
+        .social-links .social-whatsapp:hover { 
+            background: #25D366; 
+            border-color: #25D366; 
+            box-shadow: 0 4px 16px rgba(37, 211, 102, 0.5);
+        }
+        .social-links .social-telegram:hover { 
+            background: #0088cc; 
+            border-color: #0088cc; 
+            box-shadow: 0 4px 16px rgba(0, 136, 204, 0.5);
+        }
+        .social-links .social-snapchat:hover { 
+            background: #FFFC00; 
+            border-color: #FFFC00; 
+            box-shadow: 0 4px 16px rgba(255, 252, 0, 0.5);
+            color: #000;
+        }
+        .social-links .social-github:hover { 
+            background: #333; 
+            border-color: #333; 
+            box-shadow: 0 4px 16px rgba(51, 51, 51, 0.5);
+        }
+
+        .social-links a .social-tooltip {
+            display: none;
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a2332;
+            color: white;
+            padding: 3px 12px;
+            border-radius: 6px;
+            font-size: 0.55rem;
+            font-weight: 600;
+            white-space: nowrap;
+            z-index: 10;
+        }
+        .social-links a:hover .social-tooltip {
+            display: block;
+        }
+
+        .no-social {
+            font-size: 0.85rem;
+            opacity: 0.6;
+            color: rgba(255,255,255,0.7);
+            font-weight: 400;
+            background: rgba(255,255,255,0.05);
+            padding: 8px 24px;
+            border-radius: 20px;
+            border: 1px dashed rgba(255,255,255,0.1);
+        }
 
         /* ===== STATS ROW ===== */
         .stats-row {
             display: flex;
             justify-content: center;
             gap: 30px;
-            margin: 18px 0 20px;
+            margin: 16px 0 18px;
             flex-wrap: wrap;
             position: relative;
             z-index: 1;
@@ -282,16 +284,16 @@
             text-align: center;
             background: rgba(255,255,255,0.08);
             backdrop-filter: blur(4px);
-            padding: 8px 20px;
+            padding: 6px 18px;
             border-radius: var(--radius-sm);
             border: 1px solid rgba(255,255,255,0.06);
         }
         .stat-number {
-            font-size: 1.6rem;
+            font-size: 1.5rem;
             font-weight: 900;
         }
         .stat-label {
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             opacity: 0.75;
         }
 
@@ -303,7 +305,7 @@
             flex-wrap: wrap;
             position: relative;
             z-index: 1;
-            margin-top: 6px;
+            margin-top: 4px;
         }
         .follow-btn { 
             background: rgba(255,255,255,0.15);
@@ -703,23 +705,24 @@
         @media (max-width: 768px) {
             .offers-grid { grid-template-columns: 1fr; }
             .header { padding: 25px 20px 20px; }
-            .profile-image { width: 100px; height: 100px; margin-top: -60px; }
+            .profile-image { width: 100px; height: 100px; }
             .header h1 { font-size: 1.4rem; }
-            .stats-row { gap: 15px; }
-            .stat-number { font-size: 1.3rem; }
-            .stat-item { padding: 6px 14px; }
-            .social-links a { width: 36px; height: 36px; font-size: 1rem; }
+            .stats-row { gap: 12px; }
+            .stat-number { font-size: 1.2rem; }
+            .stat-item { padding: 4px 14px; }
+            .social-links a { width: 40px; height: 40px; font-size: 1rem; }
+            .social-links { gap: 10px; }
             .container { padding: 0 14px; }
             .offer-card { padding: 16px; }
         }
 
         @media (max-width: 400px) {
-            .header { padding: 20px 14px 16px; }
-            .profile-image { width: 80px; height: 80px; margin-top: -50px; }
+            .header { padding: 18px 14px 16px; }
+            .profile-image { width: 80px; height: 80px; }
             .action-buttons { flex-direction: column; align-items: center; }
             .follow-btn, .message-btn { width: 100%; justify-content: center; }
             .offer-card .price { float: none; display: block; margin-top: 4px; }
-            .social-links a { width: 32px; height: 32px; font-size: 0.85rem; }
+            .social-links a { width: 36px; height: 36px; font-size: 0.85rem; }
             .social-links { gap: 8px; }
         }
     </style>
@@ -929,7 +932,7 @@
                 
                 const imageUrl = teacher.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(teacher.full_name) + '&background=0f5cbf&color=fff&size=140';
                 
-                // ===== روابط التواصل الاجتماعي - محسّن =====
+                // ===== روابط التواصل الاجتماعي - أسفل الصورة =====
                 let socialHtml = '';
                 const socialLinks = [
                     { url: teacher.facebook_url, icon: 'fab fa-facebook-f', class: 'social-facebook', label: 'فيسبوك' },
@@ -971,7 +974,6 @@
                 } else {
                     socialDisplay = `
                         <div class="social-section">
-                            <span class="social-label">وسائل التواصل</span>
                             <div class="social-links">
                                 <span class="no-social">🚫 لا توجد روابط تواصل اجتماعي</span>
                             </div>
@@ -1013,13 +1015,15 @@
                 
                 document.getElementById('contentArea').innerHTML = `
                     <div class="header">
-                        ${socialDisplay}
                         <img src="${imageUrl}" class="profile-image" onclick="showFullImage('${imageUrl}')" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${escapeHtml(teacher.full_name)}')+'&background=0f5cbf&color=fff&size=140'">
                         <h1>${escapeHtml(teacher.full_name)}</h1>
-                        <p><i class="fas fa-book"></i> ${escapeHtml(teacher.specialization || 'تخصص عام')}</p>
-                        <p>${escapeHtml(teacher.bio || 'لا توجد نبذة')}</p>
-                        <p><i class="fas fa-briefcase"></i> ${teacher.experience || '0'} سنة خبرة</p>
-                        <p><i class="fas fa-phone"></i> ${teacher.phone || 'غير محدد'}</p>
+                        <div class="sub-info"><i class="fas fa-book"></i> ${escapeHtml(teacher.specialization || 'تخصص عام')}</div>
+                        <div class="sub-info">${escapeHtml(teacher.bio || 'لا توجد نبذة')}</div>
+                        <div class="sub-info"><i class="fas fa-briefcase"></i> ${teacher.experience || '0'} سنة خبرة</div>
+                        <div class="sub-info"><i class="fas fa-phone"></i> ${teacher.phone || 'غير محدد'}</div>
+                        
+                        ${socialDisplay}
+                        
                         <div class="stats-row">
                             <div class="stat-item">
                                 <div class="stat-number">${totalOffers}</div>
