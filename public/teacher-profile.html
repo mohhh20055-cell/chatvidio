@@ -104,41 +104,133 @@
             pointer-events: none;
         }
 
-        /* ===== SOCIAL LINKS ===== */
+        /* ===== SOCIAL LINKS - محسّن ===== */
+        .social-section {
+            margin: 10px 0 16px;
+            position: relative;
+            z-index: 1;
+        }
+        .social-section .social-label {
+            font-size: 0.7rem;
+            opacity: 0.6;
+            margin-bottom: 8px;
+            display: block;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
         .social-links { 
             display: flex; 
             justify-content: center; 
-            gap: 14px; 
-            margin: 15px 0 20px;
+            gap: 12px; 
+            flex-wrap: wrap;
             position: relative;
             z-index: 1;
         }
         .social-links a { 
-            color: rgba(255,255,255,0.85); 
-            font-size: 1.5rem; 
+            color: white; 
+            font-size: 1.1rem; 
             transition: var(--transition);
-            width: 44px;
-            height: 44px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.12);
             backdrop-filter: blur(4px);
-            border: 1px solid rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.15);
+            text-decoration: none;
+            position: relative;
         }
         .social-links a:hover { 
-            transform: translateY(-3px) scale(1.05);
-            background: rgba(255,255,255,0.2);
-            color: white;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+            transform: translateY(-4px) scale(1.08);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.25);
         }
-        .social-links .social-facebook:hover { background: #1877f2; border-color: #1877f2; }
-        .social-links .social-instagram:hover { background: #e4405f; border-color: #e4405f; }
-        .social-links .social-linkedin:hover { background: #0a66c2; border-color: #0a66c2; }
-        .social-links .social-youtube:hover { background: #ff0000; border-color: #ff0000; }
-        .social-links .social-twitter:hover { background: #1da1f2; border-color: #1da1f2; }
-        .social-links .social-website:hover { background: var(--secondary); border-color: var(--secondary); }
+        .social-links .social-facebook:hover { 
+            background: #1877f2; 
+            border-color: #1877f2; 
+            box-shadow: 0 4px 16px rgba(24, 119, 242, 0.4);
+        }
+        .social-links .social-instagram:hover { 
+            background: #e4405f; 
+            border-color: #e4405f; 
+            box-shadow: 0 4px 16px rgba(228, 64, 95, 0.4);
+        }
+        .social-links .social-linkedin:hover { 
+            background: #0a66c2; 
+            border-color: #0a66c2; 
+            box-shadow: 0 4px 16px rgba(10, 102, 194, 0.4);
+        }
+        .social-links .social-youtube:hover { 
+            background: #ff0000; 
+            border-color: #ff0000; 
+            box-shadow: 0 4px 16px rgba(255, 0, 0, 0.4);
+        }
+        .social-links .social-twitter:hover { 
+            background: #1da1f2; 
+            border-color: #1da1f2; 
+            box-shadow: 0 4px 16px rgba(29, 161, 242, 0.4);
+        }
+        .social-links .social-website:hover { 
+            background: var(--secondary); 
+            border-color: var(--secondary); 
+            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+        }
+        .social-links .social-tiktok:hover { 
+            background: #000000; 
+            border-color: #000000; 
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+        }
+        .social-links .social-whatsapp:hover { 
+            background: #25D366; 
+            border-color: #25D366; 
+            box-shadow: 0 4px 16px rgba(37, 211, 102, 0.4);
+        }
+        .social-links .social-telegram:hover { 
+            background: #0088cc; 
+            border-color: #0088cc; 
+            box-shadow: 0 4px 16px rgba(0, 136, 204, 0.4);
+        }
+        .social-links .social-snapchat:hover { 
+            background: #FFFC00; 
+            border-color: #FFFC00; 
+            box-shadow: 0 4px 16px rgba(255, 252, 0, 0.4);
+            color: #000;
+        }
+        .social-links .social-github:hover { 
+            background: #333; 
+            border-color: #333; 
+            box-shadow: 0 4px 16px rgba(51, 51, 51, 0.4);
+        }
+
+        .social-links a .social-tooltip {
+            display: none;
+            position: absolute;
+            bottom: -28px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a2332;
+            color: white;
+            padding: 2px 10px;
+            border-radius: 6px;
+            font-size: 0.55rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .social-links a:hover .social-tooltip {
+            display: block;
+        }
+
+        .no-social {
+            font-size: 0.85rem;
+            opacity: 0.6;
+            color: rgba(255,255,255,0.7);
+            font-weight: 400;
+            background: rgba(255,255,255,0.05);
+            padding: 6px 18px;
+            border-radius: 20px;
+            border: 1px dashed rgba(255,255,255,0.1);
+        }
 
         /* ===== PROFILE IMAGE ===== */
         .profile-image { 
@@ -616,7 +708,7 @@
             .stats-row { gap: 15px; }
             .stat-number { font-size: 1.3rem; }
             .stat-item { padding: 6px 14px; }
-            .social-links a { width: 38px; height: 38px; font-size: 1.2rem; }
+            .social-links a { width: 36px; height: 36px; font-size: 1rem; }
             .container { padding: 0 14px; }
             .offer-card { padding: 16px; }
         }
@@ -627,6 +719,8 @@
             .action-buttons { flex-direction: column; align-items: center; }
             .follow-btn, .message-btn { width: 100%; justify-content: center; }
             .offer-card .price { float: none; display: block; margin-top: 4px; }
+            .social-links a { width: 32px; height: 32px; font-size: 0.85rem; }
+            .social-links { gap: 8px; }
         }
     </style>
 </head>
@@ -835,27 +929,54 @@
                 
                 const imageUrl = teacher.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(teacher.full_name) + '&background=0f5cbf&color=fff&size=140';
                 
-                // ===== روابط التواصل الاجتماعي =====
+                // ===== روابط التواصل الاجتماعي - محسّن =====
                 let socialHtml = '';
                 const socialLinks = [
-                    { url: teacher.facebook_url, icon: 'fab fa-facebook', class: 'social-facebook', label: 'فيسبوك' },
+                    { url: teacher.facebook_url, icon: 'fab fa-facebook-f', class: 'social-facebook', label: 'فيسبوك' },
                     { url: teacher.instagram_url, icon: 'fab fa-instagram', class: 'social-instagram', label: 'انستغرام' },
                     { url: teacher.linkedin_url, icon: 'fab fa-linkedin-in', class: 'social-linkedin', label: 'لينكدإن' },
                     { url: teacher.youtube_url, icon: 'fab fa-youtube', class: 'social-youtube', label: 'يوتيوب' },
                     { url: teacher.twitter_url, icon: 'fab fa-x-twitter', class: 'social-twitter', label: 'تويتر' },
                     { url: teacher.website_url, icon: 'fas fa-globe', class: 'social-website', label: 'الموقع' },
+                    { url: teacher.tiktok_url, icon: 'fab fa-tiktok', class: 'social-tiktok', label: 'تيك توك' },
+                    { url: teacher.whatsapp_url, icon: 'fab fa-whatsapp', class: 'social-whatsapp', label: 'واتساب' },
+                    { url: teacher.telegram_url, icon: 'fab fa-telegram-plane', class: 'social-telegram', label: 'تيليجرام' },
+                    { url: teacher.snapchat_url, icon: 'fab fa-snapchat-ghost', class: 'social-snapchat', label: 'سناب شات' },
+                    { url: teacher.github_url, icon: 'fab fa-github', class: 'social-github', label: 'جيت هاب' },
                 ];
                 
                 let hasSocial = false;
                 for (const link of socialLinks) {
                     if (link.url) {
-                        socialHtml += `<a href="${link.url}" target="_blank" class="${link.class}" title="${link.label}"><i class="${link.icon}"></i></a>`;
+                        socialHtml += `
+                            <a href="${link.url}" target="_blank" class="${link.class}" title="${link.label}">
+                                <i class="${link.icon}"></i>
+                                <span class="social-tooltip">${link.label}</span>
+                            </a>
+                        `;
                         hasSocial = true;
                     }
                 }
                 
-                if (!hasSocial) {
-                    socialHtml = `<span style="font-size:0.8rem; opacity:0.6;">لا توجد روابط تواصل اجتماعي</span>`;
+                let socialDisplay = '';
+                if (hasSocial) {
+                    socialDisplay = `
+                        <div class="social-section">
+                            <span class="social-label">تابعني على</span>
+                            <div class="social-links">
+                                ${socialHtml}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    socialDisplay = `
+                        <div class="social-section">
+                            <span class="social-label">وسائل التواصل</span>
+                            <div class="social-links">
+                                <span class="no-social">🚫 لا توجد روابط تواصل اجتماعي</span>
+                            </div>
+                        </div>
+                    `;
                 }
                 
                 let followButtonHtml = '';
@@ -892,7 +1013,7 @@
                 
                 document.getElementById('contentArea').innerHTML = `
                     <div class="header">
-                        <div class="social-links">${socialHtml}</div>
+                        ${socialDisplay}
                         <img src="${imageUrl}" class="profile-image" onclick="showFullImage('${imageUrl}')" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${escapeHtml(teacher.full_name)}')+'&background=0f5cbf&color=fff&size=140'">
                         <h1>${escapeHtml(teacher.full_name)}</h1>
                         <p><i class="fas fa-book"></i> ${escapeHtml(teacher.specialization || 'تخصص عام')}</p>
