@@ -2162,3 +2162,19 @@ app.delete('/api/admin/delete-notification/:id', async (req, res) => {
     res.json({ success: false, error: error.message });
   }
 });
+// تحديث إشعار واحد كمقروء
+app.post('/api/notifications/read/:notification_id', async (req, res) => {
+    try {
+        const { notification_id } = req.params;
+        const { data, error } = await supabase
+            .from('notifications')
+            .update({ is_read: true })
+            .eq('id', notification_id)
+            .select();
+        
+        if (error) throw error;
+        res.json({ success: true });
+    } catch (error) {
+        res.json({ success: false, error: error.message });
+    }
+});
