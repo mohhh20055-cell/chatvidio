@@ -2,100 +2,454 @@
 <html lang="ar">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>صفحة الأستاذ - منصة التعليم</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <title>ZoomDz | صفحة الأستاذ</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
+        /* ===== RESET & BASE ===== */
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Cairo', sans-serif; background: #f0f2f5; }
-        .container { max-width: 1000px; margin: 30px auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #1e3c72, #0f5cbf); color: white; padding: 40px; border-radius: 30px; text-align: center; margin-bottom: 30px; position: relative; }
-        .profile-image { width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 4px solid white; margin-top: -70px; cursor: pointer; transition: transform 0.3s; }
-        .profile-image:hover { transform: scale(1.05); }
-        .social-links { display: flex; justify-content: center; gap: 15px; margin: 20px 0; }
-        .social-links a { color: white; font-size: 28px; transition: 0.3s; }
-        .social-links a:hover { transform: scale(1.1); }
+        :root {
+            --primary: #0f5cbf;
+            --primary-dark: #0b4a9c;
+            --primary-light: #e8f0fe;
+            --secondary: #10b981;
+            --secondary-dark: #059669;
+            --gradient-main: linear-gradient(135deg, #0f5cbf 0%, #1e3c72 100%);
+            --gradient-secondary: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            --gradient-hero: linear-gradient(135deg, #1e3c72 0%, #0f5cbf 100%);
+            --shadow-sm: 0 2px 8px rgba(0,0,0,0.06);
+            --shadow-md: 0 4px 20px rgba(0,0,0,0.08);
+            --shadow-lg: 0 8px 40px rgba(0,0,0,0.12);
+            --radius-sm: 12px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background: #f0f4f9; 
+            min-height: 100vh;
+            color: #1a2332;
+            overflow-x: hidden;
+        }
+
+        /* ===== SCROLLBAR ===== */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary-dark); }
+
+        .container { max-width: 1000px; margin: 20px auto; padding: 0 20px 30px; }
+
+        /* ===== BACK BUTTON ===== */
         .back-btn { 
-            background: #0f5cbf; 
-            color: white; 
+            background: white;
+            color: var(--primary); 
             border: none; 
-            padding: 10px 20px; 
+            padding: 10px 22px; 
             border-radius: 30px; 
             cursor: pointer; 
             margin-bottom: 20px; 
-            display: inline-block; 
-            transition: 0.3s; 
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: var(--transition); 
             text-decoration: none;
             font-family: 'Cairo', sans-serif;
-            font-size: 1rem;
+            font-size: 0.9rem;
+            font-weight: 700;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid rgba(0,0,0,0.04);
         }
-        .back-btn:hover { background: #1e3c72; transform: translateX(-5px); }
-        
-        /* ===== عروض الأستاذ ===== */
-        .offers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; margin-top: 20px; }
-        .offer-card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: 0.3s; }
-        .offer-card:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,0.15); }
-        .offer-card .subject { font-size: 1.2rem; font-weight: 700; color: #1e3c72; }
-        .offer-card .price { font-size: 1.5rem; font-weight: 800; color: #0f5cbf; }
-        .offer-card .price.free { color: #10b981; }
-        .offer-card .badge { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 600; }
+        .back-btn:hover { 
+            background: var(--primary); 
+            color: white;
+            transform: translateX(-5px);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* ===== HEADER ===== */
+        .header { 
+            background: var(--gradient-hero); 
+            color: white; 
+            padding: 40px 30px 30px; 
+            border-radius: var(--radius-lg); 
+            text-align: center; 
+            margin-bottom: 30px; 
+            position: relative;
+            box-shadow: 0 8px 30px rgba(15, 92, 191, 0.25);
+            overflow: hidden;
+        }
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 300px;
+            height: 300px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: -30%;
+            left: -10%;
+            width: 200px;
+            height: 200px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        /* ===== SOCIAL LINKS ===== */
+        .social-links { 
+            display: flex; 
+            justify-content: center; 
+            gap: 14px; 
+            margin: 15px 0 20px;
+            position: relative;
+            z-index: 1;
+        }
+        .social-links a { 
+            color: rgba(255,255,255,0.85); 
+            font-size: 1.5rem; 
+            transition: var(--transition);
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .social-links a:hover { 
+            transform: translateY(-3px) scale(1.05);
+            background: rgba(255,255,255,0.2);
+            color: white;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+        }
+        .social-links .social-facebook:hover { background: #1877f2; border-color: #1877f2; }
+        .social-links .social-instagram:hover { background: #e4405f; border-color: #e4405f; }
+        .social-links .social-linkedin:hover { background: #0a66c2; border-color: #0a66c2; }
+        .social-links .social-youtube:hover { background: #ff0000; border-color: #ff0000; }
+        .social-links .social-twitter:hover { background: #1da1f2; border-color: #1da1f2; }
+        .social-links .social-website:hover { background: var(--secondary); border-color: var(--secondary); }
+
+        /* ===== PROFILE IMAGE ===== */
+        .profile-image { 
+            width: 140px; 
+            height: 140px; 
+            border-radius: 50%; 
+            object-fit: cover; 
+            border: 4px solid rgba(255,255,255,0.3);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+            margin-top: -80px; 
+            cursor: pointer; 
+            transition: var(--transition);
+            position: relative;
+            z-index: 2;
+        }
+        .profile-image:hover { 
+            transform: scale(1.04);
+            border-color: white;
+        }
+
+        /* ===== HEADER TEXT ===== */
+        .header h1 { 
+            font-size: 1.8rem; 
+            margin: 12px 0 6px;
+            font-weight: 900;
+            position: relative;
+            z-index: 1;
+        }
+        .header p { 
+            font-size: 0.95rem; 
+            opacity: 0.9;
+            margin: 4px 0;
+            position: relative;
+            z-index: 1;
+        }
+        .header p i { margin-left: 8px; opacity: 0.7; }
+
+        /* ===== STATS ROW ===== */
+        .stats-row {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 18px 0 20px;
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 1;
+        }
+        .stat-item {
+            text-align: center;
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(4px);
+            padding: 8px 20px;
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .stat-number {
+            font-size: 1.6rem;
+            font-weight: 900;
+        }
+        .stat-label {
+            font-size: 0.7rem;
+            opacity: 0.75;
+        }
+
+        /* ===== ACTION BUTTONS ===== */
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 1;
+            margin-top: 6px;
+        }
+        .follow-btn { 
+            background: rgba(255,255,255,0.15);
+            color: white; 
+            border: 2px solid rgba(255,255,255,0.2);
+            padding: 8px 22px; 
+            border-radius: 30px; 
+            cursor: pointer; 
+            transition: var(--transition); 
+            font-family: 'Cairo', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 700;
+            backdrop-filter: blur(4px);
+        }
+        .follow-btn:hover { 
+            transform: translateY(-2px);
+            background: rgba(255,255,255,0.25);
+        }
+        .follow-btn.following { 
+            background: var(--secondary);
+            border-color: var(--secondary);
+        }
+        .follow-btn.following:hover { 
+            background: var(--secondary-dark);
+            border-color: var(--secondary-dark);
+        }
+        .message-btn { 
+            background: white;
+            color: var(--primary);
+            border: none;
+            padding: 8px 22px;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: 'Cairo', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 700;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .message-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+
+        /* ===== LOGIN WARNING ===== */
+        .login-warning { 
+            background: #fef3c7; 
+            padding: 12px 18px; 
+            border-radius: var(--radius-sm); 
+            text-align: center; 
+            margin-bottom: 20px;
+            border-right: 4px solid #f59e0b;
+            font-weight: 600;
+        }
+        .login-warning a { 
+            color: var(--primary); 
+            font-weight: 700;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        /* ===== SECTION TITLE ===== */
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 30px;
+            margin-bottom: 18px;
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: #1a2332;
+        }
+        .section-title i { color: var(--primary); }
+        .section-title .count-badge {
+            background: var(--primary);
+            color: white;
+            padding: 2px 14px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        /* ===== OFFERS GRID ===== */
+        .offers-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); 
+            gap: 20px; 
+            margin-top: 10px; 
+        }
+
+        /* ===== OFFER CARD ===== */
+        .offer-card { 
+            background: white; 
+            border-radius: var(--radius-md); 
+            padding: 20px; 
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+            border: 1px solid rgba(0,0,0,0.04);
+            position: relative;
+            overflow: hidden;
+        }
+        .offer-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--gradient-main);
+            opacity: 0;
+            transition: var(--transition);
+        }
+        .offer-card:hover::before { opacity: 1; }
+        .offer-card:hover { 
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-light);
+        }
+        .offer-card .subject { 
+            font-size: 1.1rem; 
+            font-weight: 800; 
+            color: var(--primary);
+            display: inline-block;
+        }
+        .offer-card .price { 
+            font-size: 1.3rem; 
+            font-weight: 800; 
+            color: var(--primary);
+            float: left;
+        }
+        .offer-card .price.free { color: var(--secondary); }
+        .offer-date { 
+            color: #64748b; 
+            font-size: 0.85rem; 
+            margin: 6px 0; 
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .offer-date i { color: var(--primary); width: 20px; }
+        .offer-duration { 
+            display: inline-block; 
+            background: #edf2f7; 
+            padding: 3px 14px; 
+            border-radius: 20px; 
+            font-size: 0.75rem; 
+            color: #4a5568;
+            font-weight: 600;
+        }
+        .waiting-count { 
+            font-size: 0.8rem; 
+            color: #64748b; 
+            margin-top: 8px; 
+        }
+        .waiting-count i { color: var(--primary); }
+
+        /* ===== BADGES ===== */
+        .badge { 
+            display: inline-block; 
+            padding: 3px 12px; 
+            border-radius: 20px; 
+            font-size: 0.65rem; 
+            font-weight: 700; 
+            margin: 0 4px;
+        }
         .badge-upcoming { background: #fef3c7; color: #d97706; }
-        .badge-live { background: #fee2e2; color: #dc2626; animation: pulse 1.5s infinite; }
+        .badge-live { 
+            background: #fee2e2; 
+            color: #dc2626; 
+            animation: pulse-badge 1.5s infinite;
+        }
         .badge-completed { background: #d1fae5; color: #059669; }
         .badge-free { background: #dbeafe; color: #2563eb; }
         .badge-teacher-ready { background: #ede9fe; color: #7c3aed; }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+        @keyframes pulse-badge {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.02); }
         }
-        .offer-date { color: #6b7280; font-size: 0.9rem; margin: 5px 0; }
-        .offer-duration { display: inline-block; background: #e2e8f0; padding: 2px 10px; border-radius: 20px; font-size: 0.8rem; color: #4a5568; }
-        .waiting-count { font-size: 0.8rem; color: #6b7280; margin-top: 5px; }
-        .book-btn { 
-            background: #0f5cbf; 
-            color: white; 
-            border: none; 
-            padding: 8px 20px; 
-            border-radius: 25px; 
-            cursor: pointer; 
-            transition: 0.3s; 
-            margin-top: 10px; 
-            font-family: 'Cairo', sans-serif;
-            font-size: 0.9rem;
-        }
-        .book-btn:hover { background: #1e3c72; transform: scale(1.05); }
-        .book-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .book-btn.free { background: #10b981; }
-        .book-btn.free:hover { background: #059669; }
-        .book-btn.booked { background: #6b7280; cursor: default; }
-        .book-btn.booked:hover { transform: none; }
 
-        .login-warning { background: #fef3c7; padding: 10px; border-radius: 10px; text-align: center; margin-bottom: 20px; }
-        .login-warning a { color: #0f5cbf; font-weight: bold; }
-        @media (max-width: 768px) {
-            .offers-grid { grid-template-columns: 1fr; }
-            .header { padding: 20px; }
-            .profile-image { width: 100px; height: 100px; margin-top: -40px; }
-        }
-        .follow-btn { 
-            background: #0f5cbf; 
+        /* ===== BOOK BUTTON ===== */
+        .book-btn { 
+            background: var(--gradient-main);
             color: white; 
             border: none; 
-            padding: 8px 20px; 
-            border-radius: 25px; 
+            padding: 9px 22px; 
+            border-radius: 30px; 
             cursor: pointer; 
-            margin-top: 15px; 
-            transition: 0.3s; 
+            transition: var(--transition); 
+            margin-top: 12px; 
             font-family: 'Cairo', sans-serif;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
+            font-weight: 700;
+            width: 100%;
+            box-shadow: 0 4px 12px rgba(15, 92, 191, 0.2);
         }
-        .follow-btn:hover { transform: scale(1.05); }
-        .follow-btn.following { background: #10b981; color: white; }
-        .follow-btn.following:hover { background: #059669; }
-        .loading { text-align: center; padding: 50px; color: #6b7280; }
-        .loading i { font-size: 2rem; color: #0f5cbf; }
-        .error-message { background: #fee2e2; color: #dc2626; padding: 15px; border-radius: 15px; text-align: center; margin-bottom: 20px; }
+        .book-btn:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(15, 92, 191, 0.3);
+        }
+        .book-btn:disabled { 
+            opacity: 0.5; 
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+        .book-btn.free { 
+            background: var(--gradient-secondary);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+        }
+        .book-btn.free:hover {
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+        }
+        .book-btn.booked { 
+            background: #6b7280; 
+            cursor: default;
+            box-shadow: none !important;
+        }
+        .book-btn.booked:hover { transform: none !important; }
+
+        /* ===== EMPTY STATE ===== */
+        .empty-state {
+            text-align: center;
+            padding: 50px 20px;
+            color: #94a3b8;
+            background: white;
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(0,0,0,0.04);
+            grid-column: 1 / -1;
+        }
+        .empty-state i {
+            font-size: 3rem;
+            color: #e2e8f0;
+            margin-bottom: 16px;
+            display: block;
+        }
+
+        /* ===== MODALS ===== */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -104,6 +458,7 @@
             right: 0;
             bottom: 0;
             background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
             z-index: 999;
         }
         .modal {
@@ -111,20 +466,74 @@
             position: fixed;
             top: 50%;
             left: 50%;
-            transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%) scale(0.95);
             background: white;
-            padding: 25px;
-            border-radius: 20px;
+            padding: 28px;
+            border-radius: var(--radius-md);
             z-index: 1000;
-            width: 90%;
-            max-width: 400px;
+            width: 92%;
+            max-width: 420px;
+            box-shadow: var(--shadow-lg);
+            animation: modalIn 0.3s ease forwards;
         }
-        .modal h3 { margin-bottom: 15px; color: #1e3c72; }
-        .modal textarea { width: 100%; padding: 10px; margin: 10px 0; border-radius: 10px; border: 1px solid #cbd5e1; font-family: 'Cairo', sans-serif; resize: vertical; }
-        .modal button { background: #0f5cbf; color: white; border: none; padding: 10px; border-radius: 10px; width: 100%; cursor: pointer; transition: 0.3s; font-family: 'Cairo', sans-serif; }
-        .modal button:hover { background: #1e3c72; }
-        .cancel-modal { background: #e2e8f0 !important; color: #4a5568 !important; margin-top: 10px; }
-        .cancel-modal:hover { background: #cbd5e1 !important; }
+        @keyframes modalIn {
+            from { transform: translate(-50%, -50%) scale(0.95); opacity: 0; }
+            to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+        .modal h3 { 
+            margin-bottom: 16px; 
+            color: #1a2332;
+            font-size: 1.2rem;
+        }
+        .modal h3 i { color: var(--primary); margin-left: 8px; }
+        .modal textarea { 
+            width: 100%; 
+            padding: 12px; 
+            margin: 10px 0; 
+            border-radius: var(--radius-sm); 
+            border: 2px solid #edf2f7; 
+            font-family: 'Cairo', sans-serif;
+            font-size: 0.95rem;
+            resize: vertical;
+            min-height: 100px;
+            transition: var(--transition);
+            background: #fafbfc;
+        }
+        .modal textarea:focus {
+            border-color: var(--primary);
+            outline: none;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(15, 92, 191, 0.06);
+        }
+        .modal button { 
+            background: var(--gradient-main);
+            color: white; 
+            border: none; 
+            padding: 10px; 
+            border-radius: var(--radius-sm);
+            width: 100%; 
+            cursor: pointer; 
+            transition: var(--transition);
+            font-family: 'Cairo', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+        .modal button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(15, 92, 191, 0.3);
+        }
+        .cancel-modal { 
+            background: #edf2f7 !important; 
+            color: #4a5568 !important; 
+            margin-top: 10px;
+        }
+        .cancel-modal:hover {
+            background: #e2e8f0 !important;
+            box-shadow: none !important;
+            transform: none !important;
+        }
+
+        /* ===== IMAGE MODAL ===== */
         .image-modal {
             display: none;
             position: fixed;
@@ -141,87 +550,83 @@
         .image-modal img {
             max-width: 90%;
             max-height: 90%;
-            border-radius: 10px;
+            border-radius: var(--radius-sm);
+            animation: zoomIn 0.3s ease;
         }
-        .stats-row {
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-            margin: 20px 0;
-            flex-wrap: wrap;
+        @keyframes zoomIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
         }
-        .stat-item {
-            text-align: center;
-        }
-        .stat-number {
-            font-size: 1.8rem;
-            font-weight: 800;
-        }
-        .stat-label {
-            font-size: 0.8rem;
-            opacity: 0.9;
-        }
-        .message-btn {
-            background: #10b981;
-            color: white;
-            border: none;
-            padding: 8px 20px;
-            border-radius: 25px;
-            cursor: pointer;
-            margin-top: 15px;
-            margin-right: 10px;
-            transition: 0.3s;
-            font-family: 'Cairo', sans-serif;
-            font-size: 0.9rem;
-        }
-        .message-btn:hover {
-            background: #059669;
-            transform: scale(1.05);
-        }
+
+        /* ===== TOAST ===== */
         .notification-toast {
             position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: #10b981;
+            bottom: 24px;
+            right: 24px;
+            left: 24px;
+            background: #1a2332;
             color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
+            padding: 14px 20px;
+            border-radius: var(--radius-sm);
             z-index: 3000;
             display: none;
             animation: slideIn 0.3s ease;
+            box-shadow: var(--shadow-lg);
+            font-size: 0.9rem;
+            max-width: 420px;
+            margin: 0 auto;
+            border-right: 4px solid var(--secondary);
             font-family: 'Cairo', sans-serif;
         }
+        .notification-toast.error { border-color: #ef4444; }
+        .notification-toast.warning { border-color: #f59e0b; }
         @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+            from { transform: translateY(100%) scale(0.95); opacity: 0; }
+            to { transform: translateY(0) scale(1); opacity: 1; }
         }
-        .section-title {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-top: 30px;
-            margin-bottom: 15px;
-            font-size: 1.3rem;
-            color: #1e3c72;
+
+        .loading { 
+            text-align: center; 
+            padding: 60px 20px; 
+            color: #94a3b8; 
         }
-        .section-title .count-badge {
-            background: #0f5cbf;
-            color: white;
-            padding: 2px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-        }
-        .empty-state {
-            text-align: center;
-            padding: 40px;
-            color: #6b7280;
-            background: white;
-            border-radius: 20px;
-        }
-        .empty-state i {
-            font-size: 3rem;
-            color: #cbd5e1;
+        .loading i { 
+            font-size: 2.5rem; 
+            color: var(--primary);
+            display: block;
             margin-bottom: 16px;
+        }
+        .error-message { 
+            background: #fee2e2; 
+            color: #dc2626; 
+            padding: 16px 20px; 
+            border-radius: var(--radius-sm); 
+            text-align: center; 
+            margin-bottom: 20px;
+            border-right: 4px solid #dc2626;
+            font-weight: 600;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            .offers-grid { grid-template-columns: 1fr; }
+            .header { padding: 25px 20px 20px; }
+            .profile-image { width: 100px; height: 100px; margin-top: -60px; }
+            .header h1 { font-size: 1.4rem; }
+            .stats-row { gap: 15px; }
+            .stat-number { font-size: 1.3rem; }
+            .stat-item { padding: 6px 14px; }
+            .social-links a { width: 38px; height: 38px; font-size: 1.2rem; }
+            .container { padding: 0 14px; }
+            .offer-card { padding: 16px; }
+        }
+
+        @media (max-width: 400px) {
+            .header { padding: 20px 14px 16px; }
+            .profile-image { width: 80px; height: 80px; margin-top: -50px; }
+            .action-buttons { flex-direction: column; align-items: center; }
+            .follow-btn, .message-btn { width: 100%; justify-content: center; }
+            .offer-card .price { float: none; display: block; margin-top: 4px; }
         }
     </style>
 </head>
@@ -234,12 +639,13 @@
         </div>
     </div>
 
+    <!-- ===== MODALS ===== -->
     <div id="modalOverlay" class="modal-overlay"></div>
 
     <div id="messageModal" class="modal">
         <h3><i class="fas fa-envelope"></i> إرسال رسالة إلى الأستاذ</h3>
         <textarea id="messageText" rows="4" placeholder="اكتب رسالتك هنا..."></textarea>
-        <button onclick="sendMessage()">إرسال الرسالة</button>
+        <button onclick="sendMessage()"><i class="fas fa-paper-plane"></i> إرسال الرسالة</button>
         <button class="cancel-modal" onclick="closeMessageModal()">إلغاء</button>
     </div>
 
@@ -271,14 +677,6 @@
                 token = localStorage.getItem('token');
                 
                 isLoggedIn = !!(studentToken || token || (userData && userData.id));
-                
-                console.log('🔍 بيانات الجلسة:', { 
-                    isLoggedIn, 
-                    studentId, 
-                    userRole,
-                    hasStudentToken: !!studentToken,
-                    hasToken: !!token
-                });
                 
                 return { isLoggedIn, studentId, userRole, userData };
             } catch(e) {
@@ -313,7 +711,9 @@
 
         function showNotification(message, type = 'success') {
             const toast = document.getElementById('notificationToast');
-            toast.style.background = type === 'success' ? '#10b981' : (type === 'warning' ? '#f59e0b' : '#ef4444');
+            toast.className = 'notification-toast';
+            if (type === 'error') toast.classList.add('error');
+            else if (type === 'warning') toast.classList.add('warning');
             toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'}"></i> ${message}`;
             toast.style.display = 'block';
             setTimeout(() => { toast.style.display = 'none'; }, 4000);
@@ -433,13 +833,30 @@
                     return;
                 }
                 
-                const imageUrl = teacher.profile_url || 'https://via.placeholder.com/150';
+                const imageUrl = teacher.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(teacher.full_name) + '&background=0f5cbf&color=fff&size=140';
                 
+                // ===== روابط التواصل الاجتماعي =====
                 let socialHtml = '';
-                if (teacher.facebook_url) socialHtml += `<a href="${teacher.facebook_url}" target="_blank"><i class="fab fa-facebook"></i></a>`;
-                if (teacher.instagram_url) socialHtml += `<a href="${teacher.instagram_url}" target="_blank"><i class="fab fa-instagram"></i></a>`;
-                if (teacher.linkedin_url) socialHtml += `<a href="${teacher.linkedin_url}" target="_blank"><i class="fab fa-linkedin"></i></a>`;
-                if (teacher.website_url) socialHtml += `<a href="${teacher.website_url}" target="_blank"><i class="fas fa-globe"></i></a>`;
+                const socialLinks = [
+                    { url: teacher.facebook_url, icon: 'fab fa-facebook', class: 'social-facebook', label: 'فيسبوك' },
+                    { url: teacher.instagram_url, icon: 'fab fa-instagram', class: 'social-instagram', label: 'انستغرام' },
+                    { url: teacher.linkedin_url, icon: 'fab fa-linkedin-in', class: 'social-linkedin', label: 'لينكدإن' },
+                    { url: teacher.youtube_url, icon: 'fab fa-youtube', class: 'social-youtube', label: 'يوتيوب' },
+                    { url: teacher.twitter_url, icon: 'fab fa-x-twitter', class: 'social-twitter', label: 'تويتر' },
+                    { url: teacher.website_url, icon: 'fas fa-globe', class: 'social-website', label: 'الموقع' },
+                ];
+                
+                let hasSocial = false;
+                for (const link of socialLinks) {
+                    if (link.url) {
+                        socialHtml += `<a href="${link.url}" target="_blank" class="${link.class}" title="${link.label}"><i class="${link.icon}"></i></a>`;
+                        hasSocial = true;
+                    }
+                }
+                
+                if (!hasSocial) {
+                    socialHtml = `<span style="font-size:0.8rem; opacity:0.6;">لا توجد روابط تواصل اجتماعي</span>`;
+                }
                 
                 let followButtonHtml = '';
                 let messageButtonHtml = '';
@@ -452,7 +869,7 @@
                     messageButtonHtml = `<button class="message-btn" onclick="showMessageModal()"><i class="fas fa-envelope"></i> مراسلة الأستاذ</button>`;
                 }
                 
-                // جلب العروض بدلاً من المنشورات
+                // جلب العروض
                 const offersRes = await fetch(`/api/teacher/offers/${teacherId}`);
                 const offers = await offersRes.json();
                 const totalOffers = offers ? offers.length : 0;
@@ -462,7 +879,7 @@
                 const upcomingOffers = offers ? offers.filter(o => new Date(o.offer_date) > now && o.status !== 'completed' && o.status !== 'live') : [];
                 const liveOffers = offers ? offers.filter(o => o.status === 'live' || o.status === 'teacher_ready') : [];
                 
-                // جلب حجوزات الطالب الحالية (للتحقق من الحجز)
+                // جلب حجوزات الطالب الحالية
                 if (isLoggedIn && userRole === 'student') {
                     try {
                         const bookingsRes = await fetch(`/api/student/bookings/${studentId}`);
@@ -476,7 +893,7 @@
                 document.getElementById('contentArea').innerHTML = `
                     <div class="header">
                         <div class="social-links">${socialHtml}</div>
-                        <img src="${imageUrl}" class="profile-image" onclick="showFullImage('${imageUrl}')" onerror="this.src='https://via.placeholder.com/150'">
+                        <img src="${imageUrl}" class="profile-image" onclick="showFullImage('${imageUrl}')" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${escapeHtml(teacher.full_name)}')+'&background=0f5cbf&color=fff&size=140'">
                         <h1>${escapeHtml(teacher.full_name)}</h1>
                         <p><i class="fas fa-book"></i> ${escapeHtml(teacher.specialization || 'تخصص عام')}</p>
                         <p>${escapeHtml(teacher.bio || 'لا توجد نبذة')}</p>
@@ -496,7 +913,7 @@
                                 <div class="stat-label">عروض مباشرة</div>
                             </div>
                         </div>
-                        <div>
+                        <div class="action-buttons">
                             ${followButtonHtml}
                             ${messageButtonHtml}
                         </div>
@@ -505,7 +922,7 @@
                         <i class="fas fa-info-circle"></i> يرجى <a href="index.html">تسجيل الدخول</a> للتمكن من حجز العروض ومتابعة الأستاذ
                     </div>` : ''}
                     <div class="section-title">
-                        <i class="fas fa-calendar-alt" style="color: #0f5cbf;"></i>
+                        <i class="fas fa-calendar-alt"></i>
                         عروض الأستاذ
                         <span class="count-badge">${totalOffers}</span>
                     </div>
@@ -528,10 +945,10 @@
         function renderOffers(offers) {
             if (!offers || offers.length === 0) {
                 return `
-                    <div class="empty-state" style="grid-column: 1 / -1;">
+                    <div class="empty-state">
                         <i class="fas fa-calendar-times"></i>
-                        <p>لا توجد عروض حالياً</p>
-                        <p style="font-size: 0.8rem; color: #9ca3af;">سيتم إضافة عروض قريباً</p>
+                        <p style="font-weight: 600; color: #1a2332;">لا توجد عروض حالياً</p>
+                        <p style="font-size: 0.85rem; color: #94a3b8;">سيتم إضافة عروض قريباً</p>
                     </div>
                 `;
             }
@@ -561,7 +978,6 @@
                     statusBadge = `<span class="badge badge-upcoming">⏳ قادمة</span>`;
                 }
                 
-                // التحقق من إمكانية الحجز
                 let canBook = !isPast && offer.status !== 'completed' && !isBooked;
                 let bookButtonText = 'حجز الآن';
                 let bookButtonClass = '';
@@ -583,18 +999,20 @@
                 
                 html += `
                     <div class="offer-card">
-                        <div>
+                        <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap;">
                             <span class="subject">${escapeHtml(offer.subject_name)}</span>
-                            ${statusBadge}
-                            ${isFree ? '<span class="badge badge-free">🎁 مجاني</span>' : ''}
+                            <div>
+                                ${statusBadge}
+                                ${isFree ? '<span class="badge badge-free">🎁 مجاني</span>' : ''}
+                            </div>
                         </div>
                         <div class="offer-date">
-                            <i class="fas fa-calendar-day"></i> ${offerDate.toLocaleDateString('ar')} 
-                            <i class="fas fa-clock" style="margin-right: 8px;"></i> ${offerDate.toLocaleTimeString('ar', {hour: '2-digit', minute: '2-digit'})}
+                            <span><i class="fas fa-calendar-day"></i> ${offerDate.toLocaleDateString('ar')}</span>
+                            <span><i class="fas fa-clock"></i> ${offerDate.toLocaleTimeString('ar', {hour: '2-digit', minute: '2-digit'})}</span>
                         </div>
-                        <div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                             <span class="offer-duration"><i class="fas fa-hourglass-half"></i> ${offer.duration || 30} دقيقة</span>
-                            <span class="price ${priceClass}" style="margin-right: 10px;"><i class="fas fa-coins"></i> ${priceDisplay}</span>
+                            <span class="price ${priceClass}"><i class="fas fa-coins"></i> ${priceDisplay}</span>
                         </div>
                         <div class="waiting-count">
                             <i class="fas fa-users"></i> <span id="waiting-${offer.id}">0</span> طالب في الانتظار
@@ -648,8 +1066,6 @@
                     btn.classList.add('booked');
                     btn.disabled = true;
                     bookedOffers.add(offerId);
-                    
-                    // تحديث عدد المنتظرين
                     loadWaitingCount(offerId);
                 } else {
                     showNotification(data.error || 'حدث خطأ في الحجز', 'error');
