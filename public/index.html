@@ -560,6 +560,9 @@
             cursor: pointer;
             border: 2px solid var(--primary);
             background: white;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
         }
         .captcha-container .captcha-image svg {
             display: block;
@@ -614,6 +617,7 @@
             margin-top: -10px;
             margin-bottom: 14px;
             display: none;
+            text-align: right;
         }
         .captcha-error.show { display: block; }
 
@@ -1168,39 +1172,80 @@
     <div id="notificationToast" class="notification-toast"></div>
 
     <script>
+        // ============================================================
+        // 🛠️  الكود الكامل مع إصلاح مشكلة الكابتشا
+        // ============================================================
+
         // ===== CAPTCHA VARIABLES =====
         const captchaData = {
-            login: { id: null, image: null },
-            student: { id: null, image: null },
-            teacher: { id: null, image: null }
+            login: { id: null, image: null, loading: false },
+            student: { id: null, image: null, loading: false },
+            teacher: { id: null, image: null, loading: false }
         };
 
         // ===== CAPTCHA FUNCTIONS =====
         async function refreshCaptcha(type) {
+            if (captchaData[type].loading) return;
+            
             try {
-                const response = await fetch('/api/captcha/generate');
+                captchaData[type].loading = true;
+                
+                const imageContainer = document.getElementById(`${type}CaptchaImage`);
+                if (imageContainer) {
+                    imageContainer.innerHTML = '<div style="padding:8px;font-size:0.8rem;color:#94a3b8;">جاري التحميل...</div>';
+                }
+                
+                const response = await fetch('/api/captcha/generate', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
                 const data = await response.json();
                 
                 if (data.captcha_id && data.image) {
                     captchaData[type].id = data.captcha_id;
                     captchaData[type].image = data.image;
                     
-                    const imageContainer = document.getElementById(`${type}CaptchaImage`);
                     if (imageContainer) {
                         imageContainer.innerHTML = data.image;
                     }
                     
                     const input = document.getElementById(`${type}CaptchaInput`);
-                    if (input) input.value = '';
+                    if (input) {
+                        input.value = '';
+                        input.focus();
+                    }
                     
                     const errorEl = document.getElementById(`${type}CaptchaError`);
                     if (errorEl) {
                         errorEl.classList.remove('show');
                         errorEl.textContent = '';
                     }
+                    
+                    console.log(`✅ تم تحديث الكابتشا لـ ${type}:`, data.captcha_id);
+                } else {
+                    console.error('❌ بيانات الكابتشا غير مكتملة:', data);
+                    if (imageContainer) {
+                        imageContainer.innerHTML = '<div style="padding:8px;font-size:0.8rem;color:#ef4444;">⚠️ خطأ، انقر للتحديث</div>';
+                    }
                 }
             } catch (error) {
                 console.error('❌ خطأ في تحميل الكابتشا:', error);
+                const errorEl = document.getElementById(`${type}CaptchaError`);
+                if (errorEl) {
+                    errorEl.textContent = '⚠️ حدث خطأ في تحميل الكابتشا، حاول مرة أخرى';
+                    errorEl.classList.add('show');
+                }
+                const imageContainer = document.getElementById(`${type}CaptchaImage`);
+                if (imageContainer) {
+                    imageContainer.innerHTML = '<div style="padding:8px;font-size:0.8rem;color:#ef4444;">⚠️ انقر لإعادة التحميل</div>';
+                }
+            } finally {
+                captchaData[type].loading = false;
             }
         }
 
@@ -1208,7 +1253,14 @@
             const input = document.getElementById(`${type}CaptchaInput`);
             const errorEl = document.getElementById(`${type}CaptchaError`);
             
-            if (!input || !input.value.trim()) {
+            if (!input) {
+                console.error(`❌ مدخل الكابتشا لـ ${type} غير موجود`);
+                return false;
+            }
+            
+            const code = input.value.trim();
+            
+            if (!code || code === '') {
                 if (errorEl) {
                     errorEl.textContent = '⚠️ الرجاء إدخال رمز التحقق';
                     errorEl.classList.add('show');
@@ -1216,25 +1268,34 @@
                 return false;
             }
             
-            const code = input.value.trim();
             const captchaId = captchaData[type].id;
             
             if (!captchaId) {
                 if (errorEl) {
-                    errorEl.textContent = '⚠️ الرجاء تحديث رمز التحقق';
+                    errorEl.textContent = '⚠️ الرجاء تحديث رمز التحقق (انقر على الصورة)';
                     errorEl.classList.add('show');
                 }
+                await refreshCaptcha(type);
                 return false;
             }
             
             try {
+                console.log(`🔍 التحقق من الكابتشا ${type}:`, { captchaId, code });
+                
                 const response = await fetch('/api/captcha/verify', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ captcha_id: captchaId, captcha_code: code })
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        captcha_id: captchaId, 
+                        captcha_code: code 
+                    })
                 });
                 
                 const data = await response.json();
+                console.log(`📥 رد التحقق ${type}:`, data);
                 
                 if (data.success) {
                     if (errorEl) {
@@ -1251,9 +1312,9 @@
                     return false;
                 }
             } catch (error) {
-                console.error('❌ خطأ في التحقق من الكابتشا:', error);
+                console.error(`❌ خطأ في التحقق من الكابتشا ${type}:`, error);
                 if (errorEl) {
-                    errorEl.textContent = '⚠️ حدث خطأ في التحقق';
+                    errorEl.textContent = '⚠️ حدث خطأ في التحقق، حاول مرة أخرى';
                     errorEl.classList.add('show');
                 }
                 return false;
@@ -1562,7 +1623,7 @@
             document.getElementById('supportSection').style.display = 'none';
             setActiveTab('loginTabNav');
             switchTab('login');
-            setTimeout(loadCaptchas, 100);
+            setTimeout(loadCaptchas, 500);
         }
 
         function showTeacherRegister() {
@@ -1575,7 +1636,7 @@
             document.getElementById('supportSection').style.display = 'none';
             setActiveTab('loginTabNav');
             switchTab('teacher-register');
-            setTimeout(loadCaptchas, 100);
+            setTimeout(loadCaptchas, 500);
         }
 
         function showForgotPassword() {
@@ -1628,18 +1689,21 @@
             document.getElementById('forgotPasswordTab').style.display = 'none';
             document.getElementById('studentRegisterTab').style.display = 'none';
             document.getElementById('teacherRegisterTab').style.display = 'none';
+            
             if (tab === 'login') document.getElementById('loginTab').style.display = 'block';
             else if (tab === 'student-register') document.getElementById('studentRegisterTab').style.display = 'block';
             else if (tab === 'teacher-register') document.getElementById('teacherRegisterTab').style.display = 'block';
             
-            document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+            document.querySelectorAll('.tab-btn').forEach((btn, index) => {
                 btn.classList.remove('active');
-                if ((tab === 'login' && i === 0) || (tab === 'student-register' && i === 1) || (tab === 'teacher-register' && i === 2)) {
+                if ((tab === 'login' && index === 0) || 
+                    (tab === 'student-register' && index === 1) || 
+                    (tab === 'teacher-register' && index === 2)) {
                     btn.classList.add('active');
                 }
             });
             
-            setTimeout(loadCaptchas, 100);
+            setTimeout(loadCaptchas, 300);
         }
 
         async function login() {
@@ -1730,9 +1794,20 @@
             formData.append('specialization', document.getElementById('teacherSpecialization').value);
             formData.append('bio', document.getElementById('teacherBio').value);
             formData.append('experience', document.getElementById('teacherExperience').value);
-            if (document.getElementById('profileImage').files[0]) formData.append('profile_image', document.getElementById('profileImage').files[0]);
-            if (document.getElementById('diplomaImage').files[0]) formData.append('diploma_image', document.getElementById('diplomaImage').files[0]);
-            if (document.getElementById('idImage').files[0]) formData.append('id_image', document.getElementById('idImage').files[0]);
+            
+            const profileImage = document.getElementById('profileImage');
+            const diplomaImage = document.getElementById('diplomaImage');
+            const idImage = document.getElementById('idImage');
+            
+            if (profileImage && profileImage.files[0]) {
+                formData.append('profile_image', profileImage.files[0]);
+            }
+            if (diplomaImage && diplomaImage.files[0]) {
+                formData.append('diploma_image', diplomaImage.files[0]);
+            }
+            if (idImage && idImage.files[0]) {
+                formData.append('id_image', idImage.files[0]);
+            }
             
             const captchaValid = await verifyCaptcha('teacher');
             if (!captchaValid) {
@@ -1740,7 +1815,10 @@
             }
             
             try {
-                const res = await fetch('/api/teacher/register', { method: 'POST', body: formData });
+                const res = await fetch('/api/teacher/register', { 
+                    method: 'POST', 
+                    body: formData 
+                });
                 const data = await res.json();
                 if (data.success) { 
                     showNotification('تم إرسال طلبك بنجاح! سيتم مراجعته', 'success'); 
@@ -1760,14 +1838,28 @@
             return div.innerHTML;
         }
 
-        // ===== INIT =====
-        showHome();
-        setInterval(loadLiveStreams, 30000);
-        setInterval(loadStats, 60000);
+        // ============================================================
+        // 🚀 INIT
+        // ============================================================
         
-        document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(loadCaptchas, 500);
-        });
+        function init() {
+            showHome();
+            
+            // تحميل الكابتشا بعد ثانية
+            setTimeout(loadCaptchas, 1000);
+            
+            // تحديث البث المباشر كل 30 ثانية
+            setInterval(loadLiveStreams, 30000);
+            
+            // تحديث الإحصائيات كل دقيقة
+            setInterval(loadStats, 60000);
+            
+            console.log('✅ تم تحميل المنصة بنجاح');
+            console.log('📅 التاريخ:', new Date().toLocaleString('ar-EG'));
+        }
+
+        // تشغيل التطبيق
+        document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
