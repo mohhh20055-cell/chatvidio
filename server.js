@@ -2178,3 +2178,95 @@ app.post('/api/notifications/read/:notification_id', async (req, res) => {
         res.json({ success: false, error: error.message });
     }
 });
+// استخدم multer بدون الحاجة إلى صورة إلزامية
+app.post('/api/teacher/update-profile-with-social', upload.fields([
+    { name: 'profile_image', maxCount: 1 }
+]), async (req, res) => {
+    try {
+        const { teacher_id, facebook_url, instagram_url, linkedin_url, youtube_url, twitter_url, website_url } = req.body;
+        
+        console.log('📝 استلام طلب تحديث الملف الشخصي:', { teacher_id, facebook_url, instagram_url, linkedin_url, youtube_url, twitter_url, website_url });
+        
+        if (!teacher_id) {
+            return res.json({ success: false, error: 'معرف الأستاذ مطلوب' });
+        }
+        
+        let profile_image = null;
+        let profile_url = null;
+        
+        // جلب بيانات الأستاذ الحالية
+        const oldTeacher = await getOne('teachers', 'id', teacher_id);
+        if (!oldTeacher) {
+            return res.json({ success: false, error: 'الأستاذ غير موجود' });
+        }
+        
+        // رفع الصورة الجديدة إن وجدت
+        if (req.files && req.files['profile_image'] && req.files['profile_image'][0]) {
+            const file = req.files['profile_image'][0];
+            const uploaded = await uploadToSupabase(file, 'teachers', oldTeacher?.profile_image);
+            if (uploaded) {
+                profile_image = uploaded.filename;
+                profile_url = uploaded.url;
+                console.log('✅ تم رفع الصورة بنجاح:', profile_url);
+            } else {
+                console.warn('⚠️ فشل رفع الصورة، ولكن نكمل العملية');
+            }
+        }
+        
+        // بناء كائن التحديث
+        const updateData = {};
+        
+        // إضافة الصورة إذا تم رفعها
+        if (profile_image) { updateData.profile_image = profile_image; }
+        if (profile_url) { updateData.profile_url = profile_url; }
+        
+        // إضافة روابط التواصل الاجتماعي
+        const socialFields = {
+            facebook_url,
+            instagram_url,
+            linkedin_url,
+            youtube_url,
+            twitter_url,
+            website_url
+        };
+        
+        for (const [key, value] of Object.entries(socialFields)) {
+            if (value !== undefined && value !== null) {
+                const cleaned = value.trim();
+                // إذا كان الرابط فارغاً، نضع null
+                updateData[key] = cleaned === '' ? null : cleaned;
+                console.log(`📎 ${key}: ${updateData[key]}`);
+            }
+        }
+        
+        console.log('📦 بيانات التحديث:', updateData);
+        
+        // تحديث قاعدة البيانات
+        const { data, error } = await supabase
+            .from('teachers')
+            .update(updateData)
+            .eq('id', teacher_id)
+            .select();
+        
+        if (error) {
+            console.error('❌ خطأ في Supabase:', error);
+            throw error;
+        }
+        
+        console.log('✅ تم تحديث الملف الشخصي بنجاح');
+        
+        res.json({ 
+            success: true, 
+            message: 'تم تحديث الملف الشخصي وروابط التواصل الاجتماعي بنجاح', 
+            user: data ? data[0] : null 
+        });
+        
+    } catch (error) {
+        console.error('❌ خطأ في تحديث الملف الشخصي:', error.message);
+        console.error('❌ تفاصيل الخطأ:', error);
+        res.json({ 
+            success: false, 
+            error: error.message || 'حدث خطأ أثناء تحديث الملف الشخصي' 
+        });
+    }
+});
