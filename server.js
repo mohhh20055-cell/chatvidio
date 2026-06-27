@@ -53,6 +53,9 @@ if (cluster.isMaster) {
     const app = express();
     const PORT = process.env.PORT || 3000;
 
+    // ===== إضافة trust proxy لحل مشكلة Rate Limiting =====
+    app.set('trust proxy', true);
+
     // ===== تهيئة التخزين المؤقت =====
     const cache = new NodeCache({
         stdTTL: 300, // 5 دقائق
@@ -128,7 +131,8 @@ if (cluster.isMaster) {
             return req.path.startsWith('/api/stream') || 
                    req.path.startsWith('/api/public/stats') ||
                    req.path.startsWith('/api/public/offers') ||
-                   req.path.startsWith('/api/public/teachers');
+                   req.path.startsWith('/api/public/teachers') ||
+                   req.path.startsWith('/api/captcha');
         }
     });
 
@@ -158,15 +162,17 @@ if (cluster.isMaster) {
         lastModified: true
     }));
 
-    // تطبيق Rate Limiting على جميع المسارات ما عدا البث المباشر
+    // تطبيق Rate Limiting على جميع المسارات ما عدا البث المباشر والكابتشا
     app.use((req, res, next) => {
         if (!req.path.startsWith('/api/stream') && 
             !req.path.startsWith('/api/public') &&
-            !req.path.startsWith('/api/join-stream')) {
+            !req.path.startsWith('/api/join-stream') &&
+            !req.path.startsWith('/api/captcha')) {
             return limiter(req, res, next);
         }
         next();
     });
+
     // ===== تحسين اتصالات HTTP =====
     const httpAgent = new https.Agent({
         keepAlive: true,
@@ -180,7 +186,6 @@ if (cluster.isMaster) {
     axios.defaults.timeout = 30000;
 
     // ===== تحسين Jitsi Meet =====
-    // استخدام خوادم Jitsi متعددة للتوازن
     const JITSI_SERVERS = [
         'meet.jit.si',
         'meet2.jit.si',
@@ -272,7 +277,7 @@ if (cluster.isMaster) {
                 .from('profiles')
                 .upload(filePath, file.buffer, {
                     contentType: file.mimetype,
-                    cacheControl: '86400' // تخزين لمدة يوم
+                    cacheControl: '86400'
                 });
             
             if (error) {
@@ -389,7 +394,7 @@ if (cluster.isMaster) {
             }
             
             if (data) {
-                cache.set(cacheKey, data, 300); // تخزين لمدة 5 دقائق
+                cache.set(cacheKey, data, 300);
                 console.log(`💾 تم التخزين المؤقت: ${cacheKey}`);
             }
             return data;
@@ -404,7 +409,6 @@ if (cluster.isMaster) {
             const { data: result, error } = await supabase.from(table).insert(data).select();
             if (error) throw error;
             
-            // مسح التخزين المؤقت للجدول
             const keys = cache.keys();
             for (const key of keys) {
                 if (key.startsWith(table)) {
@@ -424,7 +428,6 @@ if (cluster.isMaster) {
             const { data: result, error } = await supabase.from(table).update(data).eq('id', id).select();
             if (error) throw error;
             
-            // مسح التخزين المؤقت للجدول
             const keys = cache.keys();
             for (const key of keys) {
                 if (key.startsWith(table)) {
@@ -444,7 +447,6 @@ if (cluster.isMaster) {
             const { error } = await supabase.from(table).delete().eq(column, value);
             if (error) throw error;
             
-            // مسح التخزين المؤقت للجدول
             const keys = cache.keys();
             for (const key of keys) {
                 if (key.startsWith(table)) {
@@ -477,7 +479,7 @@ if (cluster.isMaster) {
                 .limit(100);
             
             teachers = data || [];
-            cache.set(cacheKey, teachers, 300); // 5 دقائق
+            cache.set(cacheKey, teachers, 300);
             res.json(teachers);
         } catch (error) {
             console.error('❌ خطأ:', error.message);
@@ -515,7 +517,7 @@ if (cluster.isMaster) {
                 teacher_profile_url: o.teachers?.profile_url
             }));
             
-            cache.set(cacheKey, formatted, 60); // 1 دقيقة
+            cache.set(cacheKey, formatted, 60);
             res.json(formatted);
         } catch (error) {
             console.error('❌ خطأ:', error.message);
@@ -548,7 +550,7 @@ if (cluster.isMaster) {
                 teacher_profile_url: o.teachers?.profile_url
             }));
             
-            cache.set(cacheKey, formatted, 30); // 30 ثانية
+            cache.set(cacheKey, formatted, 30);
             res.json(formatted);
         } catch (error) {
             console.error('❌ خطأ:', error.message);
@@ -582,7 +584,7 @@ if (cluster.isMaster) {
                 students: studentsCount || 0
             };
 
-            cache.set(cacheKey, stats, 60); // 1 دقيقة
+            cache.set(cacheKey, stats, 60);
             res.json(stats);
         } catch (error) {
             console.error('❌ خطأ:', error.message);
@@ -604,7 +606,7 @@ if (cluster.isMaster) {
                 .select('*', { count: 'exact', head: true });
             
             count = data?.count || 0;
-            cache.set(cacheKey, count, 300); // 5 دقائق
+            cache.set(cacheKey, count, 300);
             res.json({ count });
         } catch (error) {
             console.error('❌ خطأ:', error.message);
@@ -613,7 +615,6 @@ if (cluster.isMaster) {
     });
 
     // ============= نظام المنشورات =============
-    // مسار إنشاء منشور جديد
     app.post('/api/post/create', upload.fields([
         { name: 'image', maxCount: 1 },
         { name: 'file', maxCount: 1 }
@@ -649,7 +650,6 @@ if (cluster.isMaster) {
         }
     });
 
-    // مسار جلب منشورات أستاذ معين
     app.get('/api/posts/:teacher_id', async (req, res) => {
         try {
             const { data } = await supabase
@@ -658,7 +658,6 @@ if (cluster.isMaster) {
                 .eq('teacher_id', req.params.teacher_id)
                 .order('created_at', { ascending: false });
             
-            // جلب عدد الإعجابات والتعليقات لكل منشور
             const postsWithCounts = await Promise.all((data || []).map(async (post) => {
                 const { count: likesCount } = await supabase
                     .from('post_likes')
@@ -680,7 +679,6 @@ if (cluster.isMaster) {
         }
     });
 
-    // مسار جلب منشور واحد مع تعليقاته
     app.get('/api/post/:post_id', async (req, res) => {
         try {
             const { data: post } = await supabase
@@ -709,7 +707,6 @@ if (cluster.isMaster) {
         }
     });
 
-    // مسار الإعجاب بمنشور
     app.post('/api/post/like', async (req, res) => {
         try {
             const { post_id, student_id } = req.body;
@@ -727,7 +724,6 @@ if (cluster.isMaster) {
         }
     });
 
-    // مسار إلغاء الإعجاب بمنشور
     app.post('/api/post/unlike', async (req, res) => {
         try {
             const { post_id, student_id } = req.body;
@@ -745,7 +741,6 @@ if (cluster.isMaster) {
         }
     });
 
-    // مسار التحقق من حالة الإعجاب
     app.get('/api/post/check-like/:post_id/:student_id', async (req, res) => {
         try {
             const { data } = await supabase
@@ -760,7 +755,6 @@ if (cluster.isMaster) {
         }
     });
 
-    // مسار إضافة تعليق
     app.post('/api/post/comment', async (req, res) => {
         try {
             const { post_id, student_id, comment } = req.body;
@@ -782,7 +776,6 @@ if (cluster.isMaster) {
         }
     });
 
-    // مسار حذف تعليق
     app.delete('/api/post/comment/:comment_id', async (req, res) => {
         try {
             const { comment_id } = req.params;
@@ -800,7 +793,6 @@ if (cluster.isMaster) {
         }
     });
 
-    // مسار حذف منشور
     app.delete('/api/post/:post_id', async (req, res) => {
         try {
             const { post_id } = req.params;
@@ -848,7 +840,6 @@ if (cluster.isMaster) {
         }
     });
 
-    // ADMIN: جلب جميع رسائل الدعم
     app.get('/api/admin/support-messages', async (req, res) => {
         try {
             const { data } = await supabase
@@ -862,7 +853,6 @@ if (cluster.isMaster) {
         }
     });
 
-    // ADMIN: تحديث حالة رسالة
     app.put('/api/admin/support-messages/:id/read', async (req, res) => {
         try {
             const { id } = req.params;
@@ -873,7 +863,6 @@ if (cluster.isMaster) {
         }
     });
 
-    // ADMIN: حذف رسالة
     app.delete('/api/admin/support-messages/:id', async (req, res) => {
         try {
             const { id } = req.params;
@@ -2452,7 +2441,10 @@ if (cluster.isMaster) {
         return div.innerHTML;
     }
 
-    // ===== نظام الكابتشا =====
+    // ============================================================
+    // 🛡️ نظام الكابتشا - تم إصلاحه بالكامل
+    // ============================================================
+    
     const captchaStore = {};
 
     function generateCaptcha() {
@@ -2498,64 +2490,119 @@ if (cluster.isMaster) {
         return svg;
     }
 
+    // ===== مسار إنشاء كابتشا جديدة =====
     app.get('/api/captcha/generate', (req, res) => {
-        const code = generateCaptcha();
-        const captchaId = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
-        
-        captchaStore[captchaId] = {
-            code: code,
-            expires: Date.now() + 5 * 60 * 1000
-        };
-        
-        const now = Date.now();
-        Object.keys(captchaStore).forEach(key => {
-            if (captchaStore[key].expires < now) {
-                delete captchaStore[key];
-            }
-        });
-        
-        const svg = generateCaptchaImage(code);
-        
-        res.json({
-            captcha_id: captchaId,
-            image: svg,
-            expires_in: 300
-        });
+        try {
+            const code = generateCaptcha();
+            const captchaId = Date.now().toString(36) + Math.random().toString(36).substr(2, 8);
+            
+            // تخزين الكود مع وقت الانتهاء (5 دقائق)
+            captchaStore[captchaId] = {
+                code: code,
+                expires: Date.now() + 5 * 60 * 1000
+            };
+            
+            // تنظيف الكابتشا المنتهية
+            const now = Date.now();
+            Object.keys(captchaStore).forEach(key => {
+                if (captchaStore[key].expires < now) {
+                    delete captchaStore[key];
+                }
+            });
+            
+            const svg = generateCaptchaImage(code);
+            
+            console.log(`✅ تم إنشاء كابتشا جديدة: ${captchaId}`);
+            
+            res.json({
+                success: true,
+                captcha_id: captchaId,
+                image: svg,
+                expires_in: 300
+            });
+        } catch (error) {
+            console.error('❌ خطأ في إنشاء الكابتشا:', error);
+            res.status(500).json({ 
+                success: false, 
+                error: 'حدث خطأ في إنشاء الكابتشا' 
+            });
+        }
     });
 
+    // ===== مسار التحقق من الكابتشا =====
     app.post('/api/captcha/verify', (req, res) => {
-        const { captcha_id, captcha_code } = req.body;
-        
-        if (!captcha_id || !captcha_code) {
-            return res.json({ success: false, error: 'الرجاء إدخال رمز التحقق' });
-        }
-        
-        const stored = captchaStore[captcha_id];
-        
-        if (!stored) {
-            return res.json({ success: false, error: 'انتهت صلاحية رمز التحقق، يرجى تحديث الصورة' });
-        }
-        
-        if (Date.now() > stored.expires) {
-            delete captchaStore[captcha_id];
-            return res.json({ success: false, error: 'انتهت صلاحية رمز التحقق، يرجى تحديث الصورة' });
-        }
-        
-        if (stored.code.toLowerCase() === captcha_code.toLowerCase().trim()) {
-            delete captchaStore[captcha_id];
-            return res.json({ success: true });
-        } else {
-            return res.json({ success: false, error: 'رمز التحقق غير صحيح، يرجى المحاولة مرة أخرى' });
+        try {
+            const { captcha_id, captcha_code } = req.body;
+            
+            console.log(`🔍 محاولة التحقق من الكابتشا: ${captcha_id}, الكود: ${captcha_code}`);
+            
+            if (!captcha_id || !captcha_code) {
+                return res.json({ 
+                    success: false, 
+                    error: 'الرجاء إدخال رمز التحقق' 
+                });
+            }
+            
+            const stored = captchaStore[captcha_id];
+            
+            if (!stored) {
+                return res.json({ 
+                    success: false, 
+                    error: 'انتهت صلاحية رمز التحقق، يرجى تحديث الصورة' 
+                });
+            }
+            
+            if (Date.now() > stored.expires) {
+                delete captchaStore[captcha_id];
+                return res.json({ 
+                    success: false, 
+                    error: 'انتهت صلاحية رمز التحقق، يرجى تحديث الصورة' 
+                });
+            }
+            
+            // مقارنة الكود (تجاهل حالة الأحرف والمسافات)
+            const inputCode = captcha_code.toString().toLowerCase().trim();
+            const storedCode = stored.code.toLowerCase().trim();
+            
+            console.log(`📝 مقارنة: "${inputCode}" == "${storedCode}"`);
+            
+            if (inputCode === storedCode) {
+                // حذف الكابتشا بعد الاستخدام الناجح
+                delete captchaStore[captcha_id];
+                console.log(`✅ تم التحقق بنجاح من الكابتشا: ${captcha_id}`);
+                return res.json({ 
+                    success: true,
+                    message: 'تم التحقق بنجاح'
+                });
+            } else {
+                console.log(`❌ فشل التحقق من الكابتشا: ${captcha_id}`);
+                return res.json({ 
+                    success: false, 
+                    error: 'رمز التحقق غير صحيح، يرجى المحاولة مرة أخرى' 
+                });
+            }
+        } catch (error) {
+            console.error('❌ خطأ في التحقق من الكابتشا:', error);
+            res.status(500).json({ 
+                success: false, 
+                error: 'حدث خطأ في التحقق من الكابتشا' 
+            });
         }
     });
 
+    // ===== تنظيف الكابتشا المنتهية كل دقيقة =====
     setInterval(() => {
         const now = Date.now();
+        let count = 0;
         Object.keys(captchaStore).forEach(key => {
             if (captchaStore[key].expires < now) {
                 delete captchaStore[key];
+                count++;
             }
         });
+        if (count > 0) {
+            console.log(`🧹 تم تنظيف ${count} كابتشا منتهية`);
+        }
     }, 60000);
 
     // ===== إرسال إشعار لجميع الطلاب =====
@@ -2752,7 +2799,8 @@ if (cluster.isMaster) {
                 },
                 active_streams: connections?.count || 0,
                 total_sessions: sessions?.count || 0,
-                cache_size: cache.keys().length
+                cache_size: cache.keys().length,
+                captcha_store_size: Object.keys(captchaStore).length
             });
         } catch (error) {
             res.json({ status: 'error', error: error.message });
@@ -2766,6 +2814,7 @@ if (cluster.isMaster) {
         console.log(`💾 التخزين المؤقت: مفعل (${cache.keys().length} مفتاح)`);
         console.log(`🔒 Rate Limiting: مفعل`);
         console.log(`📦 الضغط: مفعل`);
+        console.log(`🛡️ الكابتشا: مفعلة مع تخزين في الذاكرة`);
         console.log(`📅 التاريخ: ${new Date().toLocaleString('ar-EG')}`);
         console.log('='.repeat(60));
     });
