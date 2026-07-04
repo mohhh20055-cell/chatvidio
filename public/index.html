@@ -1297,7 +1297,7 @@
         // ============================================================
 
         // ===== CAPTCHA VARIABLES =====
-        const captchaData = {
+        var captchaData = {
             login: { id: null, image: null, loading: false },
             student: { id: null, image: null, loading: false },
             teacher: { id: null, image: null, loading: false }
@@ -1310,12 +1310,12 @@
             try {
                 captchaData[type].loading = true;
                 
-                const imageContainer = document.getElementById(type + 'CaptchaImage');
+                var imageContainer = document.getElementById(type + 'CaptchaImage');
                 if (imageContainer) {
                     imageContainer.innerHTML = '<div style="padding:8px;font-size:0.8rem;color:#94a3b8;">جاري التحميل...</div>';
                 }
                 
-                const response = await fetch('/api/captcha/generate', {
+                var response = await fetch('/api/captcha/generate', {
                     method: 'GET',
                     headers: { 'Content-Type': 'application/json' }
                 });
@@ -1324,7 +1324,7 @@
                     throw new Error('HTTP error! status: ' + response.status);
                 }
                 
-                const data = await response.json();
+                var data = await response.json();
                 
                 if (data.captcha_id && data.image) {
                     captchaData[type].id = data.captcha_id;
@@ -1334,19 +1334,19 @@
                         imageContainer.innerHTML = data.image;
                     }
                     
-                    const input = document.getElementById(type + 'CaptchaInput');
+                    var input = document.getElementById(type + 'CaptchaInput');
                     if (input) {
                         input.value = '';
                         input.focus();
                     }
                     
-                    const errorEl = document.getElementById(type + 'CaptchaError');
+                    var errorEl = document.getElementById(type + 'CaptchaError');
                     if (errorEl) {
                         errorEl.classList.remove('show');
                         errorEl.textContent = '';
                     }
                     
-                    console.log('تم تحديث الكابتشا لـ ' + type + ':', data.captcha_id);
+                    console.log('تم تحديث الكابتشا لـ ' + type + ':');
                 } else {
                     console.error('بيانات الكابتشا غير مكتملة:', data);
                     if (imageContainer) {
@@ -1355,12 +1355,12 @@
                 }
             } catch (error) {
                 console.error('خطأ في تحميل الكابتشا:', error);
-                const errorEl = document.getElementById(type + 'CaptchaError');
+                var errorEl = document.getElementById(type + 'CaptchaError');
                 if (errorEl) {
                     errorEl.textContent = 'حدث خطأ في تحميل الكابتشا، حاول مرة أخرى';
                     errorEl.classList.add('show');
                 }
-                const imageContainer = document.getElementById(type + 'CaptchaImage');
+                var imageContainer = document.getElementById(type + 'CaptchaImage');
                 if (imageContainer) {
                     imageContainer.innerHTML = '<div style="padding:8px;font-size:0.8rem;color:#ef4444;">انقر لإعادة التحميل</div>';
                 }
@@ -1370,15 +1370,15 @@
         }
 
         async function verifyCaptcha(type) {
-            const input = document.getElementById(type + 'CaptchaInput');
-            const errorEl = document.getElementById(type + 'CaptchaError');
+            var input = document.getElementById(type + 'CaptchaInput');
+            var errorEl = document.getElementById(type + 'CaptchaError');
             
             if (!input) {
                 console.error('مدخل الكابتشا لـ ' + type + ' غير موجود');
                 return false;
             }
             
-            const code = input.value.trim();
+            var code = input.value.trim();
             
             if (!code || code === '') {
                 if (errorEl) {
@@ -1388,7 +1388,7 @@
                 return false;
             }
             
-            const captchaId = captchaData[type].id;
+            var captchaId = captchaData[type].id;
             
             if (!captchaId) {
                 if (errorEl) {
@@ -1400,9 +1400,9 @@
             }
             
             try {
-                console.log('التحقق من الكابتشا ' + type + ':', { captchaId: captchaId, code: code });
+                console.log('التحقق من الكابتشا ' + type);
                 
-                const response = await fetch('/api/captcha/verify', {
+                var response = await fetch('/api/captcha/verify', {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
@@ -1414,7 +1414,7 @@
                     })
                 });
                 
-                const data = await response.json();
+                var data = await response.json();
                 console.log('رد التحقق ' + type + ':', data);
                 
                 if (data.success) {
@@ -1450,7 +1450,7 @@
         // ===== NOTIFICATION =====
         function showNotification(message, type) {
             if (type === undefined) type = 'success';
-            const toast = document.getElementById('notificationToast');
+            var toast = document.getElementById('notificationToast');
             toast.className = 'notification-toast';
             if (type === 'error') toast.classList.add('error');
             else if (type === 'warning') toast.classList.add('warning');
@@ -1462,16 +1462,16 @@
         // ===== STATS =====
         async function loadStats() {
             try {
-                const response = await fetch('/api/public/stats');
+                var response = await fetch('/api/public/stats');
                 if (!response.ok) throw new Error('HTTP error! status: ' + response.status);
-                const stats = await response.json();
+                var stats = await response.json();
                 
                 document.getElementById('teacherCount').innerText = stats.teachers || 0;
                 document.getElementById('offerCount').innerText = stats.offers || 0;
                 document.getElementById('liveCountStat').innerText = stats.live || 0;
                 document.getElementById('studentCount').innerText = stats.students || 0;
                 
-                const liveBadge = document.getElementById('liveCount');
+                var liveBadge = document.getElementById('liveCount');
                 if (stats.live > 0) {
                     liveBadge.style.display = 'inline-block';
                     liveBadge.innerText = stats.live;
@@ -1487,8 +1487,12 @@
             }
         }
 
-        // ===== NAVIGATION =====
+        // ============================================================
+        // دوال التبويبات - تعريفها في النطاق العام
+        // ============================================================
+        
         function showHome() {
+            console.log('🔄 showHome تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'flex';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('offersSection').style.display = 'none';
@@ -1501,7 +1505,50 @@
             loadStats();
         }
 
+        function showTeachers() {
+            console.log('🔄 showTeachers تم استدعاؤها');
+            document.getElementById('homeSection').style.display = 'none';
+            document.getElementById('teachersSection').style.display = 'block';
+            document.getElementById('offersSection').style.display = 'none';
+            document.getElementById('liveSection').style.display = 'none';
+            document.getElementById('developersSection').style.display = 'none';
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('downloadAppSection').style.display = 'none';
+            document.getElementById('supportSection').style.display = 'none';
+            setActiveTab('teachersTab');
+            loadPublicTeachers();
+        }
+
+        function showOffers() {
+            console.log('🔄 showOffers تم استدعاؤها');
+            document.getElementById('homeSection').style.display = 'none';
+            document.getElementById('teachersSection').style.display = 'none';
+            document.getElementById('offersSection').style.display = 'block';
+            document.getElementById('liveSection').style.display = 'none';
+            document.getElementById('developersSection').style.display = 'none';
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('downloadAppSection').style.display = 'none';
+            document.getElementById('supportSection').style.display = 'none';
+            setActiveTab('offersTab');
+            loadPublicOffers();
+        }
+
+        function showLiveStreams() {
+            console.log('🔄 showLiveStreams تم استدعاؤها');
+            document.getElementById('homeSection').style.display = 'none';
+            document.getElementById('teachersSection').style.display = 'none';
+            document.getElementById('offersSection').style.display = 'none';
+            document.getElementById('liveSection').style.display = 'block';
+            document.getElementById('developersSection').style.display = 'none';
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('downloadAppSection').style.display = 'none';
+            document.getElementById('supportSection').style.display = 'none';
+            setActiveTab('liveTab');
+            loadLiveStreams();
+        }
+
         function showDevelopers() {
+            console.log('🔄 showDevelopers تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('offersSection').style.display = 'none';
@@ -1513,7 +1560,23 @@
             setActiveTab('developersTab');
         }
 
+        function showLogin() {
+            console.log('🔄 showLogin تم استدعاؤها');
+            document.getElementById('homeSection').style.display = 'none';
+            document.getElementById('teachersSection').style.display = 'none';
+            document.getElementById('offersSection').style.display = 'none';
+            document.getElementById('liveSection').style.display = 'none';
+            document.getElementById('developersSection').style.display = 'none';
+            document.getElementById('loginSection').style.display = 'block';
+            document.getElementById('downloadAppSection').style.display = 'none';
+            document.getElementById('supportSection').style.display = 'none';
+            setActiveTab('loginTabNav');
+            switchTab('login');
+            setTimeout(loadCaptchas, 500);
+        }
+
         function showDownloadApp() {
+            console.log('🔄 showDownloadApp تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('offersSection').style.display = 'none';
@@ -1526,6 +1589,7 @@
         }
 
         function showSupport() {
+            console.log('🔄 showSupport تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('offersSection').style.display = 'none';
@@ -1537,6 +1601,30 @@
             setActiveTab('');
         }
 
+        function showTeacherRegister() {
+            document.getElementById('homeSection').style.display = 'none';
+            document.getElementById('teachersSection').style.display = 'none';
+            document.getElementById('offersSection').style.display = 'none';
+            document.getElementById('liveSection').style.display = 'none';
+            document.getElementById('developersSection').style.display = 'none';
+            document.getElementById('loginSection').style.display = 'block';
+            document.getElementById('downloadAppSection').style.display = 'none';
+            document.getElementById('supportSection').style.display = 'none';
+            setActiveTab('loginTabNav');
+            switchTab('teacher-register');
+            setTimeout(loadCaptchas, 500);
+        }
+
+        function showForgotPassword() {
+            document.getElementById('loginTab').style.display = 'none';
+            document.getElementById('forgotPasswordTab').style.display = 'block';
+        }
+
+        function hideForgotPassword() {
+            document.getElementById('forgotPasswordTab').style.display = 'none';
+            document.getElementById('loginTab').style.display = 'block';
+        }
+
         function setActiveTab(tabId) {
             var tabs = ['homeTab', 'teachersTab', 'offersTab', 'liveTab', 'developersTab', 'loginTabNav'];
             tabs.forEach(function(id) {
@@ -1546,6 +1634,32 @@
             var activeEl = document.getElementById(tabId);
             if (activeEl) activeEl.classList.add('active');
         }
+
+        // ============================================================
+        // ربط الدوال بالنافذة العامة (حل مشكلة Vercel)
+        // ============================================================
+        window.showHome = showHome;
+        window.showTeachers = showTeachers;
+        window.showOffers = showOffers;
+        window.showLiveStreams = showLiveStreams;
+        window.showDevelopers = showDevelopers;
+        window.showLogin = showLogin;
+        window.showDownloadApp = showDownloadApp;
+        window.showSupport = showSupport;
+        window.showTeacherRegister = showTeacherRegister;
+        window.showForgotPassword = showForgotPassword;
+        window.hideForgotPassword = hideForgotPassword;
+        window.setActiveTab = setActiveTab;
+        window.refreshCaptcha = refreshCaptcha;
+        window.verifyCaptcha = verifyCaptcha;
+        window.loadStats = loadStats;
+        window.loadCaptchas = loadCaptchas;
+        window.showNotification = showNotification;
+
+        console.log('✅ جميع دوال التبويبات مرتبطة بالنافذة العامة');
+        console.log('📋 الدوال المتاحة:', Object.keys(window).filter(function(k) { 
+            return typeof window[k] === 'function' && ['showHome', 'showTeachers', 'showOffers', 'showLiveStreams', 'showDevelopers', 'showLogin', 'showDownloadApp', 'showSupport'].includes(k); 
+        }));
 
         // ===== SUPPORT FORM =====
         document.getElementById('supportForm').addEventListener('submit', async function(e) {
@@ -1589,19 +1703,6 @@
         });
 
         // ===== TEACHERS =====
-        async function showTeachers() {
-            document.getElementById('homeSection').style.display = 'none';
-            document.getElementById('teachersSection').style.display = 'block';
-            document.getElementById('offersSection').style.display = 'none';
-            document.getElementById('liveSection').style.display = 'none';
-            document.getElementById('developersSection').style.display = 'none';
-            document.getElementById('loginSection').style.display = 'none';
-            document.getElementById('downloadAppSection').style.display = 'none';
-            document.getElementById('supportSection').style.display = 'none';
-            setActiveTab('teachersTab');
-            await loadPublicTeachers();
-        }
-
         async function loadPublicTeachers() {
             var container = document.getElementById('teachersList');
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
@@ -1636,19 +1737,6 @@
         }
 
         // ===== OFFERS =====
-        async function showOffers() {
-            document.getElementById('homeSection').style.display = 'none';
-            document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('offersSection').style.display = 'block';
-            document.getElementById('liveSection').style.display = 'none';
-            document.getElementById('developersSection').style.display = 'none';
-            document.getElementById('loginSection').style.display = 'none';
-            document.getElementById('downloadAppSection').style.display = 'none';
-            document.getElementById('supportSection').style.display = 'none';
-            setActiveTab('offersTab');
-            await loadPublicOffers();
-        }
-
         async function loadPublicOffers() {
             var container = document.getElementById('offersListPublic');
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
@@ -1692,19 +1780,6 @@
         }
 
         // ===== LIVE STREAMS =====
-        async function showLiveStreams() {
-            document.getElementById('homeSection').style.display = 'none';
-            document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('offersSection').style.display = 'none';
-            document.getElementById('liveSection').style.display = 'block';
-            document.getElementById('developersSection').style.display = 'none';
-            document.getElementById('loginSection').style.display = 'none';
-            document.getElementById('downloadAppSection').style.display = 'none';
-            document.getElementById('supportSection').style.display = 'none';
-            setActiveTab('liveTab');
-            await loadLiveStreams();
-        }
-
         async function loadLiveStreams() {
             var container = document.getElementById('liveOffersList');
             try {
@@ -1752,44 +1827,6 @@
         }
 
         // ===== LOGIN / REGISTER =====
-        function showLogin() {
-            document.getElementById('homeSection').style.display = 'none';
-            document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('offersSection').style.display = 'none';
-            document.getElementById('liveSection').style.display = 'none';
-            document.getElementById('developersSection').style.display = 'none';
-            document.getElementById('loginSection').style.display = 'block';
-            document.getElementById('downloadAppSection').style.display = 'none';
-            document.getElementById('supportSection').style.display = 'none';
-            setActiveTab('loginTabNav');
-            switchTab('login');
-            setTimeout(loadCaptchas, 500);
-        }
-
-        function showTeacherRegister() {
-            document.getElementById('homeSection').style.display = 'none';
-            document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('offersSection').style.display = 'none';
-            document.getElementById('liveSection').style.display = 'none';
-            document.getElementById('developersSection').style.display = 'none';
-            document.getElementById('loginSection').style.display = 'block';
-            document.getElementById('downloadAppSection').style.display = 'none';
-            document.getElementById('supportSection').style.display = 'none';
-            setActiveTab('loginTabNav');
-            switchTab('teacher-register');
-            setTimeout(loadCaptchas, 500);
-        }
-
-        function showForgotPassword() {
-            document.getElementById('loginTab').style.display = 'none';
-            document.getElementById('forgotPasswordTab').style.display = 'block';
-        }
-
-        function hideForgotPassword() {
-            document.getElementById('forgotPasswordTab').style.display = 'none';
-            document.getElementById('loginTab').style.display = 'block';
-        }
-
         async function sendResetLink() {
             var email = document.getElementById('resetEmail').value;
             var role = document.getElementById('resetRole').value;
@@ -1980,55 +2017,25 @@
         }
 
         // ============================================================
-        // INIT
+        // INIT - تشغيل التطبيق
         // ============================================================
         
         function init() {
+            console.log('🚀 بدء تشغيل المنصة...');
             showHome();
             
             setTimeout(loadCaptchas, 1000);
             setInterval(loadLiveStreams, 30000);
             setInterval(loadStats, 60000);
             
-            console.log('تم تحميل المنصة بنجاح');
-            console.log('التاريخ:', new Date().toLocaleString('ar-EG'));
-            console.log('فريق المطورين: عثمانية محمد الصالح، مليك صالح، زينب لكفيفي');
+            console.log('✅ تم تحميل المنصة بنجاح');
+            console.log('📅 التاريخ:', new Date().toLocaleString('ar-EG'));
+            console.log('👨‍💻 فريق المطورين: عثمانية محمد الصالح، مليك صالح، زينب لكفيفي');
+            console.log('✅ جميع التبويبات جاهزة للعمل!');
         }
 
+        // تشغيل التطبيق عند تحميل الصفحة
         document.addEventListener('DOMContentLoaded', init);
-
-        // ============================================================
-        // ربط الدوال بالنافذة العامة (لـ Vercel)
-        // ============================================================
-        window.showHome = showHome;
-        window.showTeachers = showTeachers;
-        window.showOffers = showOffers;
-        window.showLiveStreams = showLiveStreams;
-        window.showDevelopers = showDevelopers;
-        window.showLogin = showLogin;
-        window.showDownloadApp = showDownloadApp;
-        window.showSupport = showSupport;
-        window.showTeacherRegister = showTeacherRegister;
-        window.showForgotPassword = showForgotPassword;
-        window.hideForgotPassword = hideForgotPassword;
-        window.sendResetLink = sendResetLink;
-        window.switchTab = switchTab;
-        window.login = login;
-        window.registerStudent = registerStudent;
-        window.registerTeacher = registerTeacher;
-        window.viewTeacherProfile = viewTeacherProfile;
-        window.refreshCaptcha = refreshCaptcha;
-        window.verifyCaptcha = verifyCaptcha;
-        window.loadStats = loadStats;
-        window.loadLiveStreams = loadLiveStreams;
-        window.loadPublicTeachers = loadPublicTeachers;
-        window.loadPublicOffers = loadPublicOffers;
-        window.escapeHtml = escapeHtml;
-        window.loadCaptchas = loadCaptchas;
-        window.showNotification = showNotification;
-        window.init = init;
-
-        console.log('✅ جميع الدوال مرتبطة بالنافذة العامة');
     </script>
 </body>
 </html>
