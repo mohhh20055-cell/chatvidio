@@ -1346,7 +1346,7 @@
                         errorEl.textContent = '';
                     }
                     
-                    console.log('تم تحديث الكابتشا لـ ' + type + ':');
+                    console.log('تم تحديث الكابتشا لـ ' + type);
                 } else {
                     console.error('بيانات الكابتشا غير مكتملة:', data);
                     if (imageContainer) {
@@ -1492,7 +1492,7 @@
         // ============================================================
         
         function showHome() {
-            console.log('🔄 showHome تم استدعاؤها');
+            console.log('showHome تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'flex';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('offersSection').style.display = 'none';
@@ -1506,7 +1506,7 @@
         }
 
         function showTeachers() {
-            console.log('🔄 showTeachers تم استدعاؤها');
+            console.log('showTeachers تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'block';
             document.getElementById('offersSection').style.display = 'none';
@@ -1520,7 +1520,7 @@
         }
 
         function showOffers() {
-            console.log('🔄 showOffers تم استدعاؤها');
+            console.log('showOffers تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('offersSection').style.display = 'block';
@@ -1534,7 +1534,7 @@
         }
 
         function showLiveStreams() {
-            console.log('🔄 showLiveStreams تم استدعاؤها');
+            console.log('showLiveStreams تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('offersSection').style.display = 'none';
@@ -1548,7 +1548,7 @@
         }
 
         function showDevelopers() {
-            console.log('🔄 showDevelopers تم استدعاؤها');
+            console.log('showDevelopers تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('offersSection').style.display = 'none';
@@ -1561,7 +1561,7 @@
         }
 
         function showLogin() {
-            console.log('🔄 showLogin تم استدعاؤها');
+            console.log('showLogin تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('offersSection').style.display = 'none';
@@ -1576,7 +1576,7 @@
         }
 
         function showDownloadApp() {
-            console.log('🔄 showDownloadApp تم استدعاؤها');
+            console.log('showDownloadApp تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('offersSection').style.display = 'none';
@@ -1589,7 +1589,7 @@
         }
 
         function showSupport() {
-            console.log('🔄 showSupport تم استدعاؤها');
+            console.log('showSupport تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('offersSection').style.display = 'none';
@@ -1602,6 +1602,7 @@
         }
 
         function showTeacherRegister() {
+            console.log('showTeacherRegister تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('offersSection').style.display = 'none';
@@ -1655,11 +1656,21 @@
         window.loadStats = loadStats;
         window.loadCaptchas = loadCaptchas;
         window.showNotification = showNotification;
+        window.switchTab = switchTab;
+        window.sendResetLink = sendResetLink;
+        window.login = login;
+        window.registerStudent = registerStudent;
+        window.registerTeacher = registerTeacher;
+        window.viewTeacherProfile = viewTeacherProfile;
+        window.loadPublicTeachers = loadPublicTeachers;
+        window.loadPublicOffers = loadPublicOffers;
+        window.loadLiveStreams = loadLiveStreams;
+        window.escapeHtml = escapeHtml;
 
-        console.log('✅ جميع دوال التبويبات مرتبطة بالنافذة العامة');
-        console.log('📋 الدوال المتاحة:', Object.keys(window).filter(function(k) { 
-            return typeof window[k] === 'function' && ['showHome', 'showTeachers', 'showOffers', 'showLiveStreams', 'showDevelopers', 'showLogin', 'showDownloadApp', 'showSupport'].includes(k); 
-        }));
+        console.log('جميع دوال التبويبات مرتبطة بالنافذة العامة');
+        console.log('الدوال المتاحة:', Object.keys(window).filter(function(k) { 
+            return typeof window[k] === 'function' && ['showHome', 'showTeachers', 'showOffers', 'showLiveStreams', 'showDevelopers', 'showLogin', 'showDownloadApp', 'showSupport'].indexOf(k) !== -1; 
+        }).join(', '));
 
         // ===== SUPPORT FORM =====
         document.getElementById('supportForm').addEventListener('submit', async function(e) {
@@ -2021,17 +2032,29 @@
         // ============================================================
         
         function init() {
-            console.log('🚀 بدء تشغيل المنصة...');
+            console.log('بدء تشغيل المنصة...');
+            
+            // التحقق من وجود جميع الأقسام
+            var sections = ['homeSection', 'teachersSection', 'offersSection', 'liveSection', 'developersSection', 'loginSection', 'downloadAppSection', 'supportSection'];
+            sections.forEach(function(id) {
+                var el = document.getElementById(id);
+                if (el) {
+                    console.log('القسم ' + id + ' موجود');
+                } else {
+                    console.warn('القسم ' + id + ' غير موجود');
+                }
+            });
+            
             showHome();
             
             setTimeout(loadCaptchas, 1000);
             setInterval(loadLiveStreams, 30000);
             setInterval(loadStats, 60000);
             
-            console.log('✅ تم تحميل المنصة بنجاح');
-            console.log('📅 التاريخ:', new Date().toLocaleString('ar-EG'));
-            console.log('👨‍💻 فريق المطورين: عثمانية محمد الصالح، مليك صالح، زينب لكفيفي');
-            console.log('✅ جميع التبويبات جاهزة للعمل!');
+            console.log('تم تحميل المنصة بنجاح');
+            console.log('التاريخ:', new Date().toLocaleString('ar-EG'));
+            console.log('فريق المطورين: عثمانية محمد الصالح، مليك صالح، زينب لكفيفي');
+            console.log('جميع التبويبات جاهزة للعمل!');
         }
 
         // تشغيل التطبيق عند تحميل الصفحة
