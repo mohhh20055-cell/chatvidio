@@ -1,7 +1,3 @@
-// ============= الصفحة الرئيسية =============
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
@@ -13,6 +9,7 @@ const https = require('https');
 const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
 
+// ===== تعريف app أولاً =====
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -49,6 +46,16 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
+
+// ===== ✅ المسار الرئيسي (مرة واحدة فقط هنا) =====
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// ============= باقي المسارات =============
+app.get('/api/public/teachers', async (req, res) => {
+    // ... الكود
+}); 
 
 // ============= دالة إرسال البريد عبر Resend =============
 async function sendResetEmail(toEmail, toName, resetUrl) {
