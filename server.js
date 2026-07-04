@@ -24,6 +24,11 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ============================================================
+// حل مشكلة X-Forwarded-For (لـ Vercel)
+// ============================================================
+app.set('trust proxy', true);
+
+// ============================================================
 // قراءة المتغيرات البيئية
 // ============================================================
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -59,15 +64,16 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const resend = new Resend(resendApiKey);
 
 // ============================================================
-// إعدادات الأمان
+// إعدادات الأمان - معدلة للسماح بـ onclick
 // ============================================================
 
-// 1. Helmet - حماية من هجمات XSS
+// 1. Helmet - حماية من هجمات XSS (معدل للسماح بـ onclick)
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "https://meet.jit.si", "https://cdnjs.cloudflare.com"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://meet.jit.si", "https://cdnjs.cloudflare.com", "https://vercel.live"],
+            scriptSrcAttr: ["'unsafe-inline'"],  // هذا السطر هو المفتاح!
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
             imgSrc: ["'self'", "data:", "https://ui-avatars.com", "https://api.qrserver.com", "https://*.supabase.co"],
@@ -2786,7 +2792,7 @@ if (require.main === module) {
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, '0.0.0.0', () => {
         console.log(`الخادم يعمل على http://localhost:${PORT}`);
-        console.log('الامان: Helmet, CORS محدود, Rate Limiting');
+        console.log('الامان: Helmet مع scriptSrcAttr للسماح بـ onclick');
         console.log('جميع المسارات محمية بالتحقق من المدخلات');
         console.log('Chargily API:', CHARGILY_API_URL);
         console.log('التاريخ:', new Date().toLocaleString('ar-EG'));
