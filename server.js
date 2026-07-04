@@ -40,6 +40,7 @@ const resend = new Resend(resendApiKey);
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
+// ============= Middleware =============
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -1887,20 +1888,6 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-// ============= تشغيل الخادم =============
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 الخادم يعمل على http://localhost:${PORT}`);
-  console.log(`✅ العروض المجانية: حجز مباشر`);
-  console.log(`💰 نظام الرصيد: تم تفعيله (شحن + سحب)`);
-  console.log(`📸 تخزين الصور: Supabase Storage`);
-  console.log(`👨‍💼 ADMIN Routes: تم تفعيلها`);
-  console.log(`🔐 نظام استعادة كلمة المرور: تم تفعيله مع Resend`);
-  console.log(`💬 نظام رسائل الدعم: تم تفعيله`);
-  console.log(`💬 نظام المراسلات: تم تفعيله`);
-  console.log(`📝 نظام المنشورات: تم تفعيله`);
-  console.log(`🔒 تم استخدام المتغيرات البيئية للمعلومات الحساسة`);
-  console.log(`💳 Chargily API: ${CHARGILY_API_URL}`);
-});
 // ============= إحصائيات عامة =============
 app.get('/api/public/stats', async (req, res) => {
   try {
@@ -1951,6 +1938,7 @@ app.get('/api/public/students-count', async (req, res) => {
     res.json({ count: 0 });
   }
 });
+
 // ============= نظام الكابتشا =============
 // تخزين مؤقت للكابتشا في الذاكرة (سيتم فقدانها عند إعادة التشغيل)
 // في الإنتاج، استخدم Redis أو قاعدة بيانات
@@ -2071,7 +2059,7 @@ setInterval(() => {
             delete captchaStore[key];
         }
     });
-}, 60000); // 
+}, 60000);
 
 // ===== إرسال إشعار لجميع الطلاب =====
 app.post('/api/admin/send-notification-to-all-students', async (req, res) => {
@@ -2162,6 +2150,7 @@ app.delete('/api/admin/delete-notification/:id', async (req, res) => {
     res.json({ success: false, error: error.message });
   }
 });
+
 // تحديث إشعار واحد كمقروء
 app.post('/api/notifications/read/:notification_id', async (req, res) => {
     try {
@@ -2178,6 +2167,7 @@ app.post('/api/notifications/read/:notification_id', async (req, res) => {
         res.json({ success: false, error: error.message });
     }
 });
+
 // استخدم multer بدون الحاجة إلى صورة إلزامية
 app.post('/api/teacher/update-profile-with-social', upload.fields([
     { name: 'profile_image', maxCount: 1 }
@@ -2270,3 +2260,28 @@ app.post('/api/teacher/update-profile-with-social', upload.fields([
         });
     }
 });
+
+// ============================================================
+// 🚀 تشغيل الخادم - متوافق مع Vercel و Render
+// ============================================================
+
+// تصدير التطبيق لـ Vercel (Serverless)
+module.exports = app;
+
+// للتشغيل المحلي فقط (عند تشغيل الملف مباشرة)
+if (require.main === module) {
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`🚀 الخادم يعمل على http://localhost:${PORT}`);
+        console.log(`✅ العروض المجانية: حجز مباشر`);
+        console.log(`💰 نظام الرصيد: تم تفعيله (شحن + سحب)`);
+        console.log(`📸 تخزين الصور: Supabase Storage`);
+        console.log(`👨‍💼 ADMIN Routes: تم تفعيلها`);
+        console.log(`🔐 نظام استعادة كلمة المرور: تم تفعيله مع Resend`);
+        console.log(`💬 نظام رسائل الدعم: تم تفعيله`);
+        console.log(`💬 نظام المراسلات: تم تفعيله`);
+        console.log(`📝 نظام المنشورات: تم تفعيله`);
+        console.log(`🔒 تم استخدام المتغيرات البيئية للمعلومات الحساسة`);
+        console.log(`💳 Chargily API: ${CHARGILY_API_URL}`);
+    });
+}
