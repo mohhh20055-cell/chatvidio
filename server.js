@@ -1,3 +1,7 @@
+// ============= الصفحة الرئيسية =============
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
