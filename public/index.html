@@ -1996,6 +1996,39 @@
         }
 
         document.addEventListener('DOMContentLoaded', init);
+
+        // ============================================================
+        // ربط الدوال بالنافذة العامة (لـ Vercel)
+        // ============================================================
+        window.showHome = showHome;
+        window.showTeachers = showTeachers;
+        window.showOffers = showOffers;
+        window.showLiveStreams = showLiveStreams;
+        window.showDevelopers = showDevelopers;
+        window.showLogin = showLogin;
+        window.showDownloadApp = showDownloadApp;
+        window.showSupport = showSupport;
+        window.showTeacherRegister = showTeacherRegister;
+        window.showForgotPassword = showForgotPassword;
+        window.hideForgotPassword = hideForgotPassword;
+        window.sendResetLink = sendResetLink;
+        window.switchTab = switchTab;
+        window.login = login;
+        window.registerStudent = registerStudent;
+        window.registerTeacher = registerTeacher;
+        window.viewTeacherProfile = viewTeacherProfile;
+        window.refreshCaptcha = refreshCaptcha;
+        window.verifyCaptcha = verifyCaptcha;
+        window.loadStats = loadStats;
+        window.loadLiveStreams = loadLiveStreams;
+        window.loadPublicTeachers = loadPublicTeachers;
+        window.loadPublicOffers = loadPublicOffers;
+        window.escapeHtml = escapeHtml;
+        window.loadCaptchas = loadCaptchas;
+        window.showNotification = showNotification;
+        window.init = init;
+
+        console.log('✅ جميع الدوال مرتبطة بالنافذة العامة');
     </script>
 </body>
 </html>
