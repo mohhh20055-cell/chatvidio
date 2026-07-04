@@ -1,11 +1,11 @@
 // ============================================================
-// 🔒 خادم منصة التعليم - إصدار آمن ومحسن
+// خادم منصة التعليم - إصدار آمن ومحسن
 // يدعم آلاف المستخدمين مع أعلى معايير الأمان
 // ============================================================
 
 require('dotenv').config();
 
-// ===== الحزم الأساسية =====
+// الحزم الأساسية
 const express = require('express');
 const path = require('path');
 const bcrypt = require('bcryptjs');
@@ -19,12 +19,12 @@ const { body, validationResult } = require('express-validator');
 const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
 
-// ===== تعريف التطبيق =====
+// تعريف التطبيق
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ============================================================
-// 📖 قراءة المتغيرات البيئية
+// قراءة المتغيرات البيئية
 // ============================================================
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
@@ -35,31 +35,31 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@platform.com';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 const CORS_ORIGIN = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['https://your-app.vercel.app', 'http://localhost:3000'];
 
-// ===== التحقق من المتغيرات الأساسية =====
+// التحقق من المتغيرات الأساسية
 if (!supabaseUrl || !supabaseKey) {
-    console.error('❌ خطأ: متغيرات Supabase غير موجودة');
+    console.error('خطأ: متغيرات Supabase غير موجودة');
     process.exit(1);
 }
 
 if (!resendApiKey) {
-    console.error('❌ خطأ: متغير RESEND_API_KEY غير موجود');
+    console.error('خطأ: متغير RESEND_API_KEY غير موجود');
     process.exit(1);
 }
 
 if (!CHARGILY_API_KEY) {
-    console.warn('⚠️ تحذير: CHARGILY_API_KEY غير موجود، استخدم المفتاح التجريبي');
+    console.warn('تحذير: CHARGILY_API_KEY غير موجود، استخدم المفتاح التجريبي');
 }
 
-console.log('🔌 الاتصال بـ Supabase:', supabaseUrl);
+console.log('الاتصال بـ Supabase:', supabaseUrl);
 
 // ============================================================
-// 📦 تهيئة الاتصالات
+// تهيئة الاتصالات
 // ============================================================
 const supabase = createClient(supabaseUrl, supabaseKey);
 const resend = new Resend(resendApiKey);
 
 // ============================================================
-// 🛡️ إعدادات الأمان
+// إعدادات الأمان
 // ============================================================
 
 // 1. Helmet - حماية من هجمات XSS
@@ -83,19 +83,18 @@ const corsOptions = {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     credentials: true,
-    maxAge: 86400 // 24 ساعة
+    maxAge: 86400
 };
 app.use(cors(corsOptions));
 
 // 3. Rate Limiting - منع هجمات DDoS
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 دقيقة
-    max: 100, // 100 طلب لكل IP
+    windowMs: 15 * 60 * 1000,
+    max: 100,
     message: { success: false, error: 'عدد الطلبات كبير جداً، حاول لاحقاً' },
     standardHeaders: true,
     legacyHeaders: false,
     skip: (req) => {
-        // استثناء مسارات البث المباشر والإحصائيات
         return req.path.startsWith('/api/stream') ||
                req.path.startsWith('/api/public/stats') ||
                req.path.startsWith('/api/public/offers') ||
@@ -106,8 +105,8 @@ app.use('/api/', limiter);
 
 // 4. زيادة حد الطلبات لمسارات معينة
 const authLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000, // ساعة واحدة
-    max: 10, // 10 محاولات فقط
+    windowMs: 60 * 60 * 1000,
+    max: 10,
     message: { success: false, error: 'عدد محاولات تسجيل الدخول كبير جداً، حاول بعد ساعة' },
     standardHeaders: true,
     legacyHeaders: false
@@ -116,7 +115,7 @@ app.use('/api/login', authLimiter);
 app.use('/api/forgot-password', authLimiter);
 
 // ============================================================
-// ⚙️ Middleware الأساسية
+// Middleware الأساسية
 // ============================================================
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -127,17 +126,16 @@ app.use(express.static('public', {
 }));
 
 // ============================================================
-// 🛠️ إعداد Multer
+// إعداد Multer
 // ============================================================
 const storage = multer.memoryStorage();
 const upload = multer({
     storage: storage,
     limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB
+        fileSize: 10 * 1024 * 1024,
         files: 5
     },
     fileFilter: (req, file, cb) => {
-        // السماح فقط بأنواع معينة من الملفات
         const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
         if (allowedTypes.includes(file.mimetype)) {
             cb(null, true);
@@ -148,11 +146,11 @@ const upload = multer({
 });
 
 // ============================================================
-// 📧 دالة إرسال البريد
+// دالة إرسال البريد
 // ============================================================
 async function sendResetEmail(toEmail, toName, resetUrl) {
     try {
-        console.log(`📧 محاولة إرسال بريد إلى: ${toEmail}`);
+        console.log('محاولة إرسال بريد إلى:', toEmail);
 
         const { data, error } = await resend.emails.send({
             from: 'منصة التعليم <onboarding@resend.dev>',
@@ -177,20 +175,20 @@ async function sendResetEmail(toEmail, toName, resetUrl) {
         });
 
         if (error) {
-            console.error('❌ خطأ في إرسال البريد:', error);
+            console.error('خطأ في إرسال البريد:', error);
             return false;
         }
 
-        console.log('✅ تم إرسال البريد بنجاح');
+        console.log('تم إرسال البريد بنجاح');
         return true;
     } catch (error) {
-        console.error('❌ خطأ في إرسال البريد:', error.message);
+        console.error('خطأ في إرسال البريد:', error.message);
         return false;
     }
 }
 
 // ============================================================
-// 🖼️ دالة رفع الصور
+// دالة رفع الصور
 // ============================================================
 async function uploadToSupabase(file, folder, oldFileName = null) {
     try {
@@ -205,7 +203,7 @@ async function uploadToSupabase(file, folder, oldFileName = null) {
                 const oldPath = `${folder}/${oldFileName}`;
                 await supabase.storage.from('profiles').remove([oldPath]);
             } catch (e) {
-                console.log('⚠️ لم نتمكن من حذف الملف القديم');
+                console.log('لم نتمكن من حذف الملف القديم');
             }
         }
 
@@ -217,7 +215,7 @@ async function uploadToSupabase(file, folder, oldFileName = null) {
             });
 
         if (error) {
-            console.error('❌ خطأ في رفع الصورة:', error);
+            console.error('خطأ في رفع الصورة:', error);
             return null;
         }
 
@@ -230,13 +228,13 @@ async function uploadToSupabase(file, folder, oldFileName = null) {
             url: publicUrl.publicUrl
         };
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         return null;
     }
 }
 
 // ============================================================
-// 💳 Chargily API
+// Chargily API
 // ============================================================
 async function createChargilyCheckout(amount, studentName, studentEmail, studentPhone, description, successUrl, failureUrl) {
     try {
@@ -256,7 +254,7 @@ async function createChargilyCheckout(amount, studentName, studentEmail, student
             }
         };
 
-        console.log('💰 إنشاء دفع للمبلغ:', finalAmount, 'DZD');
+        console.log('إنشاء دفع للمبلغ:', finalAmount, 'DZD');
 
         const authMethods = [
             { 'Authorization': `Bearer ${CHARGILY_API_KEY}` },
@@ -279,7 +277,7 @@ async function createChargilyCheckout(amount, studentName, studentEmail, student
                 });
 
                 if (response?.data?.checkout_url) {
-                    console.log('✅ تم إنشاء رابط الدفع');
+                    console.log('تم إنشاء رابط الدفع');
                     return {
                         success: true,
                         checkout_url: response.data.checkout_url,
@@ -288,7 +286,7 @@ async function createChargilyCheckout(amount, studentName, studentEmail, student
                 }
             } catch (error) {
                 lastError = error;
-                console.log(`⚠️ محاولة ${i + 1} فشلت`);
+                console.log(`محاولة ${i + 1} فشلت`);
                 if (i < authMethods.length - 1) {
                     await new Promise(resolve => setTimeout(resolve, 1000));
                 }
@@ -297,7 +295,7 @@ async function createChargilyCheckout(amount, studentName, studentEmail, student
 
         throw new Error(lastError?.response?.data?.message || lastError?.message || 'فشلت جميع محاولات الدفع');
     } catch (error) {
-        console.error('❌ خطأ Chargily:', error.response?.data || error.message);
+        console.error('خطأ Chargily:', error.response?.data || error.message);
         return {
             success: false,
             error: error.response?.data?.message || error.message
@@ -306,7 +304,7 @@ async function createChargilyCheckout(amount, studentName, studentEmail, student
 }
 
 // ============================================================
-// 🗄️ دوال قاعدة البيانات
+// دوال قاعدة البيانات
 // ============================================================
 async function getOne(table, column, value) {
     const { data, error } = await supabase
@@ -337,14 +335,14 @@ async function remove(table, column, value) {
 }
 
 // ============================================================
-// 🏠 المسار الرئيسي
+// المسار الرئيسي
 // ============================================================
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // ============================================================
-// 📊 المسارات العامة (مع تحسين الأمان)
+// المسارات العامة (مع تحسين الأمان)
 // ============================================================
 app.get('/api/public/teachers', async (req, res) => {
     try {
@@ -357,7 +355,7 @@ app.get('/api/public/teachers', async (req, res) => {
 
         res.json(data || []);
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         res.status(500).json([]);
     }
 });
@@ -387,7 +385,7 @@ app.get('/api/public/offers', async (req, res) => {
 
         res.json(formatted);
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         res.status(500).json([]);
     }
 });
@@ -412,7 +410,7 @@ app.get('/api/live-offers', async (req, res) => {
 
         res.json(formatted);
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         res.status(500).json([]);
     }
 });
@@ -440,7 +438,7 @@ app.get('/api/public/stats', async (req, res) => {
             students: studentsCount || 0
         });
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         res.status(500).json({ teachers: 0, offers: 0, live: 0, students: 0 });
     }
 });
@@ -457,7 +455,7 @@ app.get('/api/public/students-count', async (req, res) => {
 });
 
 // ============================================================
-📝 نظام المنشورات
+// نظام المنشورات
 // ============================================================
 app.post('/api/post/create', upload.fields([
     { name: 'image', maxCount: 1 },
@@ -498,7 +496,7 @@ app.post('/api/post/create', upload.fields([
 
         res.json({ success: true, message: 'تم نشر الدرس بنجاح' });
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -527,7 +525,7 @@ app.get('/api/posts/:teacher_id', async (req, res) => {
 
         res.json(postsWithCounts);
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         res.status(500).json([]);
     }
 });
@@ -555,7 +553,7 @@ app.get('/api/post/:post_id', async (req, res) => {
             comments: comments || []
         });
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         res.status(500).json({ error: error.message });
     }
 });
@@ -708,7 +706,7 @@ app.delete('/api/post/:post_id', [
 });
 
 // ============================================================
-💬 نظام رسائل الدعم
+// نظام رسائل الدعم
 // ============================================================
 app.post('/api/support/send', [
     body('name').notEmpty().withMessage('الاسم مطلوب'),
@@ -734,10 +732,10 @@ app.post('/api/support/send', [
             created_at: new Date().toISOString()
         });
 
-        console.log(`📧 رسالة دعم جديدة من ${name} (${email})`);
+        console.log(`رسالة دعم جديدة من ${name} (${email})`);
         res.json({ success: true, message: 'تم إرسال رسالتك بنجاح' });
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -750,7 +748,7 @@ app.get('/api/admin/support-messages', async (req, res) => {
             .order('created_at', { ascending: false });
         res.json(data || []);
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         res.status(500).json([]);
     }
 });
@@ -774,7 +772,7 @@ app.delete('/api/admin/support-messages/:id', async (req, res) => {
 });
 
 // ============================================================
-💰 نظام الرصيد (Wallet)
+// نظام الرصيد (Wallet)
 // ============================================================
 app.get('/api/student/wallet/:student_id', async (req, res) => {
     try {
@@ -793,7 +791,7 @@ app.get('/api/student/wallet/:student_id', async (req, res) => {
             transactions: transactions || []
         });
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         res.status(500).json({ error: error.message, transactions: [] });
     }
 });
@@ -851,7 +849,7 @@ app.post('/api/student/wallet/deposit', [
             return res.status(400).json({ success: false, error: checkout.error });
         }
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -896,7 +894,7 @@ app.get('/api/wallet/deposit/success/:transaction_id', async (req, res) => {
             </html>
         `);
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         res.send(`
             <!DOCTYPE html>
             <html>
@@ -943,7 +941,7 @@ app.get('/api/wallet/deposit/failure/:transaction_id', async (req, res) => {
 });
 
 // ============================================================
-📅 نظام الحجز
+// نظام الحجز
 // ============================================================
 app.post('/api/booking/create', [
     body('offer_id').isInt().withMessage('معرف العرض غير صالح'),
@@ -1033,13 +1031,13 @@ app.post('/api/booking/create', [
             message: `تم حجز الحصة بنجاح. تم خصم ${offer.price} دج من رصيدك. الرصيد المتبقي: ${newBalance} دج`
         });
     } catch (error) {
-        console.error('❌ خطأ في معالجة الحجز:', error);
+        console.error('خطأ في معالجة الحجز:', error);
         return res.status(500).json({ success: false, error: error.message });
     }
 });
 
 // ============================================================
-🔐 نظام نسيت كلمة المرور
+// نظام نسيت كلمة المرور
 // ============================================================
 app.post('/api/forgot-password', [
     body('email').isEmail().withMessage('بريد إلكتروني غير صالح'),
@@ -1080,7 +1078,7 @@ app.post('/api/forgot-password', [
         const baseUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
         const resetUrl = `${baseUrl}/reset-password.html?token=${resetToken}&email=${email}&role=${role}`;
 
-        console.log('🔗 رابط إعادة التعيين:', resetUrl);
+        console.log('رابط إعادة التعيين:', resetUrl);
 
         const emailSent = await sendResetEmail(email, user.full_name, resetUrl);
 
@@ -1089,13 +1087,13 @@ app.post('/api/forgot-password', [
         } else {
             res.json({
                 success: true,
-                message: `⚠️ لم نتمكن من إرسال البريد. الرابط الخاص بك: ${resetUrl}`,
+                message: `لم نتمكن من إرسال البريد. الرابط الخاص بك: ${resetUrl}`,
                 showDirectLink: true,
                 resetUrl: resetUrl
             });
         }
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -1133,7 +1131,7 @@ app.post('/api/verify-reset-token', [
 
         res.json({ success: true });
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -1185,13 +1183,13 @@ app.post('/api/reset-password', [
 
         res.json({ success: true, message: 'تم تغيير كلمة المرور بنجاح' });
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
 // ============================================================
-💬 نظام المراسلات
+// نظام المراسلات
 // ============================================================
 app.post('/api/messages/send', [
     body('sender_id').isInt().withMessage('معرف المرسل غير صالح'),
@@ -1221,7 +1219,7 @@ app.post('/api/messages/send', [
         await insert('notifications', {
             user_id: receiver_id,
             user_type: receiver_type,
-            title: '📩 رسالة جديدة',
+            title: 'رسالة جديدة',
             message: 'لديك رسالة جديدة',
             is_read: false,
             created_at: new Date().toISOString()
@@ -1229,7 +1227,7 @@ app.post('/api/messages/send', [
 
         res.json({ success: true, message: newMessage });
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -1276,7 +1274,7 @@ app.get('/api/messages/conversations/:user_id/:user_type', async (req, res) => {
 
         res.json(Object.values(conversations));
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         res.status(500).json([]);
     }
 });
@@ -1299,13 +1297,13 @@ app.get('/api/messages/:user_id/:user_type/:other_id/:other_type', async (req, r
 
         res.json(data || []);
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         res.status(500).json([]);
     }
 });
 
 // ============================================================
-👤 مسارات التسجيل والدخول
+// مسارات التسجيل والدخول
 // ============================================================
 
 // تسجيل أستاذ جديد
@@ -1328,7 +1326,7 @@ app.post('/api/teacher/register', upload.fields([
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        console.log('📝 استلام طلب تسجيل أستاذ جديد');
+        console.log('استلام طلب تسجيل أستاذ جديد');
 
         const { full_name, email, password, phone, specialization, bio, experience } = req.body;
 
@@ -1382,7 +1380,7 @@ app.post('/api/teacher/register', upload.fields([
 
         res.json({ success: true, message: 'تم إرسال طلبك، سيتم مراجعته من قبل الإدارة' });
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -1418,7 +1416,7 @@ app.post('/api/student/register', [
 
         res.json({ success: true, message: 'تم التسجيل بنجاح' });
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -1543,7 +1541,7 @@ app.get('/api/teachers', async (req, res) => {
 });
 
 // ============================================================
-🔑 تسجيل الدخول
+// تسجيل الدخول
 // ============================================================
 app.post('/api/login', [
     body('email').isEmail().withMessage('بريد إلكتروني غير صالح'),
@@ -1558,7 +1556,7 @@ app.post('/api/login', [
 
         const { email, password, role } = req.body;
 
-        console.log(`📝 محاولة تسجيل دخول: ${email} كـ ${role}`);
+        console.log(`محاولة تسجيل دخول: ${email} كـ ${role}`);
 
         // تسجيل دخول المشرف
         if (role === 'admin') {
@@ -1615,13 +1613,13 @@ app.post('/api/login', [
             }
         });
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
 // ============================================================
-👨‍💼 ADMIN Routes
+// ADMIN Routes
 // ============================================================
 app.get('/api/admin/pending-teachers', async (req, res) => {
     try {
@@ -1632,7 +1630,7 @@ app.get('/api/admin/pending-teachers', async (req, res) => {
             .order('created_at', { ascending: false });
         res.json(data || []);
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         res.status(500).json([]);
     }
 });
@@ -1646,7 +1644,7 @@ app.get('/api/admin/approved-teachers', async (req, res) => {
             .order('created_at', { ascending: false });
         res.json(data || []);
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         res.status(500).json([]);
     }
 });
@@ -1692,13 +1690,13 @@ app.delete('/api/admin/delete-teacher/:id', async (req, res) => {
 
         res.json({ success: true });
     } catch (error) {
-        console.error('❌ خطأ في حذف الأستاذ:', error.message);
+        console.error('خطأ في حذف الأستاذ:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
 // ============================================================
-📚 نظام العروض
+// نظام العروض
 // ============================================================
 app.post('/api/offer/create', [
     body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح'),
@@ -1729,7 +1727,7 @@ app.post('/api/offer/create', [
 
         res.json({ success: true, room_name });
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -1754,7 +1752,7 @@ app.get('/api/offers', async (req, res) => {
 
         res.json(formatted);
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         res.status(500).json([]);
     }
 });
@@ -1833,7 +1831,7 @@ app.get('/api/student/bookings/:student_id', async (req, res) => {
 
         res.json(formatted);
     } catch (error) {
-        console.error('❌ خطأ في جلب الحجوزات:', error.message);
+        console.error('خطأ في جلب الحجوزات:', error.message);
         res.status(500).json([]);
     }
 });
@@ -1851,7 +1849,7 @@ app.get('/api/waiting-count/:offer_id', async (req, res) => {
 });
 
 // ============================================================
-💰 نظام الرصيد والأرباح للأستاذ
+// نظام الرصيد والأرباح للأستاذ
 // ============================================================
 app.get('/api/teacher/balance/:teacher_id', async (req, res) => {
     try {
@@ -1961,7 +1959,7 @@ app.post('/api/admin/withdraw-requests/:id/approve', async (req, res) => {
         await insert('notifications', {
             user_id: request.teacher_id,
             user_type: 'teacher',
-            title: '✅ تمت معالجة طلب السحب',
+            title: 'تمت معالجة طلب السحب',
             message: `تم تحويل مبلغ ${request.amount} دج إلى حسابك ${request.ccp_account}`,
             is_read: false,
             created_at: new Date().toISOString()
@@ -1996,7 +1994,7 @@ app.post('/api/admin/withdraw-requests/:id/reject', async (req, res) => {
         await insert('notifications', {
             user_id: request.teacher_id,
             user_type: 'teacher',
-            title: '❌ تم رفض طلب السحب',
+            title: 'تم رفض طلب السحب',
             message: `تم رفض طلب سحب مبلغ ${request.amount} دج. السبب: ${reason || 'لم يتم تحديد سبب'}`,
             is_read: false,
             created_at: new Date().toISOString()
@@ -2009,7 +2007,7 @@ app.post('/api/admin/withdraw-requests/:id/reject', async (req, res) => {
 });
 
 // ============================================================
-📺 نظام البث المباشر
+// نظام البث المباشر
 // ============================================================
 app.post('/api/stream/enter-teacher/:offer_id', [
     body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
@@ -2055,7 +2053,7 @@ app.post('/api/stream/add-students/:offer_id', [
             await insert('notifications', {
                 user_id: student.student_id,
                 user_type: 'student',
-                title: '🔴 البث المباشر بدأ!',
+                title: 'البث المباشر بدأ',
                 message: `الحصة "${offer.subject_name}" قد بدأت الآن. انضم إلى البث المباشر.`,
                 offer_id: offer_id,
                 is_read: false,
@@ -2146,7 +2144,7 @@ app.get('/api/student/stream-status/:offer_id/:student_id', async (req, res) => 
 
         return res.json({ can_join: false, status: 'unknown' });
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         res.status(500).json({ can_join: false, status: 'error' });
     }
 });
@@ -2196,7 +2194,7 @@ app.post('/api/notifications/read/:notification_id', async (req, res) => {
 });
 
 // ============================================================
-📺 صفحات البث
+// صفحات البث
 // ============================================================
 app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
     const offer = await getOne('offers', 'id', req.params.offer_id);
@@ -2234,16 +2232,16 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
         </head>
         <body>
         <div class="header">
-            <div><span class="badge">👨‍🏫 أنت المضيف</span></div>
+            <div><span class="badge">انت المضيف</span></div>
             <div>
-                <span id="waitingCount" class="badge">⏳ 0 ينتظرون</span>
-                <button class="btn btn-success" onclick="addAllStudents()">➕ إضافة الكل</button>
-                <button class="btn btn-danger" onclick="endStream()">⏹️ إنهاء</button>
-                <button class="btn btn-warning" onclick="leaveStream()">🚪 مغادرة</button>
+                <span id="waitingCount" class="badge">0 ينتظرون</span>
+                <button class="btn btn-success" onclick="addAllStudents()">اضافة الكل</button>
+                <button class="btn btn-danger" onclick="endStream()">انهاء</button>
+                <button class="btn btn-warning" onclick="leaveStream()">مغادرة</button>
             </div>
         </div>
         <div id="waitingPanel" class="waiting-panel" style="display:none">
-            <div class="waiting-header"><span>⏳ الطلاب المنتظرون</span><span id="panelCount">0</span></div>
+            <div class="waiting-header"><span>الطلاب المنتظرون</span><span id="panelCount">0</span></div>
             <div id="waitingList" class="waiting-list"></div>
         </div>
         <div id="jitsi-container"></div>
@@ -2260,7 +2258,7 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                         width: '100%',
                         height: window.innerHeight - 60,
                         parentNode: document.querySelector('#jitsi-container'),
-                        userInfo: { displayName: '👨‍🏫 الأستاذ' },
+                        userInfo: { displayName: 'الاستاذ' },
                         configOverwrite: {
                             disableSimulcast: false,
                             enableNoisyMicDetection: false,
@@ -2279,16 +2277,16 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                     const res = await fetch('/api/stream/waiting-list/' + offerId + '/' + teacherId);
                     const students = await res.json();
                     const count = students?.length || 0;
-                    document.getElementById('waitingCount').innerHTML = \`⏳ \${count} ينتظرون\`;
+                    document.getElementById('waitingCount').innerHTML = count + ' ينتظرون';
                     if (count > 0) {
                         document.getElementById('waitingPanel').style.display = 'block';
                         document.getElementById('panelCount').innerText = count;
                         let html = '';
                         students.forEach(s => {
-                            html += \`<div class="student-item">
-                                <div><strong>\${escapeHtml(s.full_name)}</strong><br><small>\${escapeHtml(s.email)}</small></div>
-                                <button class="add-btn" onclick="addStudent(\${s.student_id})">➕ إضافة</button>
-                            </div>\`;
+                            html += '<div class="student-item">' +
+                                '<div><strong>' + escapeHtml(s.full_name) + '</strong><br><small>' + escapeHtml(s.email) + '</small></div>' +
+                                '<button class="add-btn" onclick="addStudent(' + s.student_id + ')">اضافة</button>' +
+                            '</div>';
                         });
                         document.getElementById('waitingList').innerHTML = html;
                     } else {
@@ -2298,7 +2296,7 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
             }
 
             async function addStudent(studentId) {
-                if (confirm('إضافة الطالب إلى البث؟')) {
+                if (confirm('اضافة الطالب الى البث؟')) {
                     const res = await fetch('/api/stream/add-students/' + offerId, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -2306,14 +2304,14 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                     });
                     const data = await res.json();
                     if (data.success) {
-                        alert('✅ تم إضافة الطالب');
+                        alert('تم اضافة الطالب');
                         loadWaitingList();
                     }
                 }
             }
 
             async function addAllStudents() {
-                if (confirm('إضافة جميع الطلاب إلى البث؟')) {
+                if (confirm('اضافة جميع الطلاب الى البث؟')) {
                     const res = await fetch('/api/stream/add-students/' + offerId, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -2321,7 +2319,7 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                     });
                     const data = await res.json();
                     if (data.success) {
-                        alert(\`✅ تم إضافة \${data.students_count} طالب\`);
+                        alert('تم اضافة ' + data.students_count + ' طالب');
                         loadWaitingList();
                     }
                 }
@@ -2334,7 +2332,7 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
             }
 
             async function endStream() {
-                if (confirm('إنهاء البث؟')) {
+                if (confirm('انهاء البث؟')) {
                     await fetch('/api/stream/end/' + offerId, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -2409,8 +2407,8 @@ app.get('/api/join-stream/:offer_id/:student_id', async (req, res) => {
             </head>
             <body>
             <div class="header">
-                <div><span class="badge">🎓 أنت طالب</span></div>
-                <button class="btn" onclick="leaveStream()">🚪 مغادرة</button>
+                <div><span class="badge">انت طالب</span></div>
+                <button class="btn" onclick="leaveStream()">مغادرة</button>
             </div>
             <div id="jitsi-container"></div>
             <script>
@@ -2419,7 +2417,7 @@ app.get('/api/join-stream/:offer_id/:student_id', async (req, res) => {
                     width: '100%',
                     height: window.innerHeight - 60,
                     parentNode: document.querySelector('#jitsi-container'),
-                    userInfo: { displayName: '👨‍🎓 طالب' },
+                    userInfo: { displayName: 'طالب' },
                     configOverwrite: {
                         startWithVideoMuted: true,
                         startWithAudioMuted: true,
@@ -2435,13 +2433,13 @@ app.get('/api/join-stream/:offer_id/:student_id', async (req, res) => {
             </html>
         `);
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         res.redirect('/student-dashboard.html');
     }
 });
 
 // ============================================================
-🔐 نظام الكابتشا
+// نظام الكابتشا
 // ============================================================
 const captchaStore = {};
 
@@ -2553,7 +2551,7 @@ setInterval(() => {
 }, 60000);
 
 // ============================================================
-📢 إرسال إشعار لجميع الطلاب
+// إرسال إشعار لجميع الطلاب
 // ============================================================
 app.post('/api/admin/send-notification-to-all-students', [
     body('title').notEmpty().withMessage('العنوان مطلوب'),
@@ -2589,7 +2587,7 @@ app.post('/api/admin/send-notification-to-all-students', [
             .insert(notifications);
 
         if (error) {
-            console.error('❌ خطأ في إرسال الإشعارات:', error);
+            console.error('خطأ في إرسال الإشعارات:', error);
             return res.status(500).json({ success: false, error: error.message });
         }
 
@@ -2609,7 +2607,7 @@ app.post('/api/admin/send-notification-to-all-students', [
             message: `تم إرسال الإشعار إلى ${students.length} طالب`
         });
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -2623,7 +2621,7 @@ app.get('/api/admin/sent-notifications', async (req, res) => {
 
         res.json(data || []);
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('خطأ:', error.message);
         res.status(500).json([]);
     }
 });
@@ -2641,7 +2639,7 @@ app.delete('/api/admin/delete-notification/:id', async (req, res) => {
 });
 
 // ============================================================
-🔄 تحديث إشعار واحد كمقروء
+// تحديث إشعار واحد كمقروء
 // ============================================================
 app.post('/api/notifications/read/:notification_id', async (req, res) => {
     try {
@@ -2659,7 +2657,7 @@ app.post('/api/notifications/read/:notification_id', async (req, res) => {
 });
 
 // ============================================================
-👤 تحديث ملف الأستاذ مع الروابط الاجتماعية
+// تحديث ملف الأستاذ مع الروابط الاجتماعية
 // ============================================================
 app.post('/api/teacher/update-profile-with-social', upload.fields([
     { name: 'profile_image', maxCount: 1 }
@@ -2674,7 +2672,7 @@ app.post('/api/teacher/update-profile-with-social', upload.fields([
 
         const { teacher_id, facebook_url, instagram_url, linkedin_url, youtube_url, twitter_url, website_url } = req.body;
 
-        console.log('📝 استلام طلب تحديث الملف الشخصي');
+        console.log('استلام طلب تحديث الملف الشخصي');
 
         let profile_image = null;
         let profile_url = null;
@@ -2690,7 +2688,7 @@ app.post('/api/teacher/update-profile-with-social', upload.fields([
             if (uploaded) {
                 profile_image = uploaded.filename;
                 profile_url = uploaded.url;
-                console.log('✅ تم رفع الصورة بنجاح');
+                console.log('تم رفع الصورة بنجاح');
             }
         }
 
@@ -2715,7 +2713,7 @@ app.post('/api/teacher/update-profile-with-social', upload.fields([
             }
         }
 
-        console.log('📦 بيانات التحديث:', updateData);
+        console.log('بيانات التحديث:', updateData);
 
         const { data, error } = await supabase
             .from('teachers')
@@ -2724,11 +2722,11 @@ app.post('/api/teacher/update-profile-with-social', upload.fields([
             .select();
 
         if (error) {
-            console.error('❌ خطأ في Supabase:', error);
+            console.error('خطأ في Supabase:', error);
             throw error;
         }
 
-        console.log('✅ تم تحديث الملف الشخصي بنجاح');
+        console.log('تم تحديث الملف الشخصي بنجاح');
 
         res.json({
             success: true,
@@ -2736,7 +2734,7 @@ app.post('/api/teacher/update-profile-with-social', upload.fields([
             user: data ? data[0] : null
         });
     } catch (error) {
-        console.error('❌ خطأ في تحديث الملف الشخصي:', error.message);
+        console.error('خطأ في تحديث الملف الشخصي:', error.message);
         res.status(500).json({
             success: false,
             error: error.message || 'حدث خطأ أثناء تحديث الملف الشخصي'
@@ -2745,7 +2743,7 @@ app.post('/api/teacher/update-profile-with-social', upload.fields([
 });
 
 // ============================================================
-📊 مسار مراقبة الأداء
+// مسار مراقبة الأداء
 // ============================================================
 app.get('/api/admin/performance', async (req, res) => {
     try {
@@ -2777,7 +2775,7 @@ app.get('/api/admin/performance', async (req, res) => {
 });
 
 // ============================================================
-🚀 تشغيل الخادم - متوافق مع Vercel و Render
+// تشغيل الخادم - متوافق مع Vercel و Render
 // ============================================================
 
 // تصدير التطبيق لـ Vercel (Serverless)
@@ -2787,11 +2785,11 @@ module.exports = app;
 if (require.main === module) {
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, '0.0.0.0', () => {
-        console.log(`🚀 الخادم يعمل على http://localhost:${PORT}`);
-        console.log(`🔒 الأمان: Helmet, CORS محدود, Rate Limiting`);
-        console.log(`✅ جميع المسارات محمية بالتحقق من المدخلات`);
-        console.log(`💳 Chargily API: ${CHARGILY_API_URL}`);
-        console.log(`📅 التاريخ: ${new Date().toLocaleString('ar-EG')}`);
+        console.log(`الخادم يعمل على http://localhost:${PORT}`);
+        console.log('الامان: Helmet, CORS محدود, Rate Limiting');
+        console.log('جميع المسارات محمية بالتحقق من المدخلات');
+        console.log('Chargily API:', CHARGILY_API_URL);
+        console.log('التاريخ:', new Date().toLocaleString('ar-EG'));
         console.log('='.repeat(60));
     });
 }
