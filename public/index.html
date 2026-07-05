@@ -2951,6 +2951,9 @@
             setTimeout(loadCaptchas, 300);
         }
 
+        // ============================================================
+        // ✅ دالة تسجيل الدخول المعدلة - تستخدم redirectTo من السيرفر
+        // ============================================================
         async function login() {
             var email = document.getElementById('loginEmail').value;
             var password = document.getElementById('loginPassword').value;
@@ -2973,29 +2976,32 @@
                     body: JSON.stringify({ email: email, password: password, role: role })
                 });
                 var data = await res.json();
+                
+                console.log('📩 رد تسجيل الدخول:', data);
+                
                 if (data.success) {
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('userData', JSON.stringify(data.user));
                     
-                    if (data.user.role === 'admin') {
-                        localStorage.setItem('adminToken', data.token);
-                        window.location.href = '/admin.html';
-                    } else if (data.user.role === 'teacher') {
-                        localStorage.setItem('teacherToken', data.token);
-                        window.location.href = '/teacher-dashboard.html';
-                    } else {
-                        localStorage.setItem('studentToken', data.token);
-                        window.location.href = '/student-dashboard.html';
-                    }
+                    // ✅ استخدام redirectTo من السيرفر
+                    var redirectPath = data.redirectTo || '/';
+                    
+                    console.log(`🔄 توجيه إلى: ${redirectPath}`);
+                    console.log(`👤 الدور: ${data.user.role}`);
+                    
+                    // ✅ توجيه مباشر باستخدام redirectTo
+                    window.location.href = redirectPath;
                 } else { 
                     showNotification(data.error, 'error'); 
                     refreshCaptcha('login');
                 }
             } catch(e) {
+                console.error('❌ خطأ في تسجيل الدخول:', e);
                 showNotification('خطأ في الاتصال بالخادم', 'error');
             }
         }
 
+        // ===== REGISTER STUDENT =====
         async function registerStudent() {
             // التحقق من صحة الاسم
             if (!isNameValid('student')) {
@@ -3051,6 +3057,7 @@
             }
         }
 
+        // ===== REGISTER TEACHER =====
         async function registerTeacher() {
             // التحقق من صحة الاسم
             if (!isNameValid('teacher')) {
@@ -3153,6 +3160,7 @@
             console.log('👨‍💻 فريق المطورين: عثمانية محمد الصالح، مليك صالح، زينب لكفيفي');
             console.log('🚀 جميع التبويبات جاهزة للعمل!');
             console.log('🔤 التحقق من الاسم: يجب أن يكون بالحروف اللاتينية فقط');
+            console.log('🔄 استخدام redirectTo من السيرفر للتوجيه');
             if (referralCode) {
                 console.log('🔗 تم اكتشاف رمز إحالة:', referralCode);
             }
