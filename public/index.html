@@ -1983,7 +1983,7 @@
         </section>
 
         <!-- ============================================================
-        LOGIN SECTION
+        LOGIN SECTION - تم إضافة خيار "مدير"
         ============================================================ -->
         <section id="loginSection" class="form-section" style="display: none;">
             <div class="form-tabs">
@@ -1997,9 +1997,12 @@
                 <h3><i class="fas fa-sign-in-alt"></i> تسجيل الدخول</h3>
                 <input type="email" id="loginEmail" placeholder="البريد الإلكتروني">
                 <input type="password" id="loginPassword" placeholder="كلمة المرور">
+                
+                <!-- ✅ تم إضافة خيار "مدير" -->
                 <select id="loginRole">
                     <option value="student">طالب</option>
                     <option value="teacher">أستاذ</option>
+                    <option value="admin">مدير</option>
                 </select>
                 
                 <div id="loginCaptchaContainer" class="captcha-container">
@@ -2228,11 +2231,7 @@
             
             var value = input.value;
             
-            // التحقق من أن الاسم يحتوي فقط على أحرف لاتينية ومسافات
-            // السماح بالمسافات، النقاط، والشرطات
             var latinPattern = /^[A-Za-z\s\.\-']+$/;
-            
-            // التحقق من عدم وجود أرقام أو رموز خاصة
             var hasNumbers = /\d/.test(value);
             var hasSpecialChars = /[^A-Za-z\s\.\-']/.test(value);
             
@@ -2247,7 +2246,7 @@
             } else {
                 errorEl.classList.remove('show');
                 input.style.borderColor = '#edf2f7';
-                return true; // الحقل فارغ - سنتحقق منه لاحقاً
+                return true;
             }
         }
 
@@ -2534,7 +2533,7 @@
         }
 
         // ============================================================
-        // دوال التبويبات - تعريفها في النطاق العام
+        // دوال التبويبات
         // ============================================================
         
         function showHome() {
@@ -3003,7 +3002,6 @@
 
         // ===== REGISTER STUDENT =====
         async function registerStudent() {
-            // التحقق من صحة الاسم
             if (!isNameValid('student')) {
                 showNotification('⚠️ الاسم يجب أن يحتوي على أحرف لاتينية فقط (A-Z, a-z)', 'error');
                 document.getElementById('studentNameError').classList.add('show');
@@ -3059,7 +3057,6 @@
 
         // ===== REGISTER TEACHER =====
         async function registerTeacher() {
-            // التحقق من صحة الاسم
             if (!isNameValid('teacher')) {
                 showNotification('⚠️ الاسم يجب أن يحتوي على أحرف لاتينية فقط (A-Z, a-z)', 'error');
                 document.getElementById('teacherNameError').classList.add('show');
