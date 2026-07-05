@@ -1,5 +1,5 @@
 // ============================================================
-// خادم منصة التعليم - إصدار آمن ومحسن مع نظام الإحالة والتوثيق
+// خادم منصة التعليم - إصدار آمن ومحسن مع نظام الإحالة والتوثيق والحظر
 // يدعم آلاف المستخدمين مع أعلى معايير الأمان
 // ============================================================
 
@@ -74,7 +74,7 @@ app.use(helmet({
         directives: {
             defaultSrc: ["'self'"],
             scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://meet.jit.si", "https://cdnjs.cloudflare.com", "https://vercel.live"],
-            scriptSrcAttr: ["'unsafe-inline'"],  // هذا السطر هو المفتاح!
+            scriptSrcAttr: ["'unsafe-inline'"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
             imgSrc: ["'self'", "data:", "https://ui-avatars.com", "https://api.qrserver.com", "https://*.supabase.co"],
@@ -101,6 +101,9 @@ const limiter = rateLimit({
     message: { success: false, error: 'عدد الطلبات كبير جداً، حاول لاحقاً' },
     standardHeaders: true,
     legacyHeaders: false,
+    validate: {
+        trustProxy: false // تعطيل التحقق من trust proxy لتجنب الخطأ
+    },
     skip: (req) => {
         return req.path.startsWith('/api/stream') ||
                req.path.startsWith('/api/public/stats') ||
@@ -117,11 +120,58 @@ const authLimiter = rateLimit({
     max: 10,
     message: { success: false, error: 'عدد محاولات تسجيل الدخول كبير جداً، حاول بعد ساعة' },
     standardHeaders: true,
-    legacyHeaders: false
+    legacyHeaders: false,
+    validate: {
+        trustProxy: false
+    }
 });
 app.use('/api/login', authLimiter);
 app.use('/api/forgot-password', authLimiter);
 app.use('/api/resend-verification', authLimiter);
+
+// ============================================================
+// Middleware التحقق من الحظر (IP Ban)
+// ============================================================
+async function checkBanned(req, res, next) {
+    // الحصول على IP المستخدم
+    let ip = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'];
+    
+    // معالجة حالة وجود عدة IPs في x-forwarded-for
+    if (ip && typeof ip === 'string' && ip.includes(',')) {
+        ip = ip.split(',')[0].trim();
+    }
+    
+    // إزالة البورت من IP إذا كان موجوداً
+    if (ip && typeof ip === 'string') {
+        ip = ip.replace(/:\d+[^:]*$/, '');
+    }
+    
+    if (!ip) {
+        return next();
+    }
+    
+    try {
+        const { data } = await supabase
+            .from('banned_users')
+            .select('*')
+            .eq('ip_address', ip)
+            .single();
+        
+        if (data) {
+            return res.status(403).json({
+                success: false,
+                error: 'تم حظر عنوان IP الخاص بك من المنصة',
+                banned: true,
+                reason: data.ban_reason || 'انتهاك شروط الاستخدام'
+            });
+        }
+        
+        next();
+    } catch (error) {
+        // إذا لم يتم العثور على حظر، استمر
+        next();
+    }
+}
 
 // ============================================================
 // Middleware الأساسية
@@ -158,7 +208,6 @@ const upload = multer({
 // دوال إرسال البريد
 // ============================================================
 
-// دالة إرسال رابط تأكيد البريد الإلكتروني
 async function sendVerificationEmail(toEmail, toName, verificationUrl) {
     try {
         console.log('محاولة إرسال بريد تأكيد إلى:', toEmail);
@@ -200,7 +249,6 @@ async function sendVerificationEmail(toEmail, toName, verificationUrl) {
     }
 }
 
-// دالة إرسال بريد إعادة تعيين كلمة المرور
 async function sendResetEmail(toEmail, toName, resetUrl) {
     try {
         console.log('محاولة إرسال بريد إلى:', toEmail);
@@ -330,7 +378,6 @@ function generateVerificationToken() {
 // توليد رمز الإحالة الفريد
 // ============================================================
 function generateReferralCode(name, id) {
-    // إنشاء رمز إحالة فريد من اسم المستخدم والمعرف
     const prefix = name.substring(0, 3).toUpperCase();
     const suffix = id.toString(36).toUpperCase();
     return `${prefix}${suffix}`;
@@ -340,7 +387,6 @@ function generateReferralCode(name, id) {
 // مسارات التحقق من البريد الإلكتروني
 // ============================================================
 
-// طلب إعادة إرسال رابط التحقق
 app.post('/api/resend-verification', [
     body('email').isEmail().withMessage('بريد إلكتروني غير صالح'),
     body('role').isIn(['student', 'teacher']).withMessage('دور غير صالح')
@@ -364,17 +410,14 @@ app.post('/api/resend-verification', [
             return res.status(404).json({ success: false, error: 'لا يوجد حساب بهذا البريد الإلكتروني' });
         }
 
-        // التحقق إذا كان الحساب مؤكداً بالفعل
         if (user.email_verified === true) {
             return res.status(400).json({ success: false, error: 'الحساب مؤكد بالفعل' });
         }
 
-        // إنشاء رمز تحقق جديد
         const verificationToken = generateVerificationToken();
         const expiresAt = new Date();
-        expiresAt.setHours(expiresAt.getHours() + 24); // صلاحية 24 ساعة
+        expiresAt.setHours(expiresAt.getHours() + 24);
 
-        // حفظ رمز التحقق في قاعدة البيانات
         await insert('email_verifications', {
             email: email,
             role: role,
@@ -384,13 +427,11 @@ app.post('/api/resend-verification', [
             created_at: new Date().toISOString()
         });
 
-        // إنشاء رابط التحقق
         const baseUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
         const verificationUrl = `${baseUrl}/api/verify-email?token=${verificationToken}&email=${email}&role=${role}`;
 
         console.log('رابط تأكيد البريد:', verificationUrl);
 
-        // إرسال البريد
         const emailSent = await sendVerificationEmail(email, user.full_name, verificationUrl);
 
         if (emailSent) {
@@ -409,7 +450,6 @@ app.post('/api/resend-verification', [
     }
 });
 
-// تأكيد البريد الإلكتروني
 app.get('/api/verify-email', async (req, res) => {
     const { token, email, role } = req.query;
 
@@ -437,7 +477,6 @@ app.get('/api/verify-email', async (req, res) => {
             `);
         }
 
-        // التحقق من صلاحية الرمز
         const { data: verification, error } = await supabase
             .from('email_verifications')
             .select('*')
@@ -470,7 +509,6 @@ app.get('/api/verify-email', async (req, res) => {
             `);
         }
 
-        // التحقق من انتهاء الصلاحية
         const expiresAt = new Date(verification.expires_at);
         if (expiresAt < new Date()) {
             await supabase
@@ -500,21 +538,25 @@ app.get('/api/verify-email', async (req, res) => {
             `);
         }
 
-        // تأكيد البريد الإلكتروني
         const tableName = role === 'student' ? 'students' : 'teachers';
+        
+        // جلب معرف المستخدم لتطبيق مكافأة الإحالة
+        const user = await getOne(tableName, 'email', email);
+        
         await supabase
             .from(tableName)
             .update({ email_verified: true })
             .eq('email', email);
 
-        // تحديث رمز التحقق إلى مستخدم
         await supabase
             .from('email_verifications')
             .update({ used: true })
             .eq('token', token);
 
-        // التحقق من وجود رمز إحالة في الجلسة
-        // سيتم التعامل مع الإحالة في صفحة النجاح
+        // معالجة مكافأة الإحالة بعد تأكيد البريد
+        if (user) {
+            await processReferralReward(user.id, role);
+        }
 
         return res.send(`
             <!DOCTYPE html>
@@ -564,7 +606,6 @@ app.get('/api/verify-email', async (req, res) => {
     }
 });
 
-// التحقق من حالة تأكيد البريد الإلكتروني
 app.get('/api/check-email-verification/:email/:role', async (req, res) => {
     try {
         const { email, role } = req.params;
@@ -594,7 +635,6 @@ app.get('/api/check-email-verification/:email/:role', async (req, res) => {
 // نظام الإحالة (Referral System)
 // ============================================================
 
-// إنشاء رمز إحالة للمستخدم
 app.post('/api/referral/create', [
     body('user_id').isInt().withMessage('معرف المستخدم غير صالح'),
     body('role').isIn(['student', 'teacher']).withMessage('دور غير صالح')
@@ -614,7 +654,6 @@ app.post('/api/referral/create', [
             return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
         }
 
-        // التحقق من وجود رمز إحالة بالفعل
         if (user.referral_code) {
             return res.json({ 
                 success: true, 
@@ -623,10 +662,8 @@ app.post('/api/referral/create', [
             });
         }
 
-        // إنشاء رمز إحالة فريد
         let referralCode = generateReferralCode(user.full_name, user_id);
         
-        // التأكد من عدم تكرار الرمز
         let isUnique = false;
         let attempts = 0;
         while (!isUnique && attempts < 10) {
@@ -639,7 +676,6 @@ app.post('/api/referral/create', [
             }
         }
 
-        // حفظ رمز الإحالة
         await supabase
             .from(tableName)
             .update({ referral_code: referralCode })
@@ -656,7 +692,6 @@ app.post('/api/referral/create', [
     }
 });
 
-// الحصول على معلومات الإحالة للمستخدم
 app.get('/api/referral/info/:user_id/:role', async (req, res) => {
     try {
         const { user_id, role } = req.params;
@@ -668,20 +703,17 @@ app.get('/api/referral/info/:user_id/:role', async (req, res) => {
             return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
         }
 
-        // جلب عدد المستخدمين الذين تم إحالتهم
         const { count: referredCount } = await supabase
             .from('referrals')
             .select('*', { count: 'exact', head: true })
             .eq('referrer_id', user_id)
             .eq('referrer_role', role);
 
-        // جلب مكافآت الإحالة
         let rewards = [];
         let totalReward = 0;
         let giftBoxChances = 0;
 
         if (role === 'teacher') {
-            // جلب مكافآت المعلم
             const { data: teacherRewards } = await supabase
                 .from('referral_rewards')
                 .select('*')
@@ -691,7 +723,6 @@ app.get('/api/referral/info/:user_id/:role', async (req, res) => {
             rewards = teacherRewards || [];
             totalReward = user.referral_balance || 0;
         } else {
-            // جلب مكافآت الطالب (فرص صناديق الهدايا)
             const { data: studentRewards } = await supabase
                 .from('referral_rewards')
                 .select('*')
@@ -717,7 +748,6 @@ app.get('/api/referral/info/:user_id/:role', async (req, res) => {
     }
 });
 
-// معالجة الإحالة عند تسجيل مستخدم جديد
 app.post('/api/referral/process', [
     body('ref_code').notEmpty().withMessage('رمز الإحالة مطلوب'),
     body('new_user_id').isInt().withMessage('معرف المستخدم الجديد غير صالح'),
@@ -731,11 +761,9 @@ app.post('/api/referral/process', [
 
         const { ref_code, new_user_id, new_user_role } = req.body;
 
-        // البحث عن المستخدم الذي يملك رمز الإحالة
         let referrer = null;
         let referrerRole = null;
 
-        // البحث في الطلاب
         const { data: studentReferrer } = await supabase
             .from('students')
             .select('id, referral_code, full_name, email, role')
@@ -746,7 +774,6 @@ app.post('/api/referral/process', [
             referrer = studentReferrer;
             referrerRole = 'student';
         } else {
-            // البحث في الأساتذة
             const { data: teacherReferrer } = await supabase
                 .from('teachers')
                 .select('id, referral_code, full_name, email, role')
@@ -763,12 +790,10 @@ app.post('/api/referral/process', [
             return res.status(404).json({ success: false, error: 'رمز الإحالة غير صالح' });
         }
 
-        // التأكد من أن المستخدم الجديد ليس نفس المستخدم الذي قام بالإحالة
         if (referrer.id === new_user_id) {
             return res.status(400).json({ success: false, error: 'لا يمكنك إحالة نفسك' });
         }
 
-        // التحقق من عدم وجود إحالة مكررة
         const { data: existingReferral } = await supabase
             .from('referrals')
             .select('*')
@@ -780,13 +805,12 @@ app.post('/api/referral/process', [
             return res.json({ success: true, message: 'تم تسجيل الإحالة مسبقاً' });
         }
 
-        // تسجيل الإحالة
         await insert('referrals', {
             referrer_id: referrer.id,
             referrer_role: referrerRole,
             referred_user_id: new_user_id,
             referred_user_role: new_user_role,
-            status: 'pending_verification', // في انتظار تأكيد البريد
+            status: 'pending_verification',
             created_at: new Date().toISOString()
         });
 
@@ -802,10 +826,8 @@ app.post('/api/referral/process', [
     }
 });
 
-// منح مكافأة الإحالة بعد تأكيد البريد الإلكتروني
 async function processReferralReward(referredUserId, referredUserRole) {
     try {
-        // جلب سجل الإحالة
         const { data: referral } = await supabase
             .from('referrals')
             .select('*')
@@ -819,7 +841,6 @@ async function processReferralReward(referredUserId, referredUserRole) {
             return false;
         }
 
-        // تحديث حالة الإحالة
         await supabase
             .from('referrals')
             .update({ 
@@ -828,9 +849,7 @@ async function processReferralReward(referredUserId, referredUserRole) {
             })
             .eq('id', referral.id);
 
-        // منح المكافأة حسب دور المحيل
         if (referral.referrer_role === 'teacher') {
-            // المعلم يحصل على 100 دج
             const teacher = await getOne('teachers', 'id', referral.referrer_id);
             if (teacher) {
                 const newBalance = (teacher.referral_balance || 0) + 100;
@@ -838,11 +857,10 @@ async function processReferralReward(referredUserId, referredUserRole) {
                     .from('teachers')
                     .update({ 
                         referral_balance: newBalance,
-                        balance: (teacher.balance || 0) + 100 // إضافة للرصيد القابل للسحب
+                        balance: (teacher.balance || 0) + 100
                     })
                     .eq('id', referral.referrer_id);
 
-                // تسجيل المكافأة
                 await insert('referral_rewards', {
                     teacher_id: referral.referrer_id,
                     referred_user_id: referredUserId,
@@ -856,7 +874,6 @@ async function processReferralReward(referredUserId, referredUserRole) {
                 console.log(`تم إضافة 100 دج للمعلم ${teacher.full_name} من الإحالة`);
             }
         } else if (referral.referrer_role === 'student') {
-            // الطالب يحصل على فرصة لفتح صندوق هدايا
             const student = await getOne('students', 'id', referral.referrer_id);
             if (student) {
                 const newChances = (student.gift_box_chances || 0) + 1;
@@ -867,7 +884,6 @@ async function processReferralReward(referredUserId, referredUserRole) {
                     })
                     .eq('id', referral.referrer_id);
 
-                // تسجيل المكافأة
                 await insert('referral_rewards', {
                     student_id: referral.referrer_id,
                     referred_user_id: referredUserId,
@@ -888,7 +904,6 @@ async function processReferralReward(referredUserId, referredUserRole) {
     }
 }
 
-// فتح صندوق الهدايا للطالب
 app.post('/api/referral/open-gift-box', [
     body('student_id').isInt().withMessage('معرف الطالب غير صالح')
 ], async (req, res) => {
@@ -910,32 +925,26 @@ app.post('/api/referral/open-gift-box', [
             return res.status(400).json({ success: false, error: 'لا توجد فرص لفتح صندوق الهدايا' });
         }
 
-        // تقليل الفرص
         await supabase
             .from('students')
             .update({ gift_box_chances: chances - 1 })
             .eq('id', student_id);
 
-        // تحديد الجائزة بشكل عشوائي
         const rand = Math.random();
         let rewardAmount = 0;
         let rewardType = 'none';
 
         if (rand < 0.1) {
-            // 10% فرصة للحصول على 100 دج
             rewardAmount = 100;
             rewardType = 'balance';
         } else if (rand < 0.35) {
-            // 25% فرصة للحصول على 50 دج
             rewardAmount = 50;
             rewardType = 'balance';
         } else {
-            // 65% فرصة للحصول على 0 دج
             rewardAmount = 0;
             rewardType = 'none';
         }
 
-        // إضافة المكافأة إذا كانت > 0
         if (rewardAmount > 0) {
             const newBalance = (student.wallet_balance || 0) + rewardAmount;
             await supabase
@@ -943,7 +952,6 @@ app.post('/api/referral/open-gift-box', [
                 .update({ wallet_balance: newBalance })
                 .eq('id', student_id);
 
-            // تسجيل المعاملة
             await insert('wallet_transactions', {
                 student_id: student_id,
                 amount: rewardAmount,
@@ -953,7 +961,6 @@ app.post('/api/referral/open-gift-box', [
                 created_at: new Date().toISOString()
             });
 
-            // تسجيل مكافأة الإحالة
             await insert('referral_rewards', {
                 student_id: student_id,
                 amount: rewardAmount,
@@ -978,7 +985,6 @@ app.post('/api/referral/open-gift-box', [
     }
 });
 
-// جلب حالة صناديق الهدايا للطالب
 app.get('/api/referral/gift-box-status/:student_id', async (req, res) => {
     try {
         const { student_id } = req.params;
@@ -990,7 +996,6 @@ app.get('/api/referral/gift-box-status/:student_id', async (req, res) => {
 
         const chances = student.gift_box_chances || 0;
 
-        // جلب تاريخ صناديق الهدايا
         const { data: history } = await supabase
             .from('referral_rewards')
             .select('*')
@@ -1010,7 +1015,6 @@ app.get('/api/referral/gift-box-status/:student_id', async (req, res) => {
     }
 });
 
-// جلب إحصائيات الإحالة للمعلم
 app.get('/api/referral/teacher-stats/:teacher_id', async (req, res) => {
     try {
         const { teacher_id } = req.params;
@@ -1020,14 +1024,12 @@ app.get('/api/referral/teacher-stats/:teacher_id', async (req, res) => {
             return res.status(404).json({ success: false, error: 'المعلم غير موجود' });
         }
 
-        // عدد المستخدمين المحالين
         const { count: totalReferred } = await supabase
             .from('referrals')
             .select('*', { count: 'exact', head: true })
             .eq('referrer_id', teacher_id)
             .eq('referrer_role', 'teacher');
 
-        // عدد المستخدمين المحالين الذين أكملوا التحقق
         const { count: completedReferred } = await supabase
             .from('referrals')
             .select('*', { count: 'exact', head: true })
@@ -1035,7 +1037,6 @@ app.get('/api/referral/teacher-stats/:teacher_id', async (req, res) => {
             .eq('referrer_role', 'teacher')
             .eq('status', 'completed');
 
-        // إجمالي المكافآت
         const { data: rewards } = await supabase
             .from('referral_rewards')
             .select('amount')
@@ -1063,17 +1064,15 @@ app.get('/api/referral/teacher-stats/:teacher_id', async (req, res) => {
 // المسار الرئيسي
 // ============================================================
 app.get('/', (req, res) => {
-    // التحقق من وجود رمز إحالة في الرابط
     const refCode = req.query.ref;
     if (refCode) {
-        // تخزين رمز الإحالة في الكوكيز أو الجلسة
         res.cookie('referral_code', refCode, { maxAge: 7 * 24 * 60 * 60 * 1000, httpOnly: true });
     }
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // ============================================================
-// المسارات العامة (مع تحسين الأمان)
+// المسارات العامة
 // ============================================================
 app.get('/api/public/teachers', async (req, res) => {
     try {
@@ -1557,10 +1556,6 @@ app.post('/api/student/wallet/deposit', [
         const successUrl = `${baseUrl}/api/wallet/deposit/success/${transaction.id}`;
         const failureUrl = `${baseUrl}/api/wallet/deposit/failure/${transaction.id}`;
 
-        // استخدام Chargily API (تم حذف الدالة للاختصار، لكنها موجودة في الكود الأصلي)
-        // هنا نستخدم محاكاة للدفع
-        // في الإصدار الحقيقي، استخدم createChargilyCheckout
-
         // محاكاة نجاح الدفع للاختبار
         await update('wallet_transactions', transaction.id, {
             status: 'completed',
@@ -1597,7 +1592,6 @@ app.post('/api/booking/create', [
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        // التحقق من تأكيد البريد الإلكتروني للطالب
         const student = await getOne('students', 'id', student_id);
         if (!student) {
             return res.status(404).json({ success: false, error: 'الطالب غير موجود' });
@@ -1958,11 +1952,11 @@ app.get('/api/messages/:user_id/:user_type/:other_id/:other_type', async (req, r
 });
 
 // ============================================================
-// مسارات التسجيل والدخول (معدلة مع نظام التوثيق)
+// مسارات التسجيل والدخول (مع نظام الحظر)
 // ============================================================
 
 // تسجيل أستاذ جديد
-app.post('/api/teacher/register', upload.fields([
+app.post('/api/teacher/register', checkBanned, upload.fields([
     { name: 'profile_image', maxCount: 1 },
     { name: 'diploma_image', maxCount: 1 },
     { name: 'id_image', maxCount: 1 }
@@ -2027,23 +2021,23 @@ app.post('/api/teacher/register', upload.fields([
             diploma_image,
             id_image,
             status: 'pending',
-            email_verified: false, // البريد غير مؤكد حتى يقوم بالتأكيد
+            email_verified: false,
             balance: 0,
             referral_balance: 0,
             total_earned: 0,
             total_withdrawn: 0,
             pending_withdraw: 0,
-            referral_code: null
+            referral_code: null,
+            is_banned: false,
+            ban_reason: null
         });
 
-        // إنشاء رمز إحالة للأستاذ
         const referralCode = generateReferralCode(full_name, newTeacher.id);
         await supabase
             .from('teachers')
             .update({ referral_code: referralCode })
             .eq('id', newTeacher.id);
 
-        // إنشاء رمز تأكيد البريد
         const verificationToken = generateVerificationToken();
         const expiresAt = new Date();
         expiresAt.setHours(expiresAt.getHours() + 24);
@@ -2057,17 +2051,14 @@ app.post('/api/teacher/register', upload.fields([
             created_at: new Date().toISOString()
         });
 
-        // إرسال رابط التأكيد
         const baseUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
         const verificationUrl = `${baseUrl}/api/verify-email?token=${verificationToken}&email=${email}&role=teacher`;
         
         const emailSent = await sendVerificationEmail(email, full_name, verificationUrl);
 
-        // معالجة رمز الإحالة إذا موجود
         const refCode = req.cookies?.referral_code || req.query.ref;
         if (refCode) {
             try {
-                // معالجة الإحالة
                 await processReferralOnRegister(refCode, newTeacher.id, 'teacher');
             } catch (e) {
                 console.error('خطأ في معالجة الإحالة:', e.message);
@@ -2089,7 +2080,7 @@ app.post('/api/teacher/register', upload.fields([
 });
 
 // تسجيل طالب
-app.post('/api/student/register', [
+app.post('/api/student/register', checkBanned, [
     body('full_name').notEmpty().withMessage('الاسم الكامل مطلوب'),
     body('email').isEmail().withMessage('بريد إلكتروني غير صالح'),
     body('password').isLength({ min: 6 }).withMessage('كلمة المرور يجب أن تكون 6 أحرف على الأقل'),
@@ -2116,20 +2107,20 @@ app.post('/api/student/register', [
             password: hashedPassword,
             phone: phone.trim(),
             wallet_balance: 0,
-            email_verified: false, // البريد غير مؤكد حتى يقوم بالتأكيد
+            email_verified: false,
             referral_balance: 0,
             gift_box_chances: 0,
-            referral_code: null
+            referral_code: null,
+            is_banned: false,
+            ban_reason: null
         });
 
-        // إنشاء رمز إحالة للطالب
         const referralCode = generateReferralCode(full_name, newStudent.id);
         await supabase
             .from('students')
             .update({ referral_code: referralCode })
             .eq('id', newStudent.id);
 
-        // إنشاء رمز تأكيد البريد
         const verificationToken = generateVerificationToken();
         const expiresAt = new Date();
         expiresAt.setHours(expiresAt.getHours() + 24);
@@ -2143,13 +2134,11 @@ app.post('/api/student/register', [
             created_at: new Date().toISOString()
         });
 
-        // إرسال رابط التأكيد
         const baseUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
         const verificationUrl = `${baseUrl}/api/verify-email?token=${verificationToken}&email=${email}&role=student`;
         
         const emailSent = await sendVerificationEmail(email, full_name, verificationUrl);
 
-        // معالجة رمز الإحالة إذا موجود
         const refCode = req.cookies?.referral_code || req.query.ref;
         if (refCode) {
             try {
@@ -2173,10 +2162,8 @@ app.post('/api/student/register', [
     }
 });
 
-// دالة مساعدة لمعالجة الإحالة عند التسجيل
 async function processReferralOnRegister(refCode, newUserId, newUserRole) {
     try {
-        // البحث عن المستخدم المحيل
         let referrer = null;
         let referrerRole = null;
 
@@ -2206,7 +2193,6 @@ async function processReferralOnRegister(refCode, newUserId, newUserRole) {
             return;
         }
 
-        // تسجيل الإحالة
         await insert('referrals', {
             referrer_id: referrer.id,
             referrer_role: referrerRole,
@@ -2221,10 +2207,6 @@ async function processReferralOnRegister(refCode, newUserId, newUserRole) {
         console.error('خطأ في معالجة الإحالة:', error.message);
     }
 }
-
-// استدعاء معالجة المكافأة عند تأكيد البريد (يضاف داخل دالة verify-email)
-// أضف هذا السطر داخل دالة تأكيد البريد بعد تحديث email_verified:
-// await processReferralReward(userId, role);
 
 // تحديث بيانات الطالب
 app.post('/api/student/update-profile', upload.single('profile_image'), [
@@ -2347,9 +2329,9 @@ app.get('/api/teachers', async (req, res) => {
 });
 
 // ============================================================
-// تسجيل الدخول (معدل مع التحقق من البريد)
+// تسجيل الدخول (مع التحقق من البريد والحظر)
 // ============================================================
-app.post('/api/login', [
+app.post('/api/login', checkBanned, [
     body('email').isEmail().withMessage('بريد إلكتروني غير صالح'),
     body('password').notEmpty().withMessage('كلمة المرور مطلوبة'),
     body('role').isIn(['student', 'teacher', 'admin']).withMessage('دور غير صالح')
@@ -2390,6 +2372,16 @@ app.post('/api/login', [
             return res.status(404).json({ success: false, error: 'البريد الإلكتروني غير موجود' });
         }
 
+        // التحقق من الحظر
+        if (user.is_banned === true) {
+            return res.status(403).json({
+                success: false,
+                error: 'تم حظر حسابك من المنصة',
+                banned: true,
+                reason: user.ban_reason || 'انتهاك شروط الاستخدام'
+            });
+        }
+
         const validPassword = bcrypt.compareSync(password, user.password);
         if (!validPassword) {
             return res.status(401).json({ success: false, error: 'كلمة المرور خاطئة' });
@@ -2421,6 +2413,24 @@ app.post('/api/login', [
             });
         }
 
+        // تسجيل IP في سجل الدخول
+        let ip = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'];
+        if (ip && typeof ip === 'string' && ip.includes(',')) {
+            ip = ip.split(',')[0].trim();
+        }
+        if (ip && typeof ip === 'string') {
+            ip = ip.replace(/:\d+[^:]*$/, '');
+        }
+
+        if (ip) {
+            await insert('login_logs', {
+                user_id: user.id,
+                user_role: userRole,
+                ip_address: ip,
+                created_at: new Date().toISOString()
+            });
+        }
+
         res.json({
             success: true,
             token: `${userRole}_token`,
@@ -2442,7 +2452,209 @@ app.post('/api/login', [
 });
 
 // ============================================================
-// ADMIN Routes
+// ADMIN Routes - إدارة المستخدمين والحظر
+// ============================================================
+
+// جلب جميع الطلاب
+app.get('/api/admin/students', async (req, res) => {
+    try {
+        const { data } = await supabase
+            .from('students')
+            .select('*')
+            .order('created_at', { ascending: false });
+        res.json(data || []);
+    } catch (error) {
+        console.error('خطأ:', error.message);
+        res.status(500).json([]);
+    }
+});
+
+// جلب المستخدمين المحظورين
+app.get('/api/admin/banned-users', async (req, res) => {
+    try {
+        const { data } = await supabase
+            .from('banned_users')
+            .select('*')
+            .order('banned_at', { ascending: false });
+        res.json(data || []);
+    } catch (error) {
+        console.error('خطأ:', error.message);
+        res.status(500).json([]);
+    }
+});
+
+// حذف مستخدم (مع إمكانية الحظر)
+app.post('/api/admin/delete-user', [
+    body('user_id').isInt().withMessage('معرف المستخدم مطلوب'),
+    body('role').isIn(['student', 'teacher']).withMessage('دور غير صالح')
+], async (req, res) => {
+    try {
+        const { user_id, role, ban } = req.body;
+        const tableName = role === 'student' ? 'students' : 'teachers';
+        
+        const user = await getOne(tableName, 'id', user_id);
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
+        }
+        
+        // جلب IP المستخدم من سجل الدخول الأخير
+        const { data: loginLog } = await supabase
+            .from('login_logs')
+            .select('ip_address')
+            .eq('user_id', user_id)
+            .eq('user_role', role)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+        
+        const userIp = loginLog?.ip_address || null;
+        
+        // حذف المستخدم
+        await supabase
+            .from(tableName)
+            .delete()
+            .eq('id', user_id);
+        
+        // إذا تم اختيار الحظر
+        if (ban && userIp) {
+            const { data: existingBan } = await supabase
+                .from('banned_users')
+                .select('*')
+                .eq('ip_address', userIp)
+                .single();
+            
+            if (!existingBan) {
+                await insert('banned_users', {
+                    user_id: user_id,
+                    user_role: role,
+                    full_name: user.full_name,
+                    email: user.email,
+                    ip_address: userIp,
+                    ban_reason: 'تم حظر المستخدم تلقائياً عند حذف الحساب',
+                    banned_at: new Date().toISOString(),
+                    banned_by: 'admin'
+                });
+            }
+        }
+        
+        res.json({ 
+            success: true, 
+            message: 'تم حذف المستخدم بنجاح',
+            banned: ban && userIp ? true : false
+        });
+    } catch (error) {
+        console.error('خطأ في حذف المستخدم:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// حظر مستخدم
+app.post('/api/admin/ban-user', [
+    body('user_id').isInt().withMessage('معرف المستخدم مطلوب'),
+    body('role').isIn(['student', 'teacher']).withMessage('دور غير صالح')
+], async (req, res) => {
+    try {
+        const { user_id, role, reason } = req.body;
+        const tableName = role === 'student' ? 'students' : 'teachers';
+        
+        const user = await getOne(tableName, 'id', user_id);
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
+        }
+        
+        // جلب IP المستخدم
+        const { data: loginLog } = await supabase
+            .from('login_logs')
+            .select('ip_address')
+            .eq('user_id', user_id)
+            .eq('user_role', role)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+        
+        const userIp = loginLog?.ip_address || null;
+        
+        if (!userIp) {
+            return res.status(400).json({ success: false, error: 'لا يمكن تحديد IP المستخدم' });
+        }
+        
+        // التحقق من وجود حظر مسبق
+        const { data: existingBan } = await supabase
+            .from('banned_users')
+            .select('*')
+            .eq('ip_address', userIp)
+            .single();
+        
+        if (existingBan) {
+            return res.status(400).json({ success: false, error: 'هذا المستخدم محظور بالفعل' });
+        }
+        
+        // إضافة الحظر
+        await insert('banned_users', {
+            user_id: user_id,
+            user_role: role,
+            full_name: user.full_name,
+            email: user.email,
+            ip_address: userIp,
+            ban_reason: reason || 'لم يتم تحديد سبب',
+            banned_at: new Date().toISOString(),
+            banned_by: 'admin'
+        });
+        
+        // تحديث حالة المستخدم
+        await supabase
+            .from(tableName)
+            .update({ is_banned: true, ban_reason: reason || 'لم يتم تحديد سبب' })
+            .eq('id', user_id);
+        
+        res.json({ success: true, message: 'تم حظر المستخدم بنجاح' });
+    } catch (error) {
+        console.error('خطأ في حظر المستخدم:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// إلغاء حظر مستخدم
+app.post('/api/admin/unban-user', [
+    body('user_id').isInt().withMessage('معرف المستخدم مطلوب'),
+    body('role').isIn(['student', 'teacher']).withMessage('دور غير صالح')
+], async (req, res) => {
+    try {
+        const { user_id, role } = req.body;
+        const tableName = role === 'student' ? 'students' : 'teachers';
+        
+        const { data: banRecord } = await supabase
+            .from('banned_users')
+            .select('*')
+            .eq('user_id', user_id)
+            .eq('user_role', role)
+            .single();
+        
+        if (!banRecord) {
+            return res.status(404).json({ success: false, error: 'المستخدم غير محظور' });
+        }
+        
+        // حذف سجل الحظر
+        await supabase
+            .from('banned_users')
+            .delete()
+            .eq('id', banRecord.id);
+        
+        // تحديث حالة المستخدم
+        await supabase
+            .from(tableName)
+            .update({ is_banned: false, ban_reason: null })
+            .eq('id', user_id);
+        
+        res.json({ success: true, message: 'تم إلغاء حظر المستخدم بنجاح' });
+    } catch (error) {
+        console.error('خطأ في إلغاء الحظر:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
+// باقي مسارات ADMIN
 // ============================================================
 app.get('/api/admin/pending-teachers', async (req, res) => {
     try {
@@ -2620,7 +2832,6 @@ app.delete('/api/offer/delete/:offer_id', [
     }
 });
 
-// جلب حجوزات الطالب
 app.get('/api/student/bookings/:student_id', async (req, res) => {
     try {
         const { data } = await supabase
@@ -3599,13 +3810,11 @@ app.get('/api/admin/performance', async (req, res) => {
 });
 
 // ============================================================
-// تشغيل الخادم - متوافق مع Vercel و Render
+// تشغيل الخادم
 // ============================================================
 
-// تصدير التطبيق لـ Vercel (Serverless)
 module.exports = app;
 
-// للتشغيل المحلي فقط (عند تشغيل الملف مباشرة)
 if (require.main === module) {
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, '0.0.0.0', () => {
@@ -3618,240 +3827,8 @@ if (require.main === module) {
         console.log('🔗 نظام الإحالة مفعل');
         console.log('🎁 صناديق الهدايا للطلاب مفعلة');
         console.log('💰 مكافأة الإحالة: 100 دج للمعلم، فرصة صندوق هدايا للطالب');
+        console.log('🔒 نظام الحظر (IP Ban) مفعل');
+        console.log('👥 إدارة المستخدمين (حذف + حظر) مفعلة');
         console.log('='.repeat(60));
     });
 }
-// ===== ADMIN - إدارة المستخدمين =====
-
-// 1. جلب جميع الطلاب
-app.get('/api/admin/students', async (req, res) => {
-    try {
-        const { data } = await supabase
-            .from('students')
-            .select('*')
-            .order('created_at', { ascending: false });
-        res.json(data || []);
-    } catch (error) {
-        res.status(500).json([]);
-    }
-});
-
-// 2. جلب المستخدمين المحظورين
-app.get('/api/admin/banned-users', async (req, res) => {
-    try {
-        const { data } = await supabase
-            .from('banned_users')
-            .select('*')
-            .order('banned_at', { ascending: false });
-        res.json(data || []);
-    } catch (error) {
-        res.status(500).json([]);
-    }
-});
-
-// 3. حذف مستخدم (مع إمكانية الحظر)
-app.post('/api/admin/delete-user', [
-    body('user_id').isInt().withMessage('معرف المستخدم مطلوب'),
-    body('role').isIn(['student', 'teacher']).withMessage('دور غير صالح')
-], async (req, res) => {
-    try {
-        const { user_id, role, ban } = req.body;
-        const tableName = role === 'student' ? 'students' : 'teachers';
-        
-        // جلب معلومات المستخدم قبل الحذف
-        const user = await getOne(tableName, 'id', user_id);
-        if (!user) {
-            return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
-        }
-        
-        // جلب IP المستخدم من سجل الدخول الأخير
-        const { data: loginLog } = await supabase
-            .from('login_logs')
-            .select('ip_address')
-            .eq('user_id', user_id)
-            .eq('user_role', role)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
-        
-        const userIp = loginLog?.ip_address || null;
-        
-        // حذف المستخدم
-        await supabase
-            .from(tableName)
-            .delete()
-            .eq('id', user_id);
-        
-        // إذا تم اختيار الحظر
-        if (ban && userIp) {
-            // التحقق من عدم وجود حظر مسبق
-            const { data: existingBan } = await supabase
-                .from('banned_users')
-                .select('*')
-                .eq('ip_address', userIp)
-                .single();
-            
-            if (!existingBan) {
-                await insert('banned_users', {
-                    user_id: user_id,
-                    user_role: role,
-                    full_name: user.full_name,
-                    email: user.email,
-                    ip_address: userIp,
-                    ban_reason: 'تم حظر المستخدم تلقائياً عند حذف الحساب',
-                    banned_at: new Date().toISOString(),
-                    banned_by: 'admin'
-                });
-            }
-        }
-        
-        res.json({ 
-            success: true, 
-            message: 'تم حذف المستخدم بنجاح',
-            banned: ban && userIp ? true : false
-        });
-    } catch (error) {
-        console.error('خطأ في حذف المستخدم:', error.message);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// 4. حظر مستخدم
-app.post('/api/admin/ban-user', [
-    body('user_id').isInt().withMessage('معرف المستخدم مطلوب'),
-    body('role').isIn(['student', 'teacher']).withMessage('دور غير صالح')
-], async (req, res) => {
-    try {
-        const { user_id, role, reason } = req.body;
-        const tableName = role === 'student' ? 'students' : 'teachers';
-        
-        const user = await getOne(tableName, 'id', user_id);
-        if (!user) {
-            return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
-        }
-        
-        // جلب IP المستخدم
-        const { data: loginLog } = await supabase
-            .from('login_logs')
-            .select('ip_address')
-            .eq('user_id', user_id)
-            .eq('user_role', role)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
-        
-        const userIp = loginLog?.ip_address || null;
-        
-        if (!userIp) {
-            return res.status(400).json({ success: false, error: 'لا يمكن تحديد IP المستخدم' });
-        }
-        
-        // التحقق من وجود حظر مسبق
-        const { data: existingBan } = await supabase
-            .from('banned_users')
-            .select('*')
-            .eq('ip_address', userIp)
-            .single();
-        
-        if (existingBan) {
-            return res.status(400).json({ success: false, error: 'هذا المستخدم محظور بالفعل' });
-        }
-        
-        // إضافة الحظر
-        await insert('banned_users', {
-            user_id: user_id,
-            user_role: role,
-            full_name: user.full_name,
-            email: user.email,
-            ip_address: userIp,
-            ban_reason: reason || 'لم يتم تحديد سبب',
-            banned_at: new Date().toISOString(),
-            banned_by: 'admin'
-        });
-        
-        // تحديث حالة المستخدم
-        await supabase
-            .from(tableName)
-            .update({ is_banned: true })
-            .eq('id', user_id);
-        
-        res.json({ success: true, message: 'تم حظر المستخدم بنجاح' });
-    } catch (error) {
-        console.error('خطأ في حظر المستخدم:', error.message);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// 5. إلغاء حظر مستخدم
-app.post('/api/admin/unban-user', [
-    body('user_id').isInt().withMessage('معرف المستخدم مطلوب'),
-    body('role').isIn(['student', 'teacher']).withMessage('دور غير صالح')
-], async (req, res) => {
-    try {
-        const { user_id, role } = req.body;
-        const tableName = role === 'student' ? 'students' : 'teachers';
-        
-        // جلب معلومات الحظر
-        const { data: banRecord } = await supabase
-            .from('banned_users')
-            .select('*')
-            .eq('user_id', user_id)
-            .eq('user_role', role)
-            .single();
-        
-        if (!banRecord) {
-            return res.status(404).json({ success: false, error: 'المستخدم غير محظور' });
-        }
-        
-        // حذف سجل الحظر
-        await supabase
-            .from('banned_users')
-            .delete()
-            .eq('id', banRecord.id);
-        
-        // تحديث حالة المستخدم
-        await supabase
-            .from(tableName)
-            .update({ is_banned: false, ban_reason: null })
-            .eq('id', user_id);
-        
-        res.json({ success: true, message: 'تم إلغاء حظر المستخدم بنجاح' });
-    } catch (error) {
-        console.error('خطأ في إلغاء الحظر:', error.message);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// 6. التحقق من الحظر عند تسجيل الدخول أو التسجيل
-// أضف هذا في middleware قبل معالجة طلبات login و register
-async function checkBanned(req, res, next) {
-    const ip = req.ip || req.connection.remoteAddress;
-    
-    if (!ip) return next();
-    
-    try {
-        const { data } = await supabase
-            .from('banned_users')
-            .select('*')
-            .eq('ip_address', ip)
-            .single();
-        
-        if (data) {
-            return res.status(403).json({
-                success: false,
-                error: 'تم حظر عنوان IP الخاص بك من المنصة',
-                banned: true,
-                reason: data.ban_reason || 'انتهاك شروط الاستخدام'
-            });
-        }
-        
-        next();
-    } catch (error) {
-        next();
-    }
-}
-
-// استخدم middleware في مسارات login و register
-app.post('/api/login', checkBanned, ...);
-app.post('/api/student/register', checkBanned, ...);
-app.post('/api/teacher/register', checkBanned, ...);
