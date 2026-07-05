@@ -462,12 +462,53 @@
     <div id="notificationToast" class="notification-toast"></div>
 
     <script>
+        // ============================================================
+        // ✅ التحقق من صلاحية المدير - يجب أن يكون في بداية الكود
+        // ============================================================
+        (function checkAdminAccess() {
+            console.log('🔐 التحقق من صلاحية المدير...');
+            
+            // جلب بيانات المستخدم من localStorage
+            const token = localStorage.getItem('token');
+            const userDataStr = localStorage.getItem('userData');
+            
+            console.log('Token:', token);
+            console.log('UserData:', userDataStr);
+            
+            if (!userDataStr) {
+                console.log('❌ لا توجد بيانات مستخدم - توجيه إلى الصفحة الرئيسية');
+                window.location.href = '/';
+                return;
+            }
+            
+            try {
+                const userData = JSON.parse(userDataStr);
+                console.log('UserData parsed:', userData);
+                
+                // التحقق من أن المستخدم هو مدير
+                if (userData.role !== 'admin') {
+                    console.log('❌ المستخدم ليس مديراً - الدور:', userData.role);
+                    window.location.href = '/';
+                    return;
+                }
+                
+                console.log('✅ تم التحقق من صلاحية المدير بنجاح');
+                console.log('👤 مرحباً مدير المنصة');
+                
+            } catch (e) {
+                console.error('❌ خطأ في قراءة بيانات المستخدم:', e);
+                window.location.href = '/';
+            }
+        })();
+
+        // ============================================================
+        // باقي الكود
+        // ============================================================
         let currentActionUser = null;
         let currentActionRole = null;
         let currentActionId = null;
         let allStudents = [];
 
-        // ===== دالة الإشعارات =====
         function showNotification(message, type = 'success') {
             const toast = document.getElementById('notificationToast');
             toast.style.background = type === 'success' ? '#10b981' : (type === 'warning' ? '#f59e0b' : '#ef4444');
@@ -485,7 +526,6 @@
             document.getElementById('imageModal').style.display = 'none';
         }
 
-        // ===== التبويبات =====
         function showTab(tab) {
             document.getElementById('pendingTab').style.display = tab === 'pending' ? 'block' : 'none';
             document.getElementById('approvedTab').style.display = tab === 'approved' ? 'block' : 'none';
@@ -625,9 +665,7 @@
             }
         }
 
-        // ===== دوال معالجة المستخدمين (حذف + حظر) =====
-        
-        // عرض نافذة حذف المستخدم
+        // ===== دوال معالجة المستخدمين =====
         function showDeleteUserModal(userId, userRole, userName) {
             currentActionId = userId;
             currentActionRole = userRole;
@@ -638,7 +676,6 @@
             document.getElementById('deleteUserModal').style.display = 'block';
         }
 
-        // تأكيد حذف المستخدم
         async function confirmDeleteUser() {
             const banUser = document.getElementById('banUserCheckbox').checked;
             
@@ -661,7 +698,6 @@
                     }
                     showNotification(msg, 'success');
                     closeDeleteUserModal();
-                    // تحديث القوائم
                     if (currentActionRole === 'teacher') {
                         loadApprovedTeachers();
                         loadPendingTeachers();
@@ -677,7 +713,6 @@
             }
         }
 
-        // عرض نافذة حظر المستخدم
         function showBanUserModal(userId, userRole, userName) {
             currentActionId = userId;
             currentActionRole = userRole;
@@ -688,7 +723,6 @@
             document.getElementById('banUserModal').style.display = 'block';
         }
 
-        // تأكيد حظر المستخدم
         async function confirmBanUser() {
             const reason = document.getElementById('banReason').value.trim() || 'لم يتم تحديد سبب';
             
@@ -718,7 +752,6 @@
             }
         }
 
-        // عرض نافذة إلغاء الحظر
         function showUnbanUserModal(userId, userRole, userName, banReason) {
             currentActionId = userId;
             currentActionRole = userRole;
@@ -729,7 +762,6 @@
             document.getElementById('unbanUserModal').style.display = 'block';
         }
 
-        // تأكيد إلغاء الحظر
         async function confirmUnbanUser() {
             try {
                 const res = await fetch('/api/admin/unban-user', {
@@ -756,7 +788,6 @@
             }
         }
 
-        // ===== إغلاق النوافذ المنبثقة =====
         function closeDeleteUserModal() {
             document.getElementById('modalOverlay').style.display = 'none';
             document.getElementById('deleteUserModal').style.display = 'none';
@@ -994,7 +1025,6 @@
             }
         }
 
-        // ===== دوال الأساتذة (قبول/رفض) =====
         async function approveTeacher(id) {
             if (confirm('✅ هل أنت متأكد من قبول هذا الأستاذ؟')) {
                 try {
@@ -1194,7 +1224,6 @@
             }
         }
 
-        // ===== دوال مساعدة =====
         function logout() { 
             localStorage.clear(); 
             window.location.href = '/'; 
