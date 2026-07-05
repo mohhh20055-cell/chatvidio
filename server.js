@@ -41,12 +41,6 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 const CORS_ORIGIN = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['https://chatvidio.vercel.app', 'http://localhost:3000'];
 const PLATFORM_DOMAIN = process.env.PLATFORM_DOMAIN || 'https://chatvidio.vercel.app';
 
-// ✅ إضافة متغير لتحديد وضع Chargily
-const CHARGILY_MODE = process.env.CHARGILY_MODE || 'test'; // 'live' أو 'test'
-
-console.log(`💳 وضع Chargily: ${CHARGILY_MODE === 'live' ? '🔴 LIVE (مدفوعات حقيقية)' : '🟡 TEST (تجريبي)'}`);
-console.log(`🔗 رابط Chargily: ${CHARGILY_API_URL}`);
-
 // التحقق من المتغيرات الأساسية
 if (!supabaseUrl || !supabaseKey) {
     console.error('خطأ: متغيرات Supabase غير موجودة');
