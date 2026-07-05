@@ -102,7 +102,7 @@ const limiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     validate: {
-        trustProxy: false // تعطيل التحقق من trust proxy لتجنب الخطأ
+        trustProxy: false
     },
     skip: (req) => {
         return req.path.startsWith('/api/stream') ||
@@ -2329,7 +2329,7 @@ app.get('/api/teachers', async (req, res) => {
 });
 
 // ============================================================
-// تسجيل الدخول (مع التحقق من البريد والحظر)
+// تسجيل الدخول (مع التحقق من البريد والحظر) - المعدل مع redirectTo
 // ============================================================
 app.post('/api/login', checkBanned, [
     body('email').isEmail().withMessage('بريد إلكتروني غير صالح'),
@@ -2346,20 +2346,52 @@ app.post('/api/login', checkBanned, [
 
         console.log(`محاولة تسجيل دخول: ${email} كـ ${role}`);
 
-        // تسجيل دخول المشرف
+        // ============================================================
+        // ✅ تسجيل دخول المشرف (المدير)
+        // ============================================================
         if (role === 'admin') {
-            const adminPasswordHash = bcrypt.hashSync(ADMIN_PASSWORD, 10);
-            if (email === ADMIN_EMAIL && bcrypt.compareSync(password, adminPasswordHash)) {
-                return res.json({
-                    success: true,
-                    token: 'admin_token',
-                    user: { id: 0, name: 'مدير المنصة', role: 'admin' }
+            console.log('🔐 محاولة تسجيل دخول كمدير');
+            
+            // التحقق من البريد الإلكتروني
+            if (email !== ADMIN_EMAIL) {
+                console.log('❌ بريد المدير غير صحيح');
+                return res.status(401).json({ 
+                    success: false, 
+                    error: 'بيانات الدخول غير صحيحة' 
                 });
             }
-            return res.status(401).json({ success: false, error: 'بيانات الدخول غير صحيحة' });
+            
+            // التحقق من كلمة المرور
+            const adminPasswordHash = bcrypt.hashSync(ADMIN_PASSWORD, 10);
+            const isValid = bcrypt.compareSync(password, adminPasswordHash);
+            
+            if (!isValid) {
+                console.log('❌ كلمة مرور المدير غير صحيحة');
+                return res.status(401).json({ 
+                    success: false, 
+                    error: 'بيانات الدخول غير صحيحة' 
+                });
+            }
+            
+            console.log('✅ تم تسجيل دخول المدير بنجاح');
+            
+            // ✅ إرجاع استجابة خاصة بالمدير مع مسار التوجيه
+            return res.json({
+                success: true,
+                token: 'admin_token',
+                redirectTo: '/admin.html', // 🔥 مسار التوجيه للمدير
+                user: { 
+                    id: 0, 
+                    name: 'مدير المنصة', 
+                    role: 'admin',
+                    email: ADMIN_EMAIL
+                }
+            });
         }
 
+        // ============================================================
         // تسجيل دخول أستاذ أو طالب
+        // ============================================================
         let user = await getOne('teachers', 'email', email);
         let userRole = 'teacher';
 
@@ -2431,9 +2463,13 @@ app.post('/api/login', checkBanned, [
             });
         }
 
+        // ✅ إرجاع استجابة للطالب/الأستاذ مع مسار التوجيه
+        const redirectPath = userRole === 'teacher' ? '/teacher-dashboard.html' : '/student-dashboard.html';
+        
         res.json({
             success: true,
             token: `${userRole}_token`,
+            redirectTo: redirectPath, // 🔥 مسار التوجيه حسب الدور
             user: {
                 id: user.id,
                 name: user.full_name,
@@ -2446,7 +2482,7 @@ app.post('/api/login', checkBanned, [
             }
         });
     } catch (error) {
-        console.error('خطأ:', error.message);
+        console.error('خطأ في تسجيل الدخول:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -3829,6 +3865,7 @@ if (require.main === module) {
         console.log('💰 مكافأة الإحالة: 100 دج للمعلم، فرصة صندوق هدايا للطالب');
         console.log('🔒 نظام الحظر (IP Ban) مفعل');
         console.log('👥 إدارة المستخدمين (حذف + حظر) مفعلة');
+        console.log('🔄 نظام التوجيه (redirectTo) مفعل للمدير');
         console.log('='.repeat(60));
     });
 }
