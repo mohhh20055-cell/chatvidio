@@ -72,6 +72,79 @@
         ::-webkit-scrollbar-thumb:hover { background: var(--primary-dark); }
 
         /* ============================================================
+           REFERRAL BANNER - شريط الإحالة
+           ============================================================ */
+        .referral-banner {
+            background: var(--gradient-gold);
+            color: white;
+            padding: 12px 20px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 0.95rem;
+            position: relative;
+            display: none;
+            animation: slideDown 0.5s ease;
+        }
+        
+        .referral-banner.show { display: block; }
+        
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .referral-banner .close-banner {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+        
+        .referral-banner .close-banner:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .referral-banner .highlight-text {
+            background: rgba(255,255,255,0.2);
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+        }
+        
+        .referral-banner .btn-jump {
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 4px 18px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.8rem;
+            transition: var(--transition);
+            margin-right: 8px;
+        }
+        
+        .referral-banner .btn-jump:hover {
+            background: white;
+            color: var(--gold-dark);
+            border-color: white;
+        }
+
+        /* ============================================================
            NAVBAR - تصميم عصري بشريط زجاجي
            ============================================================ */
         .navbar {
@@ -1393,6 +1466,9 @@
             .form-section { padding: 0 16px; }
             .form-container { padding: 24px; }
             .support-card { padding: 24px; }
+            .referral-banner { font-size: 0.8rem; padding: 10px 14px; }
+            .referral-banner .highlight-text { font-size: 0.9rem; }
+            .referral-banner .close-banner { left: 8px; width: 24px; height: 24px; font-size: 1rem; }
         }
 
         @media (max-width: 480px) {
@@ -1418,6 +1494,21 @@
     </style>
 </head>
 <body>
+    <!-- ============================================================
+    REFERRAL BANNER - شريط الإحالة
+    ============================================================ -->
+    <div id="referralBanner" class="referral-banner">
+        <button class="close-banner" onclick="closeReferralBanner()">&times;</button>
+        <div id="referralBannerContent">
+            <i class="fas fa-gift"></i>
+            <span id="referralMessage">تمت دعوتك من قبل <span id="referrerName">أحد المستخدمين</span>!</span>
+            <span class="highlight-text" id="referralCodeDisplay">---</span>
+            <button class="btn-jump" onclick="jumpToRegister()">
+                <i class="fas fa-arrow-left"></i> سجل الآن
+            </button>
+        </div>
+    </div>
+
     <!-- ============================================================
     NAVBAR
     ============================================================ -->
@@ -1860,8 +1951,91 @@
 
     <script>
         // ============================================================
-        // الكود الكامل مع إصلاح مشكلة الكابتشا وقسم المطورين
+        // الكود الكامل مع نظام الإحالة
         // ============================================================
+
+        // ===== REFERRAL VARIABLES =====
+        var referralCode = null;
+        var referralData = null;
+
+        // ===== READ REFERRAL FROM URL =====
+        function readReferralFromURL() {
+            try {
+                var urlParams = new URLSearchParams(window.location.search);
+                var ref = urlParams.get('ref');
+                
+                if (ref && ref.length > 3) {
+                    referralCode = ref;
+                    console.log('🔗 تم اكتشاف رمز إحالة:', referralCode);
+                    
+                    // عرض شريط الإحالة
+                    var banner = document.getElementById('referralBanner');
+                    var codeDisplay = document.getElementById('referralCodeDisplay');
+                    codeDisplay.innerText = referralCode;
+                    
+                    // محاولة جلب اسم المحيل
+                    fetchReferrerInfo(ref);
+                    
+                    banner.classList.add('show');
+                    
+                    // إزالة المعامل من الرابط
+                    if (window.history && window.history.replaceState) {
+                        var newUrl = window.location.pathname + window.location.hash;
+                        window.history.replaceState({}, document.title, newUrl);
+                    }
+                }
+            } catch(e) {
+                console.log('⚠️ خطأ في قراءة رمز الإحالة:', e);
+            }
+        }
+
+        // ===== FETCH REFERRER INFO =====
+        async function fetchReferrerInfo(refCode) {
+            try {
+                // محاولة البحث عن المحيل
+                var res = await fetch('/api/referral/info?code=' + encodeURIComponent(refCode));
+                if (res.ok) {
+                    var data = await res.json();
+                    if (data.success && data.referrer_name) {
+                        document.getElementById('referrerName').innerText = data.referrer_name;
+                        referralData = data;
+                    } else {
+                        document.getElementById('referrerName').innerText = 'أحد المستخدمين';
+                    }
+                } else {
+                    document.getElementById('referrerName').innerText = 'أحد المستخدمين';
+                }
+            } catch(e) {
+                console.log('⚠️ لا يمكن جلب معلومات المحيل:', e);
+                document.getElementById('referrerName').innerText = 'أحد المستخدمين';
+            }
+        }
+
+        // ===== REFERRAL BANNER FUNCTIONS =====
+        function closeReferralBanner() {
+            var banner = document.getElementById('referralBanner');
+            banner.classList.remove('show');
+            // حفظ في localStorage لتذكّر أن المستخدم أغلق الشريط
+            try {
+                localStorage.setItem('referralBannerClosed', 'true');
+            } catch(e) {}
+        }
+
+        function jumpToRegister() {
+            showLogin();
+            // تبديل إلى تبويب تسجيل الطالب
+            switchTab('student-register');
+            // إضافة رمز الإحالة إلى حقل مخفي أو متغير
+            if (referralCode) {
+                // تخزين رمز الإحالة في localStorage ليتم استخدامه عند التسجيل
+                try {
+                    localStorage.setItem('pendingReferral', referralCode);
+                } catch(e) {}
+                showNotification('🔗 تم تطبيق رمز الإحالة: ' + referralCode, 'success');
+            }
+            // إغلاق الشريط
+            closeReferralBanner();
+        }
 
         // ===== CAPTCHA VARIABLES =====
         var captchaData = {
@@ -2204,7 +2378,7 @@
         }
 
         // ============================================================
-        // ربط الدوال بالنافذة العامة (حل مشكلة Vercel)
+        // ربط الدوال بالنافذة العامة
         // ============================================================
         window.showHome = showHome;
         window.showTeachers = showTeachers;
@@ -2233,6 +2407,8 @@
         window.loadPublicOffers = loadPublicOffers;
         window.loadLiveStreams = loadLiveStreams;
         window.escapeHtml = escapeHtml;
+        window.closeReferralBanner = closeReferralBanner;
+        window.jumpToRegister = jumpToRegister;
 
         console.log('جميع دوال التبويبات مرتبطة بالنافذة العامة');
 
@@ -2520,15 +2696,29 @@
                 return;
             }
             
+            // التحقق من وجود رمز إحالة
+            var refCode = localStorage.getItem('pendingReferral') || referralCode;
+            
             try {
                 var res = await fetch('/api/student/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ full_name: full_name, email: email, password: password, phone: phone })
+                    body: JSON.stringify({ 
+                        full_name: full_name, 
+                        email: email, 
+                        password: password, 
+                        phone: phone,
+                        ref: refCode // إرسال رمز الإحالة إذا موجود
+                    })
                 });
                 var data = await res.json();
                 if (data.success) { 
-                    showNotification('تم التسجيل بنجاح! يمكنك تسجيل الدخول الآن', 'success'); 
+                    var msg = 'تم التسجيل بنجاح! يمكنك تسجيل الدخول الآن';
+                    if (refCode) {
+                        msg += ' 🎉 تم تطبيق رمز الإحالة الخاص بك!';
+                        localStorage.removeItem('pendingReferral');
+                    }
+                    showNotification(msg, 'success'); 
                     switchTab('login'); 
                 } else { 
                     showNotification(data.error, 'error'); 
@@ -2562,6 +2752,12 @@
                 formData.append('id_image', idImage.files[0]);
             }
             
+            // إضافة رمز الإحالة إذا موجود
+            var refCode = localStorage.getItem('pendingReferral') || referralCode;
+            if (refCode) {
+                formData.append('ref', refCode);
+            }
+            
             var captchaValid = await verifyCaptcha('teacher');
             if (!captchaValid) {
                 return;
@@ -2574,7 +2770,12 @@
                 });
                 var data = await res.json();
                 if (data.success) { 
-                    showNotification('تم إرسال طلبك بنجاح! سيتم مراجعته', 'success'); 
+                    var msg = 'تم إرسال طلبك بنجاح! سيتم مراجعته';
+                    if (refCode) {
+                        msg += ' 🎉 تم تطبيق رمز الإحالة الخاص بك!';
+                        localStorage.removeItem('pendingReferral');
+                    }
+                    showNotification(msg, 'success'); 
                     switchTab('login'); 
                 } else { 
                     showNotification(data.error, 'error'); 
@@ -2597,6 +2798,10 @@
         
         function init() {
             console.log('بدء تشغيل المنصة...');
+            console.log('📍 الرابط الحالي:', window.location.href);
+            
+            // قراءة رمز الإحالة من الرابط
+            readReferralFromURL();
             
             // التحقق من وجود جميع الأقسام
             var sections = ['homeSection', 'teachersSection', 'offersSection', 'liveSection', 'developersSection', 'loginSection', 'downloadAppSection', 'supportSection'];
@@ -2619,6 +2824,9 @@
             console.log('📅 التاريخ:', new Date().toLocaleString('ar-EG'));
             console.log('👨‍💻 فريق المطورين: عثمانية محمد الصالح، مليك صالح، زينب لكفيفي');
             console.log('🚀 جميع التبويبات جاهزة للعمل!');
+            if (referralCode) {
+                console.log('🔗 تم اكتشاف رمز إحالة:', referralCode);
+            }
         }
 
         // تشغيل التطبيق عند تحميل الصفحة
