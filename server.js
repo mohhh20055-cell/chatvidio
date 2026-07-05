@@ -1633,18 +1633,14 @@ app.post('/api/student/wallet/deposit', [
             created_at: new Date().toISOString()
         });
 
-       const baseUrl = process.env.PLATFORM_URL || 
+       // بناء روابط النجاح والفشل
+const baseUrl = process.env.PLATFORM_URL || 
                 process.env.RENDER_EXTERNAL_URL || 
-                process.env.VERCEL_URL ||
+                (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
                 'https://chatvidio.vercel.app';
-        console.log(`📍 الرابط الأساسي المستخدم: ${baseUrl}`);
 
 const successUrl = `${baseUrl}/api/wallet/deposit/success/${transaction.id}`;
 const failureUrl = `${baseUrl}/api/wallet/deposit/failure/${transaction.id}`;
-
-console.log(`✅ رابط النجاح: ${successUrl}`);
-console.log(`❌ رابط الفشل: ${failureUrl}`);
-
         // إنشاء رابط الدفع عبر Chargily
         const checkout = await createChargilyCheckout(
             finalAmount,
