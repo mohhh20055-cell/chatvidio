@@ -52,10 +52,6 @@ if (!resendApiKey) {
     process.exit(1);
 }
 
-if (!CHARGILY_API_KEY) {
-    console.warn('تحذير: CHARGILY_API_KEY غير موجود، استخدم المفتاح التجريبي');
-}
-
 console.log('الاتصال بـ Supabase:', supabaseUrl);
 
 // ============================================================
@@ -109,7 +105,9 @@ const limiter = rateLimit({
                req.path.startsWith('/api/public/stats') ||
                req.path.startsWith('/api/public/offers') ||
                req.path.startsWith('/api/join-stream') ||
-               req.path.startsWith('/api/verify-email');
+               req.path.startsWith('/api/verify-email') ||
+               req.path.startsWith('/api/wallet/deposit/success') ||
+               req.path.startsWith('/api/wallet/deposit/failure');
     }
 });
 app.use('/api/', limiter);
@@ -133,15 +131,12 @@ app.use('/api/resend-verification', authLimiter);
 // Middleware التحقق من الحظر (IP Ban)
 // ============================================================
 async function checkBanned(req, res, next) {
-    // الحصول على IP المستخدم
     let ip = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'];
     
-    // معالجة حالة وجود عدة IPs في x-forwarded-for
     if (ip && typeof ip === 'string' && ip.includes(',')) {
         ip = ip.split(',')[0].trim();
     }
     
-    // إزالة البورت من IP إذا كان موجوداً
     if (ip && typeof ip === 'string') {
         ip = ip.replace(/:\d+[^:]*$/, '');
     }
@@ -165,10 +160,8 @@ async function checkBanned(req, res, next) {
                 reason: data.ban_reason || 'انتهاك شروط الاستخدام'
             });
         }
-        
         next();
     } catch (error) {
-        // إذا لم يتم العثور على حظر، استمر
         next();
     }
 }
@@ -384,6 +377,7 @@ function generateReferralCode(name, id) {
 }
 
 // ============================================================
+// ============================================================
 // مسارات التحقق من البريد الإلكتروني
 // ============================================================
 
@@ -540,7 +534,6 @@ app.get('/api/verify-email', async (req, res) => {
 
         const tableName = role === 'student' ? 'students' : 'teachers';
         
-        // جلب معرف المستخدم لتطبيق مكافأة الإحالة
         const user = await getOne(tableName, 'email', email);
         
         await supabase
@@ -553,7 +546,6 @@ app.get('/api/verify-email', async (req, res) => {
             .update({ used: true })
             .eq('token', token);
 
-        // معالجة مكافأة الإحالة بعد تأكيد البريد
         if (user) {
             await processReferralReward(user.id, role);
         }
@@ -1504,8 +1496,10 @@ app.delete('/api/admin/support-messages/:id', async (req, res) => {
 });
 
 // ============================================================
-// نظام الرصيد (Wallet)
+// نظام الرصيد (Wallet) - المُصلح بالكامل
 // ============================================================
+
+// جلب الرصيد والمعاملات
 app.get('/api/student/wallet/:student_id', async (req, res) => {
     try {
         const student = await getOne('students', 'id', req.params.student_id);
@@ -1516,7 +1510,7 @@ app.get('/api/student/wallet/:student_id', async (req, res) => {
             .select('*')
             .eq('student_id', req.params.student_id)
             .order('created_at', { ascending: false })
-            .limit(20);
+            .limit(50);
 
         res.json({
             balance: student.wallet_balance || 0,
@@ -1528,9 +1522,87 @@ app.get('/api/student/wallet/:student_id', async (req, res) => {
     }
 });
 
+// ============================================================
+// ✅ دالة إنشاء طلب شحن عبر Chargily
+// ============================================================
+async function createChargilyCheckout(amount, studentName, studentEmail, studentPhone, description, successUrl, failureUrl) {
+    try {
+        // التأكد من أن المبلغ رقم صحيح وفي الحدود المسموح بها
+        let finalAmount = Math.max(Number(amount), 50);
+        finalAmount = Math.min(finalAmount, 1000000); // الحد الأقصى مليون دج
+        finalAmount = Math.round(finalAmount);
+
+        const checkoutData = {
+            amount: finalAmount,
+            currency: 'dzd',
+            success_url: successUrl,
+            failure_url: failureUrl,
+            locale: 'ar',
+            description: description || `شحن رصيد بقيمة ${finalAmount} دج`,
+            metadata: {
+                student_name: studentName || 'طالب',
+                student_email: studentEmail || '',
+                type: 'wallet_deposit'
+            }
+        };
+
+        console.log('📦 إنشاء دفع للمبلغ:', finalAmount, 'DZD');
+
+        // محاولات متعددة مع طرق مصادقة مختلفة
+        const authMethods = [
+            { 'Authorization': `Bearer ${CHARGILY_API_KEY}` },
+            { 'X-Authorization': CHARGILY_API_KEY },
+            { 'Api-Key': CHARGILY_API_KEY }
+        ];
+
+        let lastError = null;
+
+        for (let i = 0; i < authMethods.length; i++) {
+            try {
+                const response = await axios.post(`${CHARGILY_API_URL}/checkouts`, checkoutData, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        ...authMethods[i]
+                    },
+                    timeout: 30000,
+                    httpsAgent: new https.Agent({ keepAlive: true })
+                });
+
+                if (response?.data?.checkout_url) {
+                    console.log('✅ تم إنشاء رابط الدفع بنجاح');
+                    return {
+                        success: true,
+                        checkout_url: response.data.checkout_url,
+                        checkout_id: response.data.id,
+                        amount: finalAmount
+                    };
+                }
+            } catch (error) {
+                lastError = error;
+                console.log(`❌ محاولة ${i + 1} فشلت`);
+                if (i < authMethods.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            }
+        }
+
+        throw new Error(lastError?.response?.data?.message || lastError?.message || 'فشلت جميع محاولات الدفع');
+    } catch (error) {
+        console.error('❌ خطأ Chargily:', error.response?.data || error.message);
+        return {
+            success: false,
+            error: error.response?.data?.message || error.message || 'حدث خطأ في عملية الدفع'
+        };
+    }
+}
+
+// ============================================================
+// ✅ دالة شحن الرصيد - توجيه المستخدم إلى Chargily
+// ============================================================
 app.post('/api/student/wallet/deposit', [
     body('student_id').isInt().withMessage('معرف الطالب غير صالح'),
-    body('amount').isInt({ min: 100 }).withMessage('المبلغ يجب أن لا يقل عن 100 دج')
+    body('amount').isInt({ min: 100, max: 1000000 }).withMessage('المبلغ يجب أن يكون بين 100 و 1,000,000 دج')
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -1540,40 +1612,269 @@ app.post('/api/student/wallet/deposit', [
 
         const { student_id, amount } = req.body;
 
+        // التحقق من وجود الطالب
         const student = await getOne('students', 'id', student_id);
-        if (!student) return res.status(404).json({ success: false, error: 'طالب غير موجود' });
+        if (!student) {
+            return res.status(404).json({ success: false, error: 'الطالب غير موجود' });
+        }
 
+        // التأكد من أن المبلغ رقم صحيح
+        const finalAmount = Math.round(Math.max(Number(amount), 100));
+        
+        console.log(`💰 طلب شحن رصيد: الطالب ${student.full_name} (${student_id}) - المبلغ: ${finalAmount} دج`);
+
+        // إنشاء معاملة جديدة بحالة pending
         const transaction = await insert('wallet_transactions', {
             student_id: student_id,
-            amount: amount,
+            amount: finalAmount,
             type: 'deposit',
             status: 'pending',
-            description: `محاولة شحن رصيد بقيمة ${amount} دج`,
+            description: `طلب شحن رصيد بقيمة ${finalAmount} دج`,
             created_at: new Date().toISOString()
         });
 
+        // بناء روابط النجاح والفشل
         const baseUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
         const successUrl = `${baseUrl}/api/wallet/deposit/success/${transaction.id}`;
         const failureUrl = `${baseUrl}/api/wallet/deposit/failure/${transaction.id}`;
 
-        // محاكاة نجاح الدفع للاختبار
-        await update('wallet_transactions', transaction.id, {
+        // إنشاء رابط الدفع عبر Chargily
+        const checkout = await createChargilyCheckout(
+            finalAmount,
+            student.full_name,
+            student.email,
+            student.phone,
+            `شحن رصيد منصة التعليم - ${finalAmount} دج`,
+            successUrl,
+            failureUrl
+        );
+
+        if (checkout.success && checkout.checkout_url) {
+            // تحديث المعاملة بمعرف Chargily
+            await update('wallet_transactions', transaction.id, { 
+                chargily_checkout_id: checkout.checkout_id 
+            });
+            
+            console.log(`✅ تم إنشاء رابط الدفع للطالب ${student_id}`);
+            
+            return res.json({
+                success: true,
+                checkout_url: checkout.checkout_url,
+                transaction_id: transaction.id,
+                amount: finalAmount
+            });
+        } else {
+            // فشل إنشاء رابط الدفع
+            await update('wallet_transactions', transaction.id, {
+                status: 'failed',
+                description: `فشل إنشاء رابط الدفع: ${checkout.error}`
+            });
+            
+            console.error(`❌ فشل إنشاء رابط الدفع للطالب ${student_id}:`, checkout.error);
+            
+            return res.status(400).json({ 
+                success: false, 
+                error: checkout.error || 'حدث خطأ في عملية الدفع، يرجى المحاولة مرة أخرى'
+            });
+        }
+    } catch (error) {
+        console.error('❌ خطأ في شحن الرصيد:', error.message);
+        res.status(500).json({ success: false, error: error.message || 'حدث خطأ داخلي في الخادم' });
+    }
+});
+
+// ============================================================
+// ✅ معالجة نجاح الدفع - إضافة الرصيد بعد التأكيد
+// ============================================================
+app.get('/api/wallet/deposit/success/:transaction_id', async (req, res) => {
+    const { transaction_id } = req.params;
+
+    try {
+        console.log(`✅ تأكيد نجاح الدفع للمعاملة: ${transaction_id}`);
+
+        // جلب المعاملة
+        const transaction = await getOne('wallet_transactions', 'id', transaction_id);
+        if (!transaction) {
+            return res.send(`
+                <!DOCTYPE html>
+                <html>
+                <head><meta charset="UTF-8"><title>خطأ</title>
+                <style>
+                    body{font-family:Cairo;background:#0f5cbf;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;direction:rtl}
+                    .card{background:white;padding:40px;border-radius:20px;text-align:center;max-width:500px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
+                    h1{color:#dc2626}
+                    .btn{background:#0f5cbf;color:white;padding:12px 30px;border-radius:30px;text-decoration:none;display:inline-block;margin-top:20px}
+                </style>
+                </head>
+                <body>
+                <div class="card">
+                    <h1>❌ خطأ</h1>
+                    <p>المعاملة غير موجودة</p>
+                    <a href="/student-dashboard.html" class="btn">العودة للوحة</a>
+                </div>
+                </body>
+                </html>
+            `);
+        }
+
+        // التحقق من أن المعاملة لم تتم معالجتها مسبقاً
+        if (transaction.status === 'completed') {
+            return res.send(`
+                <!DOCTYPE html>
+                <html>
+                <head><meta charset="UTF-8"><title>تمت المعاملة</title>
+                <style>
+                    body{font-family:Cairo;background:#0f5cbf;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;direction:rtl}
+                    .card{background:white;padding:40px;border-radius:20px;text-align:center;max-width:500px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
+                    h1{color:#10b981}
+                    .btn{background:#0f5cbf;color:white;padding:12px 30px;border-radius:30px;text-decoration:none;display:inline-block;margin-top:20px}
+                </style>
+                </head>
+                <body>
+                <div class="card">
+                    <h1>✅ تمت المعاملة</h1>
+                    <p>تم شحن رصيدك بالفعل</p>
+                    <a href="/student-dashboard.html" class="btn">العودة للوحة</a>
+                </div>
+                </body>
+                </html>
+            `);
+        }
+
+        // ✅ إضافة الرصيد فقط هنا (بعد تأكيد الدفع الفعلي)
+        const amount = transaction.amount;
+        
+        // جلب بيانات الطالب
+        const student = await getOne('students', 'id', transaction.student_id);
+        if (!student) {
+            return res.send(`
+                <!DOCTYPE html>
+                <html>
+                <head><meta charset="UTF-8"><title>خطأ</title>
+                <style>
+                    body{font-family:Cairo;background:#0f5cbf;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;direction:rtl}
+                    .card{background:white;padding:40px;border-radius:20px;text-align:center;max-width:500px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
+                    h1{color:#dc2626}
+                    .btn{background:#0f5cbf;color:white;padding:12px 30px;border-radius:30px;text-decoration:none;display:inline-block;margin-top:20px}
+                </style>
+                </head>
+                <body>
+                <div class="card">
+                    <h1>❌ خطأ</h1>
+                    <p>الطالب غير موجود</p>
+                    <a href="/student-dashboard.html" class="btn">العودة للوحة</a>
+                </div>
+                </body>
+                </html>
+            `);
+        }
+
+        // حساب الرصيد الجديد مع تجنب overflow
+        const currentBalance = parseInt(student.wallet_balance) || 0;
+        const addAmount = parseInt(amount) || 0;
+        const newBalance = currentBalance + addAmount;
+        
+        // ✅ استخدام parseInt للتأكد من أن القيمة عدد صحيح
+        await supabase
+            .from('students')
+            .update({ wallet_balance: newBalance })
+            .eq('id', transaction.student_id);
+
+        // تحديث حالة المعاملة
+        await update('wallet_transactions', transaction_id, {
             status: 'completed',
             description: `تم شحن الرصيد بنجاح بمبلغ ${amount} دج`
         });
 
-        const newBalance = (student.wallet_balance || 0) + amount;
-        await update('students', student_id, { wallet_balance: newBalance });
+        console.log(`✅ تم إضافة ${amount} دج للطالب ${student.full_name} (الرصيد الجديد: ${newBalance} دج)`);
 
-        res.json({
-            success: true,
-            transaction_id: transaction.id,
-            new_balance: newBalance,
-            message: `تم شحن الرصيد بنجاح بمبلغ ${amount} دج`
-        });
+        // عرض صفحة النجاح
+        res.send(`
+            <!DOCTYPE html>
+            <html>
+            <head><meta charset="UTF-8"><title>تم شحن الرصيد</title>
+            <style>
+                body{font-family:Cairo;background:#0f5cbf;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;direction:rtl}
+                .card{background:white;padding:40px;border-radius:20px;text-align:center;max-width:500px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
+                h1{color:#10b981;font-size:2.5rem}
+                .amount{font-size:2rem;font-weight:900;color:#0f5cbf;margin:10px 0}
+                .btn{background:#0f5cbf;color:white;padding:12px 30px;border-radius:30px;text-decoration:none;display:inline-block;margin-top:20px}
+                .btn:hover{background:#0a4a9a}
+                .sub{color:#666;margin-top:10px}
+            </style>
+            </head>
+            <body>
+            <div class="card">
+                <h1>✅ تم الشحن بنجاح!</h1>
+                <div class="amount">+${amount} دج</div>
+                <p style="font-size:1.1rem;">تم إضافة المبلغ إلى رصيدك</p>
+                <p class="sub">الرصيد الجديد: ${newBalance} دج</p>
+                <a href="/student-dashboard.html" class="btn">العودة للوحة</a>
+            </div>
+            </body>
+            </html>
+        `);
     } catch (error) {
-        console.error('خطأ:', error.message);
-        res.status(500).json({ success: false, error: error.message });
+        console.error('❌ خطأ في معالجة نجاح الدفع:', error.message);
+        res.send(`
+            <!DOCTYPE html>
+            <html>
+            <head><meta charset="UTF-8"><title>خطأ</title>
+            <style>
+                body{font-family:Cairo;background:#0f5cbf;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;direction:rtl}
+                .card{background:white;padding:40px;border-radius:20px;text-align:center;max-width:500px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
+                h1{color:#dc2626}
+                .btn{background:#0f5cbf;color:white;padding:12px 30px;border-radius:30px;text-decoration:none;display:inline-block;margin-top:20px}
+            </style>
+            </head>
+            <body>
+            <div class="card">
+                <h1>❌ حدث خطأ</h1>
+                <p>حدث خطأ أثناء معالجة الدفع. يرجى التواصل مع الدعم الفني.</p>
+                <a href="/student-dashboard.html" class="btn">العودة للوحة</a>
+            </div>
+            </body>
+            </html>
+        `);
+    }
+});
+
+// ============================================================
+// ✅ معالجة فشل الدفع
+// ============================================================
+app.get('/api/wallet/deposit/failure/:transaction_id', async (req, res) => {
+    const { transaction_id } = req.params;
+
+    try {
+        await update('wallet_transactions', transaction_id, {
+            status: 'failed',
+            description: 'فشلت عملية الدفع'
+        });
+
+        res.send(`
+            <!DOCTYPE html>
+            <html>
+            <head><meta charset="UTF-8"><title>فشل الشحن</title>
+            <style>
+                body{font-family:Cairo;background:#0f5cbf;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;direction:rtl}
+                .card{background:white;padding:40px;border-radius:20px;text-align:center;max-width:500px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
+                h1{color:#f59e0b}
+                .btn{background:#0f5cbf;color:white;padding:12px 30px;border-radius:30px;text-decoration:none;display:inline-block;margin-top:20px}
+                .btn:hover{background:#0a4a9a}
+            </style>
+            </head>
+            <body>
+            <div class="card">
+                <h1>❌ فشل الشحن</h1>
+                <p>حدث خطأ أثناء عملية الدفع. لم يتم خصم أي مبلغ من حسابك.</p>
+                <a href="/student-dashboard.html" class="btn">المحاولة مرة أخرى</a>
+            </div>
+            </body>
+            </html>
+        `);
+    } catch (error) {
+        console.error('❌ خطأ في معالجة فشل الدفع:', error.message);
+        res.redirect('/student-dashboard.html');
     }
 });
 
@@ -1952,7 +2253,7 @@ app.get('/api/messages/:user_id/:user_type/:other_id/:other_type', async (req, r
 });
 
 // ============================================================
-// مسارات التسجيل والدخول (مع نظام الحظر)
+// مسارات التسجيل والدخول
 // ============================================================
 
 // تسجيل أستاذ جديد
@@ -2329,7 +2630,7 @@ app.get('/api/teachers', async (req, res) => {
 });
 
 // ============================================================
-// تسجيل الدخول (مع التحقق من البريد والحظر) - المعدل مع redirectTo
+// تسجيل الدخول - المعدل مع redirectTo
 // ============================================================
 app.post('/api/login', checkBanned, [
     body('email').isEmail().withMessage('بريد إلكتروني غير صالح'),
@@ -2346,13 +2647,10 @@ app.post('/api/login', checkBanned, [
 
         console.log(`محاولة تسجيل دخول: ${email} كـ ${role}`);
 
-        // ============================================================
-        // ✅ تسجيل دخول المشرف (المدير)
-        // ============================================================
+        // تسجيل دخول المدير
         if (role === 'admin') {
             console.log('🔐 محاولة تسجيل دخول كمدير');
             
-            // التحقق من البريد الإلكتروني
             if (email !== ADMIN_EMAIL) {
                 console.log('❌ بريد المدير غير صحيح');
                 return res.status(401).json({ 
@@ -2361,7 +2659,6 @@ app.post('/api/login', checkBanned, [
                 });
             }
             
-            // التحقق من كلمة المرور
             const adminPasswordHash = bcrypt.hashSync(ADMIN_PASSWORD, 10);
             const isValid = bcrypt.compareSync(password, adminPasswordHash);
             
@@ -2375,11 +2672,10 @@ app.post('/api/login', checkBanned, [
             
             console.log('✅ تم تسجيل دخول المدير بنجاح');
             
-            // ✅ إرجاع استجابة خاصة بالمدير مع مسار التوجيه
             return res.json({
                 success: true,
                 token: 'admin_token',
-                redirectTo: '/admin.html', // 🔥 مسار التوجيه للمدير
+                redirectTo: '/admin.html',
                 user: { 
                     id: 0, 
                     name: 'مدير المنصة', 
@@ -2389,9 +2685,7 @@ app.post('/api/login', checkBanned, [
             });
         }
 
-        // ============================================================
         // تسجيل دخول أستاذ أو طالب
-        // ============================================================
         let user = await getOne('teachers', 'email', email);
         let userRole = 'teacher';
 
@@ -2404,7 +2698,6 @@ app.post('/api/login', checkBanned, [
             return res.status(404).json({ success: false, error: 'البريد الإلكتروني غير موجود' });
         }
 
-        // التحقق من الحظر
         if (user.is_banned === true) {
             return res.status(403).json({
                 success: false,
@@ -2426,7 +2719,6 @@ app.post('/api/login', checkBanned, [
             });
         }
 
-        // التحقق من تأكيد البريد الإلكتروني
         if (!user.email_verified) {
             return res.status(403).json({
                 success: false,
@@ -2445,7 +2737,6 @@ app.post('/api/login', checkBanned, [
             });
         }
 
-        // تسجيل IP في سجل الدخول
         let ip = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'];
         if (ip && typeof ip === 'string' && ip.includes(',')) {
             ip = ip.split(',')[0].trim();
@@ -2463,13 +2754,12 @@ app.post('/api/login', checkBanned, [
             });
         }
 
-        // ✅ إرجاع استجابة للطالب/الأستاذ مع مسار التوجيه
         const redirectPath = userRole === 'teacher' ? '/teacher-dashboard.html' : '/student-dashboard.html';
         
         res.json({
             success: true,
             token: `${userRole}_token`,
-            redirectTo: redirectPath, // 🔥 مسار التوجيه حسب الدور
+            redirectTo: redirectPath,
             user: {
                 id: user.id,
                 name: user.full_name,
@@ -2491,7 +2781,6 @@ app.post('/api/login', checkBanned, [
 // ADMIN Routes - إدارة المستخدمين والحظر
 // ============================================================
 
-// جلب جميع الطلاب
 app.get('/api/admin/students', async (req, res) => {
     try {
         const { data } = await supabase
@@ -2505,7 +2794,6 @@ app.get('/api/admin/students', async (req, res) => {
     }
 });
 
-// جلب المستخدمين المحظورين
 app.get('/api/admin/banned-users', async (req, res) => {
     try {
         const { data } = await supabase
@@ -2519,7 +2807,6 @@ app.get('/api/admin/banned-users', async (req, res) => {
     }
 });
 
-// حذف مستخدم (مع إمكانية الحظر)
 app.post('/api/admin/delete-user', [
     body('user_id').isInt().withMessage('معرف المستخدم مطلوب'),
     body('role').isIn(['student', 'teacher']).withMessage('دور غير صالح')
@@ -2533,7 +2820,6 @@ app.post('/api/admin/delete-user', [
             return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
         }
         
-        // جلب IP المستخدم من سجل الدخول الأخير
         const { data: loginLog } = await supabase
             .from('login_logs')
             .select('ip_address')
@@ -2545,13 +2831,11 @@ app.post('/api/admin/delete-user', [
         
         const userIp = loginLog?.ip_address || null;
         
-        // حذف المستخدم
         await supabase
             .from(tableName)
             .delete()
             .eq('id', user_id);
         
-        // إذا تم اختيار الحظر
         if (ban && userIp) {
             const { data: existingBan } = await supabase
                 .from('banned_users')
@@ -2584,7 +2868,6 @@ app.post('/api/admin/delete-user', [
     }
 });
 
-// حظر مستخدم
 app.post('/api/admin/ban-user', [
     body('user_id').isInt().withMessage('معرف المستخدم مطلوب'),
     body('role').isIn(['student', 'teacher']).withMessage('دور غير صالح')
@@ -2598,7 +2881,6 @@ app.post('/api/admin/ban-user', [
             return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
         }
         
-        // جلب IP المستخدم
         const { data: loginLog } = await supabase
             .from('login_logs')
             .select('ip_address')
@@ -2614,7 +2896,6 @@ app.post('/api/admin/ban-user', [
             return res.status(400).json({ success: false, error: 'لا يمكن تحديد IP المستخدم' });
         }
         
-        // التحقق من وجود حظر مسبق
         const { data: existingBan } = await supabase
             .from('banned_users')
             .select('*')
@@ -2625,7 +2906,6 @@ app.post('/api/admin/ban-user', [
             return res.status(400).json({ success: false, error: 'هذا المستخدم محظور بالفعل' });
         }
         
-        // إضافة الحظر
         await insert('banned_users', {
             user_id: user_id,
             user_role: role,
@@ -2637,7 +2917,6 @@ app.post('/api/admin/ban-user', [
             banned_by: 'admin'
         });
         
-        // تحديث حالة المستخدم
         await supabase
             .from(tableName)
             .update({ is_banned: true, ban_reason: reason || 'لم يتم تحديد سبب' })
@@ -2650,7 +2929,6 @@ app.post('/api/admin/ban-user', [
     }
 });
 
-// إلغاء حظر مستخدم
 app.post('/api/admin/unban-user', [
     body('user_id').isInt().withMessage('معرف المستخدم مطلوب'),
     body('role').isIn(['student', 'teacher']).withMessage('دور غير صالح')
@@ -2670,13 +2948,11 @@ app.post('/api/admin/unban-user', [
             return res.status(404).json({ success: false, error: 'المستخدم غير محظور' });
         }
         
-        // حذف سجل الحظر
         await supabase
             .from('banned_users')
             .delete()
             .eq('id', banRecord.id);
         
-        // تحديث حالة المستخدم
         await supabase
             .from(tableName)
             .update({ is_banned: false, ban_reason: null })
@@ -3866,6 +4142,7 @@ if (require.main === module) {
         console.log('🔒 نظام الحظر (IP Ban) مفعل');
         console.log('👥 إدارة المستخدمين (حذف + حظر) مفعلة');
         console.log('🔄 نظام التوجيه (redirectTo) مفعل للمدير');
+        console.log('💳 نظام الدفع عبر Chargily مفعل مع تأكيد الدفع');
         console.log('='.repeat(60));
     });
 }
