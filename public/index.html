@@ -402,8 +402,157 @@
             gap: 14px;
             flex-wrap: wrap;
         }
+
+        /* ============================================================
+           ABOUT SECTION - قسم "عن المنصة"
+           ============================================================ */
+        .about-section {
+            max-width: 1280px;
+            margin: 0 auto 60px;
+            padding: 0 30px;
+        }
         
-        /* ===== BUTTONS ===== */
+        .about-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 50px 40px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid rgba(0,0,0,0.04);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .about-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: var(--gradient-main);
+        }
+        
+        .about-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-top: 20px;
+        }
+        
+        .about-grid .about-text {
+            text-align: right;
+        }
+        
+        .about-grid .about-text h2 {
+            font-size: 1.8rem;
+            font-weight: 900;
+            color: var(--dark);
+            margin-bottom: 20px;
+        }
+        
+        .about-grid .about-text h2 i {
+            color: var(--primary);
+            margin-left: 10px;
+        }
+        
+        .about-grid .about-text p {
+            font-size: 1.05rem;
+            color: var(--gray);
+            line-height: 1.9;
+            margin-bottom: 16px;
+        }
+        
+        .about-grid .about-text .highlight-text {
+            color: var(--primary);
+            font-weight: 700;
+        }
+        
+        .about-grid .about-features {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            align-content: start;
+        }
+        
+        .about-feature-item {
+            background: var(--gray-light);
+            border-radius: var(--radius-sm);
+            padding: 20px;
+            text-align: center;
+            transition: var(--transition);
+            border: 1px solid rgba(0,0,0,0.04);
+        }
+        
+        .about-feature-item:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-light);
+        }
+        
+        .about-feature-item .icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            display: block;
+        }
+        
+        .about-feature-item .icon.blue { color: var(--primary); }
+        .about-feature-item .icon.green { color: var(--secondary); }
+        .about-feature-item .icon.gold { color: var(--gold); }
+        .about-feature-item .icon.purple { color: var(--accent); }
+        
+        .about-feature-item h4 {
+            font-size: 0.95rem;
+            color: var(--dark);
+            margin-bottom: 4px;
+        }
+        
+        .about-feature-item p {
+            font-size: 0.8rem;
+            color: var(--gray);
+        }
+        
+        .about-steps {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px dashed #edf2f7;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .about-step {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 16px;
+            background: var(--gray-light);
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(0,0,0,0.04);
+        }
+        
+        .about-step .step-number {
+            width: 36px;
+            height: 36px;
+            background: var(--gradient-main);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+        
+        .about-step .step-text {
+            font-size: 0.9rem;
+            color: var(--dark-light);
+            font-weight: 600;
+        }
+
+        /* ============================================================
+           BUTTONS
+           ============================================================ */
         .btn-primary {
             background: var(--gradient-main);
             color: white;
@@ -1090,6 +1239,20 @@
         .captcha-error.show { display: block; }
 
         /* ============================================================
+           NAME VALIDATION - التحقق من صحة الاسم
+           ============================================================ */
+        .name-error {
+            color: var(--danger);
+            font-size: 0.75rem;
+            margin-top: -8px;
+            margin-bottom: 10px;
+            display: none;
+            text-align: right;
+        }
+        .name-error.show { display: block; }
+        .name-error i { margin-left: 6px; }
+
+        /* ============================================================
            SUPPORT - صفحة الدعم
            ============================================================ */
         .support-card {
@@ -1443,6 +1606,8 @@
             .hero-content h1 { font-size: 2.4rem; }
             .hero-image .badge-float { display: none; }
             .hero-image .floating-icon { font-size: 140px; }
+            .about-grid { grid-template-columns: 1fr; gap: 30px; }
+            .about-grid .about-features { grid-template-columns: 1fr 1fr; }
         }
         
         @media (max-width: 768px) {
@@ -1469,6 +1634,9 @@
             .referral-banner { font-size: 0.8rem; padding: 10px 14px; }
             .referral-banner .highlight-text { font-size: 0.9rem; }
             .referral-banner .close-banner { left: 8px; width: 24px; height: 24px; font-size: 1rem; }
+            .about-card { padding: 30px 20px; }
+            .about-grid .about-features { grid-template-columns: 1fr; }
+            .about-steps { grid-template-columns: 1fr; }
         }
 
         @media (max-width: 480px) {
@@ -1490,6 +1658,7 @@
             .logo-text span:first-child { font-size: 1.3rem; }
             .logo-text .highlight { font-size: 1.3rem; }
             .logo-badge { font-size: 0.45rem; padding: 1px 8px; }
+            .about-grid .about-text h2 { font-size: 1.4rem; }
         }
     </style>
 </head>
@@ -1546,7 +1715,7 @@
     ============================================================ -->
     <main>
         <!-- ============================================================
-        HOME SECTION
+        HOME SECTION - القسم الرئيسي
         ============================================================ -->
         <section id="homeSection" class="hero">
             <div class="hero-content">
@@ -1602,6 +1771,82 @@
                             <div style="font-size:0.9rem; color:var(--dark);">أفضل الأساتذة</div>
                             <div style="font-size:0.7rem; color:var(--gray);">معتمدون</div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================
+        ABOUT SECTION - قسم "عن المنصة"
+        ============================================================ -->
+        <section class="about-section" id="aboutSection">
+            <div class="about-card">
+                <div class="about-grid">
+                    <div class="about-text">
+                        <h2><i class="fas fa-info-circle"></i> عن منصة ZoomDz</h2>
+                        <p>
+                            <span class="highlight-text">ZoomDz</span> هي منصة تعليمية جزائرية مبتكرة تهدف إلى 
+                            <span class="highlight-text">ربط الطلاب مع أفضل الأساتذة</span> في مختلف التخصصات 
+                            عبر دروس خصوصية مباشرة عن بعد.
+                        </p>
+                        <p>
+                            <i class="fas fa-check-circle" style="color:var(--primary);"></i> 
+                            <strong>رؤيتنا:</strong> تمكين كل طالب في الجزائر من الوصول إلى تعليم نوعي بأسعار معقولة، 
+                            دون قيود جغرافية أو زمانية.
+                        </p>
+                        <p>
+                            <i class="fas fa-bullseye" style="color:var(--secondary);"></i> 
+                            <strong>هدفنا:</strong> بناء مجتمع تعليمي رقمي متكامل يجمع بين 
+                            <span class="highlight-text">الجودة، السهولة، والأمان</span>، 
+                            حيث يمكن للطلاب التعلم بمرونة والأساتذة مشاركة خبراتهم بكفاءة.
+                        </p>
+                        <p style="font-size:0.95rem; color:var(--gray); background:var(--gray-light); padding:14px; border-radius:var(--radius-sm); border-right:4px solid var(--primary);">
+                            <i class="fas fa-quote-right" style="color:var(--primary);"></i> 
+                            نؤمن بأن التعليم الجيد هو حق لكل جزائري، ومنصتنا هي الجسر الذي يوصلك إلى 
+                            أفضل الكفاءات في وطننا.
+                        </p>
+                    </div>
+                    <div class="about-features">
+                        <div class="about-feature-item">
+                            <span class="icon blue"><i class="fas fa-video"></i></span>
+                            <h4>دروس مباشرة</h4>
+                            <p>بث فيديو تفاعلي مع الأستاذ في الوقت الفعلي</p>
+                        </div>
+                        <div class="about-feature-item">
+                            <span class="icon green"><i class="fas fa-credit-card"></i></span>
+                            <h4>دفع آمن</h4>
+                            <p>عبر شارجيلي، EDAHABIA، و CCP</p>
+                        </div>
+                        <div class="about-feature-item">
+                            <span class="icon gold"><i class="fas fa-trophy"></i></span>
+                            <h4>أساتذة معتمدون</h4>
+                            <p>نخبة من أفضل الأساتذة في الجزائر</p>
+                        </div>
+                        <div class="about-feature-item">
+                            <span class="icon purple"><i class="fas fa-mobile-alt"></i></span>
+                            <h4>سهولة الاستخدام</h4>
+                            <p>تصميم عصري يتكيف مع جميع الأجهزة</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- خطوات استخدام المنصة -->
+                <div class="about-steps">
+                    <div class="about-step">
+                        <span class="step-number">1</span>
+                        <span class="step-text">اختر الأستاذ المناسب</span>
+                    </div>
+                    <div class="about-step">
+                        <span class="step-number">2</span>
+                        <span class="step-text">احجز الحصة المناسبة</span>
+                    </div>
+                    <div class="about-step">
+                        <span class="step-number">3</span>
+                        <span class="step-text">ادفع بأمان عبر شارجيلي</span>
+                    </div>
+                    <div class="about-step">
+                        <span class="step-number">4</span>
+                        <span class="step-text">انضم إلى البث المباشر وتعلم</span>
                     </div>
                 </div>
             </div>
@@ -1790,7 +2035,15 @@
             <!-- Student Register Tab -->
             <div id="studentRegisterTab" class="form-container" style="display: none;">
                 <h3><i class="fas fa-user-plus"></i> تسجيل طالب جديد</h3>
-                <input type="text" id="studentName" placeholder="الاسم الكامل">
+                
+                <!-- حقل الاسم مع التحقق من الحروف اللاتينية -->
+                <input type="text" id="studentName" placeholder="الاسم الكامل (بالحروف اللاتينية فقط)" 
+                       oninput="validateLatinName('student')" onblur="validateLatinName('student')">
+                <div id="studentNameError" class="name-error">
+                    <i class="fas fa-exclamation-circle"></i> 
+                    الاسم يجب أن يحتوي على أحرف لاتينية فقط (A-Z, a-z) ولا يحتوي على أرقام أو رموز
+                </div>
+                
                 <input type="email" id="studentEmail" placeholder="البريد الإلكتروني">
                 <input type="password" id="studentPassword" placeholder="كلمة المرور">
                 <input type="tel" id="studentPhone" placeholder="رقم الهاتف">
@@ -1812,7 +2065,15 @@
             <!-- Teacher Register Tab -->
             <div id="teacherRegisterTab" class="form-container" style="display: none;">
                 <h3><i class="fas fa-chalkboard-user"></i> تقديم طلب أستاذ</h3>
-                <input type="text" id="teacherName" placeholder="الاسم الكامل" required>
+                
+                <!-- حقل الاسم مع التحقق من الحروف اللاتينية -->
+                <input type="text" id="teacherName" placeholder="الاسم الكامل (بالحروف اللاتينية فقط)" required
+                       oninput="validateLatinName('teacher')" onblur="validateLatinName('teacher')">
+                <div id="teacherNameError" class="name-error">
+                    <i class="fas fa-exclamation-circle"></i> 
+                    الاسم يجب أن يحتوي على أحرف لاتينية فقط (A-Z, a-z) ولا يحتوي على أرقام أو رموز
+                </div>
+                
                 <input type="email" id="teacherEmail" placeholder="البريد الإلكتروني" required>
                 <input type="password" id="teacherPassword" placeholder="كلمة المرور" required>
                 <input type="tel" id="teacherPhone" placeholder="رقم الهاتف" required>
@@ -1951,8 +2212,61 @@
 
     <script>
         // ============================================================
-        // الكود الكامل مع نظام الإحالة
+        // الكود الكامل مع نظام الإحالة والتحقق من الاسم
         // ============================================================
+
+        // ===== NAME VALIDATION - التحقق من صحة الاسم =====
+        function validateLatinName(type) {
+            var input, errorEl;
+            if (type === 'student') {
+                input = document.getElementById('studentName');
+                errorEl = document.getElementById('studentNameError');
+            } else {
+                input = document.getElementById('teacherName');
+                errorEl = document.getElementById('teacherNameError');
+            }
+            
+            var value = input.value;
+            
+            // التحقق من أن الاسم يحتوي فقط على أحرف لاتينية ومسافات
+            // السماح بالمسافات، النقاط، والشرطات
+            var latinPattern = /^[A-Za-z\s\.\-']+$/;
+            
+            // التحقق من عدم وجود أرقام أو رموز خاصة
+            var hasNumbers = /\d/.test(value);
+            var hasSpecialChars = /[^A-Za-z\s\.\-']/.test(value);
+            
+            if (value.length > 0 && (hasNumbers || hasSpecialChars || !latinPattern.test(value))) {
+                errorEl.classList.add('show');
+                input.style.borderColor = '#ef4444';
+                return false;
+            } else if (value.length > 0) {
+                errorEl.classList.remove('show');
+                input.style.borderColor = '#10b981';
+                return true;
+            } else {
+                errorEl.classList.remove('show');
+                input.style.borderColor = '#edf2f7';
+                return true; // الحقل فارغ - سنتحقق منه لاحقاً
+            }
+        }
+
+        function isNameValid(type) {
+            var input;
+            if (type === 'student') {
+                input = document.getElementById('studentName');
+            } else {
+                input = document.getElementById('teacherName');
+            }
+            var value = input.value.trim();
+            if (!value) return false;
+            
+            var latinPattern = /^[A-Za-z\s\.\-']+$/;
+            var hasNumbers = /\d/.test(value);
+            var hasSpecialChars = /[^A-Za-z\s\.\-']/.test(value);
+            
+            return !hasNumbers && !hasSpecialChars && latinPattern.test(value);
+        }
 
         // ===== REFERRAL VARIABLES =====
         var referralCode = null;
@@ -1968,17 +2282,14 @@
                     referralCode = ref;
                     console.log('🔗 تم اكتشاف رمز إحالة:', referralCode);
                     
-                    // عرض شريط الإحالة
                     var banner = document.getElementById('referralBanner');
                     var codeDisplay = document.getElementById('referralCodeDisplay');
                     codeDisplay.innerText = referralCode;
                     
-                    // محاولة جلب اسم المحيل
                     fetchReferrerInfo(ref);
                     
                     banner.classList.add('show');
                     
-                    // إزالة المعامل من الرابط
                     if (window.history && window.history.replaceState) {
                         var newUrl = window.location.pathname + window.location.hash;
                         window.history.replaceState({}, document.title, newUrl);
@@ -1992,7 +2303,6 @@
         // ===== FETCH REFERRER INFO =====
         async function fetchReferrerInfo(refCode) {
             try {
-                // محاولة البحث عن المحيل
                 var res = await fetch('/api/referral/info?code=' + encodeURIComponent(refCode));
                 if (res.ok) {
                     var data = await res.json();
@@ -2015,7 +2325,6 @@
         function closeReferralBanner() {
             var banner = document.getElementById('referralBanner');
             banner.classList.remove('show');
-            // حفظ في localStorage لتذكّر أن المستخدم أغلق الشريط
             try {
                 localStorage.setItem('referralBannerClosed', 'true');
             } catch(e) {}
@@ -2023,17 +2332,13 @@
 
         function jumpToRegister() {
             showLogin();
-            // تبديل إلى تبويب تسجيل الطالب
             switchTab('student-register');
-            // إضافة رمز الإحالة إلى حقل مخفي أو متغير
             if (referralCode) {
-                // تخزين رمز الإحالة في localStorage ليتم استخدامه عند التسجيل
                 try {
                     localStorage.setItem('pendingReferral', referralCode);
                 } catch(e) {}
                 showNotification('🔗 تم تطبيق رمز الإحالة: ' + referralCode, 'success');
             }
-            // إغلاق الشريط
             closeReferralBanner();
         }
 
@@ -2235,6 +2540,7 @@
         function showHome() {
             console.log('showHome تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'flex';
+            document.getElementById('aboutSection').style.display = 'block';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
@@ -2249,6 +2555,7 @@
         function showTeachers() {
             console.log('showTeachers تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'none';
+            document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'block';
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
@@ -2263,6 +2570,7 @@
         function showOffers() {
             console.log('showOffers تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'none';
+            document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('offersSection').style.display = 'block';
             document.getElementById('liveSection').style.display = 'none';
@@ -2277,6 +2585,7 @@
         function showLiveStreams() {
             console.log('showLiveStreams تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'none';
+            document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'block';
@@ -2291,6 +2600,7 @@
         function showDevelopers() {
             console.log('showDevelopers تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'none';
+            document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
@@ -2304,6 +2614,7 @@
         function showLogin() {
             console.log('showLogin تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'none';
+            document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
@@ -2319,6 +2630,7 @@
         function showDownloadApp() {
             console.log('showDownloadApp تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'none';
+            document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
@@ -2332,6 +2644,7 @@
         function showSupport() {
             console.log('showSupport تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'none';
+            document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
@@ -2345,6 +2658,7 @@
         function showTeacherRegister() {
             console.log('showTeacherRegister تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'none';
+            document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
@@ -2409,6 +2723,8 @@
         window.escapeHtml = escapeHtml;
         window.closeReferralBanner = closeReferralBanner;
         window.jumpToRegister = jumpToRegister;
+        window.validateLatinName = validateLatinName;
+        window.isNameValid = isNameValid;
 
         console.log('جميع دوال التبويبات مرتبطة بالنافذة العامة');
 
@@ -2681,7 +2997,15 @@
         }
 
         async function registerStudent() {
-            var full_name = document.getElementById('studentName').value;
+            // التحقق من صحة الاسم
+            if (!isNameValid('student')) {
+                showNotification('⚠️ الاسم يجب أن يحتوي على أحرف لاتينية فقط (A-Z, a-z)', 'error');
+                document.getElementById('studentNameError').classList.add('show');
+                document.getElementById('studentName').style.borderColor = '#ef4444';
+                return;
+            }
+            
+            var full_name = document.getElementById('studentName').value.trim();
             var email = document.getElementById('studentEmail').value;
             var password = document.getElementById('studentPassword').value;
             var phone = document.getElementById('studentPhone').value;
@@ -2696,7 +3020,6 @@
                 return;
             }
             
-            // التحقق من وجود رمز إحالة
             var refCode = localStorage.getItem('pendingReferral') || referralCode;
             
             try {
@@ -2708,7 +3031,7 @@
                         email: email, 
                         password: password, 
                         phone: phone,
-                        ref: refCode // إرسال رمز الإحالة إذا موجود
+                        ref: refCode
                     })
                 });
                 var data = await res.json();
@@ -2729,8 +3052,16 @@
         }
 
         async function registerTeacher() {
+            // التحقق من صحة الاسم
+            if (!isNameValid('teacher')) {
+                showNotification('⚠️ الاسم يجب أن يحتوي على أحرف لاتينية فقط (A-Z, a-z)', 'error');
+                document.getElementById('teacherNameError').classList.add('show');
+                document.getElementById('teacherName').style.borderColor = '#ef4444';
+                return;
+            }
+            
             var formData = new FormData();
-            formData.append('full_name', document.getElementById('teacherName').value);
+            formData.append('full_name', document.getElementById('teacherName').value.trim());
             formData.append('email', document.getElementById('teacherEmail').value);
             formData.append('password', document.getElementById('teacherPassword').value);
             formData.append('phone', document.getElementById('teacherPhone').value);
@@ -2752,7 +3083,6 @@
                 formData.append('id_image', idImage.files[0]);
             }
             
-            // إضافة رمز الإحالة إذا موجود
             var refCode = localStorage.getItem('pendingReferral') || referralCode;
             if (refCode) {
                 formData.append('ref', refCode);
@@ -2800,11 +3130,9 @@
             console.log('بدء تشغيل المنصة...');
             console.log('📍 الرابط الحالي:', window.location.href);
             
-            // قراءة رمز الإحالة من الرابط
             readReferralFromURL();
             
-            // التحقق من وجود جميع الأقسام
-            var sections = ['homeSection', 'teachersSection', 'offersSection', 'liveSection', 'developersSection', 'loginSection', 'downloadAppSection', 'supportSection'];
+            var sections = ['homeSection', 'aboutSection', 'teachersSection', 'offersSection', 'liveSection', 'developersSection', 'loginSection', 'downloadAppSection', 'supportSection'];
             sections.forEach(function(id) {
                 var el = document.getElementById(id);
                 if (el) {
@@ -2824,12 +3152,12 @@
             console.log('📅 التاريخ:', new Date().toLocaleString('ar-EG'));
             console.log('👨‍💻 فريق المطورين: عثمانية محمد الصالح، مليك صالح، زينب لكفيفي');
             console.log('🚀 جميع التبويبات جاهزة للعمل!');
+            console.log('🔤 التحقق من الاسم: يجب أن يكون بالحروف اللاتينية فقط');
             if (referralCode) {
                 console.log('🔗 تم اكتشاف رمز إحالة:', referralCode);
             }
         }
 
-        // تشغيل التطبيق عند تحميل الصفحة
         document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
