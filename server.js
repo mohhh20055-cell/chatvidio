@@ -3621,3 +3621,237 @@ if (require.main === module) {
         console.log('='.repeat(60));
     });
 }
+// ===== ADMIN - إدارة المستخدمين =====
+
+// 1. جلب جميع الطلاب
+app.get('/api/admin/students', async (req, res) => {
+    try {
+        const { data } = await supabase
+            .from('students')
+            .select('*')
+            .order('created_at', { ascending: false });
+        res.json(data || []);
+    } catch (error) {
+        res.status(500).json([]);
+    }
+});
+
+// 2. جلب المستخدمين المحظورين
+app.get('/api/admin/banned-users', async (req, res) => {
+    try {
+        const { data } = await supabase
+            .from('banned_users')
+            .select('*')
+            .order('banned_at', { ascending: false });
+        res.json(data || []);
+    } catch (error) {
+        res.status(500).json([]);
+    }
+});
+
+// 3. حذف مستخدم (مع إمكانية الحظر)
+app.post('/api/admin/delete-user', [
+    body('user_id').isInt().withMessage('معرف المستخدم مطلوب'),
+    body('role').isIn(['student', 'teacher']).withMessage('دور غير صالح')
+], async (req, res) => {
+    try {
+        const { user_id, role, ban } = req.body;
+        const tableName = role === 'student' ? 'students' : 'teachers';
+        
+        // جلب معلومات المستخدم قبل الحذف
+        const user = await getOne(tableName, 'id', user_id);
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
+        }
+        
+        // جلب IP المستخدم من سجل الدخول الأخير
+        const { data: loginLog } = await supabase
+            .from('login_logs')
+            .select('ip_address')
+            .eq('user_id', user_id)
+            .eq('user_role', role)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+        
+        const userIp = loginLog?.ip_address || null;
+        
+        // حذف المستخدم
+        await supabase
+            .from(tableName)
+            .delete()
+            .eq('id', user_id);
+        
+        // إذا تم اختيار الحظر
+        if (ban && userIp) {
+            // التحقق من عدم وجود حظر مسبق
+            const { data: existingBan } = await supabase
+                .from('banned_users')
+                .select('*')
+                .eq('ip_address', userIp)
+                .single();
+            
+            if (!existingBan) {
+                await insert('banned_users', {
+                    user_id: user_id,
+                    user_role: role,
+                    full_name: user.full_name,
+                    email: user.email,
+                    ip_address: userIp,
+                    ban_reason: 'تم حظر المستخدم تلقائياً عند حذف الحساب',
+                    banned_at: new Date().toISOString(),
+                    banned_by: 'admin'
+                });
+            }
+        }
+        
+        res.json({ 
+            success: true, 
+            message: 'تم حذف المستخدم بنجاح',
+            banned: ban && userIp ? true : false
+        });
+    } catch (error) {
+        console.error('خطأ في حذف المستخدم:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// 4. حظر مستخدم
+app.post('/api/admin/ban-user', [
+    body('user_id').isInt().withMessage('معرف المستخدم مطلوب'),
+    body('role').isIn(['student', 'teacher']).withMessage('دور غير صالح')
+], async (req, res) => {
+    try {
+        const { user_id, role, reason } = req.body;
+        const tableName = role === 'student' ? 'students' : 'teachers';
+        
+        const user = await getOne(tableName, 'id', user_id);
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
+        }
+        
+        // جلب IP المستخدم
+        const { data: loginLog } = await supabase
+            .from('login_logs')
+            .select('ip_address')
+            .eq('user_id', user_id)
+            .eq('user_role', role)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+        
+        const userIp = loginLog?.ip_address || null;
+        
+        if (!userIp) {
+            return res.status(400).json({ success: false, error: 'لا يمكن تحديد IP المستخدم' });
+        }
+        
+        // التحقق من وجود حظر مسبق
+        const { data: existingBan } = await supabase
+            .from('banned_users')
+            .select('*')
+            .eq('ip_address', userIp)
+            .single();
+        
+        if (existingBan) {
+            return res.status(400).json({ success: false, error: 'هذا المستخدم محظور بالفعل' });
+        }
+        
+        // إضافة الحظر
+        await insert('banned_users', {
+            user_id: user_id,
+            user_role: role,
+            full_name: user.full_name,
+            email: user.email,
+            ip_address: userIp,
+            ban_reason: reason || 'لم يتم تحديد سبب',
+            banned_at: new Date().toISOString(),
+            banned_by: 'admin'
+        });
+        
+        // تحديث حالة المستخدم
+        await supabase
+            .from(tableName)
+            .update({ is_banned: true })
+            .eq('id', user_id);
+        
+        res.json({ success: true, message: 'تم حظر المستخدم بنجاح' });
+    } catch (error) {
+        console.error('خطأ في حظر المستخدم:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// 5. إلغاء حظر مستخدم
+app.post('/api/admin/unban-user', [
+    body('user_id').isInt().withMessage('معرف المستخدم مطلوب'),
+    body('role').isIn(['student', 'teacher']).withMessage('دور غير صالح')
+], async (req, res) => {
+    try {
+        const { user_id, role } = req.body;
+        const tableName = role === 'student' ? 'students' : 'teachers';
+        
+        // جلب معلومات الحظر
+        const { data: banRecord } = await supabase
+            .from('banned_users')
+            .select('*')
+            .eq('user_id', user_id)
+            .eq('user_role', role)
+            .single();
+        
+        if (!banRecord) {
+            return res.status(404).json({ success: false, error: 'المستخدم غير محظور' });
+        }
+        
+        // حذف سجل الحظر
+        await supabase
+            .from('banned_users')
+            .delete()
+            .eq('id', banRecord.id);
+        
+        // تحديث حالة المستخدم
+        await supabase
+            .from(tableName)
+            .update({ is_banned: false, ban_reason: null })
+            .eq('id', user_id);
+        
+        res.json({ success: true, message: 'تم إلغاء حظر المستخدم بنجاح' });
+    } catch (error) {
+        console.error('خطأ في إلغاء الحظر:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// 6. التحقق من الحظر عند تسجيل الدخول أو التسجيل
+// أضف هذا في middleware قبل معالجة طلبات login و register
+async function checkBanned(req, res, next) {
+    const ip = req.ip || req.connection.remoteAddress;
+    
+    if (!ip) return next();
+    
+    try {
+        const { data } = await supabase
+            .from('banned_users')
+            .select('*')
+            .eq('ip_address', ip)
+            .single();
+        
+        if (data) {
+            return res.status(403).json({
+                success: false,
+                error: 'تم حظر عنوان IP الخاص بك من المنصة',
+                banned: true,
+                reason: data.ban_reason || 'انتهاك شروط الاستخدام'
+            });
+        }
+        
+        next();
+    } catch (error) {
+        next();
+    }
+}
+
+// استخدم middleware في مسارات login و register
+app.post('/api/login', checkBanned, ...);
+app.post('/api/student/register', checkBanned, ...);
+app.post('/api/teacher/register', checkBanned, ...);
