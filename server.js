@@ -35,11 +35,17 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 const resendApiKey = process.env.RESEND_API_KEY;
 const CHARGILY_API_KEY = process.env.CHARGILY_API_KEY;
-const CHARGILY_API_URL = process.env.CHARGILY_API_URL || 'https://pay.chargily.net/test/api/v2';
+const CHARGILY_API_URL = process.env.CHARGILY_API_URL || 'https://pay.chargily.net/api/v2'; // ✅ تم إزالة /test
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@platform.com';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 const CORS_ORIGIN = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['https://chatvidio.vercel.app', 'http://localhost:3000'];
 const PLATFORM_DOMAIN = process.env.PLATFORM_DOMAIN || 'https://chatvidio.vercel.app';
+
+// ✅ إضافة متغير لتحديد وضع Chargily
+const CHARGILY_MODE = process.env.CHARGILY_MODE || 'live'; // 'live' أو 'test'
+
+console.log(`💳 وضع Chargily: ${CHARGILY_MODE === 'live' ? '🔴 LIVE (مدفوعات حقيقية)' : '🟡 TEST (تجريبي)'}`);
+console.log(`🔗 رابط Chargily: ${CHARGILY_API_URL}`);
 
 // التحقق من المتغيرات الأساسية
 if (!supabaseUrl || !supabaseKey) {
