@@ -15,8 +15,12 @@
             --primary-light: #e8f0fe;
             --secondary: #10b981;
             --secondary-dark: #059669;
+            --gold: #f59e0b;
+            --gold-dark: #d97706;
             --gradient-main: linear-gradient(135deg, #0f5cbf 0%, #1e3c72 100%);
             --gradient-secondary: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            --gradient-gold: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            --gradient-gift: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
             --shadow-sm: 0 2px 8px rgba(0,0,0,0.06);
             --shadow-md: 0 4px 20px rgba(0,0,0,0.08);
             --shadow-lg: 0 8px 40px rgba(0,0,0,0.12);
@@ -567,6 +571,160 @@
             box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
         }
 
+        /* ===== REFERRAL STYLES ===== */
+        .referral-card {
+            background: var(--gradient-main);
+            color: white;
+            border-radius: var(--radius-sm);
+            padding: 18px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 16px rgba(15, 92, 191, 0.2);
+        }
+        .referral-card .referral-code {
+            background: rgba(255,255,255,0.15);
+            border: 2px dashed rgba(255,255,255,0.3);
+            border-radius: 10px;
+            padding: 10px;
+            text-align: center;
+            font-size: 1.4rem;
+            font-weight: 900;
+            letter-spacing: 3px;
+            font-family: 'Courier New', monospace;
+            cursor: pointer;
+            transition: var(--transition);
+            margin: 8px 0;
+        }
+        .referral-card .referral-code:hover {
+            background: rgba(255,255,255,0.25);
+        }
+        .referral-card .share-btn {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 30px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: 700;
+            font-size: 0.85rem;
+            transition: var(--transition);
+            margin-top: 8px;
+        }
+        .referral-card .share-btn:hover {
+            background: rgba(255,255,255,0.25);
+            transform: translateY(-2px);
+        }
+        .referral-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .referral-stats .stat-item {
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+        }
+        .referral-stats .stat-item .stat-number {
+            font-size: 1.5rem;
+            font-weight: 800;
+        }
+        .referral-stats .stat-item .stat-label {
+            font-size: 0.65rem;
+            opacity: 0.7;
+        }
+
+        /* ===== GIFT BOX STYLES ===== */
+        .gift-box-card {
+            background: var(--gradient-gift);
+            color: white;
+            border-radius: var(--radius-sm);
+            padding: 18px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 16px rgba(139, 92, 246, 0.2);
+            text-align: center;
+        }
+        .gift-box-card .gift-icon {
+            font-size: 3.5rem;
+            margin-bottom: 8px;
+            display: block;
+            animation: giftFloat 2s ease-in-out infinite;
+        }
+        @keyframes giftFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        .gift-box-card .chances-display {
+            font-size: 2rem;
+            font-weight: 900;
+        }
+        .gift-box-card .chances-label {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+        .open-gift-btn {
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 10px 24px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.95rem;
+            transition: var(--transition);
+            margin-top: 10px;
+            width: 100%;
+        }
+        .open-gift-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.02);
+        }
+        .open-gift-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* ===== REWARD HISTORY ===== */
+        .reward-item {
+            background: #fafbfc;
+            border-radius: var(--radius-sm);
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            border: 1px solid #edf2f7;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .reward-item .reward-icon {
+            font-size: 1.2rem;
+            margin-left: 10px;
+        }
+        .reward-item .reward-amount {
+            font-weight: 700;
+            color: var(--gold);
+        }
+
+        /* ===== GIFT RESULT MODAL ===== */
+        .gift-result {
+            text-align: center;
+            padding: 20px;
+        }
+        .gift-result .big-icon {
+            font-size: 4rem;
+            margin-bottom: 12px;
+            display: block;
+        }
+        .gift-result .result-amount {
+            font-size: 2.5rem;
+            font-weight: 900;
+            margin: 10px 0;
+        }
+        .gift-result .result-amount.gold { color: var(--gold); }
+        .gift-result .result-amount.green { color: var(--secondary); }
+        .gift-result .result-amount.gray { color: #94a3b8; }
+
         /* ===== MODALS ===== */
         .modal-overlay {
             display: none;
@@ -879,6 +1037,8 @@
                 transform: translateX(50%);
                 top: 44px;
             }
+            .referral-stats { grid-template-columns: 1fr 1fr; gap: 6px; }
+            .referral-stats .stat-item .stat-number { font-size: 1.2rem; }
         }
         @media (max-height: 500px) and (orientation: landscape) {
             .facebook-nav { padding: 4px 12px; min-height: 44px; }
@@ -891,6 +1051,34 @@
                 top: 42px;
             }
             .notification-dropdown-body { max-height: 200px; }
+        }
+
+        /* ===== TAB STYLES ===== */
+        .tab-container {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            border-bottom: 2px solid #edf2f7;
+            padding-bottom: 8px;
+        }
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.85rem;
+            transition: var(--transition);
+            color: #64748b;
+            font-family: 'Cairo', sans-serif;
+        }
+        .tab-btn:hover { background: var(--primary-light); }
+        .tab-btn.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(15, 92, 191, 0.3);
         }
     </style>
 </head>
@@ -914,6 +1102,10 @@
                 <button class="nav-icon-btn" onclick="showSection('bookings')" title="حجوزاتي">
                     <i class="fas fa-bookmark"></i>
                     <span class="tooltip">حجوزاتي</span>
+                </button>
+                <button class="nav-icon-btn" onclick="showSection('referral')" title="الإحالة">
+                    <i class="fas fa-link"></i>
+                    <span class="tooltip">الإحالة</span>
                 </button>
                 
                 <div class="notification-bell" id="notificationBell" onclick="toggleNotifications(event)">
@@ -980,6 +1172,10 @@
                     <div class="shortcut-icon"><i class="fas fa-history"></i></div>
                     <span>سجل المعاملات</span>
                 </div>
+                <div class="shortcut-item" onclick="showSection('referral')">
+                    <div class="shortcut-icon" style="background:var(--gradient-gold);color:white;"><i class="fas fa-link"></i></div>
+                    <span>نظام الإحالة</span>
+                </div>
             </div>
         </div>
 
@@ -1007,6 +1203,53 @@
                 <div class="section-title"><i class="fas fa-history"></i> سجل المعاملات</div>
                 <div id="transactionsList"></div>
             </div>
+
+            <!-- ===== REFERRAL SECTION ===== -->
+            <div id="referralSection" style="display: none;">
+                <div class="section-title"><i class="fas fa-link" style="color:var(--gold);"></i> نظام الإحالة</div>
+                
+                <!-- Referral Card -->
+                <div class="referral-card">
+                    <h4 style="margin-bottom:6px;"><i class="fas fa-gift"></i> رمز الإحالة الخاص بك</h4>
+                    <p style="font-size:0.8rem; opacity:0.8; margin-bottom:6px;">شارك هذا الرمز مع أصدقائك واحصل على مكافآت</p>
+                    <div class="referral-code" id="referralCodeDisplay" onclick="copyReferralCode()">
+                        <span id="referralCodeText">جاري التحميل...</span>
+                    </div>
+                    <button class="share-btn" onclick="shareReferral()"><i class="fas fa-share-alt"></i> مشاركة الرابط</button>
+                    
+                    <div class="referral-stats">
+                        <div class="stat-item">
+                            <div class="stat-number" id="referredCount">0</div>
+                            <div class="stat-label">عدد المحالين</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number" id="giftChances">0</div>
+                            <div class="stat-label">فرص صناديق الهدايا</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gift Box -->
+                <div class="gift-box-card">
+                    <span class="gift-icon">🎁</span>
+                    <div class="chances-display" id="giftChancesDisplay">0</div>
+                    <div class="chances-label">فرص متاحة لفتح صندوق الهدايا</div>
+                    <button class="open-gift-btn" id="openGiftBtn" onclick="openGiftBox()">
+                        <i class="fas fa-gift"></i> فتح صندوق الهدايا
+                    </button>
+                    <p style="font-size:0.65rem; opacity:0.6; margin-top:8px;">
+                        الجوائز: 50 دج | 100 دج | 0 دج
+                    </p>
+                </div>
+
+                <!-- Reward History -->
+                <div style="margin-top:16px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        <h4 style="font-size:0.95rem;"><i class="fas fa-history" style="color:var(--gold);"></i> سجل المكافآت</h4>
+                    </div>
+                    <div id="rewardHistory"></div>
+                </div>
+            </div>
         </div>
 
         <!-- RIGHT SIDEBAR -->
@@ -1018,6 +1261,12 @@
             <div class="right-card">
                 <div class="card-title"><i class="fas fa-clock" style="color:var(--primary);"></i> حصصي القادمة</div>
                 <div id="upcomingBookings"></div>
+            </div>
+            <div class="right-card">
+                <div class="card-title"><i class="fas fa-trophy" style="color:var(--gold);"></i> مكافآت الإحالة</div>
+                <div id="referralSummarySidebar">
+                    <p style="font-size:0.75rem; color:#94a3b8;">قم بدعوة الأصدقاء للحصول على مكافآت</p>
+                </div>
             </div>
         </div>
     </div>
@@ -1064,6 +1313,24 @@
         <div class="modal-body" id="teacherModalBody"></div>
     </div>
 
+    <!-- Gift Result Modal -->
+    <div id="giftResultModal" class="modal">
+        <div class="modal-header">
+            <h3><i class="fas fa-gift" style="color:var(--gold);"></i> صندوق الهدايا</h3>
+            <button class="close-modal" onclick="closeGiftResult()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="gift-result" id="giftResultContent">
+                <span class="big-icon">🎁</span>
+                <div class="result-amount" id="giftResultAmount">0 دج</div>
+                <p id="giftResultMessage">جاري فتح الصندوق...</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="save-btn" onclick="closeGiftResult()">رائع!</button>
+        </div>
+    </div>
+
     <div id="notificationToast" class="notification-toast"></div>
 
     <script>
@@ -1073,6 +1340,7 @@
         let currentSection = 'offers';
         let currentBalance = 0;
         let notifications = [];
+        let referralData = null;
 
         // ===== NOTIFICATION FUNCTIONS =====
         function toggleNotifications(event) {
@@ -1158,6 +1426,7 @@
                 updateUI();
                 loadWallet();
                 loadNotifications();
+                loadReferralData();
             } catch(e) { console.error(e); }
         }
 
@@ -1198,6 +1467,7 @@
             document.getElementById('teachersSection').style.display = section === 'teachers' ? 'block' : 'none';
             document.getElementById('bookingsSection').style.display = section === 'bookings' ? 'block' : 'none';
             document.getElementById('transactionsSection').style.display = section === 'transactions' ? 'block' : 'none';
+            document.getElementById('referralSection').style.display = section === 'referral' ? 'block' : 'none';
             
             // تحديث حالة الأزرار
             document.querySelectorAll('.nav-icon-btn').forEach(btn => btn.classList.remove('active'));
@@ -1205,11 +1475,13 @@
             if (section === 'offers') icons[0].classList.add('active');
             else if (section === 'teachers') icons[1].classList.add('active');
             else if (section === 'bookings') icons[2].classList.add('active');
+            else if (section === 'referral') icons[3].classList.add('active');
             
             if (section === 'offers') loadOffers();
             else if (section === 'teachers') loadTeachers();
             else if (section === 'bookings') loadMyBookings();
             else if (section === 'transactions') loadTransactions();
+            else if (section === 'referral') loadReferralData();
         }
 
         // ===== OFFERS =====
@@ -1528,6 +1800,219 @@
             closeNotifications();
         }
 
+        // ===== REFERRAL SYSTEM =====
+        async function loadReferralData() {
+            try {
+                // إنشاء رمز الإحالة إذا لم يكن موجوداً
+                const createRes = await fetch('/api/referral/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: studentId, role: 'student' })
+                });
+                const createData = await createRes.json();
+                
+                if (createData.success) {
+                    document.getElementById('referralCodeText').innerText = createData.referral_code || 'غير متوفر';
+                }
+
+                // جلب معلومات الإحالة
+                const infoRes = await fetch(`/api/referral/info/${studentId}/student`);
+                const infoData = await infoRes.json();
+                
+                if (infoData.success) {
+                    referralData = infoData;
+                    document.getElementById('referredCount').innerText = infoData.referred_count || 0;
+                    const chances = infoData.gift_box_chances || 0;
+                    document.getElementById('giftChances').innerText = chances;
+                    document.getElementById('giftChancesDisplay').innerText = chances;
+                    
+                    // تحديث زر صندوق الهدايا
+                    const giftBtn = document.getElementById('openGiftBtn');
+                    if (chances <= 0) {
+                        giftBtn.disabled = true;
+                        giftBtn.innerHTML = '<i class="fas fa-gift"></i> لا توجد فرص متاحة';
+                    } else {
+                        giftBtn.disabled = false;
+                        giftBtn.innerHTML = `<i class="fas fa-gift"></i> فتح صندوق الهدايا (${chances} فرصة${chances > 1 ? 'ات' : ''})`;
+                    }
+
+                    // تحديث sidebar
+                    const summaryContainer = document.getElementById('referralSummarySidebar');
+                    if (infoData.referred_count > 0) {
+                        summaryContainer.innerHTML = `
+                            <div style="font-size:0.8rem; color:#1a2332; font-weight:600;">
+                                <i class="fas fa-users" style="color:var(--gold);"></i> ${infoData.referred_count} محال
+                            </div>
+                            <div style="font-size:0.7rem; color:#64748b;">
+                                🎁 ${chances} فرصة صندوق
+                            </div>
+                        `;
+                    } else {
+                        summaryContainer.innerHTML = `
+                            <p style="font-size:0.75rem; color:#94a3b8;">قم بدعوة الأصدقاء للحصول على مكافآت</p>
+                        `;
+                    }
+
+                    // عرض سجل المكافآت
+                    renderRewardHistory(infoData.rewards || []);
+                }
+            } catch(e) {
+                console.error('خطأ في تحميل بيانات الإحالة:', e);
+                showNotification('حدث خطأ في تحميل بيانات الإحالة', 'error');
+            }
+        }
+
+        function renderRewardHistory(rewards) {
+            const container = document.getElementById('rewardHistory');
+            if (!rewards || rewards.length === 0) {
+                container.innerHTML = '<p style="color:#94a3b8; font-size:0.85rem;">لا توجد مكافآت سابقة</p>';
+                return;
+            }
+            let html = '';
+            for (const reward of rewards) {
+                const date = new Date(reward.created_at);
+                const isGift = reward.type === 'gift_box_reward';
+                const isChance = reward.type === 'gift_box_chance';
+                let icon = '🎁';
+                let label = 'مكافأة';
+                let amountText = '';
+                
+                if (isGift) {
+                    icon = '🎁';
+                    label = 'صندوق هدايا';
+                    amountText = reward.amount ? `${reward.amount} دج` : '0 دج';
+                } else if (isChance) {
+                    icon = '✨';
+                    label = 'فرصة صندوق';
+                    amountText = '+1 فرصة';
+                } else {
+                    icon = '💰';
+                    label = 'رصيد';
+                    amountText = reward.amount ? `+${reward.amount} دج` : '';
+                }
+
+                html += `
+                    <div class="reward-item">
+                        <div>
+                            <span class="reward-icon">${icon}</span>
+                            <span style="font-weight:600;">${label}</span>
+                            <div style="font-size:0.6rem; color:#94a3b8;">${date.toLocaleDateString('ar')}</div>
+                        </div>
+                        <div class="reward-amount">${amountText}</div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        function copyReferralCode() {
+            const code = document.getElementById('referralCodeText').innerText;
+            if (code && code !== 'جاري التحميل...') {
+                navigator.clipboard.writeText(code).then(() => {
+                    showNotification('✅ تم نسخ رمز الإحالة!', 'success');
+                }).catch(() => {
+                    // طريقة بديلة للنسخ
+                    const textArea = document.createElement('textarea');
+                    textArea.value = code;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    showNotification('✅ تم نسخ رمز الإحالة!', 'success');
+                });
+            }
+        }
+
+        function shareReferral() {
+            const code = document.getElementById('referralCodeText').innerText;
+            const link = `${window.location.origin}?ref=${code}`;
+            if (navigator.share) {
+                navigator.share({
+                    title: 'انضم إلى ZoomDz',
+                    text: `استخدم رمز الإحالة الخاص بي: ${code}`,
+                    url: link
+                }).catch(() => {});
+            } else {
+                // نسخ الرابط
+                navigator.clipboard.writeText(link).then(() => {
+                    showNotification('✅ تم نسخ رابط الإحالة! شاركه مع أصدقائك', 'success');
+                }).catch(() => {
+                    // طريقة بديلة
+                    const textArea = document.createElement('textarea');
+                    textArea.value = link;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    showNotification('✅ تم نسخ رابط الإحالة!', 'success');
+                });
+            }
+        }
+
+        // ===== GIFT BOX =====
+        async function openGiftBox() {
+            const btn = document.getElementById('openGiftBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري فتح الصندوق...';
+            
+            try {
+                const res = await fetch('/api/referral/open-gift-box', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ student_id: studentId })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    // عرض نتيجة صندوق الهدايا
+                    const resultModal = document.getElementById('giftResultModal');
+                    const overlay = document.getElementById('modalOverlay');
+                    
+                    let icon, amountClass, message;
+                    if (data.reward > 0) {
+                        icon = '🎉';
+                        amountClass = 'gold';
+                        message = `تهانينا! حصلت على ${data.reward} دج! 🎊`;
+                    } else {
+                        icon = '😅';
+                        amountClass = 'gray';
+                        message = 'لم يحالفك الحظ هذه المرة، جرب مرة أخرى!';
+                    }
+                    
+                    document.getElementById('giftResultAmount').innerHTML = `${data.reward > 0 ? '+' : ''}${data.reward} دج`;
+                    document.getElementById('giftResultAmount').className = `result-amount ${amountClass}`;
+                    document.getElementById('giftResultMessage').innerText = message;
+                    document.querySelector('#giftResultModal .big-icon').innerText = icon;
+                    
+                    overlay.style.display = 'block';
+                    resultModal.style.display = 'block';
+                    
+                    // تحديث البيانات
+                    await loadReferralData();
+                    await loadWallet();
+                    
+                    showNotification(data.message, data.reward > 0 ? 'success' : 'warning');
+                } else {
+                    showNotification(data.error || 'حدث خطأ', 'error');
+                }
+            } catch(e) {
+                showNotification('حدث خطأ أثناء فتح الصندوق', 'error');
+            } finally {
+                btn.disabled = false;
+                const chances = referralData?.gift_box_chances || 0;
+                if (chances > 0) {
+                    btn.innerHTML = `<i class="fas fa-gift"></i> فتح صندوق الهدايا (${chances} فرصة${chances > 1 ? 'ات' : ''})`;
+                } else {
+                    btn.innerHTML = '<i class="fas fa-gift"></i> لا توجد فرص متاحة';
+                }
+            }
+        }
+
+        function closeGiftResult() {
+            document.getElementById('modalOverlay').style.display = 'none';
+            document.getElementById('giftResultModal').style.display = 'none';
+        }
+
         // ===== MODALS =====
         function showDepositModal() {
             document.getElementById('modalOverlay').style.display = 'block';
@@ -1621,6 +2106,7 @@
             loadWallet();
         }, 30000);
         setInterval(loadNotifications, 60000);
+        setInterval(loadReferralData, 120000);
     </script>
 </body>
 </html>
