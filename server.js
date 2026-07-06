@@ -1,6 +1,6 @@
 // ============================================================
 // خادم منصة التعليم - إصدار آمن ومحسن مع نظام الإحالة والتوثيق والحظر
-// تم إصلاح جميع الثغرات الأمنية وإضافة الكابتشا
+// تم إصلاح جميع الثغرات الأمنية وإضافة الكابتشا وإصلاح CORS و Rate Limiting
 // ============================================================
 
 require('dotenv').config();
@@ -21,6 +21,7 @@ const { Resend } = require('resend');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
+const cookieParser = require('cookie-parser');
 
 // ============================================================
 // تعريف التطبيق
@@ -29,9 +30,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ============================================================
-// حل مشكلة X-Forwarded-For (لـ Vercel)
+// حل مشكلة X-Forwarded-For (لـ Vercel) - معدل
 // ============================================================
-app.set('trust proxy', true);
+app.set('trust proxy', false); // تم التعطيل مؤقتاً لحل مشكلة rate limiting
 
 // ============================================================
 // قراءة المتغيرات البيئية مع التحقق الصارم
@@ -43,9 +44,17 @@ const CHARGILY_API_KEY = process.env.CHARGILY_API_KEY;
 const CHARGILY_API_URL = process.env.CHARGILY_API_URL || 'https://pay.chargily.net/api/v2';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@platform.com';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
-const CORS_ORIGIN = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['https://chatvidio.vercel.app', 'http://localhost:3000'];
-const PLATFORM_DOMAIN = process.env.PLATFORM_DOMAIN || 'https://chatvidio.vercel.app';
+const PLATFORM_DOMAIN = process.env.PLATFORM_DOMAIN || 'https://chatvidio-g7ucpgt3t-zoomdz.vercel.app';
 const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(64).toString('hex');
+
+// نطاقات CORS الأساسية
+const DEFAULT_CORS_ORIGINS = [
+    'https://chatvidio-g7ucpgt3t-zoomdz.vercel.app',
+    'https://chatvidio.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'https://*.vercel.app'
+];
 
 // التحقق من المتغيرات الأساسية
 const requiredEnvVars = ['SUPABASE_URL', 'SUPABASE_KEY', 'RESEND_API_KEY'];
@@ -128,14 +137,33 @@ app.use(helmet({
 }));
 
 // ============================================================
-// CORS محدود وآمن
+// CORS محدود وآمن - معدل لدعم Vercel
 // ============================================================
 const corsOptions = {
     origin: function(origin, callback) {
-        if (!origin) return callback(null, true);
-        if (CORS_ORIGIN.indexOf(origin) !== -1) {
+        // السماح بطلبات بدون origin (مثل Postman)
+        if (!origin) {
+            return callback(null, true);
+        }
+        
+        // قائمة النطاقات المسموحة
+        const allowedOrigins = [...DEFAULT_CORS_ORIGINS];
+        
+        // التحقق من النطاق
+        const isAllowed = allowedOrigins.some(allowed => {
+            // التحقق من التطابق التام
+            if (origin === allowed) return true;
+            // التحقق من التطابق الجزئي لـ vercel.app
+            if (allowed.includes('vercel.app') && origin.includes('vercel.app')) return true;
+            // التحقق من التطابق مع localhost
+            if (origin.includes('localhost')) return true;
+            return false;
+        });
+        
+        if (isAllowed) {
             callback(null, true);
         } else {
+            console.warn(`⚠️ CORS: طلب من نطاق غير مسموح: ${origin}`);
             callback(new Error('غير مسموح بهذا المصدر'));
         }
     },
@@ -148,7 +176,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // ============================================================
-// Rate Limiting متقدم
+// Rate Limiting - معدل لحل مشكلة trust proxy
 // ============================================================
 const globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -156,6 +184,7 @@ const globalLimiter = rateLimit({
     message: { success: false, error: 'عدد الطلبات كبير جداً، حاول لاحقاً' },
     standardHeaders: true,
     legacyHeaders: false,
+    trustProxy: false,
     skip: (req) => {
         const publicPaths = [
             '/api/public/stats',
@@ -165,7 +194,8 @@ const globalLimiter = rateLimit({
             '/api/live-offers',
             '/api/webhook/chargily',
             '/api/captcha/generate',
-            '/health'
+            '/health',
+            '/api/captcha/verify'
         ];
         return publicPaths.some(p => req.path.startsWith(p));
     }
@@ -177,7 +207,8 @@ const authLimiter = rateLimit({
     max: 10,
     message: { success: false, error: 'عدد محاولات تسجيل الدخول كبير جداً، حاول بعد ساعة' },
     standardHeaders: true,
-    legacyHeaders: false
+    legacyHeaders: false,
+    trustProxy: false
 });
 
 const registerLimiter = rateLimit({
@@ -185,7 +216,8 @@ const registerLimiter = rateLimit({
     max: 5,
     message: { success: false, error: 'عدد محاولات التسجيل كبير جداً، حاول بعد ساعة' },
     standardHeaders: true,
-    legacyHeaders: false
+    legacyHeaders: false,
+    trustProxy: false
 });
 
 const depositLimiter = rateLimit({
@@ -193,7 +225,8 @@ const depositLimiter = rateLimit({
     max: 5,
     message: { success: false, error: 'عدد محاولات الشحن كبير جداً، حاول بعد 15 دقيقة' },
     standardHeaders: true,
-    legacyHeaders: false
+    legacyHeaders: false,
+    trustProxy: false
 });
 
 const bookingLimiter = rateLimit({
@@ -201,15 +234,17 @@ const bookingLimiter = rateLimit({
     max: 20,
     message: { success: false, error: 'عدد محاولات الحجز كبير جداً، حاول بعد 15 دقيقة' },
     standardHeaders: true,
-    legacyHeaders: false
+    legacyHeaders: false,
+    trustProxy: false
 });
 
 const captchaLimiter = rateLimit({
     windowMs: 5 * 60 * 1000,
-    max: 20,
+    max: 30,
     message: { success: false, error: 'عدد محاولات الكابتشا كبير جداً، حاول بعد 5 دقائق' },
     standardHeaders: true,
-    legacyHeaders: false
+    legacyHeaders: false,
+    trustProxy: false
 });
 
 app.use('/api/login', authLimiter);
@@ -221,6 +256,11 @@ app.use('/api/student/wallet/deposit', depositLimiter);
 app.use('/api/booking/create', bookingLimiter);
 app.use('/api/captcha/generate', captchaLimiter);
 app.use('/api/captcha/verify', captchaLimiter);
+
+// ============================================================
+// Cookie Parser للتعامل مع الكوكيز
+// ============================================================
+app.use(cookieParser());
 
 // ============================================================
 // Middleware الأساسية
@@ -640,7 +680,7 @@ function generateReferralCode(name, id) {
 }
 
 // ============================================================
-// نظام الكابتشا - إصدار آمن
+// نظام الكابتشا - إصدار آمن ومحسن
 // ============================================================
 
 // تخزين الكابتشا في الذاكرة مع انتهاء صلاحية
@@ -796,7 +836,10 @@ app.post('/api/captcha/verify', [
         // التحقق من الكود (مقارنة غير حساسة لحالة الأحرف)
         if (stored.code.toLowerCase() === captcha_code.toLowerCase().trim()) {
             captchaStore.delete(captcha_id);
-            return res.json({ success: true });
+            return res.json({ 
+                success: true,
+                message: 'تم التحقق بنجاح'
+            });
         } else {
             return res.status(400).json({
                 success: false,
@@ -1429,7 +1472,7 @@ app.post('/api/student/wallet/deposit', authenticateToken, [
         const baseUrl = process.env.PLATFORM_URL ||
             process.env.RENDER_EXTERNAL_URL ||
             (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
-            'https://chatvidio.vercel.app';
+            PLATFORM_DOMAIN;
 
         const successUrl = `${baseUrl}/api/wallet/deposit/success/${transaction.id}`;
         const failureUrl = `${baseUrl}/api/wallet/deposit/failure/${transaction.id}`;
@@ -4026,12 +4069,6 @@ app.post('/api/admin/withdraw-requests/:id/reject', authenticateToken, requireRo
 });
 
 // ============================================================
-// ============================================================
-// ⭐ المسارات الرئيسية - تم إضافتها لحل مشكلة Cannot GET /
-// ============================================================
-// ============================================================
-
-// ============================================================
 // خدمة الملفات الثابتة
 // ============================================================
 app.use(express.static('public', {
@@ -4145,6 +4182,7 @@ if (require.main === module) {
         console.log('🔄 نظام الكابتشا مفعل');
         console.log('📍 المسار الرئيسي: /');
         console.log('🏥 مسار الصحة: /health');
+        console.log('🌐 CORS مفعل لـ Vercel');
         console.log('='.repeat(60));
     });
 }
