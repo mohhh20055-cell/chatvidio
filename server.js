@@ -23,6 +23,7 @@ const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 const xss = require('xss');
 const { v4: uuidv4 } = require('uuid');
+const compression = require('compression');
 
 // ============================================================
 // متغيرات البيئة والثوابت الأمنية
@@ -31,7 +32,7 @@ const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(64).toString('he
 const JWT_EXPIRY = '24h';
 const SALT_ROUNDS = 12;
 const MAX_LOGIN_ATTEMPTS = 5;
-const LOCKOUT_TIME = 15 * 60 * 1000; // 15 دقيقة
+const LOCKOUT_TIME = 15 * 60 * 1000;
 const RATE_LIMIT_WINDOW = 15 * 60 * 1000;
 const RATE_LIMIT_MAX = 100;
 
@@ -55,10 +56,24 @@ const CHARGILY_API_URL = process.env.CHARGILY_API_URL || 'https://pay.chargily.n
 const CHARGILY_WEBHOOK_SECRET = process.env.CHARGILY_WEBHOOK_SECRET || crypto.randomBytes(32).toString('hex');
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@platform.com';
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || bcrypt.hashSync('admin123', SALT_ROUNDS);
-const CORS_ORIGIN = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['https://chatvidio.vercel.app', 'http://localhost:3000'];
 const PLATFORM_DOMAIN = process.env.PLATFORM_DOMAIN || 'https://chatvidio.vercel.app';
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
 const ENCRYPTION_IV = process.env.ENCRYPTION_IV || crypto.randomBytes(16).toString('hex');
+
+// ============================================================
+// قائمة المصادر المسموح بها لـ CORS
+// ============================================================
+const CORS_ORIGIN = process.env.CORS_ORIGIN 
+    ? process.env.CORS_ORIGIN.split(',') 
+    : [
+        'https://chatvidio.vercel.app',
+        'https://chatvidio-git-*.vercel.app',
+        'https://chatvidio-*.vercel.app',
+        'https://*.vercel.app',
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'http://localhost:3002'
+    ];
 
 // التحقق من المتغيرات الأساسية
 if (!supabaseUrl || !supabaseKey) {
@@ -78,27 +93,36 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const resend = new Resend(resendApiKey);
 
 // ============================================================
-// دوال التشفير/Fإخفاء البيانات الحساسة
+// دوال التشفير/إخفاء البيانات الحساسة
 // ============================================================
 function encrypt(text) {
     if (!text) return null;
-    const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY, 'hex'), Buffer.from(ENCRYPTION_IV, 'hex'));
-    let encrypted = cipher.update(text, 'utf8', 'hex');
-    encrypted += cipher.final('hex');
-    return encrypted;
+    try {
+        const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY, 'hex'), Buffer.from(ENCRYPTION_IV, 'hex'));
+        let encrypted = cipher.update(text, 'utf8', 'hex');
+        encrypted += cipher.final('hex');
+        return encrypted;
+    } catch (error) {
+        console.error('خطأ في التشفير:', error.message);
+        return null;
+    }
 }
 
 function decrypt(encrypted) {
     if (!encrypted) return null;
-    const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY, 'hex'), Buffer.from(ENCRYPTION_IV, 'hex'));
-    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-    return decrypted;
+    try {
+        const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY, 'hex'), Buffer.from(ENCRYPTION_IV, 'hex'));
+        let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+        return decrypted;
+    } catch (error) {
+        console.error('خطأ في فك التشفير:', error.message);
+        return null;
+    }
 }
 
 function maskIP(ip) {
     if (!ip) return null;
-    // إخفاء آخر أوكتيت من عنوان IP
     const parts = ip.split('.');
     if (parts.length === 4) {
         parts[3] = 'xxx';
@@ -132,7 +156,7 @@ function sanitizeObject(obj) {
 }
 
 // ============================================================
-// دوال إنشاء وتحقـق JWT
+// دوال إنشاء وتحقق JWT
 // ============================================================
 function generateToken(userId, role, email) {
     return jwt.sign(
@@ -148,6 +172,22 @@ function verifyToken(token) {
     } catch (error) {
         return null;
     }
+}
+
+// ============================================================
+// دالة التحقق من المصدر لـ CORS
+// ============================================================
+function isOriginAllowed(origin) {
+    if (!origin) return true;
+    if (CORS_ORIGIN.includes(origin)) return true;
+    for (const allowed of CORS_ORIGIN) {
+        if (allowed.includes('*')) {
+            const pattern = allowed.replace(/\*/g, '.*');
+            const regex = new RegExp(`^${pattern}$`);
+            if (regex.test(origin)) return true;
+        }
+    }
+    return false;
 }
 
 // ============================================================
@@ -183,20 +223,41 @@ function authorize(roles = []) {
 }
 
 // ============================================================
+// التعامل مع طلبات OPTIONS قبل أي شيء
+// ============================================================
+app.use((req, res, next) => {
+    if (req.method === 'OPTIONS') {
+        const origin = req.headers.origin;
+        if (origin && isOriginAllowed(origin)) {
+            res.header('Access-Control-Allow-Origin', origin);
+            res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+            res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token, X-Signature, Accept, Origin, X-HTTP-Method-Override');
+            res.header('Access-Control-Allow-Credentials', 'true');
+            res.header('Access-Control-Max-Age', '86400');
+        }
+        return res.status(200).send();
+    }
+    next();
+});
+
+// ============================================================
 // إعدادات الأمان - متقدمة
 // ============================================================
 
-// 1. Helmet - حماية متقدمة
+// 1. Compression
+app.use(compression());
+
+// 2. Helmet - حماية متقدمة
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://meet.jit.si", "https://cdnjs.cloudflare.com", "https://vercel.live"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://meet.jit.si", "https://cdnjs.cloudflare.com", "https://vercel.live", "https://*.vercel.app"],
             scriptSrcAttr: ["'unsafe-inline'"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
             imgSrc: ["'self'", "data:", "https://ui-avatars.com", "https://api.qrserver.com", "https://*.supabase.co"],
-            connectSrc: ["'self'", "https://*.supabase.co", "https://pay.chargily.net", "https://meet.jit.si"],
+            connectSrc: ["'self'", "https://*.supabase.co", "https://pay.chargily.net", "https://meet.jit.si", "https://*.vercel.app"],
             frameSrc: ["'self'", "https://meet.jit.si"]
         }
     },
@@ -206,30 +267,37 @@ app.use(helmet({
         preload: true
     },
     frameguard: { action: 'deny' },
-    referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: false,
+    crossOriginResourcePolicy: false
 }));
 
-// 2. CORS محدود وآمن
+// 3. CORS محدود وآمن
 const corsOptions = {
     origin: function (origin, callback) {
-        if (!origin) return callback(null, true);
-        if (CORS_ORIGIN.indexOf(origin) !== -1) {
+        if (!origin) {
+            return callback(null, true);
+        }
+        if (isOriginAllowed(origin)) {
             callback(null, true);
         } else {
-            callback(new Error('غير مسموح به من هذا المصدر'));
+            console.log(`❌ رفض المصدر: ${origin}`);
+            callback(new Error(`غير مسموح به من هذا المصدر`));
         }
     },
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-CSRF-Token'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-CSRF-Token', 'X-Signature', 'Accept', 'Origin', 'X-HTTP-Method-Override'],
     credentials: true,
-    maxAge: 86400
+    maxAge: 86400,
+    optionsSuccessStatus: 200
 };
 app.use(cors(corsOptions));
 
-// 3. Cookie Parser للجلسات الآمنة
+// 4. Cookie Parser للجلسات الآمنة
 app.use(cookieParser());
 
-// 4. Rate Limiting متقدم
+// 5. Rate Limiting متقدم
 const limiter = rateLimit({
     windowMs: RATE_LIMIT_WINDOW,
     max: RATE_LIMIT_MAX,
@@ -240,13 +308,13 @@ const limiter = rateLimit({
         return req.ip || req.connection.remoteAddress;
     },
     skip: (req) => {
-        const skipPaths = ['/api/stream', '/api/public/stats', '/api/public/offers', '/api/join-stream', '/api/verify-email', '/api/wallet/deposit/success', '/api/wallet/deposit/failure', '/api/chargily-webhook'];
+        const skipPaths = ['/api/stream', '/api/public/stats', '/api/public/offers', '/api/join-stream', '/api/verify-email', '/api/wallet/deposit/success', '/api/wallet/deposit/failure', '/api/chargily-webhook', '/api/test-cors'];
         return skipPaths.some(path => req.path.startsWith(path));
     }
 });
 app.use('/api/', limiter);
 
-// 5. Rate Limiting خاص لتسجيل الدخول
+// 6. Rate Limiting خاص لتسجيل الدخول
 const authLimiter = rateLimit({
     windowMs: 60 * 60 * 1000,
     max: 10,
@@ -261,9 +329,10 @@ app.use('/api/login', authLimiter);
 app.use('/api/forgot-password', authLimiter);
 app.use('/api/resend-verification', authLimiter);
 
-// 6. Middleware لمنع هجمات CSRF
+// 7. CSRF Protection
 app.use((req, res, next) => {
-    if (req.method === 'POST' || req.method === 'PUT' || req.method === 'DELETE') {
+    const publicMethods = ['GET', 'HEAD', 'OPTIONS'];
+    if (!publicMethods.includes(req.method)) {
         const csrfToken = req.headers['x-csrf-token'];
         const cookieToken = req.cookies.csrf_token;
         if (!csrfToken || !cookieToken || csrfToken !== cookieToken) {
@@ -273,7 +342,7 @@ app.use((req, res, next) => {
     next();
 });
 
-// 7. توليد CSRF Token للجلسات
+// 8. توليد CSRF Token
 app.get('/api/csrf-token', (req, res) => {
     const token = crypto.randomBytes(32).toString('hex');
     res.cookie('csrf_token', token, {
@@ -285,8 +354,19 @@ app.get('/api/csrf-token', (req, res) => {
     res.json({ csrfToken: token });
 });
 
+// 9. مسار اختبار CORS
+app.get('/api/test-cors', (req, res) => {
+    res.json({
+        success: true,
+        message: 'CORS يعمل بشكل صحيح',
+        origin: req.headers.origin || 'no origin',
+        ip: req.ip,
+        timestamp: new Date().toISOString()
+    });
+});
+
 // ============================================================
-// Middleware التحقق من الحظر (IP Ban) مع تشفير IP
+// Middleware التحقق من الحظر (IP Ban)
 // ============================================================
 async function checkBanned(req, res, next) {
     let ip = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'];
@@ -304,7 +384,6 @@ async function checkBanned(req, res, next) {
     }
     
     try {
-        // تشفير IP للتخزين الآمن
         const encryptedIP = encrypt(ip);
         
         const { data } = await supabase
@@ -354,16 +433,49 @@ app.use(express.static('public', {
 }));
 
 // ============================================================
+// Middleware لمعالجة الأخطاء
+// ============================================================
+app.use((err, req, res, next) => {
+    console.error('❌ خطأ:', err.message);
+    console.error('📚 Stack:', err.stack);
+    
+    if (err.message && err.message.includes('غير مسموح به من هذا المصدر')) {
+        return res.status(403).json({
+            success: false,
+            error: 'غير مسموح به من هذا المصدر',
+            origin: req.headers.origin || 'unknown'
+        });
+    }
+    
+    if (err.name === 'ValidationError') {
+        return res.status(400).json({
+            success: false,
+            error: err.message
+        });
+    }
+    
+    if (err.name === 'MulterError') {
+        return res.status(400).json({
+            success: false,
+            error: err.message
+        });
+    }
+    
+    res.status(500).json({
+        success: false,
+        error: process.env.NODE_ENV === 'production' ? 'حدث خطأ داخلي في الخادم' : err.message
+    });
+});
+
+// ============================================================
 // إعداد Multer مع تحقق أمني متقدم
 // ============================================================
 const storage = multer.memoryStorage();
 
-// قائمة الأنواع المسموح بها مع التحقق من السحر الرقمي (Magic Numbers)
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
 const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
-// التحقق من محتوى الملف
 function validateFileContent(buffer, mimeType) {
     const magicNumbers = {
         'image/jpeg': [0xFF, 0xD8, 0xFF],
@@ -389,12 +501,10 @@ const upload = multer({
         files: 5
     },
     fileFilter: (req, file, cb) => {
-        // التحقق من نوع الملف
         if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
             return cb(new Error('نوع الملف غير مدعوم'), false);
         }
 
-        // التحقق من امتداد الملف
         const ext = path.extname(file.originalname).toLowerCase();
         if (!ALLOWED_EXTENSIONS.includes(ext)) {
             return cb(new Error('امتداد الملف غير مدعوم'), false);
@@ -404,7 +514,6 @@ const upload = multer({
     }
 });
 
-// Middleware للتحقق من الملفات بعد الرفع
 const validateUploadedFiles = (req, res, next) => {
     if (req.file && !validateFileContent(req.file.buffer, req.file.mimetype)) {
         return res.status(400).json({ success: false, error: 'الملف تالف أو غير صحيح' });
@@ -423,7 +532,7 @@ const validateUploadedFiles = (req, res, next) => {
 };
 
 // ============================================================
-// دوال إرسال البريد مع تنقية المحتوى
+// دوال إرسال البريد
 // ============================================================
 
 async function sendVerificationEmail(toEmail, toName, verificationUrl) {
@@ -515,13 +624,12 @@ async function sendResetEmail(toEmail, toName, resetUrl) {
 }
 
 // ============================================================
-// دالة رفع الصور مع تحقق أمني
+// دالة رفع الصور
 // ============================================================
 async function uploadToSupabase(file, folder, oldFileName = null) {
     try {
         if (!file || !file.buffer) return null;
 
-        // التحقق من صحة الملف
         if (!validateFileContent(file.buffer, file.mimetype)) {
             throw new Error('الملف تالف أو غير صحيح');
         }
@@ -566,7 +674,7 @@ async function uploadToSupabase(file, folder, oldFileName = null) {
 }
 
 // ============================================================
-// دوال قاعدة البيانات مع استخدام معلمات آمنة
+// دوال قاعدة البيانات
 // ============================================================
 async function getOne(table, column, value) {
     try {
@@ -619,7 +727,7 @@ async function remove(table, column, value) {
 }
 
 // ============================================================
-// دوال مساعدة أخرى
+// دوال مساعدة
 // ============================================================
 function generateVerificationToken() {
     return crypto.randomBytes(32).toString('hex');
@@ -629,6 +737,55 @@ function generateReferralCode(name, id) {
     const prefix = name.substring(0, 3).toUpperCase();
     const suffix = id.toString(36).toUpperCase();
     return `${prefix}${suffix}`;
+}
+
+function renderSuccessPage(title, message, subMessage, buttonText, buttonLink) {
+    return `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="UTF-8"><title>${sanitizeInput(title)}</title>
+        <style>
+            body{font-family:Cairo;background:#0f5cbf;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;direction:rtl}
+            .card{background:white;padding:40px;border-radius:20px;text-align:center;max-width:500px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
+            h1{color:#10b981;font-size:2.5rem}
+            .btn{background:#0f5cbf;color:white;padding:12px 30px;border-radius:30px;text-decoration:none;display:inline-block;margin-top:20px}
+            .btn:hover{background:#0a4a9a}
+            .sub{color:#666;margin-top:10px}
+        </style>
+        </head>
+        <body>
+        <div class="card">
+            <h1>✅ ${sanitizeInput(title)}</h1>
+            <p style="font-size:1.2rem;">${sanitizeInput(message)}</p>
+            <p class="sub">${sanitizeInput(subMessage)}</p>
+            <a href="${buttonLink || '/'}" class="btn">${buttonText || 'العودة للرئيسية'}</a>
+        </div>
+        </body>
+        </html>
+    `;
+}
+
+function renderErrorPage(title, message, buttonLink) {
+    return `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="UTF-8"><title>خطأ</title>
+        <style>
+            body{font-family:Cairo;background:#0f5cbf;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;direction:rtl}
+            .card{background:white;padding:40px;border-radius:20px;text-align:center;max-width:500px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
+            h1{color:#dc2626}
+            .btn{background:#0f5cbf;color:white;padding:12px 30px;border-radius:30px;text-decoration:none;display:inline-block;margin-top:20px}
+        </style>
+        </head>
+        <body>
+        <div class="card">
+            <h1>❌ ${sanitizeInput(title)}</h1>
+            <p>${sanitizeInput(message)}</p>
+            <a href="${buttonLink || '/'}" class="btn">العودة للرئيسية</a>
+        </div>
+        </body>
+        </html>
+    `;
 }
 
 // ============================================================
@@ -645,7 +802,6 @@ function trackLoginAttempt(email) {
 
     const record = loginAttempts.get(email);
     
-    // إعادة تعيين العداد إذا مر وقت طويل
     if (now - record.firstAttempt > LOCKOUT_TIME) {
         loginAttempts.set(email, { count: 1, firstAttempt: now, lastAttempt: now });
         return { count: 1, locked: false };
@@ -664,6 +820,111 @@ function resetLoginAttempts(email) {
 }
 
 // ============================================================
+// المسار الرئيسي
+// ============================================================
+app.get('/', (req, res) => {
+    const refCode = req.query.ref;
+    if (refCode) {
+        res.cookie('referral_code', refCode, { 
+            maxAge: 7 * 24 * 60 * 60 * 1000, 
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict'
+        });
+    }
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// ============================================================
+// المسارات العامة
+// ============================================================
+app.get('/api/public/teachers', async (req, res) => {
+    try {
+        const { data } = await supabase
+            .from('teachers')
+            .select('id, full_name, specialization, bio, experience, profile_url')
+            .eq('status', 'approved')
+            .eq('email_verified', true)
+            .order('created_at', { ascending: false })
+            .limit(100);
+        res.json(data || []);
+    } catch (error) {
+        console.error('خطأ:', error.message);
+        res.status(500).json([]);
+    }
+});
+
+app.get('/api/public/offers', async (req, res) => {
+    try {
+        const { data } = await supabase
+            .from('offers')
+            .select('*, teachers:teacher_id (id, full_name, specialization, profile_url)')
+            .eq('status', 'upcoming')
+            .gt('offer_date', new Date().toISOString())
+            .order('offer_date', { ascending: true })
+            .limit(50);
+        res.json(data || []);
+    } catch (error) {
+        console.error('خطأ:', error.message);
+        res.status(500).json([]);
+    }
+});
+
+app.get('/api/live-offers', async (req, res) => {
+    try {
+        const { data } = await supabase
+            .from('offers')
+            .select('*, teachers:teacher_id (id, full_name, specialization, profile_url)')
+            .eq('status', 'live')
+            .order('offer_date', { ascending: false })
+            .limit(20);
+        res.json(data || []);
+    } catch (error) {
+        console.error('خطأ:', error.message);
+        res.status(500).json([]);
+    }
+});
+
+app.get('/api/public/stats', async (req, res) => {
+    try {
+        const [
+            { count: teachersCount },
+            { count: offersCount },
+            { count: liveCount },
+            { count: studentsCount }
+        ] = await Promise.all([
+            supabase.from('teachers').select('*', { count: 'exact', head: true }).eq('status', 'approved').eq('email_verified', true),
+            supabase.from('offers').select('*', { count: 'exact', head: true })
+                .eq('status', 'upcoming')
+                .gt('offer_date', new Date().toISOString()),
+            supabase.from('offers').select('*', { count: 'exact', head: true }).eq('status', 'live'),
+            supabase.from('students').select('*', { count: 'exact', head: true }).eq('email_verified', true)
+        ]);
+
+        res.json({
+            teachers: teachersCount || 0,
+            offers: offersCount || 0,
+            live: liveCount || 0,
+            students: studentsCount || 0
+        });
+    } catch (error) {
+        console.error('خطأ:', error.message);
+        res.status(500).json({ teachers: 0, offers: 0, live: 0, students: 0 });
+    }
+});
+
+app.get('/api/public/students-count', async (req, res) => {
+    try {
+        const { count } = await supabase
+            .from('students')
+            .select('*', { count: 'exact', head: true })
+            .eq('email_verified', true);
+        res.json({ count: count || 0 });
+    } catch (error) {
+        res.status(500).json({ count: 0 });
+    }
+});
+
 // ============================================================
 // مسارات التحقق من البريد الإلكتروني
 // ============================================================
@@ -789,62 +1050,12 @@ app.get('/api/verify-email', [
             await processReferralReward(user.id, role);
         }
 
-        return res.send(renderSuccessPage('تم تأكيد الحساب', 'تم تأكيد حسابك بنجاح 🎉', 'يمكنك الآن تسجيل الدخول والاستفادة من جميع خدمات المنصة.', '/login.html'));
+        return res.send(renderSuccessPage('تم تأكيد الحساب', 'تم تأكيد حسابك بنجاح 🎉', 'يمكنك الآن تسجيل الدخول والاستفادة من جميع خدمات المنصة.', 'تسجيل الدخول', '/login.html'));
     } catch (error) {
         console.error('خطأ في تأكيد البريد:', error.message);
         return res.status(500).send(renderErrorPage('حدث خطأ', 'حدث خطأ أثناء تأكيد الحساب. يرجى المحاولة مرة أخرى.'));
     }
 });
-
-// دوال مساعدة لعرض الصفحات
-function renderSuccessPage(title, message, subMessage, buttonText, buttonLink) {
-    return `
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset="UTF-8"><title>${sanitizeInput(title)}</title>
-        <style>
-            body{font-family:Cairo;background:#0f5cbf;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;direction:rtl}
-            .card{background:white;padding:40px;border-radius:20px;text-align:center;max-width:500px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
-            h1{color:#10b981;font-size:2.5rem}
-            .btn{background:#0f5cbf;color:white;padding:12px 30px;border-radius:30px;text-decoration:none;display:inline-block;margin-top:20px}
-            .btn:hover{background:#0a4a9a}
-            .sub{color:#666;margin-top:10px}
-        </style>
-        </head>
-        <body>
-        <div class="card">
-            <h1>✅ ${sanitizeInput(title)}</h1>
-            <p style="font-size:1.2rem;">${sanitizeInput(message)}</p>
-            <p class="sub">${sanitizeInput(subMessage)}</p>
-            <a href="${buttonLink || '/'}" class="btn">${buttonText || 'العودة للرئيسية'}</a>
-        </div>
-        </body>
-        </html>
-    `;
-}
-
-function renderErrorPage(title, message, buttonLink) {
-    return `
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset="UTF-8"><title>خطأ</title>
-        <style>
-            body{font-family:Cairo;background:#0f5cbf;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;direction:rtl}
-            .card{background:white;padding:40px;border-radius:20px;text-align:center;max-width:500px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
-            h1{color:#dc2626}
-            .btn{background:#0f5cbf;color:white;padding:12px 30px;border-radius:30px;text-decoration:none;display:inline-block;margin-top:20px}
-        </style>
-        </head>
-        <body>
-        <div class="card">
-            <h1>❌ ${sanitizeInput(title)}</h1>
-            <p>${sanitizeInput(message)}</p>
-            <a href="${buttonLink || '/'}" class="btn">العودة للرئيسية</a>
-        </div>
-        </body>
-        </html>
-    `;
-}
 
 app.get('/api/check-email-verification/:email/:role', async (req, res) => {
     try {
@@ -888,7 +1099,6 @@ app.post('/api/referral/create', [
 
         const { user_id, role } = req.body;
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== user_id || req.user.role !== role) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بإنشاء رمز إحالة لهذا الحساب' });
         }
@@ -951,7 +1161,6 @@ app.get('/api/referral/info/:user_id/:role', [
 
         const { user_id, role } = req.params;
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== parseInt(user_id) || req.user.role !== role) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض معلومات الإحالة' });
         }
@@ -1176,7 +1385,6 @@ app.post('/api/referral/open-gift-box', [
 
         const { student_id } = req.body;
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== student_id || req.user.role !== 'student') {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بفتح صندوق الهدايا لهذا الحساب' });
         }
@@ -1263,7 +1471,6 @@ app.get('/api/referral/gift-box-status/:student_id', [
 
         const { student_id } = req.params;
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== parseInt(student_id) || req.user.role !== 'student') {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض حالة صندوق الهدايا' });
         }
@@ -1306,7 +1513,6 @@ app.get('/api/referral/teacher-stats/:teacher_id', [
 
         const { teacher_id } = req.params;
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== parseInt(teacher_id) || req.user.role !== 'teacher') {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض إحصائيات الإحالة' });
         }
@@ -1353,137 +1559,6 @@ app.get('/api/referral/teacher-stats/:teacher_id', [
 });
 
 // ============================================================
-// المسار الرئيسي
-// ============================================================
-app.get('/', (req, res) => {
-    const refCode = req.query.ref;
-    if (refCode) {
-        res.cookie('referral_code', refCode, { 
-            maxAge: 7 * 24 * 60 * 60 * 1000, 
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict'
-        });
-    }
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// ============================================================
-// المسارات العامة
-// ============================================================
-app.get('/api/public/teachers', async (req, res) => {
-    try {
-        const { data } = await supabase
-            .from('teachers')
-            .select('id, full_name, specialization, bio, experience, profile_url')
-            .eq('status', 'approved')
-            .eq('email_verified', true)
-            .order('created_at', { ascending: false })
-            .limit(100);
-
-        res.json(data || []);
-    } catch (error) {
-        console.error('خطأ:', error.message);
-        res.status(500).json([]);
-    }
-});
-
-app.get('/api/public/offers', async (req, res) => {
-    try {
-        const { data } = await supabase
-            .from('offers')
-            .select('*, teachers:teacher_id (id, full_name, specialization, profile_url)')
-            .eq('status', 'upcoming')
-            .gt('offer_date', new Date().toISOString())
-            .order('offer_date', { ascending: true })
-            .limit(50);
-
-        const formatted = (data || []).map(o => ({
-            id: o.id,
-            subject_name: o.subject_name,
-            duration: o.duration,
-            offer_date: o.offer_date,
-            price: o.price,
-            is_free: o.is_free,
-            teacher_id: o.teachers?.id,
-            teacher_name: o.teachers?.full_name,
-            teacher_specialization: o.teachers?.specialization,
-            teacher_profile_url: o.teachers?.profile_url
-        }));
-
-        res.json(formatted);
-    } catch (error) {
-        console.error('خطأ:', error.message);
-        res.status(500).json([]);
-    }
-});
-
-app.get('/api/live-offers', async (req, res) => {
-    try {
-        const { data } = await supabase
-            .from('offers')
-            .select('*, teachers:teacher_id (id, full_name, specialization, profile_url)')
-            .eq('status', 'live')
-            .order('offer_date', { ascending: false })
-            .limit(20);
-
-        const formatted = (data || []).map(o => ({
-            id: o.id,
-            subject_name: o.subject_name,
-            teacher_id: o.teachers?.id,
-            teacher_name: o.teachers?.full_name,
-            teacher_specialization: o.teachers?.specialization,
-            teacher_profile_url: o.teachers?.profile_url
-        }));
-
-        res.json(formatted);
-    } catch (error) {
-        console.error('خطأ:', error.message);
-        res.status(500).json([]);
-    }
-});
-
-app.get('/api/public/stats', async (req, res) => {
-    try {
-        const [
-            { count: teachersCount },
-            { count: offersCount },
-            { count: liveCount },
-            { count: studentsCount }
-        ] = await Promise.all([
-            supabase.from('teachers').select('*', { count: 'exact', head: true }).eq('status', 'approved').eq('email_verified', true),
-            supabase.from('offers').select('*', { count: 'exact', head: true })
-                .eq('status', 'upcoming')
-                .gt('offer_date', new Date().toISOString()),
-            supabase.from('offers').select('*', { count: 'exact', head: true }).eq('status', 'live'),
-            supabase.from('students').select('*', { count: 'exact', head: true }).eq('email_verified', true)
-        ]);
-
-        res.json({
-            teachers: teachersCount || 0,
-            offers: offersCount || 0,
-            live: liveCount || 0,
-            students: studentsCount || 0
-        });
-    } catch (error) {
-        console.error('خطأ:', error.message);
-        res.status(500).json({ teachers: 0, offers: 0, live: 0, students: 0 });
-    }
-});
-
-app.get('/api/public/students-count', async (req, res) => {
-    try {
-        const { count } = await supabase
-            .from('students')
-            .select('*', { count: 'exact', head: true })
-            .eq('email_verified', true);
-        res.json({ count: count || 0 });
-    } catch (error) {
-        res.status(500).json({ count: 0 });
-    }
-});
-
-// ============================================================
 // نظام المنشورات
 // ============================================================
 app.post('/api/post/create', [
@@ -1506,7 +1581,6 @@ app.post('/api/post/create', [
 
         const { teacher_id, title, content, link_url } = req.body;
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== parseInt(teacher_id)) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بنشر هذا المنشور' });
         }
@@ -1611,7 +1685,6 @@ app.post('/api/post/like', [
 
         const { post_id, student_id } = req.body;
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== student_id) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
@@ -1644,7 +1717,6 @@ app.post('/api/post/unlike', [
 
         const { post_id, student_id } = req.body;
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== student_id) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
@@ -1670,7 +1742,6 @@ app.get('/api/post/check-like/:post_id/:student_id', [
     try {
         const { post_id, student_id } = req.params;
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== parseInt(student_id)) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
@@ -1702,7 +1773,6 @@ app.post('/api/post/comment', [
 
         const { post_id, student_id, comment } = req.body;
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== student_id) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
@@ -1742,7 +1812,6 @@ app.delete('/api/post/comment/:comment_id', [
         const { comment_id } = req.params;
         const { teacher_id, post_id } = req.body;
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== parseInt(teacher_id)) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
@@ -1774,7 +1843,6 @@ app.delete('/api/post/:post_id', [
         const { post_id } = req.params;
         const { teacher_id } = req.body;
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== parseInt(teacher_id)) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
@@ -1881,10 +1949,9 @@ app.delete('/api/admin/support-messages/:id', [
 });
 
 // ============================================================
-// نظام الرصيد (Wallet) - المُصلح بالكامل مع تأمين الدفع
+// نظام الرصيد (Wallet)
 // ============================================================
 
-// جلب الرصيد والمعاملات
 app.get('/api/student/wallet/:student_id', [
     authenticate,
     authorize(['student']),
@@ -1898,7 +1965,6 @@ app.get('/api/student/wallet/:student_id', [
 
         const student_id = parseInt(req.params.student_id);
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== student_id) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه المعلومات' });
         }
@@ -1924,7 +1990,7 @@ app.get('/api/student/wallet/:student_id', [
 });
 
 // ============================================================
-// دالة إنشاء طلب شحن عبر Chargily مع توقيع آمن
+// دالة إنشاء طلب شحن عبر Chargily
 // ============================================================
 async function createChargilyCheckout(amount, studentName, studentEmail, studentPhone, description, successUrl, failureUrl) {
     try {
@@ -2004,23 +2070,18 @@ app.post('/api/chargily-webhook', express.raw({ type: 'application/json' }), asy
     try {
         const signature = req.headers['x-signature'];
         
-        // التحقق من التوقيع
         if (!signature) {
             return res.status(401).json({ success: false, error: 'توقيع غير موجود' });
         }
 
-        // التحقق من صحة التوقيع (يتم ذلك باستخدام المفتاح السري)
         const webhookData = req.body;
         
-        // تسجيل الويب هوك مع إخفاء البيانات الحساسة
         console.log('📨 استلام Webhook من Chargily');
 
-        // التحقق من نوع الحدث
         if (webhookData.event === 'checkout.paid') {
             const checkoutId = webhookData.data?.id;
             const metadata = webhookData.data?.metadata || {};
 
-            // البحث عن المعاملة
             const { data: transactions } = await supabase
                 .from('wallet_transactions')
                 .select('*')
@@ -2030,7 +2091,6 @@ app.post('/api/chargily-webhook', express.raw({ type: 'application/json' }), asy
             if (transactions && transactions.length > 0) {
                 const transaction = transactions[0];
                 
-                // إضافة الرصيد بعد التأكيد
                 const student = await getOne('students', 'id', transaction.student_id);
                 if (student) {
                     const currentBalance = parseInt(student.wallet_balance) || 0;
@@ -2060,7 +2120,7 @@ app.post('/api/chargily-webhook', express.raw({ type: 'application/json' }), asy
 });
 
 // ============================================================
-// دالة شحن الرصيد - توجيه المستخدم إلى Chargily
+// دالة شحن الرصيد
 // ============================================================
 app.post('/api/student/wallet/deposit', [
     authenticate,
@@ -2076,7 +2136,6 @@ app.post('/api/student/wallet/deposit', [
 
         const { student_id, amount } = req.body;
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== student_id) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بشحن رصيد هذا الحساب' });
         }
@@ -2090,7 +2149,6 @@ app.post('/api/student/wallet/deposit', [
         
         console.log(`💰 طلب شحن رصيد: الطالب ${student.full_name} (${student_id}) - المبلغ: ${finalAmount} دج`);
 
-        // إنشاء معاملة جديدة بحالة pending
         const transaction = await insert('wallet_transactions', {
             student_id: student_id,
             amount: finalAmount,
@@ -2105,7 +2163,6 @@ app.post('/api/student/wallet/deposit', [
                         (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
                         'https://chatvidio.vercel.app';
 
-        // استخدام معرف المعاملة كـ token للتحقق
         const successToken = crypto.createHash('sha256')
             .update(`${transaction.id}-${CHARGILY_WEBHOOK_SECRET}`)
             .digest('hex');
@@ -2113,7 +2170,6 @@ app.post('/api/student/wallet/deposit', [
         const successUrl = `${baseUrl}/api/wallet/deposit/success/${transaction.id}?token=${successToken}`;
         const failureUrl = `${baseUrl}/api/wallet/deposit/failure/${transaction.id}`;
 
-        // إنشاء رابط الدفع عبر Chargily
         const checkout = await createChargilyCheckout(
             finalAmount,
             student.full_name,
@@ -2157,7 +2213,7 @@ app.post('/api/student/wallet/deposit', [
 });
 
 // ============================================================
-// معالجة نجاح الدفع مع التحقق من التوقيع
+// معالجة نجاح الدفع
 // ============================================================
 app.get('/api/wallet/deposit/success/:transaction_id', [
     query('token').notEmpty().withMessage('رمز التحقق مطلوب')
@@ -2166,7 +2222,6 @@ app.get('/api/wallet/deposit/success/:transaction_id', [
     const { token } = req.query;
 
     try {
-        // التحقق من صحة التوكين
         const expectedToken = crypto.createHash('sha256')
             .update(`${transaction_id}-${CHARGILY_WEBHOOK_SECRET}`)
             .digest('hex');
@@ -2182,12 +2237,10 @@ app.get('/api/wallet/deposit/success/:transaction_id', [
             return res.status(404).send(renderErrorPage('خطأ', 'المعاملة غير موجودة'));
         }
 
-        // التحقق من أن المعاملة لم تتم معالجتها مسبقاً
         if (transaction.status === 'completed') {
             return res.send(renderSuccessPage('تمت المعاملة', 'تم شحن رصيدك بالفعل', '', 'العودة للوحة', '/student-dashboard.html'));
         }
 
-        // التحقق من أن المعاملة معلقة
         if (transaction.status !== 'pending') {
             return res.status(400).send(renderErrorPage('خطأ', 'هذه المعاملة لا يمكن معالجتها'));
         }
@@ -2199,7 +2252,6 @@ app.get('/api/wallet/deposit/success/:transaction_id', [
             return res.status(404).send(renderErrorPage('خطأ', 'الطالب غير موجود'));
         }
 
-        // حساب الرصيد الجديد
         const currentBalance = parseInt(student.wallet_balance) || 0;
         const addAmount = parseInt(amount) || 0;
         const newBalance = currentBalance + addAmount;
@@ -2287,7 +2339,7 @@ app.get('/api/wallet/deposit/failure/:transaction_id', async (req, res) => {
 });
 
 // ============================================================
-// نظام الحجز - مع تحقق أمني
+// نظام الحجز
 // ============================================================
 app.post('/api/booking/create', [
     authenticate,
@@ -2303,7 +2355,6 @@ app.post('/api/booking/create', [
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== student_id) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بعملية الحجز' });
         }
@@ -2573,7 +2624,6 @@ app.post('/api/messages/send', [
 
         const { sender_id, sender_type, receiver_id, receiver_type, message } = req.body;
 
-        // التحقق من صلاحية المرسل
         if (req.user.userId !== sender_id || req.user.role !== sender_type) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بإرسال رسائل من هذا الحساب' });
         }
@@ -2617,7 +2667,6 @@ app.get('/api/messages/conversations/:user_id/:user_type', [
 
         const { user_id, user_type } = req.params;
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== parseInt(user_id) || req.user.role !== user_type) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه المحادثات' });
         }
@@ -2680,7 +2729,6 @@ app.get('/api/messages/:user_id/:user_type/:other_id/:other_type', [
 
         const { user_id, user_type, other_id, other_type } = req.params;
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== parseInt(user_id) || req.user.role !== user_type) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه المحادثة' });
         }
@@ -2819,7 +2867,6 @@ app.post('/api/teacher/register', checkBanned, upload.fields([
             }
         }
 
-        // إنشاء JWT
         const token = generateToken(newTeacher.id, 'teacher', email);
 
         res.json({ 
@@ -2907,7 +2954,6 @@ app.post('/api/student/register', checkBanned, [
             }
         }
 
-        // إنشاء JWT
         const token = generateToken(newStudent.id, 'student', email);
 
         res.json({ 
@@ -2987,7 +3033,6 @@ app.post('/api/student/update-profile', [
 
         const { student_id, full_name, phone } = req.body;
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== student_id) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بتحديث هذا الملف' });
         }
@@ -3038,7 +3083,6 @@ app.get('/api/student/:student_id', [
 
         const student_id = parseInt(req.params.student_id);
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== student_id && req.user.role !== 'admin') {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه المعلومات' });
         }
@@ -3046,7 +3090,6 @@ app.get('/api/student/:student_id', [
         const student = await getOne('students', 'id', student_id);
         if (!student) return res.status(404).json({ success: false, error: 'طالب غير موجود' });
         
-        // إزالة البيانات الحساسة
         delete student.password;
         
         res.json(student);
@@ -3071,7 +3114,6 @@ app.post('/api/teacher/update-profile', [
 
         const { teacher_id } = req.body;
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== teacher_id) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بتحديث هذا الملف' });
         }
@@ -3116,7 +3158,6 @@ app.get('/api/teacher/:teacher_id', [
 
         const teacher_id = parseInt(req.params.teacher_id);
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== teacher_id && req.user.role !== 'admin') {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه المعلومات' });
         }
@@ -3124,7 +3165,6 @@ app.get('/api/teacher/:teacher_id', [
         const teacher = await getOne('teachers', 'id', teacher_id);
         if (!teacher) return res.status(404).json({ success: false, error: 'أستاذ غير موجود' });
         
-        // إزالة البيانات الحساسة
         delete teacher.password;
         
         res.json(teacher);
@@ -3149,7 +3189,7 @@ app.get('/api/teachers', async (req, res) => {
 });
 
 // ============================================================
-// تسجيل الدخول - مع JWT وتتبع المحاولات الفاشلة
+// تسجيل الدخول
 // ============================================================
 app.post('/api/login', checkBanned, [
     body('email').isEmail().withMessage('بريد إلكتروني غير صالح').trim().normalizeEmail(),
@@ -3166,7 +3206,6 @@ app.post('/api/login', checkBanned, [
 
         console.log(`محاولة تسجيل دخول: ${email} كـ ${role}`);
 
-        // تسجيل دخول المدير
         if (role === 'admin') {
             console.log('🔐 محاولة تسجيل دخول كمدير');
             
@@ -3205,7 +3244,6 @@ app.post('/api/login', checkBanned, [
             });
         }
 
-        // تتبع محاولات تسجيل الدخول الفاشلة
         const attempt = trackLoginAttempt(email);
         if (attempt.locked) {
             return res.status(429).json({
@@ -3242,7 +3280,6 @@ app.post('/api/login', checkBanned, [
             return res.status(401).json({ success: false, error: 'كلمة المرور خاطئة' });
         }
 
-        // إعادة تعيين محاولات تسجيل الدخول عند النجاح
         resetLoginAttempts(email);
 
         if (role !== userRole) {
@@ -3279,7 +3316,6 @@ app.post('/api/login', checkBanned, [
         }
 
         if (ip) {
-            // تخزين IP مشفر
             const encryptedIP = encrypt(ip);
             await insert('login_logs', {
                 user_id: user.id,
@@ -3290,7 +3326,6 @@ app.post('/api/login', checkBanned, [
             });
         }
 
-        // إنشاء JWT
         const token = generateToken(user.id, userRole, email);
 
         const redirectPath = userRole === 'teacher' ? '/teacher-dashboard.html' : '/student-dashboard.html';
@@ -3668,7 +3703,6 @@ app.post('/api/offer/create', [
 
         const { teacher_id, subject_name, duration, offer_date, price, is_free } = req.body;
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== teacher_id) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بإنشاء عروض لهذا الحساب' });
         }
@@ -3731,7 +3765,6 @@ app.get('/api/teacher/offers/:teacher_id', [
 
         const teacher_id = parseInt(req.params.teacher_id);
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== teacher_id) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه العروض' });
         }
@@ -3762,7 +3795,6 @@ app.delete('/api/offer/delete/:offer_id', [
         const { teacher_id } = req.body;
         const offer_id = parseInt(req.params.offer_id);
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== teacher_id) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بحذف هذا العرض' });
         }
@@ -3797,7 +3829,6 @@ app.get('/api/student/bookings/:student_id', [
 
         const student_id = parseInt(req.params.student_id);
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== student_id) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه الحجوزات' });
         }
@@ -3866,7 +3897,6 @@ app.get('/api/teacher/balance/:teacher_id', [
 
         const teacher_id = parseInt(req.params.teacher_id);
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== teacher_id) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه المعلومات' });
         }
@@ -3906,7 +3936,6 @@ app.post('/api/teacher/withdraw-request', [
 
         const { teacher_id, amount, ccp_account } = req.body;
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== teacher_id) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بطلب السحب' });
         }
@@ -3950,7 +3979,6 @@ app.get('/api/teacher/withdraw-requests/:teacher_id', [
 
         const teacher_id = parseInt(req.params.teacher_id);
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== teacher_id) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه الطلبات' });
         }
@@ -4085,7 +4113,6 @@ app.post('/api/stream/enter-teacher/:offer_id', [
 
         const { offer_id, teacher_id } = req.body;
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== teacher_id) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
@@ -4117,7 +4144,6 @@ app.post('/api/stream/add-students/:offer_id', [
 
         const { offer_id, teacher_id } = req.body;
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== teacher_id) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
@@ -4210,7 +4236,6 @@ app.get('/api/student/stream-status/:offer_id/:student_id', [
 
         const { offer_id, student_id } = req.params;
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== parseInt(student_id)) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
@@ -4281,7 +4306,6 @@ app.get('/api/stream/waiting-list/:offer_id/:teacher_id', [
 
         const { offer_id, teacher_id } = req.params;
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== parseInt(teacher_id)) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
@@ -4316,7 +4340,6 @@ app.get('/api/notifications/:user_id/:user_type', [
 
         const { user_id, user_type } = req.params;
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== parseInt(user_id) || req.user.role !== user_type) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه الإشعارات' });
         }
@@ -4347,7 +4370,6 @@ app.post('/api/notifications/read/:notification_id', [
 
         const notification_id = parseInt(req.params.notification_id);
 
-        // التحقق من ملكية الإشعار
         const { data: notification } = await supabase
             .from('notifications')
             .select('user_id, user_type')
@@ -4382,7 +4404,6 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', [
 
         const { offer_id, teacher_id } = req.params;
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== parseInt(teacher_id)) {
             return res.redirect('/teacher-dashboard.html');
         }
@@ -4568,7 +4589,6 @@ app.get('/api/enter-teacher-stream/:offer_id/:teacher_id', [
 
         const { offer_id, teacher_id } = req.params;
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== parseInt(teacher_id)) {
             return res.status(403).send(renderErrorPage('غير مصرح', 'غير مصرح لك بالدخول إلى هذا البث'));
         }
@@ -4597,7 +4617,6 @@ app.get('/api/join-stream/:offer_id/:student_id', [
 
         const { offer_id, student_id } = req.params;
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== parseInt(student_id)) {
             return res.status(403).send(renderErrorPage('غير مصرح', 'غير مصرح لك بالدخول إلى هذا البث'));
         }
@@ -4667,7 +4686,7 @@ app.get('/api/join-stream/:offer_id/:student_id', [
 });
 
 // ============================================================
-// نظام الكابتشا المحسن
+// نظام الكابتشا
 // ============================================================
 const captchaStore = {};
 
@@ -4768,7 +4787,6 @@ app.post('/api/captcha/verify', [
     }
 });
 
-// تنظيف الكابتشا المنتهية كل دقيقة
 setInterval(() => {
     const now = Date.now();
     Object.keys(captchaStore).forEach(key => {
@@ -4901,7 +4919,6 @@ app.post('/api/teacher/update-profile-with-social', [
 
         const { teacher_id, facebook_url, instagram_url, linkedin_url, youtube_url, twitter_url, website_url } = req.body;
 
-        // التحقق من صلاحية المستخدم
         if (req.user.userId !== parseInt(teacher_id)) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بتحديث هذا الملف' });
         }
@@ -4940,7 +4957,6 @@ app.post('/api/teacher/update-profile-with-social', [
             website_url
         };
 
-        // تنقية الروابط
         for (const [key, value] of Object.entries(socialFields)) {
             if (value !== undefined && value !== null) {
                 const cleaned = value.trim();
@@ -5034,8 +5050,7 @@ if (require.main === module) {
         console.log('   ✅ تشفير عناوين IP');
         console.log('   ✅ التحقق من صحة الملفات');
         console.log('   ✅ Webhook للدفع الآمن');
-        console.log('   ✅ تتبع محاولات تسجيل الدخول الفاشلة');
-        console.log('   ✅ صلاحيات دقيقة للمستخدمين');
+        console.log('   ✅ CORS مع Wildcard لـ Vercel');
         console.log('📧 نظام تأكيد البريد الإلكتروني مفعل');
         console.log('🔗 نظام الإحالة مفعل');
         console.log('🎁 صناديق الهدايا للطلاب مفعلة');
