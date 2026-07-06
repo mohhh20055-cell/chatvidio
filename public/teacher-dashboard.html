@@ -37,6 +37,7 @@
             color: #1a2332;
         }
 
+        /* ===== SCROLLBAR ===== */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
@@ -151,29 +152,24 @@
             background: #ef4444;
             color: white;
             border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            font-size: 0.6rem;
+            width: 18px;
+            height: 18px;
+            font-size: 0.55rem;
             font-weight: 700;
             display: none;
             align-items: center;
             justify-content: center;
             border: 2px solid white;
-            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
-            animation: badgePulse 2s infinite;
+            box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
         }
         .notification-badge.show { display: flex; }
-        @keyframes badgePulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.08); }
-        }
 
         /* ===== NOTIFICATION DROPDOWN ===== */
         .notification-dropdown {
             position: absolute;
             top: 44px;
-            left: -160px;
-            width: 380px;
+            left: 0;
+            width: 340px;
             max-width: 90vw;
             background: white;
             border-radius: var(--radius-sm);
@@ -181,17 +177,12 @@
             border: 1px solid #edf2f7;
             display: none;
             z-index: 200;
-            max-height: 480px;
+            max-height: 420px;
             overflow-y: auto;
-            animation: dropdownSlide 0.25s ease;
-        }
-        @keyframes dropdownSlide {
-            from { opacity: 0; transform: translateY(-10px) scale(0.95); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
         }
         .notification-dropdown.open { display: block; }
         .notification-dropdown-header {
-            padding: 14px 18px;
+            padding: 12px 16px;
             border-bottom: 1px solid #edf2f7;
             display: flex;
             justify-content: space-between;
@@ -203,14 +194,8 @@
             z-index: 5;
         }
         .notification-dropdown-header h4 {
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             color: #1a2332;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .notification-dropdown-header h4 i {
-            color: var(--primary);
         }
         .notification-dropdown-header .mark-all-btn {
             background: none;
@@ -220,69 +205,47 @@
             cursor: pointer;
             font-weight: 600;
             font-family: 'Cairo', sans-serif;
-            padding: 4px 14px;
-            border-radius: 20px;
-            transition: var(--transition);
         }
         .notification-dropdown-header .mark-all-btn:hover {
-            background: var(--primary-light);
+            text-decoration: underline;
         }
         .notification-item {
-            padding: 14px 18px;
+            padding: 12px 16px;
             border-bottom: 1px solid #f1f4f9;
             cursor: pointer;
             transition: var(--transition);
             font-size: 0.85rem;
-            position: relative;
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
         }
         .notification-item:hover { background: #f8fafc; }
         .notification-item.unread {
             background: var(--primary-light);
-            border-right: 4px solid var(--primary);
-        }
-        .notification-item .notif-icon {
-            font-size: 1.4rem;
-            flex-shrink: 0;
-            margin-top: 2px;
-        }
-        .notification-item .notif-content {
-            flex: 1;
-            min-width: 0;
+            border-right: 3px solid var(--primary);
         }
         .notification-item .notif-title {
             font-weight: 700;
             color: #1a2332;
-            font-size: 0.9rem;
         }
         .notification-item .notif-message {
             color: #4a5568;
             font-size: 0.8rem;
-            margin-top: 3px;
-            line-height: 1.5;
-            word-wrap: break-word;
+            margin-top: 2px;
         }
         .notification-item .notif-time {
             font-size: 0.6rem;
             color: #94a3b8;
-            margin-top: 5px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
+            margin-top: 4px;
         }
         .notification-empty {
-            padding: 40px 20px;
+            padding: 30px;
             text-align: center;
             color: #94a3b8;
             font-size: 0.85rem;
         }
         .notification-empty i {
-            font-size: 2.8rem;
+            font-size: 2rem;
             color: #e2e8f0;
             display: block;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
 
         .user-menu {
@@ -337,7 +300,9 @@
         }
 
         /* ===== SIDEBAR ===== */
-        .left-sidebar { display: none; }
+        .left-sidebar {
+            display: none;
+        }
 
         /* ===== CONTENT AREA ===== */
         .content-area {
@@ -362,6 +327,7 @@
         }
         .section-title i { color: var(--primary); }
 
+        /* ===== BUTTONS ===== */
         .section-actions {
             display: flex;
             gap: 10px;
@@ -455,9 +421,17 @@
             border: 3px solid white;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
-        .teacher-name { font-weight: 700; font-size: 0.95rem; color: #1a2332; }
-        .teacher-specialty { font-size: 0.75rem; color: #64748b; }
+        .teacher-name { 
+            font-weight: 700; 
+            font-size: 0.95rem; 
+            color: #1a2332;
+        }
+        .teacher-specialty { 
+            font-size: 0.75rem; 
+            color: #64748b; 
+        }
 
+        /* ===== STATUS BADGES ===== */
         .status-badge {
             display: inline-block;
             padding: 3px 12px;
@@ -467,7 +441,11 @@
             margin: 6px 0;
         }
         .status-upcoming { background: #f59e0b; color: white; }
-        .status-live { background: #ef4444; color: white; animation: pulse 1.5s infinite; }
+        .status-live { 
+            background: #ef4444; 
+            color: white; 
+            animation: pulse 1.5s infinite;
+        }
         .status-completed { background: #6b7280; color: white; }
         .status-teacher-ready { background: #8b5cf6; color: white; }
         @keyframes pulse {
@@ -487,6 +465,7 @@
             font-weight: 700;
         }
 
+        /* ===== BUTTONS INSIDE CARDS ===== */
         .start-stream-btn, .delete-btn, .message-teacher-btn {
             border: none;
             padding: 7px 14px;
@@ -526,6 +505,7 @@
             box-shadow: 0 6px 20px rgba(15, 92, 191, 0.3);
         }
 
+        /* ===== MOBILE BALANCE ===== */
         .mobile-balance {
             background: var(--gradient-main);
             color: white;
@@ -540,7 +520,10 @@
             width: 100%;
             box-shadow: 0 4px 16px rgba(15, 92, 191, 0.2);
         }
-        .mobile-balance .balance-amount { font-size: 1.4rem; font-weight: 900; }
+        .mobile-balance .balance-amount {
+            font-size: 1.4rem;
+            font-weight: 900;
+        }
         .mobile-withdraw-btn {
             background: rgba(255,255,255,0.15);
             color: white;
@@ -558,6 +541,7 @@
             border-color: white;
         }
 
+        /* ===== EARNINGS TABLE ===== */
         .earnings-table {
             width: 100%;
             border-collapse: collapse;
@@ -574,8 +558,11 @@
             font-weight: 700;
             color: #1a2332;
         }
-        .earnings-table tr:hover td { background: #fafbfc; }
+        .earnings-table tr:hover td {
+            background: #fafbfc;
+        }
 
+        /* ===== REFERRAL STYLES ===== */
         .referral-card {
             background: var(--gradient-gold);
             color: white;
@@ -598,7 +585,9 @@
             transition: var(--transition);
             margin: 8px 0;
         }
-        .referral-card .referral-code:hover { background: rgba(255,255,255,0.25); }
+        .referral-card .referral-code:hover {
+            background: rgba(255,255,255,0.25);
+        }
         .referral-card .share-btn {
             background: rgba(255,255,255,0.15);
             border: 1px solid rgba(255,255,255,0.2);
@@ -628,8 +617,14 @@
             padding: 10px;
             text-align: center;
         }
-        .referral-stats .stat-item .stat-number { font-size: 1.5rem; font-weight: 800; }
-        .referral-stats .stat-item .stat-label { font-size: 0.65rem; opacity: 0.7; }
+        .referral-stats .stat-item .stat-number {
+            font-size: 1.5rem;
+            font-weight: 800;
+        }
+        .referral-stats .stat-item .stat-label {
+            font-size: 0.65rem;
+            opacity: 0.7;
+        }
 
         .reward-item {
             background: rgba(255,255,255,0.08);
@@ -641,11 +636,24 @@
             align-items: center;
             border-bottom: 1px solid rgba(255,255,255,0.05);
         }
-        .reward-item .reward-icon { font-size: 1.1rem; margin-left: 8px; }
-        .reward-item .reward-amount { font-weight: 700; color: #fcd34d; }
-        .reward-item .reward-date { font-size: 0.6rem; opacity: 0.6; }
+        .reward-item .reward-icon {
+            font-size: 1.1rem;
+            margin-left: 8px;
+        }
+        .reward-item .reward-amount {
+            font-weight: 700;
+            color: #fcd34d;
+        }
+        .reward-item .reward-date {
+            font-size: 0.6rem;
+            opacity: 0.6;
+        }
 
-        .requests-list { max-height: 300px; overflow-y: auto; }
+        /* ===== REQUESTS ===== */
+        .requests-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
         .request-item {
             padding: 10px 12px;
             border-bottom: 1px solid #edf2f7;
@@ -669,6 +677,7 @@
         .status-completed { background: var(--secondary); color: white; }
         .status-rejected { background: #ef4444; color: white; }
 
+        /* ===== MESSAGES ===== */
         .messages-list { max-height: 500px; overflow-y: auto; }
         .conversation-item {
             padding: 14px 12px;
@@ -678,8 +687,16 @@
             border-radius: 4px;
         }
         .conversation-item:hover { background: #f8fafc; }
-        .conversation-name { font-weight: 700; color: var(--primary); font-size: 0.9rem; }
-        .conversation-last { font-size: 0.75rem; color: #64748b; margin-top: 4px; }
+        .conversation-name { 
+            font-weight: 700; 
+            color: var(--primary); 
+            font-size: 0.9rem;
+        }
+        .conversation-last { 
+            font-size: 0.75rem; 
+            color: #64748b; 
+            margin-top: 4px;
+        }
         .conversation-unread {
             background: var(--primary-light);
             border-right: 3px solid var(--primary);
@@ -694,7 +711,10 @@
             margin-bottom: 14px;
             border: 1px solid #edf2f7;
         }
-        .message-bubble { margin-bottom: 10px; display: flex; }
+        .message-bubble {
+            margin-bottom: 10px;
+            display: flex;
+        }
         .message-bubble.sent { justify-content: flex-end; }
         .message-bubble.received { justify-content: flex-start; }
         .message-content {
@@ -713,7 +733,11 @@
             color: #1a2332;
             border: 1px solid #edf2f7;
         }
-        .message-time { font-size: 0.6rem; margin-top: 5px; opacity: 0.6; }
+        .message-time {
+            font-size: 0.6rem;
+            margin-top: 5px;
+            opacity: 0.6;
+        }
 
         .chat-input-area {
             display: flex;
@@ -763,7 +787,10 @@
             font-weight: 600;
             transition: var(--transition);
         }
-        .back-to-list:hover { text-decoration: underline; color: var(--primary-dark); }
+        .back-to-list:hover { 
+            text-decoration: underline;
+            color: var(--primary-dark);
+        }
 
         /* ===== MODALS ===== */
         .modal-overlay {
@@ -801,7 +828,10 @@
             top: 0;
             z-index: 10;
         }
-        .modal-header h3 { font-size: 1rem; color: #1a2332; }
+        .modal-header h3 { 
+            font-size: 1rem; 
+            color: #1a2332;
+        }
         .modal-header h3 i { color: var(--primary); margin-left: 8px; }
         .modal-body { padding: 18px; }
         .modal-body input, .modal-body textarea {
@@ -845,7 +875,10 @@
         .modal-body .social-input-group .social-icon.youtube { background: #ff0000; }
         .modal-body .social-input-group .social-icon.twitter { background: #1da1f2; }
         .modal-body .social-input-group .social-icon.website { background: var(--secondary); }
-        .modal-body .social-input-group input { flex: 1; margin: 0; }
+        .modal-body .social-input-group input {
+            flex: 1;
+            margin: 0;
+        }
         .modal-body .social-divider {
             border: none;
             border-top: 2px dashed #edf2f7;
@@ -892,7 +925,10 @@
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(15, 92, 191, 0.3);
         }
-        .cancel-btn { background: #edf2f7; color: #4a5568; }
+        .cancel-btn { 
+            background: #edf2f7; 
+            color: #4a5568;
+        }
         .cancel-btn:hover { background: #e2e8f0; }
         .close-modal {
             background: none;
@@ -911,10 +947,23 @@
             gap: 10px;
             margin: 10px 0;
         }
-        .free-checkbox input { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
-        .free-checkbox label { font-size: 0.9rem; font-weight: 600; color: #4a5568; cursor: pointer; }
+        .free-checkbox input { 
+            width: 18px; 
+            height: 18px; 
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+        .free-checkbox label { 
+            font-size: 0.9rem; 
+            font-weight: 600;
+            color: #4a5568;
+            cursor: pointer;
+        }
 
-        .education-level-group { margin: 10px 0; }
+        /* ===== EDUCATION LEVEL STYLES ===== */
+        .education-level-group {
+            margin: 10px 0;
+        }
         .education-level-group label {
             display: block;
             margin-bottom: 4px;
@@ -922,7 +971,10 @@
             color: #1a2332;
             font-size: 0.9rem;
         }
-        .education-level-group label i { color: var(--primary); margin-left: 6px; }
+        .education-level-group label i {
+            color: var(--primary);
+            margin-left: 6px;
+        }
         .education-level-group select {
             width: 100%;
             padding: 10px 14px;
@@ -946,7 +998,11 @@
             box-shadow: 0 0 0 4px rgba(15, 92, 191, 0.06);
             background: white;
         }
+        .education-level-group select option {
+            padding: 8px;
+        }
 
+        /* ===== TOAST ===== */
         .notification-toast {
             position: fixed;
             bottom: 20px;
@@ -971,7 +1027,11 @@
             from { transform: translateY(100%) scale(0.95); opacity: 0; }
             to { transform: translateY(0) scale(1); opacity: 1; }
         }
-        .loading { text-align: center; padding: 30px; color: #94a3b8; }
+        .loading { 
+            text-align: center; 
+            padding: 30px; 
+            color: #94a3b8; 
+        }
         .loading i { color: var(--primary); }
         .expired-notice {
             background: #fef3c7;
@@ -984,6 +1044,7 @@
             border-right: 3px solid #f59e0b;
         }
 
+        /* ===== SIDEBAR STYLES ===== */
         .left-sidebar { position: sticky; top: 72px; height: fit-content; }
         .profile-card {
             background: white;
@@ -1004,8 +1065,17 @@
             box-shadow: 0 4px 16px rgba(0,0,0,0.1);
             cursor: pointer;
         }
-        .profile-name { font-size: 1rem; font-weight: 800; margin-bottom: 4px; color: #1a2332; }
-        .profile-specialty { color: #64748b; font-size: 0.75rem; margin-bottom: 12px; }
+        .profile-name { 
+            font-size: 1rem; 
+            font-weight: 800; 
+            margin-bottom: 4px;
+            color: #1a2332;
+        }
+        .profile-specialty { 
+            color: #64748b; 
+            font-size: 0.75rem; 
+            margin-bottom: 12px; 
+        }
         .edit-profile-btn {
             background: #edf2f7;
             border: none;
@@ -1018,7 +1088,10 @@
             transition: var(--transition);
             color: #1a2332;
         }
-        .edit-profile-btn:hover { background: var(--primary); color: white; }
+        .edit-profile-btn:hover { 
+            background: var(--primary);
+            color: white;
+        }
 
         .balance-card {
             background: var(--gradient-main);
@@ -1029,7 +1102,11 @@
             text-align: center;
             box-shadow: 0 4px 16px rgba(15, 92, 191, 0.2);
         }
-        .balance-amount { font-size: 1.8rem; font-weight: 900; margin: 6px 0; }
+        .balance-amount { 
+            font-size: 1.8rem; 
+            font-weight: 900; 
+            margin: 6px 0;
+        }
         .withdraw-btn {
             background: rgba(255,255,255,0.15);
             color: white;
@@ -1043,7 +1120,11 @@
             font-size: 0.8rem;
             transition: var(--transition);
         }
-        .withdraw-btn:hover { background: white; color: var(--primary); border-color: white; }
+        .withdraw-btn:hover {
+            background: white;
+            color: var(--primary);
+            border-color: white;
+        }
 
         .shortcut-item {
             display: flex;
@@ -1055,7 +1136,10 @@
             transition: var(--transition);
             text-align: right;
         }
-        .shortcut-item:hover { background: var(--primary-light); color: var(--primary); }
+        .shortcut-item:hover { 
+            background: var(--primary-light);
+            color: var(--primary);
+        }
         .shortcut-icon {
             width: 36px;
             height: 36px;
@@ -1068,7 +1152,10 @@
             flex-shrink: 0;
             transition: var(--transition);
         }
-        .shortcut-item:hover .shortcut-icon { background: var(--primary); color: white; }
+        .shortcut-item:hover .shortcut-icon {
+            background: var(--primary);
+            color: white;
+        }
 
         /* ===== RESPONSIVE ===== */
         @media (min-width: 500px) {
@@ -1094,7 +1181,7 @@
             .user-menu img { width: 28px; height: 28px; }
             .content-area { padding: 22px; }
             .section-title { font-size: 1.15rem; }
-            .notification-dropdown { width: 400px; left: -80px; }
+            .notification-dropdown { width: 400px; left: -50px; }
         }
 
         @media (min-width: 992px) {
@@ -1107,7 +1194,7 @@
             .teachers-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
             .content-area { padding: 24px; }
             .nav-icon-btn { width: 44px; height: 44px; font-size: 1.1rem; }
-            .notification-dropdown { width: 440px; left: -100px; }
+            .notification-dropdown { width: 440px; left: -70px; }
         }
 
         @media (max-width: 400px) {
@@ -1128,7 +1215,7 @@
             .modal-body .social-input-group { flex-wrap: wrap; }
             .referral-stats { grid-template-columns: 1fr 1fr; gap: 6px; }
             .referral-stats .stat-item .stat-number { font-size: 1.2rem; }
-            .notification-dropdown { width: 300px; left: -140px; }
+            .notification-dropdown { width: 300px; left: -120px; }
         }
 
         @media (max-height: 500px) and (orientation: landscape) {
@@ -1137,6 +1224,34 @@
             .left-sidebar { top: 52px; }
             .profile-avatar { width: 50px; height: 50px; }
             .modal { max-height: 85vh; }
+        }
+
+        /* ===== TAB STYLES ===== */
+        .tab-container {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            border-bottom: 2px solid #edf2f7;
+            padding-bottom: 8px;
+        }
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.85rem;
+            transition: var(--transition);
+            color: #64748b;
+            font-family: 'Cairo', sans-serif;
+        }
+        .tab-btn:hover { background: var(--primary-light); }
+        .tab-btn.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(15, 92, 191, 0.3);
         }
     </style>
 </head>
@@ -1149,7 +1264,7 @@
                 <span>Zoom<span class="highlight">Dz</span></span>
             </div>
             <div class="nav-icons">
-                <button class="nav-icon-btn active" onclick="showSection('profile')" title="ملفي">
+                <button class="nav-icon-btn" onclick="showSection('profile')" title="ملفي">
                     <i class="fas fa-user"></i>
                     <span class="tooltip">ملفي</span>
                 </button>
@@ -1174,13 +1289,14 @@
                     <span class="tooltip">الرسائل</span>
                 </button>
                 <!-- ===== NOTIFICATION ICON ===== -->
-                <button class="nav-icon-btn" onclick="toggleNotifications(event)" title="الإشعارات" style="position:relative;">
+                <button class="nav-icon-btn" onclick="toggleNotifications()" title="الإشعارات" style="position:relative;">
                     <i class="fas fa-bell"></i>
                     <span class="notification-badge" id="notificationBadge">0</span>
                     <span class="tooltip">الإشعارات</span>
+                    <!-- Notification Dropdown -->
                     <div class="notification-dropdown" id="notificationDropdown">
                         <div class="notification-dropdown-header">
-                            <h4><i class="fas fa-bell"></i> الإشعارات</h4>
+                            <h4><i class="fas fa-bell" style="color:var(--primary);"></i> الإشعارات</h4>
                             <button class="mark-all-btn" onclick="markAllNotifications()">تحديد الكل كمقروء</button>
                         </div>
                         <div id="notificationList"></div>
@@ -1207,7 +1323,7 @@
             </div>
             <div class="balance-card">
                 <i class="fas fa-wallet" style="font-size: 1.3rem; opacity:0.8;"></i>
-                <div class="balance-amount" id="balanceAmount">0 DA</div>
+                <div class="balance-amount" id="balanceAmount">0 دج</div>
                 <div style="font-size: 0.75rem; opacity:0.7;">الرصيد المتاح</div>
                 <button class="withdraw-btn" onclick="showWithdrawModal()"><i class="fas fa-hand-holding-usd"></i> سحب الأرباح</button>
             </div>
@@ -1247,7 +1363,7 @@
         <div class="content-area">
             <!-- Mobile Balance -->
             <div class="mobile-balance">
-                <div><i class="fas fa-wallet"></i> <span class="balance-amount" id="mobileBalanceAmount">0 DA</span></div>
+                <div><i class="fas fa-wallet"></i> <span class="balance-amount" id="mobileBalanceAmount">0 دج</span></div>
                 <button class="mobile-withdraw-btn" onclick="showWithdrawModal()"><i class="fas fa-hand-holding-usd"></i> سحب</button>
             </div>
 
@@ -1278,24 +1394,29 @@
             <!-- Referral Section -->
             <div id="referralSection" style="display: none;">
                 <div class="section-title"><i class="fas fa-link" style="color:var(--gold);"></i> نظام الإحالة</div>
+                
+                <!-- Referral Card -->
                 <div class="referral-card">
                     <h4 style="margin-bottom:6px;"><i class="fas fa-gift"></i> رمز الإحالة الخاص بك</h4>
-                    <p style="font-size:0.8rem; opacity:0.8; margin-bottom:6px;">شارك هذا الرمز مع طلابك واحصل على 100 DA لكل طالب يسجل من خلالك</p>
+                    <p style="font-size:0.8rem; opacity:0.8; margin-bottom:6px;">شارك هذا الرمز مع طلابك واحصل على 100 دج لكل طالب يسجل من خلالك</p>
                     <div class="referral-code" id="referralCodeDisplay" onclick="copyReferralCode()">
                         <span id="referralCodeText">جاري التحميل...</span>
                     </div>
                     <button class="share-btn" onclick="shareReferral()"><i class="fas fa-share-alt"></i> مشاركة الرابط</button>
+                    
                     <div class="referral-stats">
                         <div class="stat-item">
                             <div class="stat-number" id="referredCount">0</div>
                             <div class="stat-label">عدد المحالين</div>
                         </div>
                         <div class="stat-item">
-                            <div class="stat-number" id="referralBalance">0 DA</div>
+                            <div class="stat-number" id="referralBalance">0 دج</div>
                             <div class="stat-label">مكافآت الإحالة</div>
                         </div>
                     </div>
                 </div>
+
+                <!-- Reward History -->
                 <div style="margin-top:16px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                         <h4 style="font-size:0.95rem;"><i class="fas fa-history" style="color:var(--gold);"></i> سجل المكافآت</h4>
@@ -1330,6 +1451,7 @@
     <!-- ===== MODALS ===== -->
     <div id="modalOverlay" class="modal-overlay"></div>
     
+    <!-- ===== EDIT PROFILE MODAL ===== -->
     <div id="editProfileModal" class="modal">
         <div class="modal-header">
             <h3><i class="fas fa-edit"></i> تعديل الملف الشخصي</h3>
@@ -1345,10 +1467,13 @@
                 </label>
                 <input type="file" id="editProfileImage" accept="image/*">
             </div>
+
             <hr class="social-divider">
+
             <div style="margin: 16px 0;">
                 <div class="social-label"><i class="fas fa-share-alt"></i> روابط التواصل الاجتماعي</div>
                 <p style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 12px;">أضف روابط صفحاتك على منصات التواصل الاجتماعي لتظهر للطلاب</p>
+
                 <div class="social-input-group">
                     <div class="social-icon facebook"><i class="fab fa-facebook-f"></i></div>
                     <input type="url" id="facebookUrl" placeholder="رابط فيسبوك">
@@ -1387,7 +1512,7 @@
             <button class="close-modal" onclick="closeWithdrawModal()">&times;</button>
         </div>
         <div class="modal-body">
-            <p style="font-size: 0.9rem;"><strong>الرصيد المتاح: <span id="withdrawBalance">0</span> DA</strong></p>
+            <p style="font-size: 0.9rem;"><strong>الرصيد المتاح: <span id="withdrawBalance">0</span> دج</strong></p>
             <input type="number" id="withdrawAmount" placeholder="المبلغ المراد سحبه" min="100">
             <input type="text" id="ccpAccount" placeholder="رقم حساب CCP (20 رقم)">
         </div>
@@ -1397,6 +1522,7 @@
         </div>
     </div>
 
+    <!-- ===== CREATE OFFER MODAL ===== -->
     <div id="createOfferModal" class="modal">
         <div class="modal-header">
             <h3><i class="fas fa-plus"></i> عرض جديد</h3>
@@ -1406,6 +1532,7 @@
             <input type="text" id="subjectName" placeholder="اسم المادة" required>
             <input type="number" id="duration" placeholder="المدة (بالدقائق)" value="60">
             <input type="datetime-local" id="offerDate" required>
+            
             <div class="education-level-group">
                 <label><i class="fas fa-graduation-cap"></i> المستوى التعليمي</label>
                 <select id="educationLevel" onchange="toggleOtherLevel()">
@@ -1417,14 +1544,16 @@
                     <option value="other">آخر</option>
                 </select>
             </div>
+
             <div id="otherLevelGroup" style="display: none; margin-bottom: 10px;">
                 <input type="text" id="otherLevelText" placeholder="أدخل المستوى التعليمي المطلوب...">
             </div>
+
             <div class="free-checkbox">
                 <input type="checkbox" id="isFree" onchange="togglePrice()">
                 <label>حصة مجانية</label>
             </div>
-            <input type="number" id="price" placeholder="السعر (DA)" value="1000">
+            <input type="number" id="price" placeholder="السعر (دج)" value="1000">
         </div>
         <div class="modal-footer">
             <button class="cancel-btn" onclick="closeModal()">إلغاء</button>
@@ -1441,12 +1570,12 @@
         let currentChatTeacher = null;
         let referralData = null;
         let notifications = [];
-        let notificationInterval = null;
 
         // ===== TOGGLE OTHER LEVEL =====
         function toggleOtherLevel() {
             const level = document.getElementById('educationLevel').value;
-            document.getElementById('otherLevelGroup').style.display = level === 'other' ? 'block' : 'none';
+            const otherGroup = document.getElementById('otherLevelGroup');
+            otherGroup.style.display = level === 'other' ? 'block' : 'none';
         }
 
         // ===== NOTIFICATIONS =====
@@ -1454,11 +1583,9 @@
             try {
                 const res = await fetch(`/api/notifications/${teacherId}/teacher`);
                 const data = await res.json();
-                if (Array.isArray(data)) {
-                    notifications = data;
-                    updateNotificationBadge();
-                    renderNotifications();
-                }
+                notifications = data || [];
+                updateNotificationBadge();
+                renderNotifications();
             } catch(e) {
                 console.error('خطأ في تحميل الإشعارات:', e);
             }
@@ -1475,16 +1602,6 @@
             }
         }
 
-        function getNotificationIcon(title) {
-            if (title.includes('حجز')) return '📚';
-            if (title.includes('رصيد') || title.includes('شحن')) return '💰';
-            if (title.includes('سحب')) return '💳';
-            if (title.includes('بث') || title.includes('مباشر')) return '📺';
-            if (title.includes('رسالة')) return '💬';
-            if (title.includes('مكافأة') || title.includes('إحالة')) return '🎁';
-            return '🔔';
-        }
-
         function renderNotifications() {
             const container = document.getElementById('notificationList');
             if (!notifications || notifications.length === 0) {
@@ -1499,41 +1616,24 @@
             let html = '';
             for (const notif of notifications) {
                 const date = new Date(notif.created_at);
-                const icon = getNotificationIcon(notif.title);
                 html += `
                     <div class="notification-item ${notif.is_read ? '' : 'unread'}" onclick="markNotificationRead(${notif.id})">
-                        <span class="notif-icon">${icon}</span>
-                        <div class="notif-content">
-                            <div class="notif-title">${escapeHtml(notif.title)}</div>
-                            <div class="notif-message">${escapeHtml(notif.message)}</div>
-                            <div class="notif-time"><i class="far fa-clock"></i> ${date.toLocaleString('ar')}</div>
-                        </div>
+                        <div class="notif-title">${escapeHtml(notif.title)}</div>
+                        <div class="notif-message">${escapeHtml(notif.message)}</div>
+                        <div class="notif-time">${date.toLocaleString('ar')}</div>
                     </div>
                 `;
             }
             container.innerHTML = html;
         }
 
-        function toggleNotifications(event) {
-            if (event) event.stopPropagation();
+        function toggleNotifications() {
             const dropdown = document.getElementById('notificationDropdown');
-            const isOpen = dropdown.classList.contains('open');
-            
-            if (!isOpen) {
+            dropdown.classList.toggle('open');
+            if (dropdown.classList.contains('open')) {
                 loadNotifications();
-                dropdown.classList.add('open');
-            } else {
-                dropdown.classList.remove('open');
             }
         }
-
-        document.addEventListener('click', function(event) {
-            const dropdown = document.getElementById('notificationDropdown');
-            const button = event.target.closest('.nav-icon-btn');
-            if (!button && dropdown.classList.contains('open')) {
-                dropdown.classList.remove('open');
-            }
-        });
 
         async function markNotificationRead(notificationId) {
             try {
@@ -1549,20 +1649,17 @@
 
         async function markAllNotifications() {
             try {
-                let count = 0;
                 for (const notif of notifications) {
                     if (!notif.is_read) {
                         await fetch(`/api/notifications/read/${notif.id}`, { method: 'POST' });
                         notif.is_read = true;
-                        count++;
                     }
                 }
                 updateNotificationBadge();
                 renderNotifications();
-                showNotification(`✅ تم تحديد ${count} إشعار كمقروء`, 'success');
+                showNotification('تم تحديد جميع الإشعارات كمقروءة', 'success');
             } catch(e) {
                 console.error('خطأ:', e);
-                showNotification('❌ حدث خطأ', 'error');
             }
         }
 
@@ -1593,9 +1690,6 @@
                 loadBalance();
                 loadReferralData();
                 loadNotifications();
-                
-                if (notificationInterval) clearInterval(notificationInterval);
-                notificationInterval = setInterval(loadNotifications, 15000);
             } catch(e) { console.error(e); }
         }
 
@@ -1626,6 +1720,7 @@
                     hasSocial = true;
                 }
             }
+            
             if (!hasSocial) {
                 socialLinksHtml = `<span style="color: #94a3b8; font-size: 0.8rem;">لا توجد روابط تواصل اجتماعي مضاف</span>`;
             }
@@ -1656,16 +1751,19 @@
                     body: JSON.stringify({ user_id: teacherId, role: 'teacher' })
                 });
                 const createData = await createRes.json();
+                
                 if (createData.success) {
                     document.getElementById('referralCodeText').innerText = createData.referral_code || 'غير متوفر';
                 }
 
                 const infoRes = await fetch(`/api/referral/info/${teacherId}/teacher`);
                 const infoData = await infoRes.json();
+                
                 if (infoData.success) {
                     referralData = infoData;
                     document.getElementById('referredCount').innerText = infoData.referred_count || 0;
-                    document.getElementById('referralBalance').innerText = (infoData.total_reward || 0) + ' DA';
+                    document.getElementById('referralBalance').innerText = (infoData.total_reward || 0) + ' دج';
+
                     renderRewardHistory(infoData.rewards || []);
                 }
             } catch(e) {
@@ -1684,13 +1782,13 @@
                 const date = new Date(reward.created_at);
                 const amount = reward.amount || 0;
                 html += `
-                    <div class="reward-item">
+                    <div class="reward-item" style="background:rgba(255,255,255,0.08); border-radius:8px; padding:10px 14px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.05);">
                         <div>
                             <span class="reward-icon">💰</span>
                             <span style="font-weight:600;">مكافأة إحالة</span>
                             <div class="reward-date">${date.toLocaleDateString('ar')}</div>
                         </div>
-                        <div class="reward-amount">+${amount} DA</div>
+                        <div class="reward-amount">+${amount} دج</div>
                     </div>
                 `;
             }
@@ -1776,8 +1874,10 @@
                 name: otherName, 
                 image: otherImage || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(otherName) + '&background=0f5cbf&color=fff&size=40' 
             };
+            
             document.getElementById('conversationsList').style.display = 'none';
             document.getElementById('chatView').style.display = 'block';
+            
             document.getElementById('chatHeader').innerHTML = `
                 <div style="display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 2px solid #edf2f7;">
                     <img src="${currentChatTeacher.image}" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary);">
@@ -1787,6 +1887,7 @@
                     </div>
                 </div>
             `;
+            
             document.getElementById('messageInput').value = '';
             loadConversationMessages(otherId);
             showSection('messages');
@@ -1830,8 +1931,14 @@
 
         async function sendMessageToTeacher() {
             const message = document.getElementById('messageInput').value.trim();
-            if (!message) { showNotification('الرجاء كتابة رسالة', 'error'); return; }
-            if (!currentChatTeacher) { showNotification('الرجاء اختيار مستلم الرسالة', 'error'); return; }
+            if (!message) { 
+                showNotification('الرجاء كتابة رسالة', 'error'); 
+                return; 
+            }
+            if (!currentChatTeacher) {
+                showNotification('الرجاء اختيار مستلم الرسالة', 'error');
+                return;
+            }
             
             try {
                 const res = await fetch('/api/messages/send', {
@@ -1853,7 +1960,9 @@
                 } else {
                     showNotification(data.error || 'حدث خطأ', 'error');
                 }
-            } catch(e) { showNotification('حدث خطأ في الإرسال', 'error'); }
+            } catch(e) { 
+                showNotification('حدث خطأ في الإرسال', 'error'); 
+            }
         }
 
         async function loadConversations() {
@@ -1919,16 +2028,16 @@
             try {
                 const res = await fetch(`/api/teacher/balance/${teacherId}`);
                 const data = await res.json();
-                const balanceText = (data.balance || 0) + ' DA';
+                const balanceText = (data.balance || 0) + ' دج';
                 document.getElementById('balanceAmount').innerText = balanceText;
                 document.getElementById('mobileBalanceAmount').innerText = balanceText;
                 document.getElementById('withdrawBalance').innerText = data.balance || 0;
                 
                 let earningsHtml = `
                     <div style="background: #f8fafc; border-radius: var(--radius-sm); padding: 14px; margin-bottom: 16px; border: 1px solid #edf2f7;">
-                        <h3 style="font-size: 1rem; color:#1a2332;">إجمالي الأرباح: ${data.total_earned || 0} DA</h3>
-                        <p style="font-size: 0.9rem; color:#4a5568;">الرصيد المتاح للسحب: ${data.balance || 0} DA</p>
-                        <p style="font-size: 0.75rem; color: #94a3b8;">* الحد الأدنى للسحب: 100 DA</p>
+                        <h3 style="font-size: 1rem; color:#1a2332;">إجمالي الأرباح: ${data.total_earned || 0} دج</h3>
+                        <p style="font-size: 0.9rem; color:#4a5568;">الرصيد المتاح للسحب: ${data.balance || 0} دج</p>
+                        <p style="font-size: 0.75rem; color: #94a3b8;">* الحد الأدنى للسحب: 100 دج</p>
                     </div>
                     <h4 style="font-size: 0.95rem; color:#1a2332; margin-bottom:10px;">المدفوعات المستحقة:</h4>
                     <div style="overflow-x: auto;">
@@ -1938,7 +2047,7 @@
                 `;
                 if (data.sessions && data.sessions.length > 0) {
                     for (const s of data.sessions) {
-                        earningsHtml += `<tr><td>${escapeHtml(s.offers?.subject_name || 'غير معروف')}</td><td>${s.teacher_earned || s.payment_amount} DA</td><td>${new Date(s.created_at).toLocaleDateString()}</td></tr>`;
+                        earningsHtml += `<tr><td>${escapeHtml(s.offers?.subject_name || 'غير معروف')}</td><td>${s.teacher_earned || s.payment_amount} دج</td><td>${new Date(s.created_at).toLocaleDateString()}</td></tr>`;
                     }
                 } else {
                     earningsHtml += `<tr><td colspan="3" style="text-align:center; color:#94a3b8;">لا توجد مدفوعات حتى الآن</td></tr>`;
@@ -1963,7 +2072,7 @@
                     if (req.status === 'pending') { statusClass = 'status-pending'; statusText = 'قيد المراجعة'; }
                     else if (req.status === 'completed') { statusClass = 'status-completed'; statusText = 'تم الدفع'; }
                     else { statusClass = 'status-rejected'; statusText = 'مرفوض'; }
-                    html += `<div class="request-item"><div><strong style="color:#1a2332;">${req.amount} DA</strong><br><small style="font-size:0.65rem; color:#94a3b8;">حساب CCP: ${req.ccp_account}</small></div><div><span class="request-status ${statusClass}">${statusText}</span></div></div>`;
+                    html += `<div class="request-item"><div><strong style="color:#1a2332;">${req.amount} دج</strong><br><small style="font-size:0.65rem; color:#94a3b8;">حساب CCP: ${req.ccp_account}</small></div><div><span class="request-status ${statusClass}">${statusText}</span></div></div>`;
                 }
                 html += '</div>';
                 document.getElementById('withdrawRequestsList').innerHTML = html;
@@ -1978,8 +2087,7 @@
             else if (type === 'warning') toast.classList.add('warning');
             toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'}"></i> ${message}`;
             toast.style.display = 'block';
-            clearTimeout(toast._timeout);
-            toast._timeout = setTimeout(() => { toast.style.display = 'none'; }, 4000);
+            setTimeout(() => { toast.style.display = 'none'; }, 4000);
         }
 
         // ===== SECTION NAVIGATION =====
@@ -1997,8 +2105,6 @@
             if (sectionMap[section] !== undefined) {
                 icons[sectionMap[section]].classList.add('active');
             }
-            
-            document.getElementById('notificationDropdown').classList.remove('open');
             
             if (section === 'offers') loadOffers();
             if (section === 'earnings') loadBalance();
@@ -2026,7 +2132,9 @@
             formData.append('teacher_id', teacherId);
             
             const imageFile = document.getElementById('editProfileImage').files[0];
-            if (imageFile) { formData.append('profile_image', imageFile); }
+            if (imageFile) {
+                formData.append('profile_image', imageFile);
+            }
             
             const socialData = {
                 facebook_url: document.getElementById('facebookUrl').value.trim() || null,
@@ -2057,7 +2165,9 @@
                 } else {
                     showNotification(data.error || 'حدث خطأ', 'error');
                 }
-            } catch(e) { showNotification('حدث خطأ في الاتصال', 'error'); }
+            } catch(e) {
+                showNotification('حدث خطأ في الاتصال', 'error');
+            }
         }
 
         // ===== WITHDRAW =====
@@ -2068,15 +2178,10 @@
             document.getElementById('ccpAccount').value = '';
         }
 
-        function closeWithdrawModal() {
-            document.getElementById('modalOverlay').style.display = 'none';
-            document.getElementById('withdrawModal').style.display = 'none';
-        }
-
         async function submitWithdrawRequest() {
             const amount = document.getElementById('withdrawAmount').value;
             const ccpAccount = document.getElementById('ccpAccount').value;
-            if (!amount || amount < 100) { showNotification('المبلغ يجب أن لا يقل عن 100 DA', 'error'); return; }
+            if (!amount || amount < 100) { showNotification('المبلغ يجب أن لا يقل عن 100 دج', 'error'); return; }
             if (!ccpAccount || ccpAccount.length < 10) { showNotification('الرجاء إدخال رقم حساب CCP صحيح', 'error'); return; }
             try {
                 const res = await fetch('/api/teacher/withdraw-request', {
@@ -2110,6 +2215,7 @@
             const now = new Date();
             let html = '';
             let expiredCount = 0;
+            
             const levelMap = {
                 'primary': 'خامسة ابتدائي',
                 'middle': 'شهادة التعليم المتوسط',
@@ -2131,7 +2237,7 @@
                 else { statusText = '⏳ قادم'; statusClass = 'status-upcoming'; }
                 
                 const isFree = offer.is_free === 1 || offer.is_free === true;
-                const priceDisplay = isFree ? '🎁 مجانية' : `💰 ${offer.price} DA`;
+                const priceDisplay = isFree ? '🎁 مجانية' : `💰 ${offer.price} دج`;
                 
                 let levelDisplay = '';
                 if (offer.education_level) {
@@ -2153,6 +2259,7 @@
                     ${offer.status === 'upcoming' || isExpired ? `<button class="delete-btn" onclick="deleteOffer(${offer.id})"><i class="fas fa-trash"></i> حذف</button>` : ''}
                 </div>`;
             }
+            
             container.innerHTML = html;
             
             if (expiredCount > 0) {
@@ -2178,10 +2285,12 @@
                 const offerDate = new Date(o.offer_date);
                 return offerDate < now && o.status !== 'live' && o.status !== 'teacher_ready';
             });
+            
             if (expiredOffers.length === 0) {
                 showNotification('لا توجد عروض منتهية للحذف', 'warning');
                 return;
             }
+            
             if (!confirm(`⚠️ هل أنت متأكد من حذف ${expiredOffers.length} عرض(عروض) منتهية؟`)) return;
             
             let deletedCount = 0;
@@ -2196,6 +2305,7 @@
                     if (data.success) deletedCount++;
                 } catch(e) { console.log(e); }
             }
+            
             showNotification(`✅ تم حذف ${deletedCount} عرض منتهٍ`, 'success');
             const existingNotice = document.querySelector('.expired-notice');
             if (existingNotice) existingNotice.remove();
@@ -2219,8 +2329,12 @@
                     body: JSON.stringify({ teacher_id: teacherId }) 
                 });
                 const data = await res.json();
-                if (data.success) { showNotification('تم حذف العرض', 'success'); loadOffers(); } 
-                else { showNotification(data.error, 'error'); }
+                if (data.success) { 
+                    showNotification('تم حذف العرض', 'success'); 
+                    loadOffers(); 
+                } else { 
+                    showNotification(data.error, 'error'); 
+                }
             }
         }
 
@@ -2244,7 +2358,11 @@
             const offer_date = document.getElementById('offerDate').value;
             const educationLevel = document.getElementById('educationLevel').value;
             
-            if (!subject_name || !offer_date) { showNotification('يرجى ملء جميع الحقول المطلوبة', 'error'); return; }
+            if (!subject_name || !offer_date) { 
+                showNotification('يرجى ملء جميع الحقول المطلوبة', 'error'); 
+                return; 
+            }
+            
             if (!educationLevel) {
                 showNotification('⚠️ الرجاء اختيار المستوى التعليمي', 'warning');
                 document.getElementById('educationLevel').focus();
@@ -2286,7 +2404,9 @@
                 } else { 
                     showNotification(result.error || '❌ حدث خطأ', 'error'); 
                 }
-            } catch(e) { showNotification('❌ حدث خطأ في الاتصال', 'error'); }
+            } catch(e) { 
+                showNotification('❌ حدث خطأ في الاتصال', 'error'); 
+            }
         }
 
         // ===== MODALS =====
@@ -2296,21 +2416,22 @@
             document.getElementById('createOfferModal').style.display = 'none';
         }
 
-        function logout() { 
-            if (notificationInterval) clearInterval(notificationInterval);
-            localStorage.clear(); 
-            window.location.href = '/'; 
+        function closeWithdrawModal() {
+            document.getElementById('modalOverlay').style.display = 'none';
+            document.getElementById('withdrawModal').style.display = 'none';
         }
-        
-        function escapeHtml(text) { 
-            if (!text) return ''; 
-            const div = document.createElement('div'); 
-            div.textContent = text; 
-            return div.innerHTML; 
-        }
+
+        function logout() { localStorage.clear(); window.location.href = '/'; }
+        function escapeHtml(text) { if (!text) return ''; const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
 
         // ===== INIT =====
         loadUserData().then(() => { showSection('profile'); });
+        setInterval(() => { 
+            if (document.getElementById('offersSection').style.display !== 'none') loadOffers(); 
+            if (document.getElementById('messagesSection').style.display !== 'none') loadConversations();
+            if (document.getElementById('referralSection').style.display !== 'none') loadReferralData();
+            loadNotifications();
+        }, 15000);
     </script>
 </body>
 </html>
