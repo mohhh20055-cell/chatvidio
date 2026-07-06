@@ -28,10 +28,12 @@
             --radius-md: 16px;
             --radius-lg: 24px;
             --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --nav-h-top: 60px;
+            --nav-h-tabs: 56px;
         }
-        body { 
-            font-family: 'Cairo', sans-serif; 
-            background: #f0f4f9; 
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: #f0f4f9;
             overflow-x: hidden;
             width: 100%;
             min-height: 100vh;
@@ -46,9 +48,8 @@
 
         /* ===== NAV ===== */
         .facebook-nav {
-            background: rgba(255,255,255,0.95);
+            background: rgba(255,255,255,0.97);
             backdrop-filter: blur(12px);
-            padding: 10px 20px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.06);
             position: fixed;
             top: 0;
@@ -58,15 +59,28 @@
             width: 100%;
             border-bottom: 1px solid rgba(0,0,0,0.04);
         }
-        .nav-content {
+        .nav-row {
             max-width: 1200px;
             margin: 0 auto;
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            flex-wrap: nowrap;
-            gap: 8px;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 0 16px;
+            width: 100%;
         }
+        .nav-row-top {
+            height: var(--nav-h-top);
+        }
+        .nav-row-tabs {
+            height: var(--nav-h-tabs);
+            border-top: 1px solid rgba(0,0,0,0.05);
+            overflow-x: auto;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .nav-row-tabs::-webkit-scrollbar { display: none; }
+
         .nav-logo {
             display: flex;
             align-items: center;
@@ -75,32 +89,34 @@
             flex-shrink: 0;
             text-decoration: none;
         }
-        .nav-logo i { 
-            font-size: 1.8rem; 
+        .nav-logo i {
+            font-size: 1.8rem;
             background: var(--gradient-main);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
-        .nav-logo span { 
-            font-size: 1.3rem; 
-            font-weight: 900; 
+        .nav-logo span {
+            font-size: 1.3rem;
+            font-weight: 900;
             background: var(--gradient-main);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
             letter-spacing: -0.5px;
         }
-        .nav-logo .highlight { 
+        .nav-logo .highlight {
             background: var(--gradient-secondary);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
-        .nav-icons { 
-            display: flex; 
-            gap: 6px; 
-            align-items: center; 
+
+        /* ===== TOP-ROW ICONS (bell + user) ===== */
+        .nav-icons {
+            display: flex;
+            gap: 6px;
+            align-items: center;
             flex-shrink: 0;
             position: relative;
         }
@@ -120,15 +136,10 @@
             color: #4a5568;
             position: relative;
         }
-        .nav-icon-btn:hover { 
-            background: var(--primary-light); 
+        .nav-icon-btn:hover {
+            background: var(--primary-light);
             color: var(--primary);
             transform: translateY(-1px);
-        }
-        .nav-icon-btn.active { 
-            background: var(--primary); 
-            color: white;
-            box-shadow: 0 4px 12px rgba(15, 92, 191, 0.3);
         }
         .nav-icon-btn .tooltip {
             display: none;
@@ -144,9 +155,69 @@
             white-space: nowrap;
             font-weight: 600;
         }
-        .nav-icon-btn:hover .tooltip {
-            display: block;
+        .nav-icon-btn:hover .tooltip { display: block; }
+
+        /* ===== TAB BAR (bottom row of nav) ===== */
+        .nav-tabs {
+            display: flex;
+            gap: 4px;
+            background: #f1f4f9;
+            padding: 4px;
+            border-radius: 30px;
+            flex-shrink: 0;
         }
+        .nav-tab-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: none;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 26px;
+            cursor: pointer;
+            font-family: 'Cairo', sans-serif;
+            font-weight: 700;
+            font-size: 0.78rem;
+            color: #4a5568;
+            transition: var(--transition);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .nav-tab-btn i { font-size: 0.9rem; }
+        .nav-tab-btn:hover { background: rgba(15, 92, 191, 0.08); color: var(--primary); }
+        .nav-tab-btn.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(15, 92, 191, 0.3);
+        }
+        .nav-tab-btn .tab-label { display: none; }
+
+        /* ===== WALLET PILL (in nav, next to tabs) ===== */
+        .wallet-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--gradient-secondary);
+            color: white;
+            padding: 8px 14px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.8rem;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+            flex-shrink: 0;
+            transition: var(--transition);
+            white-space: nowrap;
+            border: none;
+            font-family: 'Cairo', sans-serif;
+        }
+        .wallet-pill:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
+        }
+        .wallet-pill i.wallet-icon { font-size: 0.95rem; }
+        .wallet-pill i.wallet-plus { font-size: 0.85rem; opacity: 0.85; }
+        .wallet-pill .wallet-value { font-weight: 800; }
 
         /* ===== NOTIFICATION BELL ===== */
         .notification-bell { position: relative; cursor: pointer; }
@@ -296,25 +367,25 @@
             border-color: var(--primary);
             box-shadow: 0 2px 8px rgba(15, 92, 191, 0.1);
         }
-        .user-menu img { 
-            width: 28px; 
-            height: 28px; 
-            border-radius: 50%; 
+        .user-menu img {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
             object-fit: cover;
             border: 2px solid white;
             box-shadow: 0 2px 6px rgba(0,0,0,0.08);
         }
-        .user-menu span { 
-            font-weight: 600; 
-            font-size: 0.8rem; 
-            max-width: 60px; 
-            overflow: hidden; 
-            text-overflow: ellipsis; 
+        .user-menu span {
+            font-weight: 600;
+            font-size: 0.8rem;
+            max-width: 60px;
+            overflow: hidden;
+            text-overflow: ellipsis;
             white-space: nowrap;
             color: #1a2332;
         }
-        .user-menu i { 
-            font-size: 0.7rem; 
+        .user-menu i {
+            font-size: 0.7rem;
             color: #94a3b8;
             transition: var(--transition);
         }
@@ -334,7 +405,7 @@
         /* ===== MAIN WRAPPER ===== */
         .main-wrapper {
             max-width: 1200px;
-            margin: 80px auto 24px;
+            margin: calc(var(--nav-h-top) + var(--nav-h-tabs) + 24px) auto 24px;
             padding: 0 16px;
             display: grid;
             grid-template-columns: 1fr;
@@ -346,21 +417,21 @@
         .left-sidebar, .right-sidebar { display: none; }
 
         /* ===== CONTENT AREA ===== */
-        .content-area { 
-            background: white; 
-            border-radius: var(--radius-md); 
-            padding: 20px; 
-            box-shadow: var(--shadow-sm); 
+        .content-area {
+            background: white;
+            border-radius: var(--radius-md);
+            padding: 20px;
+            box-shadow: var(--shadow-sm);
             width: 100%;
             overflow: hidden;
             border: 1px solid rgba(0,0,0,0.04);
         }
-        .section-title { 
-            font-size: 1.15rem; 
-            font-weight: 800; 
-            margin-bottom: 18px; 
-            border-right: 4px solid var(--primary); 
-            padding-right: 14px; 
+        .section-title {
+            font-size: 1.15rem;
+            font-weight: 800;
+            margin-bottom: 18px;
+            border-right: 4px solid var(--primary);
+            padding-right: 14px;
             display: flex;
             align-items: center;
             gap: 10px;
@@ -396,41 +467,41 @@
             transition: var(--transition);
         }
         .offer-card:hover::before, .teacher-card:hover::before { opacity: 1; }
-        .offer-card:hover, .teacher-card:hover { 
-            transform: translateY(-3px); 
+        .offer-card:hover, .teacher-card:hover {
+            transform: translateY(-3px);
             box-shadow: var(--shadow-md);
             border-color: var(--primary-light);
         }
-        .offer-title { 
-            font-weight: 700; 
-            font-size: 1rem; 
-            margin-bottom: 6px; 
+        .offer-title {
+            font-weight: 700;
+            font-size: 1rem;
+            margin-bottom: 6px;
             color: var(--primary);
         }
-        .offer-info { 
-            font-size: 0.8rem; 
-            color: #64748b; 
-            margin: 4px 0; 
-            display: flex; 
-            align-items: center; 
-            gap: 6px; 
-            flex-wrap: wrap; 
+        .offer-info {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin: 4px 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
         }
-        .free-badge { 
+        .free-badge {
             background: var(--gradient-secondary);
-            color: white; 
-            padding: 2px 12px; 
-            border-radius: 20px; 
-            font-size: 0.65rem; 
+            color: white;
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 0.65rem;
             display: inline-block;
             font-weight: 600;
         }
-        .paid-badge { 
+        .paid-badge {
             background: var(--gradient-main);
-            color: white; 
-            padding: 2px 12px; 
-            border-radius: 20px; 
-            font-size: 0.65rem; 
+            color: white;
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 0.65rem;
             display: inline-block;
             font-weight: 600;
         }
@@ -448,38 +519,38 @@
             transition: var(--transition);
             box-shadow: 0 4px 12px rgba(15, 92, 191, 0.2);
         }
-        .book-btn.free { 
+        .book-btn.free {
             background: var(--gradient-secondary);
             box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
         }
-        .book-btn:hover { 
+        .book-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(15, 92, 191, 0.3);
         }
-        .book-btn:disabled { 
-            opacity: 0.5; 
+        .book-btn:disabled {
+            opacity: 0.5;
             cursor: not-allowed;
             transform: none !important;
             box-shadow: none !important;
         }
 
-        .teacher-avatar { 
-            width: 60px; 
-            height: 60px; 
-            border-radius: 50%; 
-            object-fit: cover; 
+        .teacher-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
             margin-bottom: 10px;
             border: 3px solid white;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
-        .teacher-name { 
-            font-weight: 700; 
-            font-size: 0.95rem; 
+        .teacher-name {
+            font-weight: 700;
+            font-size: 0.95rem;
             color: #1a2332;
         }
-        .teacher-specialty { 
-            font-size: 0.75rem; 
-            color: #64748b; 
+        .teacher-specialty {
+            font-size: 0.75rem;
+            color: #64748b;
         }
         .view-btn {
             background: #edf2f7;
@@ -494,7 +565,7 @@
             transition: var(--transition);
             color: #1a2332;
         }
-        .view-btn:hover { 
+        .view-btn:hover {
             background: var(--primary);
             color: white;
         }
@@ -504,41 +575,6 @@
             font-size: 0.7rem;
             margin-top: 6px;
             display: block;
-        }
-
-        /* ===== MOBILE WALLET ===== */
-        .mobile-wallet {
-            background: var(--gradient-secondary);
-            color: white;
-            border-radius: var(--radius-sm);
-            padding: 16px 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 16px;
-            width: 100%;
-            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.25);
-        }
-        .mobile-wallet .wallet-amount {
-            font-size: 1.5rem;
-            font-weight: 800;
-        }
-        .mobile-deposit-btn {
-            background: rgba(255,255,255,0.2);
-            color: white;
-            border: 2px solid rgba(255,255,255,0.3);
-            padding: 6px 18px;
-            border-radius: 30px;
-            font-weight: 700;
-            cursor: pointer;
-            font-size: 0.8rem;
-            transition: var(--transition);
-        }
-        .mobile-deposit-btn:hover {
-            background: white;
-            color: var(--secondary-dark);
         }
 
         /* ===== BOOKINGS & TRANSACTIONS ===== */
@@ -761,8 +797,8 @@
             align-items: center;
             background: #fafbfc;
         }
-        .modal-header h3 { 
-            font-size: 1.05rem; 
+        .modal-header h3 {
+            font-size: 1.05rem;
             color: #1a2332;
         }
         .modal-header h3 i { color: var(--primary); margin-left: 8px; }
@@ -782,21 +818,21 @@
             outline: none;
             box-shadow: 0 0 0 3px rgba(15, 92, 191, 0.1);
         }
-        .modal-footer { 
-            padding: 14px 20px; 
-            border-top: 1px solid #edf2f7; 
-            display: flex; 
-            gap: 10px; 
-            justify-content: flex-end; 
+        .modal-footer {
+            padding: 14px 20px;
+            border-top: 1px solid #edf2f7;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
             flex-wrap: wrap;
         }
-        .save-btn { 
+        .save-btn {
             background: var(--gradient-main);
-            color: white; 
-            border: none; 
-            padding: 8px 24px; 
-            border-radius: 30px; 
-            cursor: pointer; 
+            color: white;
+            border: none;
+            padding: 8px 24px;
+            border-radius: 30px;
+            cursor: pointer;
             font-weight: 700;
             transition: var(--transition);
         }
@@ -804,22 +840,22 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(15, 92, 191, 0.3);
         }
-        .cancel-btn { 
-            background: #edf2f7; 
-            border: none; 
-            padding: 8px 24px; 
-            border-radius: 30px; 
-            cursor: pointer; 
+        .cancel-btn {
+            background: #edf2f7;
+            border: none;
+            padding: 8px 24px;
+            border-radius: 30px;
+            cursor: pointer;
             font-weight: 600;
             transition: var(--transition);
         }
         .cancel-btn:hover { background: #e2e8f0; }
-        .close-modal { 
-            background: none; 
-            border: none; 
-            font-size: 1.6rem; 
-            cursor: pointer; 
-            line-height: 1; 
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 1.6rem;
+            cursor: pointer;
+            line-height: 1;
             padding: 0 4px;
             color: #94a3b8;
             transition: var(--transition);
@@ -855,7 +891,7 @@
         .loading i { color: var(--primary); }
 
         /* ===== SIDEBAR STYLES ===== */
-        .right-sidebar { position: sticky; top: 80px; height: fit-content; }
+        .right-sidebar { position: sticky; top: calc(var(--nav-h-top) + var(--nav-h-tabs) + 8px); height: fit-content; }
         .right-card {
             background: white;
             border-radius: var(--radius-sm);
@@ -864,18 +900,18 @@
             box-shadow: var(--shadow-sm);
             border: 1px solid rgba(0,0,0,0.04);
         }
-        .card-title { 
-            font-weight: 700; 
-            margin-bottom: 12px; 
-            display: flex; 
-            align-items: center; 
-            gap: 8px; 
+        .card-title {
+            font-weight: 700;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
             flex-wrap: wrap;
             color: #1a2332;
         }
         .card-title i { color: var(--primary); }
 
-        .left-sidebar { position: sticky; top: 80px; height: fit-content; }
+        .left-sidebar { position: sticky; top: calc(var(--nav-h-top) + var(--nav-h-tabs) + 8px); height: fit-content; }
         .profile-card {
             background: white;
             border-radius: var(--radius-sm);
@@ -895,17 +931,17 @@
             box-shadow: 0 4px 16px rgba(0,0,0,0.1);
             cursor: pointer;
         }
-        .profile-name { 
-            font-size: 1.1rem; 
-            font-weight: 800; 
+        .profile-name {
+            font-size: 1.1rem;
+            font-weight: 800;
             margin-bottom: 4px;
             color: #1a2332;
         }
-        .profile-email { 
-            color: #64748b; 
-            font-size: 0.75rem; 
-            margin-bottom: 12px; 
-            word-break: break-all; 
+        .profile-email {
+            color: #64748b;
+            font-size: 0.75rem;
+            margin-bottom: 12px;
+            word-break: break-all;
         }
         .edit-profile-btn {
             background: #edf2f7;
@@ -919,42 +955,9 @@
             transition: var(--transition);
             color: #1a2332;
         }
-        .edit-profile-btn:hover { 
+        .edit-profile-btn:hover {
             background: var(--primary);
             color: white;
-        }
-
-        .wallet-card {
-            background: var(--gradient-main);
-            color: white;
-            border-radius: var(--radius-sm);
-            padding: 18px;
-            margin-bottom: 16px;
-            text-align: center;
-            box-shadow: 0 4px 16px rgba(15, 92, 191, 0.2);
-        }
-        .wallet-amount {
-            font-size: 2rem;
-            font-weight: 900;
-            margin: 6px 0;
-        }
-        .deposit-btn {
-            background: rgba(255,255,255,0.15);
-            color: white;
-            border: 2px solid rgba(255,255,255,0.2);
-            padding: 7px 14px;
-            border-radius: 30px;
-            cursor: pointer;
-            font-weight: 700;
-            margin-top: 8px;
-            width: 100%;
-            font-size: 0.8rem;
-            transition: var(--transition);
-        }
-        .deposit-btn:hover {
-            background: white;
-            color: var(--primary);
-            border-color: white;
         }
 
         .shortcut-item {
@@ -967,7 +970,7 @@
             transition: var(--transition);
             text-align: right;
         }
-        .shortcut-item:hover { 
+        .shortcut-item:hover {
             background: var(--primary-light);
             color: var(--primary);
         }
@@ -991,6 +994,7 @@
         /* ===== RESPONSIVE ===== */
         @media (min-width: 600px) {
             .offers-grid, .teachers-grid { grid-template-columns: repeat(2, 1fr); }
+            .nav-tab-btn .tab-label { display: inline; }
         }
         @media (min-width: 768px) {
             .main-wrapper {
@@ -999,12 +1003,14 @@
                 padding: 0 20px;
             }
             .left-sidebar, .right-sidebar { display: block; }
-            .mobile-wallet { display: none; }
             .offers-grid, .teachers-grid { grid-template-columns: repeat(2, 1fr); }
+            .nav-row { padding: 0 20px; }
             .nav-logo i { font-size: 2rem; }
             .nav-logo span { font-size: 1.4rem; }
             .nav-icon-btn { width: 44px; height: 44px; font-size: 1.2rem; }
             .content-area { padding: 24px; }
+            .nav-tab-btn { font-size: 0.85rem; padding: 9px 18px; }
+            .wallet-pill { font-size: 0.85rem; padding: 9px 16px; }
         }
         @media (min-width: 992px) {
             .main-wrapper {
@@ -1020,6 +1026,7 @@
 
         /* ===== MOBILE FIXES ===== */
         @media (max-width: 400px) {
+            :root { --nav-h-top: 52px; --nav-h-tabs: 50px; }
             .nav-logo span { font-size: 0.9rem; }
             .nav-logo i { font-size: 1.4rem; }
             .nav-icon-btn { width: 32px; height: 32px; font-size: 0.8rem; }
@@ -1029,8 +1036,6 @@
             .content-area { padding: 12px; }
             .section-title { font-size: 1rem; }
             .offer-card, .teacher-card { padding: 12px; }
-            .mobile-wallet .wallet-amount { font-size: 1.2rem; }
-            .mobile-deposit-btn { font-size: 0.7rem; padding: 4px 12px; }
             .notification-dropdown {
                 width: 92vw;
                 right: 50%;
@@ -1039,13 +1044,16 @@
             }
             .referral-stats { grid-template-columns: 1fr 1fr; gap: 6px; }
             .referral-stats .stat-item .stat-number { font-size: 1.2rem; }
+            .nav-tab-btn { padding: 7px 12px; font-size: 0.72rem; }
+            .nav-tab-btn i { font-size: 0.82rem; }
+            .wallet-pill { padding: 7px 12px; font-size: 0.72rem; }
         }
         @media (max-height: 500px) and (orientation: landscape) {
-            .facebook-nav { padding: 4px 12px; min-height: 44px; }
-            .main-wrapper { margin-top: 56px; }
+            .facebook-nav { padding: 0; }
+            .nav-row-top { height: 44px; }
+            .nav-row-tabs { height: 40px; }
+            :root { --nav-h-top: 44px; --nav-h-tabs: 40px; }
             .profile-avatar { width: 50px; height: 50px; }
-            .left-sidebar { top: 56px; }
-            .right-sidebar { top: 56px; }
             .notification-dropdown {
                 max-height: 280px;
                 top: 42px;
@@ -1053,7 +1061,7 @@
             .notification-dropdown-body { max-height: 200px; }
         }
 
-        /* ===== TAB STYLES ===== */
+        /* ===== TAB STYLES (in-page tabs, unrelated to nav) ===== */
         .tab-container {
             display: flex;
             gap: 8px;
@@ -1085,29 +1093,12 @@
 <body>
     <!-- ===== NAV ===== -->
     <div class="facebook-nav">
-        <div class="nav-content">
+        <div class="nav-row nav-row-top">
             <div class="nav-logo" onclick="showSection('offers')">
                 <i class="fas fa-graduation-cap"></i>
                 <span>Zoom<span class="highlight">Dz</span></span>
             </div>
             <div class="nav-icons">
-                <button class="nav-icon-btn" onclick="showSection('offers')" title="العروض">
-                    <i class="fas fa-calendar-alt"></i>
-                    <span class="tooltip">العروض</span>
-                </button>
-                <button class="nav-icon-btn" onclick="showSection('teachers')" title="الأساتذة">
-                    <i class="fas fa-users"></i>
-                    <span class="tooltip">الأساتذة</span>
-                </button>
-                <button class="nav-icon-btn" onclick="showSection('bookings')" title="حجوزاتي">
-                    <i class="fas fa-bookmark"></i>
-                    <span class="tooltip">حجوزاتي</span>
-                </button>
-                <button class="nav-icon-btn" onclick="showSection('referral')" title="الإحالة">
-                    <i class="fas fa-link"></i>
-                    <span class="tooltip">الإحالة</span>
-                </button>
-                
                 <div class="notification-bell" id="notificationBell" onclick="toggleNotifications(event)">
                     <button class="nav-icon-btn" id="bellBtn" title="الإشعارات">
                         <i class="fas fa-bell"></i>
@@ -1127,13 +1118,39 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="user-menu" onclick="logout()">
                     <img id="navAvatar" src="https://via.placeholder.com/28" alt="صورة المستخدم">
                     <span id="navUserName"></span>
                     <i class="fas fa-chevron-down"></i>
                 </div>
             </div>
+        </div>
+
+        <div class="nav-row nav-row-tabs">
+            <div class="nav-tabs" id="navTabs">
+                <button class="nav-tab-btn" data-section="offers" onclick="showSection('offers')">
+                    <i class="fas fa-calendar-alt"></i><span class="tab-label">العروض</span>
+                </button>
+                <button class="nav-tab-btn" data-section="teachers" onclick="showSection('teachers')">
+                    <i class="fas fa-users"></i><span class="tab-label">الأساتذة</span>
+                </button>
+                <button class="nav-tab-btn" data-section="bookings" onclick="showSection('bookings')">
+                    <i class="fas fa-bookmark"></i><span class="tab-label">حجوزاتي</span>
+                </button>
+                <button class="nav-tab-btn" data-section="transactions" onclick="showSection('transactions')">
+                    <i class="fas fa-history"></i><span class="tab-label">المعاملات</span>
+                </button>
+                <button class="nav-tab-btn" data-section="referral" onclick="showSection('referral')">
+                    <i class="fas fa-link"></i><span class="tab-label">الإحالة</span>
+                </button>
+            </div>
+
+            <button class="wallet-pill" onclick="showDepositModal()" title="شحن الرصيد">
+                <i class="fas fa-wallet wallet-icon"></i>
+                <span class="wallet-value" id="walletAmount">0 دج</span>
+                <i class="fas fa-plus-circle wallet-plus"></i>
+            </button>
         </div>
     </div>
 
@@ -1148,12 +1165,6 @@
                 <div class="profile-name" id="sidebarName"></div>
                 <div class="profile-email" id="sidebarEmail"></div>
                 <button class="edit-profile-btn" onclick="showEditProfileModal()"><i class="fas fa-camera"></i> تغيير الصورة</button>
-            </div>
-            <div class="wallet-card">
-                <i class="fas fa-wallet" style="font-size: 1.3rem; opacity:0.8;"></i>
-                <div class="wallet-amount" id="walletAmount">0 دج</div>
-                <div style="font-size: 0.75rem; opacity:0.7;">الرصيد المتاح</div>
-                <button class="deposit-btn" onclick="showDepositModal()"><i class="fas fa-plus-circle"></i> شحن الرصيد</button>
             </div>
             <div class="profile-card" style="text-align:right;">
                 <div class="shortcut-item" onclick="showSection('offers')">
@@ -1176,17 +1187,15 @@
                     <div class="shortcut-icon" style="background:var(--gradient-gold);color:white;"><i class="fas fa-link"></i></div>
                     <span>نظام الإحالة</span>
                 </div>
+                <div class="shortcut-item" onclick="showDepositModal()">
+                    <div class="shortcut-icon" style="background:var(--gradient-secondary);color:white;"><i class="fas fa-plus-circle"></i></div>
+                    <span>شحن الرصيد</span>
+                </div>
             </div>
         </div>
 
         <!-- CONTENT -->
         <div class="content-area">
-            <!-- Mobile Wallet -->
-            <div class="mobile-wallet">
-                <div><i class="fas fa-wallet"></i> <span class="wallet-amount" id="mobileWalletAmount">0 دج</span></div>
-                <button class="mobile-deposit-btn" onclick="showDepositModal()"><i class="fas fa-plus-circle"></i> شحن</button>
-            </div>
-
             <div id="offersSection">
                 <div class="section-title"><i class="fas fa-calendar-alt"></i> العروض المتوفرة</div>
                 <div id="offersList" class="offers-grid"></div>
@@ -1207,7 +1216,7 @@
             <!-- ===== REFERRAL SECTION ===== -->
             <div id="referralSection" style="display: none;">
                 <div class="section-title"><i class="fas fa-link" style="color:var(--gold);"></i> نظام الإحالة</div>
-                
+
                 <!-- Referral Card -->
                 <div class="referral-card">
                     <h4 style="margin-bottom:6px;"><i class="fas fa-gift"></i> رمز الإحالة الخاص بك</h4>
@@ -1216,7 +1225,7 @@
                         <span id="referralCodeText">جاري التحميل...</span>
                     </div>
                     <button class="share-btn" onclick="shareReferral()"><i class="fas fa-share-alt"></i> مشاركة الرابط</button>
-                    
+
                     <div class="referral-stats">
                         <div class="stat-item">
                             <div class="stat-number" id="referredCount">0</div>
@@ -1273,7 +1282,7 @@
 
     <!-- ===== MODALS ===== -->
     <div id="modalOverlay" class="modal-overlay"></div>
-    
+
     <div id="editProfileModal" class="modal">
         <div class="modal-header">
             <h3><i class="fas fa-user-edit"></i> تعديل الملف الشخصي</h3>
@@ -1348,7 +1357,7 @@
             const dropdown = document.getElementById('notifDropdown');
             const overlay = document.getElementById('dropdownOverlay');
             const isOpen = dropdown.classList.contains('show');
-            if (isOpen) { closeNotifications(); } 
+            if (isOpen) { closeNotifications(); }
             else {
                 dropdown.classList.add('show');
                 overlay.classList.add('show');
@@ -1367,7 +1376,7 @@
             btn.disabled = true;
             btn.style.opacity = '0.5';
             btn.textContent = 'جاري...';
-            
+
             try {
                 const unreadNotifications = notifications.filter(n => !n.is_read);
                 if (unreadNotifications.length === 0) {
@@ -1447,7 +1456,6 @@
                 const data = await res.json();
                 currentBalance = data.balance || 0;
                 document.getElementById('walletAmount').innerText = currentBalance + ' دج';
-                document.getElementById('mobileWalletAmount').innerText = currentBalance + ' دج';
             } catch(e) { console.log(e); }
         }
 
@@ -1468,15 +1476,12 @@
             document.getElementById('bookingsSection').style.display = section === 'bookings' ? 'block' : 'none';
             document.getElementById('transactionsSection').style.display = section === 'transactions' ? 'block' : 'none';
             document.getElementById('referralSection').style.display = section === 'referral' ? 'block' : 'none';
-            
-            // تحديث حالة الأزرار
-            document.querySelectorAll('.nav-icon-btn').forEach(btn => btn.classList.remove('active'));
-            const icons = document.querySelectorAll('.nav-icon-btn');
-            if (section === 'offers') icons[0].classList.add('active');
-            else if (section === 'teachers') icons[1].classList.add('active');
-            else if (section === 'bookings') icons[2].classList.add('active');
-            else if (section === 'referral') icons[3].classList.add('active');
-            
+
+            // تحديث حالة تبويبات الشريط العلوي
+            document.querySelectorAll('.nav-tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.section === section);
+            });
+
             if (section === 'offers') loadOffers();
             else if (section === 'teachers') loadTeachers();
             else if (section === 'bookings') loadMyBookings();
@@ -1810,7 +1815,7 @@
                     body: JSON.stringify({ user_id: studentId, role: 'student' })
                 });
                 const createData = await createRes.json();
-                
+
                 if (createData.success) {
                     document.getElementById('referralCodeText').innerText = createData.referral_code || 'غير متوفر';
                 }
@@ -1818,14 +1823,14 @@
                 // جلب معلومات الإحالة
                 const infoRes = await fetch(`/api/referral/info/${studentId}/student`);
                 const infoData = await infoRes.json();
-                
+
                 if (infoData.success) {
                     referralData = infoData;
                     document.getElementById('referredCount').innerText = infoData.referred_count || 0;
                     const chances = infoData.gift_box_chances || 0;
                     document.getElementById('giftChances').innerText = chances;
                     document.getElementById('giftChancesDisplay').innerText = chances;
-                    
+
                     // تحديث زر صندوق الهدايا
                     const giftBtn = document.getElementById('openGiftBtn');
                     if (chances <= 0) {
@@ -1876,7 +1881,7 @@
                 let icon = '🎁';
                 let label = 'مكافأة';
                 let amountText = '';
-                
+
                 if (isGift) {
                     icon = '🎁';
                     label = 'صندوق هدايا';
@@ -1954,7 +1959,7 @@
             const btn = document.getElementById('openGiftBtn');
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري فتح الصندوق...';
-            
+
             try {
                 const res = await fetch('/api/referral/open-gift-box', {
                     method: 'POST',
@@ -1962,12 +1967,12 @@
                     body: JSON.stringify({ student_id: studentId })
                 });
                 const data = await res.json();
-                
+
                 if (data.success) {
                     // عرض نتيجة صندوق الهدايا
                     const resultModal = document.getElementById('giftResultModal');
                     const overlay = document.getElementById('modalOverlay');
-                    
+
                     let icon, amountClass, message;
                     if (data.reward > 0) {
                         icon = '🎉';
@@ -1978,19 +1983,19 @@
                         amountClass = 'gray';
                         message = 'لم يحالفك الحظ هذه المرة، جرب مرة أخرى!';
                     }
-                    
+
                     document.getElementById('giftResultAmount').innerHTML = `${data.reward > 0 ? '+' : ''}${data.reward} دج`;
                     document.getElementById('giftResultAmount').className = `result-amount ${amountClass}`;
                     document.getElementById('giftResultMessage').innerText = message;
                     document.querySelector('#giftResultModal .big-icon').innerText = icon;
-                    
+
                     overlay.style.display = 'block';
                     resultModal.style.display = 'block';
-                    
+
                     // تحديث البيانات
                     await loadReferralData();
                     await loadWallet();
-                    
+
                     showNotification(data.message, data.reward > 0 ? 'success' : 'warning');
                 } else {
                     showNotification(data.error || 'حدث خطأ', 'error');
@@ -2100,8 +2105,8 @@
 
         // ===== INIT =====
         loadUserData().then(() => { showSection('offers'); });
-        setInterval(() => { 
-            if (currentSection === 'offers') loadOffers(); 
+        setInterval(() => {
+            if (currentSection === 'offers') loadOffers();
             else if (currentSection === 'bookings') loadMyBookings();
             loadWallet();
         }, 30000);
