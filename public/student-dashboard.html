@@ -1417,6 +1417,41 @@
 
 <script>
     // ================================================================
+    // ================================================================
+    // دالة مساعدة لإجراء طلبات مع التوكن (JWT)
+    // ================================================================
+    async function fetchWithAuth(url, options = {}) {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            showToast('الرجاء تسجيل الدخول أولاً', 'error');
+            setTimeout(() => window.location.href = '/login.html', 1500);
+            throw new Error('غير مصرح');
+        }
+        
+        const headers = {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            ...options.headers
+        };
+        
+        const response = await fetch(url, {
+            ...options,
+            headers
+        });
+        
+        if (response.status === 401) {
+            localStorage.clear();
+            showToast('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى', 'error');
+            setTimeout(() => window.location.href = '/login.html', 1500);
+            throw new Error('انتهت صلاحية الجلسة');
+        }
+        
+        return response;
+    }
+    // ================================================================
+    // ================================================================
+
+    // ================================================================
     // VARIABLES
     // ================================================================
     let userData = null;
@@ -1432,7 +1467,7 @@
 
     async function loadNotifications() {
         try {
-            const res = await fetch(`/api/notifications/${studentId}/student`);
+            const res = await fetchWithAuth(`/api/notifications/${studentId}/student`);
             const data = await res.json();
             notifications = data || [];
             renderNotifications();
@@ -1460,7 +1495,6 @@
             const time = new Date(notif.created_at);
             const timeStr = time.toLocaleString('ar', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' });
 
-            // تحديد نوع الإشعار
             let iconClass = 'info';
             let icon = 'fa-bell';
             const title = notif.title || '';
@@ -1524,7 +1558,7 @@
 
     async function markNotificationRead(notifId, offerId) {
         try {
-            const res = await fetch(`/api/notifications/read/${notifId}`, {
+            const res = await fetchWithAuth(`/api/notifications/read/${notifId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -1550,7 +1584,7 @@
         }
         for (const notif of unreadNotifs) {
             try {
-                await fetch(`/api/notifications/read/${notif.id}`, {
+                await fetchWithAuth(`/api/notifications/read/${notif.id}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                 });
@@ -1564,18 +1598,18 @@
 
     async function joinFromNotification(offerId) {
         try {
-            const res = await fetch(`/api/student/stream-status/${offerId}/${studentId}`);
+            const res = await fetchWithAuth(`/api/student/stream-status/${offerId}/${studentId}`);
             const data = await res.json();
             if (data.can_join) {
                 window.open(`/api/join-stream/${offerId}/${studentId}`, '_blank');
             } else if (data.is_waiting) {
-                showNotification('⏳ جاري التحضير للبث، انتظر قليلاً...', 'warning');
+                showToast('⏳ جاري التحضير للبث، انتظر قليلاً...', 'warning');
             } else {
-                showNotification('البث غير متاح حالياً', 'warning');
+                showToast('البث غير متاح حالياً', 'warning');
                 showSection('bookings');
             }
         } catch(e) {
-            showNotification('حدث خطأ', 'error');
+            showToast('حدث خطأ', 'error');
         }
         document.getElementById('notifDropdown').classList.remove('open');
     }
@@ -1654,9 +1688,12 @@
                 userData = JSON.parse(storedData);
                 studentId = userData.id;
             }
-            if (!studentId) { window.location.href = '/'; return; }
+            if (!studentId) { 
+                window.location.href = '/'; 
+                return; 
+            }
 
-            const res = await fetch(`/api/student/${studentId}`);
+            const res = await fetchWithAuth(`/api/student/${studentId}`);
             const data = await res.json();
             if (!data.error) {
                 userData = data;
@@ -1687,13 +1724,16 @@
 
     async function loadWallet() {
         try {
-            const res = await fetch(`/api/student/wallet/${studentId}`);
+            const res = await fetchWithAuth(`/api/student/wallet/${studentId}`);
             const data = await res.json();
             currentBalance = data.balance || 0;
             const balanceText = currentBalance + ' دج';
             document.getElementById('walletAmount').textContent = balanceText;
             document.getElementById('navBalanceAmount').textContent = currentBalance;
-        } catch(e) { console.error(e); }
+        } catch(e) { 
+            console.error(e); 
+            showToast('حدث خطأ في تحميل الرصيد', 'error');
+        }
     }
 
     // ================================================================
@@ -1708,7 +1748,10 @@
             const offers = await res.json();
             renderOffers(offers);
             loadFreeOffersSidebar(offers);
-        } catch(e) { showToast('حدث خطأ', 'error'); }
+        } catch(e) { 
+            showToast('حدث خطأ في تحميل العروض', 'error'); 
+            container.innerHTML = '<p style="text-align:center; padding:30px; color:var(--gray-400);">حدث خطأ في تحميل العروض</p>';
+        }
     }
 
     function renderOffers(offers) {
@@ -1723,7 +1766,6 @@
             const isFree = offer.is_free === 1;
             const teacherImage = offer.teacher_profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(offer.teacher_name) + '&background=0f5cbf&color=fff&size=40';
             
-            // عرض مستوى التعليم
             let levelDisplay = '';
             if (offer.education_level) {
                 const levelMap = {
@@ -1771,7 +1813,7 @@
         }
         showToast('جاري معالجة طلبك...', 'warning');
         try {
-            const res = await fetch('/api/booking/create', {
+            const res = await fetchWithAuth('/api/booking/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ offer_id: offerId, student_id: studentId })
@@ -1794,7 +1836,7 @@
                     showToast(data.error || 'حدث خطأ', 'error');
                 }
             }
-        } catch(e) { showToast('حدث خطأ', 'error'); }
+        } catch(e) { showToast('حدث خطأ في الحجز', 'error'); }
     }
 
     // ================================================================
@@ -1805,10 +1847,13 @@
         const container = document.getElementById('teachersList');
         container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
         try {
-            const res = await fetch('/api/teachers');
+            const res = await fetchWithAuth('/api/teachers');
             const teachers = await res.json();
             renderTeachers(teachers);
-        } catch(e) { showToast('حدث خطأ', 'error'); }
+        } catch(e) { 
+            showToast('حدث خطأ في تحميل الأساتذة', 'error'); 
+            container.innerHTML = '<p style="text-align:center; padding:30px; color:var(--gray-400);">حدث خطأ في تحميل الأساتذة</p>';
+        }
     }
 
     function renderTeachers(teachers) {
@@ -1841,7 +1886,7 @@
 
     async function showTeacherProfile(teacherId) {
         try {
-            const res = await fetch(`/api/teacher/${teacherId}`);
+            const res = await fetchWithAuth(`/api/teacher/${teacherId}`);
             const teacher = await res.json();
             const teacherImage = teacher.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(teacher.full_name) + '&background=0f5cbf&color=fff&size=100';
             
@@ -1885,7 +1930,7 @@
             `;
             document.getElementById('modalOverlay').style.display = 'block';
             document.getElementById('teacherProfileModal').style.display = 'block';
-        } catch(e) { showToast('حدث خطأ', 'error'); }
+        } catch(e) { showToast('حدث خطأ في تحميل ملف الأستاذ', 'error'); }
     }
 
     // ================================================================
@@ -1896,11 +1941,14 @@
         const container = document.getElementById('bookingsList');
         container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
         try {
-            const res = await fetch(`/api/student/bookings/${studentId}`);
+            const res = await fetchWithAuth(`/api/student/bookings/${studentId}`);
             const bookings = await res.json();
             renderBookings(bookings);
             loadUpcomingBookings(bookings);
-        } catch(e) { showToast('حدث خطأ', 'error'); }
+        } catch(e) { 
+            showToast('حدث خطأ في تحميل الحجوزات', 'error'); 
+            container.innerHTML = '<p style="text-align:center; padding:30px; color:var(--gray-400);">حدث خطأ في تحميل الحجوزات</p>';
+        }
     }
 
     function renderBookings(bookings) {
@@ -1962,7 +2010,7 @@
         const container = document.getElementById('transactionsList');
         container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
         try {
-            const res = await fetch(`/api/student/wallet/${studentId}`);
+            const res = await fetchWithAuth(`/api/student/wallet/${studentId}`);
             const data = await res.json();
             const transactions = data.transactions || [];
             if (transactions.length === 0) {
@@ -2005,7 +2053,10 @@
                 `;
             }
             container.innerHTML = html;
-        } catch(e) { showToast('حدث خطأ', 'error'); }
+        } catch(e) { 
+            showToast('حدث خطأ في تحميل المعاملات', 'error'); 
+            container.innerHTML = '<p style="text-align:center; padding:30px; color:var(--gray-400);">حدث خطأ في تحميل المعاملات</p>';
+        }
     }
 
     // ================================================================
@@ -2072,7 +2123,7 @@
 
     async function loadReferralData() {
         try {
-            const createRes = await fetch('/api/referral/create', {
+            const createRes = await fetchWithAuth('/api/referral/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ user_id: studentId, role: 'student' })
@@ -2082,7 +2133,7 @@
                 document.getElementById('referralCodeText').textContent = createData.referral_code || 'غير متوفر';
             }
 
-            const infoRes = await fetch(`/api/referral/info/${studentId}/student`);
+            const infoRes = await fetchWithAuth(`/api/referral/info/${studentId}/student`);
             const infoData = await infoRes.json();
             if (infoData.success) {
                 referralData = infoData;
@@ -2120,6 +2171,7 @@
             }
         } catch(e) {
             console.error('خطأ في تحميل بيانات الإحالة:', e);
+            showToast('حدث خطأ في تحميل بيانات الإحالة', 'error');
         }
     }
 
@@ -2219,7 +2271,7 @@
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري فتح الصندوق...';
         
         try {
-            const res = await fetch('/api/referral/open-gift-box', {
+            const res = await fetchWithAuth('/api/referral/open-gift-box', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ student_id: studentId })
@@ -2295,7 +2347,7 @@
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري...';
         try {
-            const res = await fetch('/api/student/wallet/deposit', {
+            const res = await fetchWithAuth('/api/student/wallet/deposit', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ student_id: studentId, amount: amount })
@@ -2309,7 +2361,7 @@
                 btn.innerHTML = 'شحن';
             }
         } catch(e) {
-            showToast('حدث خطأ', 'error');
+            showToast('حدث خطأ في الشحن', 'error');
             btn.disabled = false;
             btn.innerHTML = 'شحن';
         }
@@ -2343,7 +2395,10 @@
             formData.append('profile_image', imageFile);
         }
         try {
-            const res = await fetch('/api/student/update-profile', { method: 'POST', body: formData });
+            const res = await fetchWithAuth('/api/student/update-profile', { 
+                method: 'POST', 
+                body: formData 
+            });
             const data = await res.json();
             if (data.success) {
                 showToast('تم تحديث الملف الشخصي', 'success');
@@ -2354,7 +2409,7 @@
             } else {
                 showToast(data.error || 'حدث خطأ', 'error');
             }
-        } catch(e) { showToast('حدث خطأ', 'error'); }
+        } catch(e) { showToast('حدث خطأ في تحديث الملف', 'error'); }
     }
 
     function closeModal() {
@@ -2408,6 +2463,12 @@
     // ================================================================
     // INIT
     // ================================================================
+
+    // التحقق من وجود التوكن عند بدء التشغيل
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = '/login.html';
+    }
 
     loadUserData().then(() => {
         showSection('offers');
