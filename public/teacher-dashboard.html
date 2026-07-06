@@ -169,7 +169,7 @@
             position: absolute;
             top: 44px;
             left: 0;
-            width: 340px;
+            width: 360px;
             max-width: 90vw;
             background: white;
             border-radius: var(--radius-sm);
@@ -177,12 +177,12 @@
             border: 1px solid #edf2f7;
             display: none;
             z-index: 200;
-            max-height: 420px;
+            max-height: 450px;
             overflow-y: auto;
         }
         .notification-dropdown.open { display: block; }
         .notification-dropdown-header {
-            padding: 12px 16px;
+            padding: 14px 18px;
             border-bottom: 1px solid #edf2f7;
             display: flex;
             justify-content: space-between;
@@ -194,8 +194,14 @@
             z-index: 5;
         }
         .notification-dropdown-header h4 {
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             color: #1a2332;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .notification-dropdown-header h4 i {
+            color: var(--primary);
         }
         .notification-dropdown-header .mark-all-btn {
             background: none;
@@ -205,47 +211,74 @@
             cursor: pointer;
             font-weight: 600;
             font-family: 'Cairo', sans-serif;
+            padding: 4px 12px;
+            border-radius: 15px;
+            transition: var(--transition);
         }
         .notification-dropdown-header .mark-all-btn:hover {
-            text-decoration: underline;
+            background: var(--primary-light);
         }
         .notification-item {
-            padding: 12px 16px;
+            padding: 14px 18px;
             border-bottom: 1px solid #f1f4f9;
             cursor: pointer;
             transition: var(--transition);
             font-size: 0.85rem;
+            position: relative;
         }
         .notification-item:hover { background: #f8fafc; }
         .notification-item.unread {
             background: var(--primary-light);
-            border-right: 3px solid var(--primary);
+            border-right: 4px solid var(--primary);
+        }
+        .notification-item.unread::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 12px;
+            transform: translateY(-50%);
+            width: 8px;
+            height: 8px;
+            background: var(--primary);
+            border-radius: 50%;
         }
         .notification-item .notif-title {
             font-weight: 700;
             color: #1a2332;
+            font-size: 0.9rem;
+        }
+        .notification-item .notif-title i {
+            margin-left: 6px;
+            font-size: 0.8rem;
         }
         .notification-item .notif-message {
             color: #4a5568;
             font-size: 0.8rem;
-            margin-top: 2px;
+            margin-top: 3px;
+            line-height: 1.5;
         }
         .notification-item .notif-time {
             font-size: 0.6rem;
             color: #94a3b8;
-            margin-top: 4px;
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .notification-item .notif-time i {
+            font-size: 0.5rem;
         }
         .notification-empty {
-            padding: 30px;
+            padding: 35px 20px;
             text-align: center;
             color: #94a3b8;
             font-size: 0.85rem;
         }
         .notification-empty i {
-            font-size: 2rem;
+            font-size: 2.5rem;
             color: #e2e8f0;
             display: block;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
         }
 
         .user-menu {
@@ -1264,7 +1297,8 @@
                 <span>Zoom<span class="highlight">Dz</span></span>
             </div>
             <div class="nav-icons">
-                <button class="nav-icon-btn" onclick="showSection('profile')" title="ملفي">
+                <!-- ===== تبويب الملف الشخصي في الشريط العلوي ===== -->
+                <button class="nav-icon-btn active" onclick="showSection('profile')" title="ملفي">
                     <i class="fas fa-user"></i>
                     <span class="tooltip">ملفي</span>
                 </button>
@@ -1296,7 +1330,7 @@
                     <!-- Notification Dropdown -->
                     <div class="notification-dropdown" id="notificationDropdown">
                         <div class="notification-dropdown-header">
-                            <h4><i class="fas fa-bell" style="color:var(--primary);"></i> الإشعارات</h4>
+                            <h4><i class="fas fa-bell"></i> الإشعارات</h4>
                             <button class="mark-all-btn" onclick="markAllNotifications()">تحديد الكل كمقروء</button>
                         </div>
                         <div id="notificationList"></div>
@@ -1323,7 +1357,7 @@
             </div>
             <div class="balance-card">
                 <i class="fas fa-wallet" style="font-size: 1.3rem; opacity:0.8;"></i>
-                <div class="balance-amount" id="balanceAmount">0 دج</div>
+                <div class="balance-amount" id="balanceAmount">0 DA</div>
                 <div style="font-size: 0.75rem; opacity:0.7;">الرصيد المتاح</div>
                 <button class="withdraw-btn" onclick="showWithdrawModal()"><i class="fas fa-hand-holding-usd"></i> سحب الأرباح</button>
             </div>
@@ -1363,7 +1397,7 @@
         <div class="content-area">
             <!-- Mobile Balance -->
             <div class="mobile-balance">
-                <div><i class="fas fa-wallet"></i> <span class="balance-amount" id="mobileBalanceAmount">0 دج</span></div>
+                <div><i class="fas fa-wallet"></i> <span class="balance-amount" id="mobileBalanceAmount">0 DA</span></div>
                 <button class="mobile-withdraw-btn" onclick="showWithdrawModal()"><i class="fas fa-hand-holding-usd"></i> سحب</button>
             </div>
 
@@ -1398,7 +1432,7 @@
                 <!-- Referral Card -->
                 <div class="referral-card">
                     <h4 style="margin-bottom:6px;"><i class="fas fa-gift"></i> رمز الإحالة الخاص بك</h4>
-                    <p style="font-size:0.8rem; opacity:0.8; margin-bottom:6px;">شارك هذا الرمز مع طلابك واحصل على 100 دج لكل طالب يسجل من خلالك</p>
+                    <p style="font-size:0.8rem; opacity:0.8; margin-bottom:6px;">شارك هذا الرمز مع طلابك واحصل على 100 DA لكل طالب يسجل من خلالك</p>
                     <div class="referral-code" id="referralCodeDisplay" onclick="copyReferralCode()">
                         <span id="referralCodeText">جاري التحميل...</span>
                     </div>
@@ -1410,7 +1444,7 @@
                             <div class="stat-label">عدد المحالين</div>
                         </div>
                         <div class="stat-item">
-                            <div class="stat-number" id="referralBalance">0 دج</div>
+                            <div class="stat-number" id="referralBalance">0 DA</div>
                             <div class="stat-label">مكافآت الإحالة</div>
                         </div>
                     </div>
@@ -1512,7 +1546,7 @@
             <button class="close-modal" onclick="closeWithdrawModal()">&times;</button>
         </div>
         <div class="modal-body">
-            <p style="font-size: 0.9rem;"><strong>الرصيد المتاح: <span id="withdrawBalance">0</span> دج</strong></p>
+            <p style="font-size: 0.9rem;"><strong>الرصيد المتاح: <span id="withdrawBalance">0</span> DA</strong></p>
             <input type="number" id="withdrawAmount" placeholder="المبلغ المراد سحبه" min="100">
             <input type="text" id="ccpAccount" placeholder="رقم حساب CCP (20 رقم)">
         </div>
@@ -1553,7 +1587,7 @@
                 <input type="checkbox" id="isFree" onchange="togglePrice()">
                 <label>حصة مجانية</label>
             </div>
-            <input type="number" id="price" placeholder="السعر (دج)" value="1000">
+            <input type="number" id="price" placeholder="السعر (DA)" value="1000">
         </div>
         <div class="modal-footer">
             <button class="cancel-btn" onclick="closeModal()">إلغاء</button>
@@ -1616,11 +1650,15 @@
             let html = '';
             for (const notif of notifications) {
                 const date = new Date(notif.created_at);
+                const icon = notif.title.includes('حجز') ? '📚' : 
+                            notif.title.includes('رصيد') ? '💰' : 
+                            notif.title.includes('سحب') ? '💳' : 
+                            notif.title.includes('بث') ? '📺' : '🔔';
                 html += `
                     <div class="notification-item ${notif.is_read ? '' : 'unread'}" onclick="markNotificationRead(${notif.id})">
-                        <div class="notif-title">${escapeHtml(notif.title)}</div>
+                        <div class="notif-title">${icon} ${escapeHtml(notif.title)}</div>
                         <div class="notif-message">${escapeHtml(notif.message)}</div>
-                        <div class="notif-time">${date.toLocaleString('ar')}</div>
+                        <div class="notif-time"><i class="far fa-clock"></i> ${date.toLocaleString('ar')}</div>
                     </div>
                 `;
             }
@@ -1634,6 +1672,15 @@
                 loadNotifications();
             }
         }
+
+        // إغلاق الإشعارات عند النقر خارجها
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('notificationDropdown');
+            const button = event.target.closest('.nav-icon-btn');
+            if (!button && dropdown.classList.contains('open')) {
+                dropdown.classList.remove('open');
+            }
+        });
 
         async function markNotificationRead(notificationId) {
             try {
@@ -1762,7 +1809,7 @@
                 if (infoData.success) {
                     referralData = infoData;
                     document.getElementById('referredCount').innerText = infoData.referred_count || 0;
-                    document.getElementById('referralBalance').innerText = (infoData.total_reward || 0) + ' دج';
+                    document.getElementById('referralBalance').innerText = (infoData.total_reward || 0) + ' DA';
 
                     renderRewardHistory(infoData.rewards || []);
                 }
@@ -1788,7 +1835,7 @@
                             <span style="font-weight:600;">مكافأة إحالة</span>
                             <div class="reward-date">${date.toLocaleDateString('ar')}</div>
                         </div>
-                        <div class="reward-amount">+${amount} دج</div>
+                        <div class="reward-amount">+${amount} DA</div>
                     </div>
                 `;
             }
@@ -2028,16 +2075,16 @@
             try {
                 const res = await fetch(`/api/teacher/balance/${teacherId}`);
                 const data = await res.json();
-                const balanceText = (data.balance || 0) + ' دج';
+                const balanceText = (data.balance || 0) + ' DA';
                 document.getElementById('balanceAmount').innerText = balanceText;
                 document.getElementById('mobileBalanceAmount').innerText = balanceText;
                 document.getElementById('withdrawBalance').innerText = data.balance || 0;
                 
                 let earningsHtml = `
                     <div style="background: #f8fafc; border-radius: var(--radius-sm); padding: 14px; margin-bottom: 16px; border: 1px solid #edf2f7;">
-                        <h3 style="font-size: 1rem; color:#1a2332;">إجمالي الأرباح: ${data.total_earned || 0} دج</h3>
-                        <p style="font-size: 0.9rem; color:#4a5568;">الرصيد المتاح للسحب: ${data.balance || 0} دج</p>
-                        <p style="font-size: 0.75rem; color: #94a3b8;">* الحد الأدنى للسحب: 100 دج</p>
+                        <h3 style="font-size: 1rem; color:#1a2332;">إجمالي الأرباح: ${data.total_earned || 0} DA</h3>
+                        <p style="font-size: 0.9rem; color:#4a5568;">الرصيد المتاح للسحب: ${data.balance || 0} DA</p>
+                        <p style="font-size: 0.75rem; color: #94a3b8;">* الحد الأدنى للسحب: 100 DA</p>
                     </div>
                     <h4 style="font-size: 0.95rem; color:#1a2332; margin-bottom:10px;">المدفوعات المستحقة:</h4>
                     <div style="overflow-x: auto;">
@@ -2047,7 +2094,7 @@
                 `;
                 if (data.sessions && data.sessions.length > 0) {
                     for (const s of data.sessions) {
-                        earningsHtml += `<tr><td>${escapeHtml(s.offers?.subject_name || 'غير معروف')}</td><td>${s.teacher_earned || s.payment_amount} دج</td><td>${new Date(s.created_at).toLocaleDateString()}</td></tr>`;
+                        earningsHtml += `<tr><td>${escapeHtml(s.offers?.subject_name || 'غير معروف')}</td><td>${s.teacher_earned || s.payment_amount} DA</td><td>${new Date(s.created_at).toLocaleDateString()}</td></tr>`;
                     }
                 } else {
                     earningsHtml += `<tr><td colspan="3" style="text-align:center; color:#94a3b8;">لا توجد مدفوعات حتى الآن</td></tr>`;
@@ -2072,7 +2119,7 @@
                     if (req.status === 'pending') { statusClass = 'status-pending'; statusText = 'قيد المراجعة'; }
                     else if (req.status === 'completed') { statusClass = 'status-completed'; statusText = 'تم الدفع'; }
                     else { statusClass = 'status-rejected'; statusText = 'مرفوض'; }
-                    html += `<div class="request-item"><div><strong style="color:#1a2332;">${req.amount} دج</strong><br><small style="font-size:0.65rem; color:#94a3b8;">حساب CCP: ${req.ccp_account}</small></div><div><span class="request-status ${statusClass}">${statusText}</span></div></div>`;
+                    html += `<div class="request-item"><div><strong style="color:#1a2332;">${req.amount} DA</strong><br><small style="font-size:0.65rem; color:#94a3b8;">حساب CCP: ${req.ccp_account}</small></div><div><span class="request-status ${statusClass}">${statusText}</span></div></div>`;
                 }
                 html += '</div>';
                 document.getElementById('withdrawRequestsList').innerHTML = html;
@@ -2181,7 +2228,7 @@
         async function submitWithdrawRequest() {
             const amount = document.getElementById('withdrawAmount').value;
             const ccpAccount = document.getElementById('ccpAccount').value;
-            if (!amount || amount < 100) { showNotification('المبلغ يجب أن لا يقل عن 100 دج', 'error'); return; }
+            if (!amount || amount < 100) { showNotification('المبلغ يجب أن لا يقل عن 100 DA', 'error'); return; }
             if (!ccpAccount || ccpAccount.length < 10) { showNotification('الرجاء إدخال رقم حساب CCP صحيح', 'error'); return; }
             try {
                 const res = await fetch('/api/teacher/withdraw-request', {
@@ -2237,7 +2284,7 @@
                 else { statusText = '⏳ قادم'; statusClass = 'status-upcoming'; }
                 
                 const isFree = offer.is_free === 1 || offer.is_free === true;
-                const priceDisplay = isFree ? '🎁 مجانية' : `💰 ${offer.price} دج`;
+                const priceDisplay = isFree ? '🎁 مجانية' : `💰 ${offer.price} DA`;
                 
                 let levelDisplay = '';
                 if (offer.education_level) {
