@@ -802,74 +802,129 @@
         .back-to-list:hover { text-decoration: underline; }
 
         /* ================================================================
-           PROFILE SECTION
+           PROFILE SECTION - مع روابط التواصل الاجتماعي
         ================================================================ */
         .profile-display {
             text-align: center;
             padding: 12px 0;
         }
-        .profile-display img {
-            width: 110px;
-            height: 110px;
+        .profile-display .profile-avatar {
+            width: 120px;
+            height: 120px;
             border-radius: 50%;
             object-fit: cover;
             border: 4px solid white;
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
             margin-bottom: 12px;
         }
-        .profile-display h2 { font-size: 1.2rem; color: var(--gray-800); }
-        .profile-display .bio-text {
+        .profile-display .profile-name {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--gray-800);
+            margin-bottom: 4px;
+        }
+        .profile-display .profile-specialty {
             color: var(--gray-500);
-            font-size: 0.85rem;
-            margin-top: 6px;
+            font-size: 0.95rem;
+            margin-bottom: 6px;
+        }
+        .profile-display .profile-bio {
+            color: var(--gray-600);
+            font-size: 0.9rem;
             max-width: 500px;
-            margin-left: auto;
-            margin-right: auto;
+            margin: 8px auto;
+            line-height: 1.6;
         }
-        .social-links {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin: 12px 0;
-        }
-        .social-links a {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            transition: var(--transition);
-            font-size: 1.1rem;
-            text-decoration: none;
-        }
-        .social-links a:hover { transform: translateY(-3px) scale(1.05); }
-        .social-links a.facebook { background: #1877f2; }
-        .social-links a.instagram { background: #e4405f; }
-        .social-links a.linkedin { background: #0a66c2; }
-        .social-links a.youtube { background: #ff0000; }
-        .social-links a.twitter { background: #1da1f2; }
-        .social-links a.website { background: var(--secondary); }
-        .social-links a.whatsapp { background: #25d366; }
 
         .profile-info-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            max-width: 500px;
-            margin: 12px auto;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            max-width: 600px;
+            margin: 16px auto;
         }
         .profile-info-item {
             background: var(--gray-50);
-            padding: 10px;
+            padding: 12px;
             border-radius: var(--radius-sm);
             text-align: center;
             border: 1px solid var(--gray-200);
         }
-        .profile-info-item .label { font-size: 0.65rem; color: var(--gray-400); font-weight: 600; }
-        .profile-info-item .value { font-size: 0.9rem; font-weight: 700; color: var(--gray-800); }
+        .profile-info-item .label {
+            font-size: 0.65rem;
+            color: var(--gray-400);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .profile-info-item .value {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--gray-800);
+            margin-top: 2px;
+        }
+
+        /* ===== روابط التواصل الاجتماعي ===== */
+        .social-links-section {
+            margin: 20px auto;
+            padding: 16px;
+            background: var(--gray-50);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--gray-200);
+            max-width: 600px;
+        }
+        .social-links-section .social-title {
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--gray-800);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .social-links-section .social-title i {
+            color: var(--primary);
+        }
+        .social-links-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+        .social-link-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 30px;
+            color: white;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .social-link-item:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+        }
+        .social-link-item i {
+            font-size: 1.1rem;
+        }
+        .social-link-item.facebook { background: #1877f2; }
+        .social-link-item.instagram { background: #e4405f; }
+        .social-link-item.linkedin { background: #0a66c2; }
+        .social-link-item.youtube { background: #ff0000; }
+        .social-link-item.twitter { background: #1da1f2; }
+        .social-link-item.website { background: var(--secondary); }
+        .social-link-item.whatsapp { background: #25d366; }
+
+        .no-social-links {
+            color: var(--gray-400);
+            font-size: 0.85rem;
+            text-align: center;
+            padding: 8px 0;
+        }
 
         /* ================================================================
            MODALS
@@ -952,6 +1007,7 @@
         .modal-body .social-input-group .social-icon.youtube { background: #ff0000; }
         .modal-body .social-input-group .social-icon.twitter { background: #1da1f2; }
         .modal-body .social-input-group .social-icon.website { background: var(--secondary); }
+        .modal-body .social-input-group .social-icon.whatsapp { background: #25d366; }
         .modal-body .social-input-group input { flex: 1; margin: 0; }
         .modal-body .social-divider {
             border: none;
@@ -1096,6 +1152,9 @@
             .profile-info-grid { grid-template-columns: 1fr; }
             .modal { width: 96%; }
             .referral-stats { grid-template-columns: 1fr 1fr; }
+            .social-links-grid { gap: 6px; }
+            .social-link-item { font-size: 0.75rem; padding: 6px 12px; }
+            .profile-display .profile-avatar { width: 90px; height: 90px; }
         }
 
         @media (min-width: 768px) {
@@ -1332,32 +1391,33 @@
         <div style="margin: 16px 0;">
             <div class="social-label"><i class="fas fa-share-alt"></i> روابط التواصل الاجتماعي</div>
             <p style="font-size: 0.75rem; color: var(--gray-400); margin-bottom: 12px;">أضف روابط صفحاتك على منصات التواصل الاجتماعي لتظهر للطلاب</p>
+            
             <div class="social-input-group">
                 <div class="social-icon facebook"><i class="fab fa-facebook-f"></i></div>
-                <input type="url" id="facebookUrl" placeholder="رابط فيسبوك">
+                <input type="url" id="facebookUrl" placeholder="رابط فيسبوك (مثال: https://facebook.com/yourpage)">
             </div>
             <div class="social-input-group">
                 <div class="social-icon instagram"><i class="fab fa-instagram"></i></div>
-                <input type="url" id="instagramUrl" placeholder="رابط انستغرام">
+                <input type="url" id="instagramUrl" placeholder="رابط انستغرام (مثال: https://instagram.com/yourpage)">
             </div>
             <div class="social-input-group">
                 <div class="social-icon linkedin"><i class="fab fa-linkedin-in"></i></div>
-                <input type="url" id="linkedinUrl" placeholder="رابط لينكدإن">
+                <input type="url" id="linkedinUrl" placeholder="رابط لينكدإن (مثال: https://linkedin.com/in/yourprofile)">
             </div>
             <div class="social-input-group">
                 <div class="social-icon youtube"><i class="fab fa-youtube"></i></div>
-                <input type="url" id="youtubeUrl" placeholder="رابط يوتيوب">
+                <input type="url" id="youtubeUrl" placeholder="رابط يوتيوب (مثال: https://youtube.com/@yourchannel)">
             </div>
             <div class="social-input-group">
                 <div class="social-icon twitter"><i class="fab fa-x-twitter"></i></div>
-                <input type="url" id="twitterUrl" placeholder="رابط تويتر (X)">
+                <input type="url" id="twitterUrl" placeholder="رابط تويتر (X) (مثال: https://twitter.com/yourhandle)">
             </div>
             <div class="social-input-group">
                 <div class="social-icon website"><i class="fas fa-globe"></i></div>
-                <input type="url" id="websiteUrl" placeholder="الموقع الشخصي">
+                <input type="url" id="websiteUrl" placeholder="الموقع الشخصي (مثال: https://yourwebsite.com)">
             </div>
             <div class="social-input-group">
-                <div class="social-icon" style="background:#25d366;"><i class="fab fa-whatsapp"></i></div>
+                <div class="social-icon whatsapp"><i class="fab fa-whatsapp"></i></div>
                 <input type="url" id="whatsappUrl" placeholder="رابط واتساب (مثال: https://wa.me/213XXXXXXXXX)">
             </div>
         </div>
@@ -1434,7 +1494,6 @@
     // NOTIFICATIONS SYSTEM
     // ================================================================
 
-    // جلب الإشعارات من الخادم
     async function loadNotifications() {
         try {
             const res = await fetch(`/api/notifications/${teacherId}/teacher`);
@@ -1448,7 +1507,6 @@
         }
     }
 
-    // تحديث عدد الإشعارات غير المقروءة
     function updateNotifBadge() {
         const badge = document.getElementById('notifBadge');
         if (unreadCount > 0) {
@@ -1459,7 +1517,6 @@
         }
     }
 
-    // عرض الإشعارات في القائمة المنسدلة
     function renderNotifications() {
         const list = document.getElementById('notifList');
         if (!notifications || notifications.length === 0) {
@@ -1478,7 +1535,6 @@
             const time = new Date(notif.created_at);
             const timeStr = time.toLocaleString('ar', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' });
 
-            // تحديد نوع الأيقونة حسب العنوان
             let iconClass = 'info';
             let icon = 'fa-bell';
             const title = notif.title || '';
@@ -1510,18 +1566,15 @@
         list.innerHTML = html;
     }
 
-    // تبديل عرض الإشعارات
     function toggleNotifications() {
         const dropdown = document.getElementById('notifDropdown');
         dropdown.classList.toggle('open');
-        // إغلاق القوائم الأخرى
         document.getElementById('profileDropdown').classList.remove('open');
         if (dropdown.classList.contains('open')) {
             loadNotifications();
         }
     }
 
-    // تحديد إشعار كمقروء
     async function markNotificationRead(notifId) {
         try {
             const res = await fetch(`/api/notifications/read/${notifId}`, {
@@ -1540,7 +1593,6 @@
         }
     }
 
-    // تحديد الكل كمقروء
     async function markAllNotifications() {
         const unreadNotifs = notifications.filter(n => !n.is_read);
         for (const notif of unreadNotifs) {
@@ -1599,7 +1651,6 @@
     // ================================================================
 
     function showSection(section) {
-        // إخفاء الكل
         document.getElementById('profileSection').style.display = 'none';
         document.getElementById('offersSection').style.display = 'none';
         document.getElementById('earningsSection').style.display = 'none';
@@ -1607,7 +1658,6 @@
         document.getElementById('teachersSection').style.display = 'none';
         document.getElementById('messagesSection').style.display = 'none';
 
-        // إظهار المطلوب
         const sectionMap = {
             'profile': 'profileSection',
             'offers': 'offersSection',
@@ -1619,15 +1669,12 @@
         const target = document.getElementById(sectionMap[section]);
         if (target) target.style.display = 'block';
 
-        // تحديث التبويبات
         document.querySelectorAll('.nav-tab').forEach(tab => {
             tab.classList.toggle('active', tab.dataset.section === section);
         });
 
-        // إغلاق القوائم المنسدلة
         closeAllDropdowns();
 
-        // تحميل البيانات حسب القسم
         if (section === 'offers') loadOffers();
         if (section === 'earnings') loadBalance();
         if (section === 'referral') loadReferralData();
@@ -1662,42 +1709,61 @@
         } catch(e) { console.error(e); }
     }
 
+    // ===== دالة عرض روابط التواصل الاجتماعي =====
+    function renderSocialLinks(userData) {
+        const socialLinks = [
+            { url: userData.facebook_url, icon: 'fab fa-facebook-f', label: 'فيسبوك', cls: 'facebook' },
+            { url: userData.instagram_url, icon: 'fab fa-instagram', label: 'انستغرام', cls: 'instagram' },
+            { url: userData.linkedin_url, icon: 'fab fa-linkedin-in', label: 'لينكدإن', cls: 'linkedin' },
+            { url: userData.youtube_url, icon: 'fab fa-youtube', label: 'يوتيوب', cls: 'youtube' },
+            { url: userData.twitter_url, icon: 'fab fa-x-twitter', label: 'تويتر', cls: 'twitter' },
+            { url: userData.website_url, icon: 'fas fa-globe', label: 'الموقع', cls: 'website' },
+            { url: userData.whatsapp_url, icon: 'fab fa-whatsapp', label: 'واتساب', cls: 'whatsapp' }
+        ];
+
+        let html = '';
+        let hasLinks = false;
+
+        for (const link of socialLinks) {
+            if (link.url && link.url.trim() !== '') {
+                html += `
+                    <a href="${link.url}" target="_blank" class="social-link-item ${link.cls}" 
+                       title="${link.label}">
+                        <i class="${link.icon}"></i>
+                        <span>${link.label}</span>
+                    </a>
+                `;
+                hasLinks = true;
+            }
+        }
+
+        if (!hasLinks) {
+            return '<div class="no-social-links"><i class="fas fa-link" style="margin-left:6px;"></i>لا توجد روابط تواصل اجتماعي مضاف</div>';
+        }
+
+        return `<div class="social-links-grid">${html}</div>`;
+    }
+
     function updateUI() {
         if (!userData) return;
         const userName = userData.full_name || 'أستاذ';
-        const userImage = userData.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(userName) + '&background=0f5cbf&color=fff&size=64';
+        const userImage = userData.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(userName) + '&background=0f5cbf&color=fff&size=120';
 
         document.getElementById('navProfileName').textContent = userName.split(' ')[0];
         document.getElementById('navProfileImg').src = userImage;
 
-        // عرض الملف الشخصي
-        let socialHtml = '';
-        const socialLinks = [
-            { url: userData.facebook_url, cls: 'facebook', icon: 'fa-facebook-f' },
-            { url: userData.instagram_url, cls: 'instagram', icon: 'fa-instagram' },
-            { url: userData.linkedin_url, cls: 'linkedin', icon: 'fa-linkedin-in' },
-            { url: userData.youtube_url, cls: 'youtube', icon: 'fa-youtube' },
-            { url: userData.twitter_url, cls: 'twitter', icon: 'fa-x-twitter' },
-            { url: userData.website_url, cls: 'website', icon: 'fa-globe' },
-            { url: userData.whatsapp_url, cls: 'whatsapp', icon: 'fa-whatsapp' },
-        ];
-
-        for (const link of socialLinks) {
-            if (link.url) {
-                socialHtml += `<a href="${link.url}" target="_blank" class="${link.cls}"><i class="fab ${link.icon}"></i></a>`;
-            }
-        }
-
-        if (!socialHtml) {
-            socialHtml = '<span style="color: var(--gray-400); font-size: 0.8rem;">لا توجد روابط تواصل اجتماعي</span>';
-        }
-
+        // عرض الملف الشخصي مع روابط التواصل الاجتماعي
         document.getElementById('profileInfo').innerHTML = `
             <div class="profile-display">
-                <img src="${userImage}" alt="صورة الملف الشخصي" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=0f5cbf&color=fff&size=110'">
-                <h2>${escapeHtml(userData.full_name)}</h2>
-                <p style="color: var(--gray-500);"><i class="fas fa-book" style="color:var(--primary);"></i> ${escapeHtml(userData.specialization || 'تخصص غير محدد')}</p>
-                <div class="bio-text">${escapeHtml(userData.bio || 'لا توجد نبذة تعريفية')}</div>
+                <img src="${userImage}" alt="صورة الملف الشخصي" class="profile-avatar" 
+                     onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=0f5cbf&color=fff&size=120'">
+                <div class="profile-name">${escapeHtml(userData.full_name)}</div>
+                <div class="profile-specialty">
+                    <i class="fas fa-book" style="color:var(--primary);"></i> 
+                    ${escapeHtml(userData.specialization || 'تخصص غير محدد')}
+                </div>
+                <div class="profile-bio">${escapeHtml(userData.bio || 'لا توجد نبذة تعريفية')}</div>
+                
                 <div class="profile-info-grid">
                     <div class="profile-info-item">
                         <div class="label">📧 البريد الإلكتروني</div>
@@ -1718,7 +1784,16 @@
                         </div>
                     </div>
                 </div>
-                <div class="social-links">${socialHtml}</div>
+
+                <!-- ===== روابط التواصل الاجتماعي ===== -->
+                <div class="social-links-section">
+                    <div class="social-title">
+                        <i class="fas fa-share-alt"></i>
+                        روابط التواصل الاجتماعي
+                    </div>
+                    ${renderSocialLinks(userData)}
+                </div>
+
                 <p style="color: var(--gray-400); margin-top: 12px; font-size: 0.7rem;">
                     <i class="fas fa-lock"></i> لا يمكن تعديل المعلومات الشخصية إلا عبر الإدارة
                 </p>
@@ -2459,17 +2534,14 @@
         showSection('profile');
     });
 
-    // تحديث الإشعارات كل 30 ثانية
     setInterval(() => {
         if (teacherId) loadNotifications();
     }, 30000);
 
-    // تحديث الرصيد كل دقيقة
     setInterval(() => {
         if (teacherId) loadBalance();
     }, 60000);
 
-    // تحديث البيانات حسب القسم المعروض
     setInterval(() => {
         const visibleSection = document.querySelector('.nav-tab.active');
         if (visibleSection) {
