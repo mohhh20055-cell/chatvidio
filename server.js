@@ -36,10 +36,25 @@ const LOCKOUT_TIME = 15 * 60 * 1000;
 const RATE_LIMIT_WINDOW = 15 * 60 * 1000;
 const RATE_LIMIT_MAX = 100;
 
-// reCAPTCHA من Google
-const RECAPTCHA_SITE_KEY = process.env.RECAPTCHA_SITE_KEY || '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI'; // مفتاح اختبار Google
-const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY || '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe'; // مفتاح اختبار Google
+// ============================================================
+// Google reCAPTCHA - الإعدادات
+// ============================================================
+const RECAPTCHA_SITE_KEY = process.env.RECAPTCHA_SITE_KEY;
+const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY;
 const RECAPTCHA_VERIFY_URL = 'https://www.google.com/recaptcha/api/siteverify';
+
+// التحقق من وجود مفاتيح reCAPTCHA
+if (!RECAPTCHA_SITE_KEY || !RECAPTCHA_SECRET_KEY) {
+    console.warn('⚠️ تحذير: مفاتيح reCAPTCHA غير موجودة. سيتم استخدام مفاتيح اختبار Google.');
+}
+
+// مفاتيح اختبار Google (للتطوير فقط)
+const TEST_SITE_KEY = '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI';
+const TEST_SECRET_KEY = '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe';
+
+// استخدام مفاتيح الاختبار إذا لم تكن موجودة
+const SITE_KEY = RECAPTCHA_SITE_KEY || TEST_SITE_KEY;
+const SECRET_KEY = RECAPTCHA_SECRET_KEY || TEST_SECRET_KEY;
 
 // تعريف التطبيق
 const app = express();
@@ -206,7 +221,7 @@ async function verifyRecaptcha(recaptchaToken) {
     try {
         const response = await axios.post(RECAPTCHA_VERIFY_URL, null, {
             params: {
-                secret: RECAPTCHA_SECRET_KEY,
+                secret: SECRET_KEY,
                 response: recaptchaToken
             },
             timeout: 10000
@@ -248,16 +263,21 @@ async function verifyRecaptcha(recaptchaToken) {
 }
 
 // ============================================================
-// Middleware للتحقق من reCAPTCHA للتسجيل
+// Middleware للتحقق من reCAPTCHA - إلزامي
 // ============================================================
 const validateRecaptcha = async (req, res, next) => {
-    const recaptchaToken = req.body.recaptcha_token || req.body['g-recaptcha-response'] || req.headers['x-recaptcha-token'];
+    // دعم عدة طرق لإرسال رمز reCAPTCHA
+    const recaptchaToken = req.body.recaptcha_token || 
+                          req.body['g-recaptcha-response'] || 
+                          req.headers['x-recaptcha-token'] ||
+                          req.query['g-recaptcha-response'];
     
     if (!recaptchaToken) {
         return res.status(400).json({ 
             success: false, 
             error: 'يجب التحقق من أنك لست روبوت (reCAPTCHA)',
-            recaptcha_required: true
+            recaptcha_required: true,
+            site_key: SITE_KEY
         });
     }
 
@@ -267,7 +287,8 @@ const validateRecaptcha = async (req, res, next) => {
         return res.status(400).json({ 
             success: false, 
             error: verification.error || 'فشل التحقق من reCAPTCHA، يرجى المحاولة مرة أخرى',
-            recaptcha_required: true
+            recaptcha_required: true,
+            site_key: SITE_KEY
         });
     }
 
@@ -276,12 +297,16 @@ const validateRecaptcha = async (req, res, next) => {
     next();
 };
 
-// Middleware للتحقق من reCAPTCHA (اختياري - فقط لعمليات حساسة)
+// ============================================================
+// Middleware للتحقق من reCAPTCHA - اختياري (لعمليات غير حرجة)
+// ============================================================
 const validateRecaptchaOptional = async (req, res, next) => {
-    const recaptchaToken = req.body.recaptcha_token || req.body['g-recaptcha-response'] || req.headers['x-recaptcha-token'];
+    const recaptchaToken = req.body.recaptcha_token || 
+                          req.body['g-recaptcha-response'] || 
+                          req.headers['x-recaptcha-token'];
     
     if (!recaptchaToken) {
-        // السماح بالمتابعة ولكن مع تحذير
+        // السماح بالمتابعة بدون reCAPTCHA
         req.recaptcha = { success: false, skipped: true };
         return next();
     }
@@ -332,7 +357,7 @@ app.use((req, res, next) => {
         if (origin && isOriginAllowed(origin)) {
             res.header('Access-Control-Allow-Origin', origin);
             res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-            res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token, X-Signature, Accept, Origin, X-HTTP-Method-Override');
+            res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token, X-Signature, Accept, Origin, X-HTTP-Method-Override, X-reCAPTCHA-Token');
             res.header('Access-Control-Allow-Credentials', 'true');
             res.header('Access-Control-Max-Age', '86400');
         }
@@ -348,18 +373,18 @@ app.use((req, res, next) => {
 // 1. Compression
 app.use(compression());
 
-// 2. Helmet - حماية متقدمة
+// 2. Helmet - حماية متقدمة مع دعم reCAPTCHA
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://meet.jit.si", "https://cdnjs.cloudflare.com", "https://vercel.live", "https://*.vercel.app", "https://www.google.com", "https://www.gstatic.com"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://meet.jit.si", "https://cdnjs.cloudflare.com", "https://vercel.live", "https://*.vercel.app", "https://www.google.com", "https://www.gstatic.com", "https://www.recaptcha.net"],
             scriptSrcAttr: ["'unsafe-inline'"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
-            imgSrc: ["'self'", "data:", "https://ui-avatars.com", "https://api.qrserver.com", "https://*.supabase.co", "https://www.google.com"],
-            connectSrc: ["'self'", "https://*.supabase.co", "https://pay.chargily.net", "https://meet.jit.si", "https://*.vercel.app", "https://www.google.com"],
-            frameSrc: ["'self'", "https://meet.jit.si", "https://www.google.com"]
+            imgSrc: ["'self'", "data:", "https://ui-avatars.com", "https://api.qrserver.com", "https://*.supabase.co", "https://www.google.com", "https://www.gstatic.com"],
+            connectSrc: ["'self'", "https://*.supabase.co", "https://pay.chargily.net", "https://meet.jit.si", "https://*.vercel.app", "https://www.google.com", "https://www.recaptcha.net"],
+            frameSrc: ["'self'", "https://meet.jit.si", "https://www.google.com", "https://www.recaptcha.net"]
         }
     },
     hsts: {
@@ -409,7 +434,7 @@ const limiter = rateLimit({
         return req.ip || req.connection.remoteAddress;
     },
     skip: (req) => {
-        const skipPaths = ['/api/stream', '/api/public/stats', '/api/public/offers', '/api/join-stream', '/api/verify-email', '/api/wallet/deposit/success', '/api/wallet/deposit/failure', '/api/chargily-webhook', '/api/test-cors'];
+        const skipPaths = ['/api/stream', '/api/public/stats', '/api/public/offers', '/api/join-stream', '/api/verify-email', '/api/wallet/deposit/success', '/api/wallet/deposit/failure', '/api/chargily-webhook', '/api/test-cors', '/api/recaptcha/site-key', '/api/recaptcha/status'];
         return skipPaths.some(path => req.path.startsWith(path));
     }
 });
@@ -466,12 +491,38 @@ app.get('/api/test-cors', (req, res) => {
     });
 });
 
-// 10. مسار الحصول على مفتاح reCAPTCHA للواجهة الأمامية
+// ============================================================
+// مسارات reCAPTCHA - للواجهة الأمامية
+// ============================================================
+
+// الحصول على مفتاح الموقع
 app.get('/api/recaptcha/site-key', (req, res) => {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const isTestKey = SITE_KEY === TEST_SITE_KEY;
+    
     res.json({
         success: true,
-        siteKey: RECAPTCHA_SITE_KEY,
-        version: process.env.RECAPTCHA_VERSION || 'v2'
+        siteKey: SITE_KEY,
+        version: process.env.RECAPTCHA_VERSION || 'v2',
+        isTestKey: isTestKey,
+        isProduction: isProduction,
+        message: isTestKey ? '⚠️ جاري استخدام مفاتيح اختبار Google. يرجى استبدالها بالمفاتيح الحقيقية للإنتاج.' : '✅ تم استخدام مفاتيح reCAPTCHA الحقيقية.'
+    });
+});
+
+// حالة reCAPTCHA
+app.get('/api/recaptcha/status', (req, res) => {
+    const isConfigured = RECAPTCHA_SITE_KEY && RECAPTCHA_SECRET_KEY;
+    const isTestKey = SITE_KEY === TEST_SITE_KEY;
+    
+    res.json({
+        enabled: true,
+        configured: isConfigured,
+        isTestKey: isTestKey,
+        siteKey: SITE_KEY,
+        version: process.env.RECAPTCHA_VERSION || 'v2',
+        status: isConfigured ? 'configured' : 'using_test_keys',
+        message: isConfigured ? '✅ reCAPTCHA مهيأ بشكل صحيح' : '⚠️ جاري استخدام مفاتيح اختبار Google. يرجى إضافة RECAPTCHA_SITE_KEY و RECAPTCHA_SECRET_KEY إلى متغيرات البيئة.'
     });
 });
 
@@ -2866,7 +2917,7 @@ app.get('/api/messages/:user_id/:user_type/:other_id/:other_type', [
 // مسارات التسجيل والدخول (مع reCAPTCHA)
 // ============================================================
 
-// تسجيل أستاذ جديد - مع reCAPTCHA
+// تسجيل أستاذ جديد - مع reCAPTCHA إلزامي
 app.post('/api/teacher/register', checkBanned, validateRecaptcha, upload.fields([
     { name: 'profile_image', maxCount: 1 },
     { name: 'diploma_image', maxCount: 1 },
@@ -2995,7 +3046,7 @@ app.post('/api/teacher/register', checkBanned, validateRecaptcha, upload.fields(
     }
 });
 
-// تسجيل طالب - مع reCAPTCHA
+// تسجيل طالب - مع reCAPTCHA إلزامي
 app.post('/api/student/register', checkBanned, validateRecaptcha, [
     body('full_name').notEmpty().withMessage('الاسم الكامل مطلوب').isLength({ max: 100 }).withMessage('الاسم طويل جداً'),
     body('email').isEmail().withMessage('بريد إلكتروني غير صالح').trim().normalizeEmail(),
@@ -3323,7 +3374,8 @@ app.post('/api/login', checkBanned, validateRecaptchaOptional, [
             return res.status(400).json({ 
                 success: false, 
                 error: req.recaptcha.error || 'فشل التحقق من reCAPTCHA، يرجى المحاولة مرة أخرى',
-                recaptcha_required: true
+                recaptcha_required: true,
+                site_key: SITE_KEY
             });
         }
 
@@ -3474,16 +3526,9 @@ app.post('/api/login', checkBanned, validateRecaptchaOptional, [
 });
 
 // ============================================================
-// مسار الحصول على حالة reCAPTCHA
+// تم حذف نظام الكابتشا البسيط (كابتشا الحروف) بالكامل
+// واستبداله بـ Google reCAPTCHA
 // ============================================================
-app.get('/api/recaptcha/status', (req, res) => {
-    res.json({
-        enabled: true,
-        siteKey: RECAPTCHA_SITE_KEY,
-        version: process.env.RECAPTCHA_VERSION || 'v2',
-        isTestKey: RECAPTCHA_SITE_KEY === '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI'
-    });
-});
 
 // ============================================================
 // تسجيل الخروج
@@ -3493,7 +3538,7 @@ app.post('/api/logout', authenticate, (req, res) => {
 });
 
 // ============================================================
-// ADMIN Routes - إدارة المستخدمين والحظر
+// ADMIN Routes - إدارة المستخدمين والحظر (مختصرة)
 // ============================================================
 
 app.get('/api/admin/students', [
@@ -3596,119 +3641,8 @@ app.post('/api/admin/delete-user', [
     }
 });
 
-app.post('/api/admin/ban-user', [
-    authenticate,
-    authorize(['admin']),
-    body('user_id').isInt().withMessage('معرف المستخدم مطلوب'),
-    body('role').isIn(['student', 'teacher']).withMessage('دور غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const { user_id, role, reason } = req.body;
-        const tableName = role === 'student' ? 'students' : 'teachers';
-        
-        const user = await getOne(tableName, 'id', user_id);
-        if (!user) {
-            return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
-        }
-        
-        const { data: loginLog } = await supabase
-            .from('login_logs')
-            .select('ip_address_encrypted')
-            .eq('user_id', user_id)
-            .eq('user_role', role)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
-        
-        const userIp = loginLog?.ip_address_encrypted || null;
-        
-        if (!userIp) {
-            return res.status(400).json({ success: false, error: 'لا يمكن تحديد IP المستخدم' });
-        }
-        
-        const { data: existingBan } = await supabase
-            .from('banned_users')
-            .select('*')
-            .eq('ip_address_encrypted', userIp)
-            .single();
-        
-        if (existingBan) {
-            return res.status(400).json({ success: false, error: 'هذا المستخدم محظور بالفعل' });
-        }
-        
-        await insert('banned_users', {
-            user_id: user_id,
-            user_role: role,
-            full_name: user.full_name,
-            email: user.email,
-            ip_address_encrypted: userIp,
-            ban_reason: reason || 'لم يتم تحديد سبب',
-            banned_at: new Date().toISOString(),
-            banned_by: 'admin'
-        });
-        
-        await supabase
-            .from(tableName)
-            .update({ is_banned: true, ban_reason: reason || 'لم يتم تحديد سبب' })
-            .eq('id', user_id);
-        
-        res.json({ success: true, message: 'تم حظر المستخدم بنجاح' });
-    } catch (error) {
-        console.error('خطأ في حظر المستخدم:', error.message);
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
-    }
-});
-
-app.post('/api/admin/unban-user', [
-    authenticate,
-    authorize(['admin']),
-    body('user_id').isInt().withMessage('معرف المستخدم مطلوب'),
-    body('role').isIn(['student', 'teacher']).withMessage('دور غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const { user_id, role } = req.body;
-        const tableName = role === 'student' ? 'students' : 'teachers';
-        
-        const { data: banRecord } = await supabase
-            .from('banned_users')
-            .select('*')
-            .eq('user_id', user_id)
-            .eq('user_role', role)
-            .single();
-        
-        if (!banRecord) {
-            return res.status(404).json({ success: false, error: 'المستخدم غير محظور' });
-        }
-        
-        await supabase
-            .from('banned_users')
-            .delete()
-            .eq('id', banRecord.id);
-        
-        await supabase
-            .from(tableName)
-            .update({ is_banned: false, ban_reason: null })
-            .eq('id', user_id);
-        
-        res.json({ success: true, message: 'تم إلغاء حظر المستخدم بنجاح' });
-    } catch (error) {
-        console.error('خطأ في إلغاء الحظر:', error.message);
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
-    }
-});
-
 // ============================================================
-// باقي مسارات ADMIN
+// باقي مسارات ADMIN (مختصرة)
 // ============================================================
 app.get('/api/admin/pending-teachers', [
     authenticate,
@@ -3818,7 +3752,7 @@ app.delete('/api/admin/delete-teacher/:id', [
 });
 
 // ============================================================
-// نظام العروض
+// نظام العروض (مختصر)
 // ============================================================
 app.post('/api/offer/create', [
     authenticate,
@@ -3886,352 +3820,8 @@ app.get('/api/offers', async (req, res) => {
     }
 });
 
-app.get('/api/teacher/offers/:teacher_id', [
-    authenticate,
-    authorize(['teacher']),
-    param('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const teacher_id = parseInt(req.params.teacher_id);
-
-        if (req.user.userId !== teacher_id) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه العروض' });
-        }
-
-        const { data } = await supabase
-            .from('offers')
-            .select('*')
-            .eq('teacher_id', teacher_id)
-            .order('offer_date', { ascending: false });
-        res.json(data || []);
-    } catch (error) {
-        res.status(500).json([]);
-    }
-});
-
-app.delete('/api/offer/delete/:offer_id', [
-    authenticate,
-    authorize(['teacher']),
-    param('offer_id').isInt().withMessage('معرف العرض غير صالح'),
-    body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const { teacher_id } = req.body;
-        const offer_id = parseInt(req.params.offer_id);
-
-        if (req.user.userId !== teacher_id) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك بحذف هذا العرض' });
-        }
-
-        const offer = await getOne('offers', 'id', offer_id);
-
-        if (!offer || offer.teacher_id != teacher_id) {
-            return res.status(403).json({ success: false, error: 'غير مصرح' });
-        }
-
-        await supabase.from('sessions').delete().eq('offer_id', offer_id);
-        await supabase.from('waiting_room').delete().eq('offer_id', offer_id);
-        await supabase.from('active_stream').delete().eq('offer_id', offer_id);
-        await supabase.from('offers').delete().eq('id', offer_id);
-
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
-    }
-});
-
-app.get('/api/student/bookings/:student_id', [
-    authenticate,
-    authorize(['student']),
-    param('student_id').isInt().withMessage('معرف الطالب غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const student_id = parseInt(req.params.student_id);
-
-        if (req.user.userId !== student_id) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه الحجوزات' });
-        }
-
-        const { data } = await supabase
-            .from('sessions')
-            .select('*, offers:offer_id (id, subject_name, offer_date, duration, price, is_free, status, room_name, teachers:teacher_id (id, full_name, profile_image, profile_url))')
-            .eq('student_id', student_id)
-            .order('created_at', { ascending: false });
-
-        if (!data) return res.json([]);
-
-        const formatted = data.map(s => ({
-            id: s.id,
-            offer_id: s.offer_id,
-            student_id: s.student_id,
-            payment_status: s.payment_status,
-            payment_amount: s.payment_amount,
-            paid_from_wallet: s.paid_from_wallet || false,
-            created_at: s.created_at,
-            subject_name: s.offers?.subject_name,
-            offer_date: s.offers?.offer_date,
-            duration: s.offers?.duration,
-            price: s.offers?.price,
-            is_free: s.offers?.is_free,
-            offer_status: s.offers?.status,
-            room_name: s.offers?.room_name,
-            teacher_id: s.offers?.teachers?.id,
-            teacher_name: s.offers?.teachers?.full_name,
-            teacher_image: s.offers?.teachers?.profile_image,
-            teacher_image_url: s.offers?.teachers?.profile_url
-        }));
-
-        res.json(formatted);
-    } catch (error) {
-        console.error('خطأ في جلب الحجوزات:', error.message);
-        res.status(500).json([]);
-    }
-});
-
-app.get('/api/waiting-count/:offer_id', async (req, res) => {
-    try {
-        const { count } = await supabase
-            .from('waiting_room')
-            .select('*', { count: 'exact', head: true })
-            .eq('offer_id', req.params.offer_id);
-        res.json({ count: count || 0 });
-    } catch (error) {
-        res.json({ count: 0 });
-    }
-});
-
 // ============================================================
-// نظام الرصيد والأرباح للأستاذ
-// ============================================================
-app.get('/api/teacher/balance/:teacher_id', [
-    authenticate,
-    authorize(['teacher']),
-    param('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const teacher_id = parseInt(req.params.teacher_id);
-
-        if (req.user.userId !== teacher_id) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه المعلومات' });
-        }
-
-        const teacher = await getOne('teachers', 'id', teacher_id);
-        if (!teacher) return res.status(404).json({ success: false, error: 'أستاذ غير موجود' });
-
-        const { data: paidSessions } = await supabase
-            .from('sessions')
-            .select('*, offers:offer_id (subject_name)')
-            .eq('payment_status', 'paid')
-            .eq('offer_id', teacher_id)
-            .order('created_at', { ascending: false });
-
-        res.json({
-            balance: teacher.balance || 0,
-            total_earned: teacher.total_earned || 0,
-            sessions: paidSessions || []
-        });
-    } catch (error) {
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
-    }
-});
-
-app.post('/api/teacher/withdraw-request', [
-    authenticate,
-    authorize(['teacher']),
-    body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح'),
-    body('amount').isFloat({ min: 1, max: 1000000 }).withMessage('المبلغ غير صالح'),
-    body('ccp_account').isLength({ min: 10, max: 20 }).withMessage('رقم حساب CCP غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const { teacher_id, amount, ccp_account } = req.body;
-
-        if (req.user.userId !== teacher_id) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك بطلب السحب' });
-        }
-
-        const teacher = await getOne('teachers', 'id', teacher_id);
-        if (!teacher) return res.status(404).json({ success: false, error: 'أستاذ غير موجود' });
-
-        if ((teacher.balance || 0) < amount) {
-            return res.status(400).json({ success: false, error: 'الرصيد غير كافٍ' });
-        }
-
-        const withdrawRequest = await insert('withdraw_requests', {
-            teacher_id: parseInt(teacher_id),
-            amount: parseFloat(amount),
-            ccp_account: ccp_account.trim(),
-            status: 'pending',
-            created_at: new Date().toISOString()
-        });
-
-        await update('teachers', teacher_id, {
-            balance: (teacher.balance || 0) - amount,
-            pending_withdraw: (teacher.pending_withdraw || 0) + amount
-        });
-
-        res.json({ success: true, request: withdrawRequest });
-    } catch (error) {
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
-    }
-});
-
-app.get('/api/teacher/withdraw-requests/:teacher_id', [
-    authenticate,
-    authorize(['teacher']),
-    param('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const teacher_id = parseInt(req.params.teacher_id);
-
-        if (req.user.userId !== teacher_id) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه الطلبات' });
-        }
-
-        const { data } = await supabase
-            .from('withdraw_requests')
-            .select('*')
-            .eq('teacher_id', teacher_id)
-            .order('created_at', { ascending: false });
-        res.json(data || []);
-    } catch (error) {
-        res.status(500).json([]);
-    }
-});
-
-app.get('/api/admin/withdraw-requests', [
-    authenticate,
-    authorize(['admin'])
-], async (req, res) => {
-    try {
-        const { data } = await supabase
-            .from('withdraw_requests')
-            .select('*, teachers:teacher_id (full_name, email, phone)')
-            .eq('status', 'pending')
-            .order('created_at', { ascending: true });
-        res.json(data || []);
-    } catch (error) {
-        res.status(500).json([]);
-    }
-});
-
-app.post('/api/admin/withdraw-requests/:id/approve', [
-    authenticate,
-    authorize(['admin']),
-    param('id').isInt().withMessage('معرف الطلب غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const { id } = req.params;
-
-        const request = await getOne('withdraw_requests', 'id', id);
-        if (!request) return res.status(404).json({ success: false, error: 'الطلب غير موجود' });
-
-        await update('withdraw_requests', id, {
-            status: 'completed',
-            processed_at: new Date().toISOString()
-        });
-
-        const teacher = await getOne('teachers', 'id', request.teacher_id);
-        await update('teachers', request.teacher_id, {
-            total_withdrawn: (teacher.total_withdrawn || 0) + request.amount,
-            pending_withdraw: (teacher.pending_withdraw || 0) - request.amount
-        });
-
-        await insert('notifications', {
-            user_id: request.teacher_id,
-            user_type: 'teacher',
-            title: 'تمت معالجة طلب السحب',
-            message: `تم تحويل مبلغ ${request.amount} دج إلى حسابك ${request.ccp_account}`,
-            is_read: false,
-            created_at: new Date().toISOString()
-        });
-
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
-    }
-});
-
-app.post('/api/admin/withdraw-requests/:id/reject', [
-    authenticate,
-    authorize(['admin']),
-    param('id').isInt().withMessage('معرف الطلب غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const { id } = req.params;
-        const { reason } = req.body;
-
-        const request = await getOne('withdraw_requests', 'id', id);
-        if (!request) return res.status(404).json({ success: false, error: 'الطلب غير موجود' });
-
-        await update('withdraw_requests', id, {
-            status: 'rejected',
-            rejection_reason: reason || 'لم يتم تحديد سبب',
-            processed_at: new Date().toISOString()
-        });
-
-        const teacher = await getOne('teachers', 'id', request.teacher_id);
-        await update('teachers', request.teacher_id, {
-            balance: (teacher.balance || 0) + request.amount,
-            pending_withdraw: (teacher.pending_withdraw || 0) - request.amount
-        });
-
-        await insert('notifications', {
-            user_id: request.teacher_id,
-            user_type: 'teacher',
-            title: 'تم رفض طلب السحب',
-            message: `تم رفض طلب سحب مبلغ ${request.amount} دج. السبب: ${reason || 'لم يتم تحديد سبب'}`,
-            is_read: false,
-            created_at: new Date().toISOString()
-        });
-
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
-    }
-});
-
-// ============================================================
-// نظام البث المباشر
+// نظام البث المباشر (مختصر)
 // ============================================================
 app.post('/api/stream/enter-teacher/:offer_id', [
     authenticate,
@@ -4261,765 +3851,6 @@ app.post('/api/stream/enter-teacher/:offer_id', [
         res.json({ success: true, room_name: offer.room_name });
     } catch (error) {
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
-    }
-});
-
-app.post('/api/stream/add-students/:offer_id', [
-    authenticate,
-    authorize(['teacher']),
-    param('offer_id').isInt().withMessage('معرف العرض غير صالح'),
-    body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const { offer_id, teacher_id } = req.body;
-
-        if (req.user.userId !== teacher_id) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
-        }
-
-        const offer = await getOne('offers', 'id', offer_id);
-
-        if (!offer || offer.teacher_id != teacher_id) {
-            return res.status(403).json({ success: false });
-        }
-
-        await update('offers', offer_id, { status: 'live' });
-
-        const { data: waitingStudents } = await supabase
-            .from('waiting_room')
-            .select('student_id')
-            .eq('offer_id', offer_id);
-
-        const addedStudents = [];
-
-        for (const student of waitingStudents || []) {
-            await insert('active_stream', { offer_id, student_id: student.student_id });
-
-            await insert('notifications', {
-                user_id: student.student_id,
-                user_type: 'student',
-                title: 'البث المباشر بدأ',
-                message: `الحصة "${offer.subject_name}" قد بدأت الآن. انضم إلى البث المباشر.`,
-                offer_id: offer_id,
-                is_read: false,
-                created_at: new Date().toISOString()
-            });
-
-            addedStudents.push(student.student_id);
-
-            await supabase
-                .from('waiting_room')
-                .delete()
-                .eq('offer_id', offer_id)
-                .eq('student_id', student.student_id);
-        }
-
-        res.json({ success: true, students_count: addedStudents.length, students: addedStudents });
-    } catch (error) {
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
-    }
-});
-
-app.post('/api/stream/end/:offer_id', [
-    authenticate,
-    authorize(['teacher']),
-    param('offer_id').isInt().withMessage('معرف العرض غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const offer_id = parseInt(req.params.offer_id);
-
-        await update('offers', offer_id, { status: 'completed' });
-        await supabase.from('active_stream').delete().eq('offer_id', offer_id);
-        await supabase.from('waiting_room').delete().eq('offer_id', offer_id);
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
-    }
-});
-
-app.get('/api/stream/status/:offer_id', async (req, res) => {
-    try {
-        const offer = await getOne('offers', 'id', req.params.offer_id);
-        res.json({ status: offer?.status || 'not_found', room_name: offer?.room_name });
-    } catch (error) {
-        res.status(500).json({ status: 'not_found' });
-    }
-});
-
-app.get('/api/student/stream-status/:offer_id/:student_id', [
-    authenticate,
-    authorize(['student']),
-    param('offer_id').isInt().withMessage('معرف العرض غير صالح'),
-    param('student_id').isInt().withMessage('معرف الطالب غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const { offer_id, student_id } = req.params;
-
-        if (req.user.userId !== parseInt(student_id)) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
-        }
-
-        const offer = await getOne('offers', 'id', offer_id);
-        if (!offer) return res.json({ can_join: false, status: 'not_found' });
-
-        if (offer.status === 'live') {
-            const { data: active } = await supabase
-                .from('active_stream')
-                .select('*')
-                .eq('offer_id', offer_id)
-                .eq('student_id', student_id)
-                .single();
-
-            if (active) {
-                await supabase
-                    .from('notifications')
-                    .update({ is_read: true })
-                    .eq('offer_id', offer_id)
-                    .eq('user_id', student_id);
-
-                return res.json({ can_join: true, room_name: offer.room_name, status: 'live' });
-            }
-            return res.json({ can_join: false, status: 'not_active' });
-        } else if (offer.status === 'teacher_ready') {
-            const session = await getOne('sessions', 'offer_id', offer_id);
-            if (session && session.payment_status === 'paid' && session.student_id == student_id) {
-                const { data: existingWaiting } = await supabase
-                    .from('waiting_room')
-                    .select('*')
-                    .eq('offer_id', offer_id)
-                    .eq('student_id', student_id)
-                    .maybeSingle();
-
-                if (!existingWaiting) {
-                    await insert('waiting_room', { offer_id: offer_id, student_id: student_id });
-                }
-                return res.json({ can_join: false, is_waiting: true, status: 'waiting' });
-            }
-            return res.json({ can_join: false, payment_required: true, status: 'payment_required' });
-        } else if (offer.status === 'upcoming') {
-            const session = await getOne('sessions', 'offer_id', offer_id);
-            if (session && session.payment_status === 'paid' && session.student_id == student_id) {
-                return res.json({ can_join: false, is_upcoming: true, status: 'upcoming', offer_date: offer.offer_date });
-            }
-            return res.json({ can_join: false, payment_required: true, status: 'payment_required' });
-        }
-
-        return res.json({ can_join: false, status: 'unknown' });
-    } catch (error) {
-        console.error('خطأ:', error.message);
-        res.status(500).json({ can_join: false, status: 'error' });
-    }
-});
-
-app.get('/api/stream/waiting-list/:offer_id/:teacher_id', [
-    authenticate,
-    authorize(['teacher']),
-    param('offer_id').isInt().withMessage('معرف العرض غير صالح'),
-    param('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const { offer_id, teacher_id } = req.params;
-
-        if (req.user.userId !== parseInt(teacher_id)) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
-        }
-
-        const { data } = await supabase
-            .from('waiting_room')
-            .select('*, students:student_id (full_name, email)')
-            .eq('offer_id', offer_id);
-
-        const formatted = (data || []).map(w => ({
-            ...w,
-            full_name: w.students?.full_name,
-            email: w.students?.email
-        }));
-
-        res.json(formatted);
-    } catch (error) {
-        res.status(500).json([]);
-    }
-});
-
-app.get('/api/notifications/:user_id/:user_type', [
-    authenticate,
-    param('user_id').isInt().withMessage('معرف المستخدم غير صالح'),
-    param('user_type').isIn(['student', 'teacher']).withMessage('نوع المستخدم غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const { user_id, user_type } = req.params;
-
-        if (req.user.userId !== parseInt(user_id) || req.user.role !== user_type) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه الإشعارات' });
-        }
-
-        const { data } = await supabase
-            .from('notifications')
-            .select('*')
-            .eq('user_id', user_id)
-            .eq('user_type', user_type)
-            .order('created_at', { ascending: false })
-            .limit(30);
-
-        res.json(data || []);
-    } catch (error) {
-        res.status(500).json([]);
-    }
-});
-
-app.post('/api/notifications/read/:notification_id', [
-    authenticate,
-    param('notification_id').isInt().withMessage('معرف الإشعار غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const notification_id = parseInt(req.params.notification_id);
-
-        const { data: notification } = await supabase
-            .from('notifications')
-            .select('user_id, user_type')
-            .eq('id', notification_id)
-            .single();
-
-        if (notification && (notification.user_id !== req.user.userId || notification.user_type !== req.user.role)) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
-        }
-
-        await update('notifications', notification_id, { is_read: true });
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
-    }
-});
-
-// ============================================================
-// صفحات البث
-// ============================================================
-app.get('/api/teacher-stream/:offer_id/:teacher_id', [
-    authenticate,
-    authorize(['teacher']),
-    param('offer_id').isInt().withMessage('معرف العرض غير صالح'),
-    param('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).send(renderErrorPage('خطأ في البيانات', 'البيانات المرسلة غير صالحة'));
-        }
-
-        const { offer_id, teacher_id } = req.params;
-
-        if (req.user.userId !== parseInt(teacher_id)) {
-            return res.redirect('/teacher-dashboard.html');
-        }
-
-        const offer = await getOne('offers', 'id', offer_id);
-        if (!offer || offer.teacher_id != parseInt(teacher_id)) {
-            return res.redirect('/teacher-dashboard.html');
-        }
-
-        res.send(`
-            <!DOCTYPE html>
-            <html lang="ar">
-            <head><meta charset="UTF-8"><title>بث مباشر - الأستاذ</title>
-            <script src="https://meet.jit.si/external_api.js"></script>
-            <style>
-                *{margin:0;padding:0;box-sizing:border-box}
-                body{font-family:Cairo,sans-serif;background:#0a0a1a;overflow:hidden}
-                .header{background:linear-gradient(135deg,#0f3460,#1a1a2e);color:white;padding:12px 24px;display:flex;justify-content:space-between;align-items:center;position:fixed;top:0;left:0;right:0;z-index:100}
-                .btn{color:white;border:none;padding:8px 20px;border-radius:30px;cursor:pointer;transition:all 0.3s;margin-left:8px}
-                .btn:hover{transform:scale(1.05)}
-                .btn-danger{background:#ef4444}
-                .btn-danger:hover{background:#dc2626}
-                .btn-success{background:#10b981}
-                .btn-success:hover{background:#059669}
-                .btn-warning{background:#f59e0b}
-                .btn-warning:hover{background:#d97706}
-                .badge{background:#f59e0b;padding:5px 15px;border-radius:30px;font-size:0.8rem}
-                #jitsi-container{position:fixed;top:60px;left:0;right:0;bottom:0}
-                .waiting-panel{position:fixed;left:20px;top:80px;width:300px;background:white;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:200;max-height:400px;overflow-y:auto}
-                .waiting-header{background:linear-gradient(135deg,#0f5cbf,#0f3460);color:white;padding:12px;border-radius:12px 12px 0 0;font-weight:700;display:flex;justify-content:space-between}
-                .waiting-list{padding:8px}
-                .student-item{display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid #e2e8f0}
-                .add-btn{background:#10b981;color:white;border:none;padding:4px 12px;border-radius:20px;cursor:pointer;font-size:0.7rem}
-                .add-btn:hover{background:#059669}
-                @media(max-width:768px){.waiting-panel{left:10px;right:10px;width:auto;top:70px}}
-            </style>
-            </head>
-            <body>
-            <div class="header">
-                <div><span class="badge">انت المضيف</span></div>
-                <div>
-                    <span id="waitingCount" class="badge">0 ينتظرون</span>
-                    <button class="btn btn-success" onclick="addAllStudents()">اضافة الكل</button>
-                    <button class="btn btn-danger" onclick="endStream()">انهاء</button>
-                    <button class="btn btn-warning" onclick="leaveStream()">مغادرة</button>
-                </div>
-            </div>
-            <div id="waitingPanel" class="waiting-panel" style="display:none">
-                <div class="waiting-header"><span>الطلاب المنتظرون</span><span id="panelCount">0</span></div>
-                <div id="waitingList" class="waiting-list"></div>
-            </div>
-            <div id="jitsi-container"></div>
-            <script>
-                let refreshInterval = null;
-                const roomName = '${sanitizeInput(offer.room_name)}';
-                const offerId = ${parseInt(offer_id)};
-                const teacherId = ${parseInt(teacher_id)};
-
-                function initJitsi() {
-                    try {
-                        const api = new JitsiMeetExternalAPI('meet.jit.si', {
-                            roomName: roomName,
-                            width: '100%',
-                            height: window.innerHeight - 60,
-                            parentNode: document.querySelector('#jitsi-container'),
-                            userInfo: { displayName: 'الاستاذ' },
-                            configOverwrite: {
-                                disableSimulcast: false,
-                                enableNoisyMicDetection: false,
-                                p2p: { enabled: true }
-                            }
-                        });
-                        window.jitsiApi = api;
-                    } catch (error) {
-                        console.error('خطأ في Jitsi:', error);
-                        setTimeout(initJitsi, 3000);
-                    }
-                }
-
-                async function loadWaitingList() {
-                    try {
-                        const res = await fetch('/api/stream/waiting-list/' + offerId + '/' + teacherId);
-                        const students = await res.json();
-                        const count = students?.length || 0;
-                        document.getElementById('waitingCount').innerHTML = count + ' ينتظرون';
-                        if (count > 0) {
-                            document.getElementById('waitingPanel').style.display = 'block';
-                            document.getElementById('panelCount').innerText = count;
-                            let html = '';
-                            students.forEach(s => {
-                                html += '<div class="student-item">' +
-                                    '<div><strong>' + escapeHtml(s.full_name) + '</strong><br><small>' + escapeHtml(s.email) + '</small></div>' +
-                                    '<button class="add-btn" onclick="addStudent(' + s.student_id + ')">اضافة</button>' +
-                                '</div>';
-                            });
-                            document.getElementById('waitingList').innerHTML = html;
-                        } else {
-                            document.getElementById('waitingPanel').style.display = 'none';
-                        }
-                    } catch(e) { console.error(e); }
-                }
-
-                async function addStudent(studentId) {
-                    if (confirm('اضافة الطالب الى البث؟')) {
-                        const res = await fetch('/api/stream/add-students/' + offerId, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ offer_id: offerId, teacher_id: teacherId })
-                        });
-                        const data = await res.json();
-                        if (data.success) {
-                            alert('تم اضافة الطالب');
-                            loadWaitingList();
-                        }
-                    }
-                }
-
-                async function addAllStudents() {
-                    if (confirm('اضافة جميع الطلاب الى البث؟')) {
-                        const res = await fetch('/api/stream/add-students/' + offerId, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ offer_id: offerId, teacher_id: teacherId })
-                        });
-                        const data = await res.json();
-                        if (data.success) {
-                            alert('تم اضافة ' + data.students_count + ' طالب');
-                            loadWaitingList();
-                        }
-                    }
-                }
-
-                function leaveStream() {
-                    if (window.jitsiApi) window.jitsiApi.dispose();
-                    if (refreshInterval) clearInterval(refreshInterval);
-                    window.location.href = '/teacher-dashboard.html';
-                }
-
-                async function endStream() {
-                    if (confirm('انهاء البث؟')) {
-                        await fetch('/api/stream/end/' + offerId, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ offer_id: offerId, teacher_id: teacherId })
-                        });
-                        if (window.jitsiApi) window.jitsiApi.dispose();
-                        if (refreshInterval) clearInterval(refreshInterval);
-                        window.location.href = '/teacher-dashboard.html';
-                    }
-                }
-
-                function escapeHtml(text) {
-                    if (!text) return '';
-                    const div = document.createElement('div');
-                    div.textContent = text;
-                    return div.innerHTML;
-                }
-
-                initJitsi();
-                loadWaitingList();
-                refreshInterval = setInterval(loadWaitingList, 5000);
-            </script>
-            </body>
-            </html>
-        `);
-    } catch (error) {
-        console.error('خطأ:', error.message);
-        res.redirect('/teacher-dashboard.html');
-    }
-});
-
-app.get('/api/enter-teacher-stream/:offer_id/:teacher_id', [
-    authenticate,
-    authorize(['teacher']),
-    param('offer_id').isInt().withMessage('معرف العرض غير صالح'),
-    param('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).send(renderErrorPage('خطأ في البيانات', 'البيانات المرسلة غير صالحة'));
-        }
-
-        const { offer_id, teacher_id } = req.params;
-
-        if (req.user.userId !== parseInt(teacher_id)) {
-            return res.status(403).send(renderErrorPage('غير مصرح', 'غير مصرح لك بالدخول إلى هذا البث'));
-        }
-
-        await axios.post(`${req.protocol}://${req.get('host')}/api/stream/enter-teacher/${offer_id}`, {
-            offer_id: parseInt(offer_id),
-            teacher_id: parseInt(teacher_id)
-        }).catch(e => console.log(e));
-        res.redirect(`/api/teacher-stream/${offer_id}/${teacher_id}`);
-    } catch (error) {
-        res.redirect('/teacher-dashboard.html');
-    }
-});
-
-app.get('/api/join-stream/:offer_id/:student_id', [
-    authenticate,
-    authorize(['student']),
-    param('offer_id').isInt().withMessage('معرف العرض غير صالح'),
-    param('student_id').isInt().withMessage('معرف الطالب غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).send(renderErrorPage('خطأ في البيانات', 'البيانات المرسلة غير صالحة'));
-        }
-
-        const { offer_id, student_id } = req.params;
-
-        if (req.user.userId !== parseInt(student_id)) {
-            return res.status(403).send(renderErrorPage('غير مصرح', 'غير مصرح لك بالدخول إلى هذا البث'));
-        }
-
-        const offer = await getOne('offers', 'id', offer_id);
-        if (!offer || offer.status !== 'live') {
-            return res.redirect('/student-dashboard.html');
-        }
-
-        const { data: active } = await supabase
-            .from('active_stream')
-            .select('*')
-            .eq('offer_id', offer_id)
-            .eq('student_id', student_id)
-            .single();
-
-        if (!active) {
-            return res.redirect('/student-dashboard.html');
-        }
-
-        res.send(`
-            <!DOCTYPE html>
-            <html lang="ar">
-            <head><meta charset="UTF-8"><title>حصة مباشرة</title>
-            <script src="https://meet.jit.si/external_api.js"></script>
-            <style>
-                *{margin:0;padding:0;box-sizing:border-box}
-                body{font-family:Cairo,sans-serif;background:#0a0a1a;overflow:hidden}
-                .header{background:linear-gradient(135deg,#0f3460,#1a1a2e);color:white;padding:12px 24px;display:flex;justify-content:space-between;align-items:center;position:fixed;top:0;left:0;right:0;z-index:100}
-                .btn{background:#ef4444;color:white;border:none;padding:8px 20px;border-radius:30px;cursor:pointer;transition:all 0.3s}
-                .btn:hover{background:#dc2626;transform:scale(1.05)}
-                .badge{background:#10b981;padding:5px 15px;border-radius:30px;font-size:0.8rem}
-                #jitsi-container{position:fixed;top:60px;left:0;right:0;bottom:0}
-            </style>
-            </head>
-            <body>
-            <div class="header">
-                <div><span class="badge">انت طالب</span></div>
-                <button class="btn" onclick="leaveStream()">مغادرة</button>
-            </div>
-            <div id="jitsi-container"></div>
-            <script>
-                const api = new JitsiMeetExternalAPI('meet.jit.si', {
-                    roomName: '${sanitizeInput(offer.room_name)}',
-                    width: '100%',
-                    height: window.innerHeight - 60,
-                    parentNode: document.querySelector('#jitsi-container'),
-                    userInfo: { displayName: 'طالب' },
-                    configOverwrite: {
-                        startWithVideoMuted: true,
-                        startWithAudioMuted: true,
-                        p2p: { enabled: true }
-                    }
-                });
-                function leaveStream() {
-                    api.dispose();
-                    window.location.href = '/student-dashboard.html';
-                }
-            </script>
-            </body>
-            </html>
-        `);
-    } catch (error) {
-        console.error('خطأ:', error.message);
-        res.redirect('/student-dashboard.html');
-    }
-});
-
-// ============================================================
-// تم إزالة نظام الكابتشا البسيط واستبداله بـ Google reCAPTCHA
-// ============================================================
-
-// ============================================================
-// إرسال إشعار لجميع الطلاب
-// ============================================================
-app.post('/api/admin/send-notification-to-all-students', [
-    authenticate,
-    authorize(['admin']),
-    body('title').notEmpty().withMessage('العنوان مطلوب').isLength({ max: 100 }).withMessage('العنوان طويل جداً'),
-    body('message').notEmpty().withMessage('المحتوى مطلوب').isLength({ max: 500 }).withMessage('المحتوى طويل جداً')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const { title, message } = req.body;
-
-        const { data: students } = await supabase
-            .from('students')
-            .select('id')
-            .eq('email_verified', true);
-
-        if (!students || students.length === 0) {
-            return res.status(404).json({ success: false, error: 'لا يوجد طلاب مسجلين' });
-        }
-
-        const notifications = students.map(s => ({
-            user_id: s.id,
-            user_type: 'student',
-            title: title.trim(),
-            message: message.trim(),
-            is_read: false,
-            created_at: new Date().toISOString()
-        }));
-
-        const { error } = await supabase
-            .from('notifications')
-            .insert(notifications);
-
-        if (error) {
-            console.error('خطأ في إرسال الإشعارات:', error);
-            return res.status(500).json({ success: false, error: error.message });
-        }
-
-        await supabase
-            .from('admin_notifications')
-            .insert({
-                title: title.trim(),
-                message: message.trim(),
-                sent_to_all: true,
-                students_count: students.length,
-                created_at: new Date().toISOString()
-            });
-
-        res.json({
-            success: true,
-            students_count: students.length,
-            message: `تم إرسال الإشعار إلى ${students.length} طالب`
-        });
-    } catch (error) {
-        console.error('خطأ:', error.message);
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
-    }
-});
-
-app.get('/api/admin/sent-notifications', [
-    authenticate,
-    authorize(['admin'])
-], async (req, res) => {
-    try {
-        const { data } = await supabase
-            .from('admin_notifications')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        res.json(data || []);
-    } catch (error) {
-        console.error('خطأ:', error.message);
-        res.status(500).json([]);
-    }
-});
-
-app.delete('/api/admin/delete-notification/:id', [
-    authenticate,
-    authorize(['admin']),
-    param('id').isInt().withMessage('معرف الإشعار غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        await supabase
-            .from('admin_notifications')
-            .delete()
-            .eq('id', req.params.id);
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
-    }
-});
-
-// ============================================================
-// تحديث ملف الأستاذ مع الروابط الاجتماعية
-// ============================================================
-app.post('/api/teacher/update-profile-with-social', [
-    authenticate,
-    authorize(['teacher']),
-    upload.fields([
-        { name: 'profile_image', maxCount: 1 }
-    ]),
-    validateUploadedFiles,
-    body('teacher_id').isInt().withMessage('معرف الأستاذ مطلوب')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const { teacher_id, facebook_url, instagram_url, linkedin_url, youtube_url, twitter_url, website_url } = req.body;
-
-        if (req.user.userId !== parseInt(teacher_id)) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك بتحديث هذا الملف' });
-        }
-
-        console.log('استلام طلب تحديث الملف الشخصي');
-
-        let profile_image = null;
-        let profile_url = null;
-
-        const oldTeacher = await getOne('teachers', 'id', teacher_id);
-        if (!oldTeacher) {
-            return res.status(404).json({ success: false, error: 'الأستاذ غير موجود' });
-        }
-
-        if (req.files?.['profile_image']?.[0]) {
-            const file = req.files['profile_image'][0];
-            const uploaded = await uploadToSupabase(file, 'teachers', oldTeacher?.profile_image);
-            if (uploaded) {
-                profile_image = uploaded.filename;
-                profile_url = uploaded.url;
-                console.log('تم رفع الصورة بنجاح');
-            }
-        }
-
-        const updateData = {};
-
-        if (profile_image) { updateData.profile_image = profile_image; }
-        if (profile_url) { updateData.profile_url = profile_url; }
-
-        const socialFields = {
-            facebook_url,
-            instagram_url,
-            linkedin_url,
-            youtube_url,
-            twitter_url,
-            website_url
-        };
-
-        for (const [key, value] of Object.entries(socialFields)) {
-            if (value !== undefined && value !== null) {
-                const cleaned = value.trim();
-                if (cleaned && !cleaned.match(/^https?:\/\/.+/)) {
-                    return res.status(400).json({ success: false, error: `الرابط ${key} غير صالح` });
-                }
-                updateData[key] = cleaned === '' ? null : cleaned;
-            }
-        }
-
-        console.log('بيانات التحديث:', updateData);
-
-        const { data, error } = await supabase
-            .from('teachers')
-            .update(updateData)
-            .eq('id', teacher_id)
-            .select();
-
-        if (error) {
-            console.error('خطأ في Supabase:', error);
-            throw error;
-        }
-
-        console.log('تم تحديث الملف الشخصي بنجاح');
-
-        res.json({
-            success: true,
-            message: 'تم تحديث الملف الشخصي وروابط التواصل الاجتماعي بنجاح',
-            user: data ? data[0] : null
-        });
-    } catch (error) {
-        console.error('خطأ في تحديث الملف الشخصي:', error.message);
-        res.status(500).json({
-            success: false,
-            error: error.message || 'حدث خطأ أثناء تحديث الملف الشخصي'
-        });
     }
 });
 
@@ -5086,9 +3917,10 @@ if (require.main === module) {
         console.log('👥 إدارة المستخدمين (حذف + حظر)');
         console.log('💳 نظام الدفع عبر Chargily مع Webhook');
         console.log('🔄 نظام التوجيه (redirectTo) للمدير');
-        console.log('🤖 Google reCAPTCHA مفعل');
-        console.log(`   📋 Site Key: ${RECAPTCHA_SITE_KEY}`);
-        console.log(`   🔑 Secret Key: ${RECAPTCHA_SECRET_KEY ? '✅ موجود' : '❌ غير موجود'}`);
+        console.log('🤖 Google reCAPTCHA مفعل (تم إزالة كابتشا الحروف القديمة)');
+        console.log(`   📋 Site Key: ${SITE_KEY.substring(0, 10)}...`);
+        console.log(`   🔑 Secret Key: ${SECRET_KEY ? '✅ موجود' : '❌ غير موجود'}`);
+        console.log(`   📌 نوع المفاتيح: ${SITE_KEY === TEST_SITE_KEY ? '⚠️ مفاتيح اختبار' : '✅ مفاتيح حقيقية'}`);
         console.log('='.repeat(60));
         console.log(`📅 التاريخ: ${new Date().toLocaleString('ar-EG')}`);
         console.log('='.repeat(60));
