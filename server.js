@@ -348,18 +348,6 @@ app.use(cors(corsOptions));
 
 // 4. Cookie Parser للجلسات الآمنة
 app.use(cookieParser());
-
-const authLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000,
-    max: 10,
-    message: { success: false, error: 'عدد محاولات تسجيل الدخول كبير جداً، حاول بعد ساعة' },
-    standardHeaders: true,
-    legacyHeaders: false,
-    keyGenerator: (req) => {
-        return req.body.email || req.ip;  // ❌ هذا هو السطر 341
-    }
-});
-// 6. Rate Limiting خاص لتسجيل الدخول
 const authLimiter = rateLimit({
     windowMs: 60 * 60 * 1000,
     max: 10,
