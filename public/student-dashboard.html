@@ -1465,7 +1465,7 @@
             showToast('⏳ انتهت صلاحية الجلسة، جاري إعادة التوجيه...', 'error');
             localStorage.clear();
             setTimeout(() => {
-                window.location.href = '/login.html';
+                window.location.href = '/';
             }, 1500);
             throw new Error('انتهت صلاحية الجلسة');
         }
@@ -1746,13 +1746,14 @@
     }
 
     // ================================================================
-    // USER DATA
+    // USER DATA - ✅ تم التصحيح
     // ================================================================
 
     async function loadUserData() {
         try {
+            // ✅ استخدام نفس المفتاح المستخدم في تسجيل الدخول
             const storedData = localStorage.getItem('userData');
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('token'); // ✅ تم التصحيح من 'authToken' إلى 'token'
             
             if (storedData) {
                 userData = JSON.parse(storedData);
@@ -1764,7 +1765,8 @@
             }
             
             if (!studentId || !authToken) {
-                window.location.href = '/login.html';
+                console.log('⚠️ لا يوجد توكن أو معرف طالب، جاري التوجيه إلى الصفحة الرئيسية');
+                window.location.href = '/';
                 return;
             }
 
@@ -1783,7 +1785,7 @@
         } catch(e) {
             console.error('خطأ في تحميل بيانات المستخدم:', e);
             if (e.message === 'انتهت صلاحية الجلسة') {
-                // يتم التعامل معه في fetchWithAuth
+                window.location.href = '/';
             }
         }
     }
@@ -2523,7 +2525,8 @@
     // ================================================================
 
     function logout() {
-        localStorage.clear();
+        localStorage.removeItem('token');
+        localStorage.removeItem('userData');
         window.location.href = '/';
     }
 
