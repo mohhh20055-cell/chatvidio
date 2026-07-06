@@ -107,7 +107,8 @@ const limiter = rateLimit({
                req.path.startsWith('/api/join-stream') ||
                req.path.startsWith('/api/verify-email') ||
                req.path.startsWith('/api/wallet/deposit/success') ||
-               req.path.startsWith('/api/wallet/deposit/failure');
+               req.path.startsWith('/api/wallet/deposit/failure') ||
+               req.path.startsWith('/api/notifications');
     }
 });
 app.use('/api/', limiter);
@@ -377,7 +378,7 @@ function generateReferralCode(name, id) {
 }
 
 // ============================================================
-// ✅ دالة إرسال إشعار (الجزء المضاف)
+// ✅ دالة إرسال إشعار
 // ============================================================
 async function sendNotification(userId, userType, title, message, additionalData = {}) {
     try {
@@ -1519,10 +1520,9 @@ app.delete('/api/admin/support-messages/:id', async (req, res) => {
 });
 
 // ============================================================
-// نظام الرصيد (Wallet) - المُصلح بالكامل
+// نظام الرصيد (Wallet)
 // ============================================================
 
-// جلب الرصيد والمعاملات
 app.get('/api/student/wallet/:student_id', async (req, res) => {
     try {
         const student = await getOne('students', 'id', req.params.student_id);
@@ -1936,7 +1936,6 @@ app.post('/api/booking/create', [
 
         if (existing) return res.status(400).json({ success: false, error: 'مسجل بالفعل' });
         
-        // جلب بيانات الأستاذ للإشعارات
         const teacher = await getOne('teachers', 'id', offer.teacher_id);
 
         if (offer.is_free === 1 || offer.price === 0) {
@@ -1950,7 +1949,7 @@ app.post('/api/booking/create', [
             });
             await insert('waiting_room', { offer_id, student_id });
             
-            // ✅ إشعار للطالب عند الحجز المجاني مع رسالة انتظر البث
+            // ✅ إشعار للطالب عند الحجز المجاني
             await sendNotification(
                 student_id,
                 'student',
@@ -2015,7 +2014,7 @@ app.post('/api/booking/create', [
         });
         await update('sessions', session.id, { teacher_earned: teacherEarned });
 
-        // ✅ إشعار للطالب عند الحجز المدفوع مع رسالة انتظر البث
+        // ✅ إشعار للطالب عند الحجز المدفوع
         await sendNotification(
             student_id,
             'student',
@@ -2317,7 +2316,6 @@ app.get('/api/messages/:user_id/:user_type/:other_id/:other_type', async (req, r
 // مسارات التسجيل والدخول
 // ============================================================
 
-// تسجيل أستاذ جديد
 app.post('/api/teacher/register', checkBanned, upload.fields([
     { name: 'profile_image', maxCount: 1 },
     { name: 'diploma_image', maxCount: 1 },
@@ -2441,7 +2439,6 @@ app.post('/api/teacher/register', checkBanned, upload.fields([
     }
 });
 
-// تسجيل طالب
 app.post('/api/student/register', checkBanned, [
     body('full_name').notEmpty().withMessage('الاسم الكامل مطلوب'),
     body('email').isEmail().withMessage('بريد إلكتروني غير صالح'),
@@ -2570,7 +2567,6 @@ async function processReferralOnRegister(refCode, newUserId, newUserRole) {
     }
 }
 
-// تحديث بيانات الطالب
 app.post('/api/student/update-profile', upload.single('profile_image'), [
     body('student_id').isInt().withMessage('معرف الطالب غير صالح')
 ], async (req, res) => {
@@ -2614,7 +2610,6 @@ app.post('/api/student/update-profile', upload.single('profile_image'), [
     }
 });
 
-// جلب بيانات طالب
 app.get('/api/student/:student_id', async (req, res) => {
     try {
         const student = await getOne('students', 'id', req.params.student_id);
@@ -2625,7 +2620,6 @@ app.get('/api/student/:student_id', async (req, res) => {
     }
 });
 
-// تحديث بيانات الأستاذ
 app.post('/api/teacher/update-profile', upload.single('profile_image'), [
     body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
 ], async (req, res) => {
@@ -2664,7 +2658,6 @@ app.post('/api/teacher/update-profile', upload.single('profile_image'), [
     }
 });
 
-// جلب بيانات أستاذ
 app.get('/api/teacher/:teacher_id', async (req, res) => {
     try {
         const teacher = await getOne('teachers', 'id', req.params.teacher_id);
@@ -2675,7 +2668,6 @@ app.get('/api/teacher/:teacher_id', async (req, res) => {
     }
 });
 
-// جلب جميع الأساتذة المقبولين
 app.get('/api/teachers', async (req, res) => {
     try {
         const { data } = await supabase
@@ -2691,7 +2683,7 @@ app.get('/api/teachers', async (req, res) => {
 });
 
 // ============================================================
-// تسجيل الدخول - المعدل مع redirectTo
+// تسجيل الدخول
 // ============================================================
 app.post('/api/login', checkBanned, [
     body('email').isEmail().withMessage('بريد إلكتروني غير صالح'),
@@ -2708,7 +2700,6 @@ app.post('/api/login', checkBanned, [
 
         console.log(`محاولة تسجيل دخول: ${email} كـ ${role}`);
 
-        // تسجيل دخول المدير
         if (role === 'admin') {
             console.log('🔐 محاولة تسجيل دخول كمدير');
             
@@ -2746,7 +2737,6 @@ app.post('/api/login', checkBanned, [
             });
         }
 
-        // تسجيل دخول أستاذ أو طالب
         let user = await getOne('teachers', 'email', email);
         let userRole = 'teacher';
 
@@ -2839,7 +2829,7 @@ app.post('/api/login', checkBanned, [
 });
 
 // ============================================================
-// ADMIN Routes - إدارة المستخدمين والحظر
+// ADMIN Routes
 // ============================================================
 
 app.get('/api/admin/students', async (req, res) => {
@@ -3614,162 +3604,160 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
         return res.redirect('/teacher-dashboard.html');
     }
 
-    res.send(`
-        <!DOCTYPE html>
-        <html lang="ar">
-        <head><meta charset="UTF-8"><title>بث مباشر - الأستاذ</title>
-        <script src="https://meet.jit.si/external_api.js"></script>
-        <style>
-            *{margin:0;padding:0;box-sizing:border-box}
-            body{font-family:Cairo,sans-serif;background:#0a0a1a;overflow:hidden}
-            .header{background:linear-gradient(135deg,#0f3460,#1a1a2e);color:white;padding:12px 24px;display:flex;justify-content:space-between;align-items:center;position:fixed;top:0;left:0;right:0;z-index:100}
-            .btn{color:white;border:none;padding:8px 20px;border-radius:30px;cursor:pointer;transition:all 0.3s;margin-left:8px}
-            .btn:hover{transform:scale(1.05)}
-            .btn-danger{background:#ef4444}
-            .btn-danger:hover{background:#dc2626}
-            .btn-success{background:#10b981}
-            .btn-success:hover{background:#059669}
-            .btn-warning{background:#f59e0b}
-            .btn-warning:hover{background:#d97706}
-            .badge{background:#f59e0b;padding:5px 15px;border-radius:30px;font-size:0.8rem}
-            #jitsi-container{position:fixed;top:60px;left:0;right:0;bottom:0}
-            .waiting-panel{position:fixed;left:20px;top:80px;width:300px;background:white;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:200;max-height:400px;overflow-y:auto}
-            .waiting-header{background:linear-gradient(135deg,#0f5cbf,#0f3460);color:white;padding:12px;border-radius:12px 12px 0 0;font-weight:700;display:flex;justify-content:space-between}
-            .waiting-list{padding:8px}
-            .student-item{display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid #e2e8f0}
-            .add-btn{background:#10b981;color:white;border:none;padding:4px 12px;border-radius:20px;cursor:pointer;font-size:0.7rem}
-            .add-btn:hover{background:#059669}
-            @media(max-width:768px){.waiting-panel{left:10px;right:10px;width:auto;top:70px}}
-        </style>
-        </head>
-        <body>
-        <div class="header">
-            <div><span class="badge">انت المضيف</span></div>
-            <div>
-                <span id="waitingCount" class="badge">0 ينتظرون</span>
-                <button class="btn btn-success" onclick="addAllStudents()">اضافة الكل</button>
-                <button class="btn btn-danger" onclick="endStream()">انهاء</button>
-                <button class="btn btn-warning" onclick="leaveStream()">مغادرة</button>
-            </div>
+    res.send(`<!DOCTYPE html>
+    <html lang="ar">
+    <head><meta charset="UTF-8"><title>بث مباشر - الأستاذ</title>
+    <script src="https://meet.jit.si/external_api.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:Cairo,sans-serif;background:#0a0a1a;overflow:hidden}
+        .header{background:linear-gradient(135deg,#0f3460,#1a1a2e);color:white;padding:12px 24px;display:flex;justify-content:space-between;align-items:center;position:fixed;top:0;left:0;right:0;z-index:100}
+        .btn{color:white;border:none;padding:8px 20px;border-radius:30px;cursor:pointer;transition:all 0.3s;margin-left:8px}
+        .btn:hover{transform:scale(1.05)}
+        .btn-danger{background:#ef4444}
+        .btn-danger:hover{background:#dc2626}
+        .btn-success{background:#10b981}
+        .btn-success:hover{background:#059669}
+        .btn-warning{background:#f59e0b}
+        .btn-warning:hover{background:#d97706}
+        .badge{background:#f59e0b;padding:5px 15px;border-radius:30px;font-size:0.8rem}
+        #jitsi-container{position:fixed;top:60px;left:0;right:0;bottom:0}
+        .waiting-panel{position:fixed;left:20px;top:80px;width:300px;background:white;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:200;max-height:400px;overflow-y:auto}
+        .waiting-header{background:linear-gradient(135deg,#0f5cbf,#0f3460);color:white;padding:12px;border-radius:12px 12px 0 0;font-weight:700;display:flex;justify-content:space-between}
+        .waiting-list{padding:8px}
+        .student-item{display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid #e2e8f0}
+        .add-btn{background:#10b981;color:white;border:none;padding:4px 12px;border-radius:20px;cursor:pointer;font-size:0.7rem}
+        .add-btn:hover{background:#059669}
+        @media(max-width:768px){.waiting-panel{left:10px;right:10px;width:auto;top:70px}}
+    </style>
+    </head>
+    <body>
+    <div class="header">
+        <div><span class="badge">انت المضيف</span></div>
+        <div>
+            <span id="waitingCount" class="badge">0 ينتظرون</span>
+            <button class="btn btn-success" onclick="addAllStudents()">اضافة الكل</button>
+            <button class="btn btn-danger" onclick="endStream()">انهاء</button>
+            <button class="btn btn-warning" onclick="leaveStream()">مغادرة</button>
         </div>
-        <div id="waitingPanel" class="waiting-panel" style="display:none">
-            <div class="waiting-header"><span>الطلاب المنتظرون</span><span id="panelCount">0</span></div>
-            <div id="waitingList" class="waiting-list"></div>
-        </div>
-        <div id="jitsi-container"></div>
-        <script>
-            let refreshInterval = null;
-            const roomName = '${offer.room_name}';
-            const offerId = ${req.params.offer_id};
-            const teacherId = ${req.params.teacher_id};
+    </div>
+    <div id="waitingPanel" class="waiting-panel" style="display:none">
+        <div class="waiting-header"><span>الطلاب المنتظرون</span><span id="panelCount">0</span></div>
+        <div id="waitingList" class="waiting-list"></div>
+    </div>
+    <div id="jitsi-container"></div>
+    <script>
+        let refreshInterval = null;
+        const roomName = '${offer.room_name}';
+        const offerId = ${req.params.offer_id};
+        const teacherId = ${req.params.teacher_id};
 
-            function initJitsi() {
-                try {
-                    const api = new JitsiMeetExternalAPI('meet.jit.si', {
-                        roomName: roomName,
-                        width: '100%',
-                        height: window.innerHeight - 60,
-                        parentNode: document.querySelector('#jitsi-container'),
-                        userInfo: { displayName: 'الاستاذ' },
-                        configOverwrite: {
-                            disableSimulcast: false,
-                            enableNoisyMicDetection: false,
-                            p2p: { enabled: true }
-                        }
+        function initJitsi() {
+            try {
+                const api = new JitsiMeetExternalAPI('meet.jit.si', {
+                    roomName: roomName,
+                    width: '100%',
+                    height: window.innerHeight - 60,
+                    parentNode: document.querySelector('#jitsi-container'),
+                    userInfo: { displayName: 'الاستاذ' },
+                    configOverwrite: {
+                        disableSimulcast: false,
+                        enableNoisyMicDetection: false,
+                        p2p: { enabled: true }
+                    }
+                });
+                window.jitsiApi = api;
+            } catch (error) {
+                console.error('خطأ في Jitsi:', error);
+                setTimeout(initJitsi, 3000);
+            }
+        }
+
+        async function loadWaitingList() {
+            try {
+                const res = await fetch('/api/stream/waiting-list/' + offerId + '/' + teacherId);
+                const students = await res.json();
+                const count = students?.length || 0;
+                document.getElementById('waitingCount').innerHTML = count + ' ينتظرون';
+                if (count > 0) {
+                    document.getElementById('waitingPanel').style.display = 'block';
+                    document.getElementById('panelCount').innerText = count;
+                    let html = '';
+                    students.forEach(s => {
+                        html += '<div class="student-item">' +
+                            '<div><strong>' + escapeHtml(s.full_name) + '</strong><br><small>' + escapeHtml(s.email) + '</small></div>' +
+                            '<button class="add-btn" onclick="addStudent(' + s.student_id + ')">اضافة</button>' +
+                        '</div>';
                     });
-                    window.jitsiApi = api;
-                } catch (error) {
-                    console.error('خطأ في Jitsi:', error);
-                    setTimeout(initJitsi, 3000);
+                    document.getElementById('waitingList').innerHTML = html;
+                } else {
+                    document.getElementById('waitingPanel').style.display = 'none';
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        async function addStudent(studentId) {
+            if (confirm('اضافة الطالب الى البث؟')) {
+                const res = await fetch('/api/stream/add-students/' + offerId, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ offer_id: offerId, teacher_id: teacherId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('تم اضافة الطالب');
+                    loadWaitingList();
                 }
             }
+        }
 
-            async function loadWaitingList() {
-                try {
-                    const res = await fetch('/api/stream/waiting-list/' + offerId + '/' + teacherId);
-                    const students = await res.json();
-                    const count = students?.length || 0;
-                    document.getElementById('waitingCount').innerHTML = count + ' ينتظرون';
-                    if (count > 0) {
-                        document.getElementById('waitingPanel').style.display = 'block';
-                        document.getElementById('panelCount').innerText = count;
-                        let html = '';
-                        students.forEach(s => {
-                            html += '<div class="student-item">' +
-                                '<div><strong>' + escapeHtml(s.full_name) + '</strong><br><small>' + escapeHtml(s.email) + '</small></div>' +
-                                '<button class="add-btn" onclick="addStudent(' + s.student_id + ')">اضافة</button>' +
-                            '</div>';
-                        });
-                        document.getElementById('waitingList').innerHTML = html;
-                    } else {
-                        document.getElementById('waitingPanel').style.display = 'none';
-                    }
-                } catch(e) { console.error(e); }
-            }
-
-            async function addStudent(studentId) {
-                if (confirm('اضافة الطالب الى البث؟')) {
-                    const res = await fetch('/api/stream/add-students/' + offerId, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ offer_id: offerId, teacher_id: teacherId })
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                        alert('تم اضافة الطالب');
-                        loadWaitingList();
-                    }
+        async function addAllStudents() {
+            if (confirm('اضافة جميع الطلاب الى البث؟')) {
+                const res = await fetch('/api/stream/add-students/' + offerId, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ offer_id: offerId, teacher_id: teacherId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('تم اضافة ' + data.students_count + ' طالب');
+                    loadWaitingList();
                 }
             }
+        }
 
-            async function addAllStudents() {
-                if (confirm('اضافة جميع الطلاب الى البث؟')) {
-                    const res = await fetch('/api/stream/add-students/' + offerId, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ offer_id: offerId, teacher_id: teacherId })
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                        alert('تم اضافة ' + data.students_count + ' طالب');
-                        loadWaitingList();
-                    }
-                }
-            }
+        function leaveStream() {
+            if (window.jitsiApi) window.jitsiApi.dispose();
+            if (refreshInterval) clearInterval(refreshInterval);
+            window.location.href = '/teacher-dashboard.html';
+        }
 
-            function leaveStream() {
+        async function endStream() {
+            if (confirm('انهاء البث؟')) {
+                await fetch('/api/stream/end/' + offerId, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ offer_id: offerId, teacher_id: teacherId })
+                });
                 if (window.jitsiApi) window.jitsiApi.dispose();
                 if (refreshInterval) clearInterval(refreshInterval);
                 window.location.href = '/teacher-dashboard.html';
             }
+        }
 
-            async function endStream() {
-                if (confirm('انهاء البث؟')) {
-                    await fetch('/api/stream/end/' + offerId, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ offer_id: offerId, teacher_id: teacherId })
-                    });
-                    if (window.jitsiApi) window.jitsiApi.dispose();
-                    if (refreshInterval) clearInterval(refreshInterval);
-                    window.location.href = '/teacher-dashboard.html';
-                }
-            }
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
 
-            function escapeHtml(text) {
-                if (!text) return '';
-                const div = document.createElement('div');
-                div.textContent = text;
-                return div.innerHTML;
-            }
-
-            initJitsi();
-            loadWaitingList();
-            refreshInterval = setInterval(loadWaitingList, 5000);
-        </script>
-        </body>
-        </html>
-    `);
+        initJitsi();
+        loadWaitingList();
+        refreshInterval = setInterval(loadWaitingList, 5000);
+    </script>
+    </body>
+    </html>`);
 });
 
 app.get('/api/enter-teacher-stream/:offer_id/:teacher_id', async (req, res) => {
@@ -3952,7 +3940,6 @@ app.post('/api/captcha/verify', [
     }
 });
 
-// تنظيف الكابتشا المنتهية كل دقيقة
 setInterval(() => {
     const now = Date.now();
     Object.keys(captchaStore).forEach(key => {
@@ -4045,24 +4032,6 @@ app.delete('/api/admin/delete-notification/:id', async (req, res) => {
             .from('admin_notifications')
             .delete()
             .eq('id', req.params.id);
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// ============================================================
-// تحديث إشعار واحد كمقروء
-// ============================================================
-app.post('/api/notifications/read/:notification_id', async (req, res) => {
-    try {
-        const { data, error } = await supabase
-            .from('notifications')
-            .update({ is_read: true })
-            .eq('id', req.params.notification_id)
-            .select();
-
-        if (error) throw error;
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -4210,6 +4179,7 @@ if (require.main === module) {
         console.log('🔄 نظام التوجيه (redirectTo) مفعل للمدير');
         console.log('💳 نظام الدفع عبر Chargily مفعل مع تأكيد الدفع');
         console.log('📨 نظام الإشعارات مفعل للطلاب والأساتذة');
+        console.log('📨 يتم إرسال إشعارات عند: الحجز، الدفع، السحب، بدء البث، الرسائل');
         console.log('='.repeat(60));
     });
 }
