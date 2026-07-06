@@ -144,6 +144,110 @@
         }
         .nav-icon-btn:hover .tooltip { display: block; }
 
+        /* ===== NOTIFICATION BADGE ===== */
+        .notification-badge {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            background: #ef4444;
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 0.55rem;
+            font-weight: 700;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid white;
+            box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
+        }
+        .notification-badge.show { display: flex; }
+
+        /* ===== NOTIFICATION DROPDOWN ===== */
+        .notification-dropdown {
+            position: absolute;
+            top: 44px;
+            left: 0;
+            width: 340px;
+            max-width: 90vw;
+            background: white;
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid #edf2f7;
+            display: none;
+            z-index: 200;
+            max-height: 420px;
+            overflow-y: auto;
+        }
+        .notification-dropdown.open { display: block; }
+        .notification-dropdown-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid #edf2f7;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #fafbfc;
+            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+        .notification-dropdown-header h4 {
+            font-size: 0.9rem;
+            color: #1a2332;
+        }
+        .notification-dropdown-header .mark-all-btn {
+            background: none;
+            border: none;
+            color: var(--primary);
+            font-size: 0.7rem;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: 'Cairo', sans-serif;
+        }
+        .notification-dropdown-header .mark-all-btn:hover {
+            text-decoration: underline;
+        }
+        .notification-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f1f4f9;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.85rem;
+        }
+        .notification-item:hover { background: #f8fafc; }
+        .notification-item.unread {
+            background: var(--primary-light);
+            border-right: 3px solid var(--primary);
+        }
+        .notification-item .notif-title {
+            font-weight: 700;
+            color: #1a2332;
+        }
+        .notification-item .notif-message {
+            color: #4a5568;
+            font-size: 0.8rem;
+            margin-top: 2px;
+        }
+        .notification-item .notif-time {
+            font-size: 0.6rem;
+            color: #94a3b8;
+            margin-top: 4px;
+        }
+        .notification-empty {
+            padding: 30px;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 0.85rem;
+        }
+        .notification-empty i {
+            font-size: 2rem;
+            color: #e2e8f0;
+            display: block;
+            margin-bottom: 10px;
+        }
+
         .user-menu {
             display: flex;
             align-items: center;
@@ -1077,6 +1181,7 @@
             .user-menu img { width: 28px; height: 28px; }
             .content-area { padding: 22px; }
             .section-title { font-size: 1.15rem; }
+            .notification-dropdown { width: 400px; left: -50px; }
         }
 
         @media (min-width: 992px) {
@@ -1089,6 +1194,7 @@
             .teachers-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
             .content-area { padding: 24px; }
             .nav-icon-btn { width: 44px; height: 44px; font-size: 1.1rem; }
+            .notification-dropdown { width: 440px; left: -70px; }
         }
 
         @media (max-width: 400px) {
@@ -1109,6 +1215,7 @@
             .modal-body .social-input-group { flex-wrap: wrap; }
             .referral-stats { grid-template-columns: 1fr 1fr; gap: 6px; }
             .referral-stats .stat-item .stat-number { font-size: 1.2rem; }
+            .notification-dropdown { width: 300px; left: -120px; }
         }
 
         @media (max-height: 500px) and (orientation: landscape) {
@@ -1180,6 +1287,20 @@
                 <button class="nav-icon-btn" onclick="showSection('messages')" title="الرسائل">
                     <i class="fas fa-envelope"></i>
                     <span class="tooltip">الرسائل</span>
+                </button>
+                <!-- ===== NOTIFICATION ICON ===== -->
+                <button class="nav-icon-btn" onclick="toggleNotifications()" title="الإشعارات" style="position:relative;">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-badge" id="notificationBadge">0</span>
+                    <span class="tooltip">الإشعارات</span>
+                    <!-- Notification Dropdown -->
+                    <div class="notification-dropdown" id="notificationDropdown">
+                        <div class="notification-dropdown-header">
+                            <h4><i class="fas fa-bell" style="color:var(--primary);"></i> الإشعارات</h4>
+                            <button class="mark-all-btn" onclick="markAllNotifications()">تحديد الكل كمقروء</button>
+                        </div>
+                        <div id="notificationList"></div>
+                    </div>
                 </button>
                 <div class="user-menu" onclick="logout()">
                     <img id="navAvatar" src="https://via.placeholder.com/28" alt="صورة المستخدم">
@@ -1330,14 +1451,13 @@
     <!-- ===== MODALS ===== -->
     <div id="modalOverlay" class="modal-overlay"></div>
     
-    <!-- ===== EDIT PROFILE MODAL (مع روابط التواصل الاجتماعي) ===== -->
+    <!-- ===== EDIT PROFILE MODAL ===== -->
     <div id="editProfileModal" class="modal">
         <div class="modal-header">
             <h3><i class="fas fa-edit"></i> تعديل الملف الشخصي</h3>
             <button class="close-modal" onclick="closeModal()">&times;</button>
         </div>
         <div class="modal-body">
-            <!-- تغيير الصورة -->
             <div style="background: #f8fafc; padding: 14px; border-radius: var(--radius-sm); margin-bottom: 16px; border: 1px solid #edf2f7;">
                 <p style="color: #ef4444; margin-bottom: 10px; font-size: 0.8rem; font-weight: 600;">
                     <i class="fas fa-exclamation-triangle"></i> لا يمكن تغيير المعلومات الشخصية إلا عبر الإدارة
@@ -1350,45 +1470,33 @@
 
             <hr class="social-divider">
 
-            <!-- روابط التواصل الاجتماعي -->
             <div style="margin: 16px 0;">
                 <div class="social-label"><i class="fas fa-share-alt"></i> روابط التواصل الاجتماعي</div>
                 <p style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 12px;">أضف روابط صفحاتك على منصات التواصل الاجتماعي لتظهر للطلاب</p>
 
-                <!-- فيسبوك -->
                 <div class="social-input-group">
                     <div class="social-icon facebook"><i class="fab fa-facebook-f"></i></div>
-                    <input type="url" id="facebookUrl" placeholder="رابط فيسبوك (مثال: https://facebook.com/yourpage)">
+                    <input type="url" id="facebookUrl" placeholder="رابط فيسبوك">
                 </div>
-
-                <!-- انستغرام -->
                 <div class="social-input-group">
                     <div class="social-icon instagram"><i class="fab fa-instagram"></i></div>
-                    <input type="url" id="instagramUrl" placeholder="رابط انستغرام (مثال: https://instagram.com/yourpage)">
+                    <input type="url" id="instagramUrl" placeholder="رابط انستغرام">
                 </div>
-
-                <!-- لينكدإن -->
                 <div class="social-input-group">
                     <div class="social-icon linkedin"><i class="fab fa-linkedin-in"></i></div>
-                    <input type="url" id="linkedinUrl" placeholder="رابط لينكدإن (مثال: https://linkedin.com/in/yourprofile)">
+                    <input type="url" id="linkedinUrl" placeholder="رابط لينكدإن">
                 </div>
-
-                <!-- يوتيوب -->
                 <div class="social-input-group">
                     <div class="social-icon youtube"><i class="fab fa-youtube"></i></div>
-                    <input type="url" id="youtubeUrl" placeholder="رابط يوتيوب (مثال: https://youtube.com/@yourchannel)">
+                    <input type="url" id="youtubeUrl" placeholder="رابط يوتيوب">
                 </div>
-
-                <!-- تويتر (X) -->
                 <div class="social-input-group">
                     <div class="social-icon twitter"><i class="fab fa-x-twitter"></i></div>
-                    <input type="url" id="twitterUrl" placeholder="رابط تويتر (مثال: https://twitter.com/yourhandle)">
+                    <input type="url" id="twitterUrl" placeholder="رابط تويتر">
                 </div>
-
-                <!-- الموقع الشخصي -->
                 <div class="social-input-group">
                     <div class="social-icon website"><i class="fas fa-globe"></i></div>
-                    <input type="url" id="websiteUrl" placeholder="الموقع الشخصي (مثال: https://yourwebsite.com)">
+                    <input type="url" id="websiteUrl" placeholder="الموقع الشخصي">
                 </div>
             </div>
         </div>
@@ -1414,7 +1522,7 @@
         </div>
     </div>
 
-    <!-- ===== CREATE OFFER MODAL (مع مستوى التعليم) ===== -->
+    <!-- ===== CREATE OFFER MODAL ===== -->
     <div id="createOfferModal" class="modal">
         <div class="modal-header">
             <h3><i class="fas fa-plus"></i> عرض جديد</h3>
@@ -1425,7 +1533,6 @@
             <input type="number" id="duration" placeholder="المدة (بالدقائق)" value="60">
             <input type="datetime-local" id="offerDate" required>
             
-            <!-- ===== مستوى التعليم ===== -->
             <div class="education-level-group">
                 <label><i class="fas fa-graduation-cap"></i> المستوى التعليمي</label>
                 <select id="educationLevel" onchange="toggleOtherLevel()">
@@ -1438,7 +1545,6 @@
                 </select>
             </div>
 
-            <!-- حقل إضافي لـ "آخر" -->
             <div id="otherLevelGroup" style="display: none; margin-bottom: 10px;">
                 <input type="text" id="otherLevelText" placeholder="أدخل المستوى التعليمي المطلوب...">
             </div>
@@ -1463,18 +1569,108 @@
         let currentConversations = [];
         let currentChatTeacher = null;
         let referralData = null;
+        let notifications = [];
 
         // ===== TOGGLE OTHER LEVEL =====
         function toggleOtherLevel() {
             const level = document.getElementById('educationLevel').value;
             const otherGroup = document.getElementById('otherLevelGroup');
-            if (level === 'other') {
-                otherGroup.style.display = 'block';
-            } else {
-                otherGroup.style.display = 'none';
+            otherGroup.style.display = level === 'other' ? 'block' : 'none';
+        }
+
+        // ===== NOTIFICATIONS =====
+        async function loadNotifications() {
+            try {
+                const res = await fetch(`/api/notifications/${teacherId}/teacher`);
+                const data = await res.json();
+                notifications = data || [];
+                updateNotificationBadge();
+                renderNotifications();
+            } catch(e) {
+                console.error('خطأ في تحميل الإشعارات:', e);
             }
         }
 
+        function updateNotificationBadge() {
+            const unreadCount = notifications.filter(n => !n.is_read).length;
+            const badge = document.getElementById('notificationBadge');
+            if (unreadCount > 0) {
+                badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+                badge.classList.add('show');
+            } else {
+                badge.classList.remove('show');
+            }
+        }
+
+        function renderNotifications() {
+            const container = document.getElementById('notificationList');
+            if (!notifications || notifications.length === 0) {
+                container.innerHTML = `
+                    <div class="notification-empty">
+                        <i class="fas fa-bell-slash"></i>
+                        لا توجد إشعارات
+                    </div>
+                `;
+                return;
+            }
+            let html = '';
+            for (const notif of notifications) {
+                const date = new Date(notif.created_at);
+                html += `
+                    <div class="notification-item ${notif.is_read ? '' : 'unread'}" onclick="markNotificationRead(${notif.id})">
+                        <div class="notif-title">${escapeHtml(notif.title)}</div>
+                        <div class="notif-message">${escapeHtml(notif.message)}</div>
+                        <div class="notif-time">${date.toLocaleString('ar')}</div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        function toggleNotifications() {
+            const dropdown = document.getElementById('notificationDropdown');
+            dropdown.classList.toggle('open');
+            if (dropdown.classList.contains('open')) {
+                loadNotifications();
+            }
+        }
+
+        async function markNotificationRead(notificationId) {
+            try {
+                await fetch(`/api/notifications/read/${notificationId}`, { method: 'POST' });
+                const notif = notifications.find(n => n.id === notificationId);
+                if (notif) notif.is_read = true;
+                updateNotificationBadge();
+                renderNotifications();
+            } catch(e) {
+                console.error('خطأ:', e);
+            }
+        }
+
+        async function markAllNotifications() {
+            try {
+                for (const notif of notifications) {
+                    if (!notif.is_read) {
+                        await fetch(`/api/notifications/read/${notif.id}`, { method: 'POST' });
+                        notif.is_read = true;
+                    }
+                }
+                updateNotificationBadge();
+                renderNotifications();
+                showNotification('تم تحديد جميع الإشعارات كمقروءة', 'success');
+            } catch(e) {
+                console.error('خطأ:', e);
+            }
+        }
+
+        // ===== TOGGLE PRICE =====
+        function togglePrice() { 
+            const isFree = document.getElementById('isFree').checked; 
+            document.getElementById('price').disabled = isFree; 
+            if (isFree) document.getElementById('price').value = 0; 
+        }
+
+        // ===== LOAD USER DATA =====
         async function loadUserData() {
             try {
                 const storedData = localStorage.getItem('userData');
@@ -1493,6 +1689,7 @@
                 updateUI();
                 loadBalance();
                 loadReferralData();
+                loadNotifications();
             } catch(e) { console.error(e); }
         }
 
@@ -1506,7 +1703,6 @@
             document.getElementById('sidebarSpecialty').innerText = userData.specialization || 'تخصص غير محدد';
             document.getElementById('sidebarAvatar').src = userImage;
             
-            // عرض روابط التواصل الاجتماعي في الملف الشخصي
             let socialLinksHtml = '';
             const socialLinks = [
                 { url: userData.facebook_url, icon: 'fab fa-facebook', label: 'فيسبوك', color: '#1877f2' },
@@ -1671,7 +1867,7 @@
             } catch(e) { showNotification('حدث خطأ', 'error'); }
         }
 
-        // ===== MESSAGES FUNCTIONS =====
+        // ===== MESSAGES =====
         function startChatWithTeacher(otherId, otherName, otherImage) {
             currentChatTeacher = { 
                 id: otherId, 
@@ -1883,7 +2079,7 @@
             } catch(e) { console.log(e); }
         }
 
-        // ===== NOTIFICATION =====
+        // ===== NOTIFICATION TOAST =====
         function showNotification(message, type = 'success') {
             const toast = document.getElementById('notificationToast');
             toast.className = 'notification-toast';
@@ -2020,7 +2216,6 @@
             let html = '';
             let expiredCount = 0;
             
-            // تعريف خريطة لمستويات التعليم
             const levelMap = {
                 'primary': 'خامسة ابتدائي',
                 'middle': 'شهادة التعليم المتوسط',
@@ -2044,7 +2239,6 @@
                 const isFree = offer.is_free === 1 || offer.is_free === true;
                 const priceDisplay = isFree ? '🎁 مجانية' : `💰 ${offer.price} دج`;
                 
-                // عرض مستوى التعليم
                 let levelDisplay = '';
                 if (offer.education_level) {
                     const levelName = levelMap[offer.education_level] || offer.education_level;
@@ -2144,7 +2338,7 @@
             }
         }
 
-        // ===== CREATE OFFER (مع مستوى التعليم) =====
+        // ===== CREATE OFFER =====
         function showCreateOfferModal() {
             document.getElementById('subjectName').value = '';
             document.getElementById('duration').value = '60';
@@ -2159,22 +2353,6 @@
             document.getElementById('createOfferModal').style.display = 'block';
         }
 
-        function togglePrice() { 
-            const isFree = document.getElementById('isFree').checked; 
-            document.getElementById('price').disabled = isFree; 
-            if (isFree) document.getElementById('price').value = 0; 
-        }
-
-        function toggleOtherLevel() {
-            const level = document.getElementById('educationLevel').value;
-            const otherGroup = document.getElementById('otherLevelGroup');
-            if (level === 'other') {
-                otherGroup.style.display = 'block';
-            } else {
-                otherGroup.style.display = 'none';
-            }
-        }
-
         async function createOffer() {
             const subject_name = document.getElementById('subjectName').value;
             const offer_date = document.getElementById('offerDate').value;
@@ -2185,14 +2363,12 @@
                 return; 
             }
             
-            // التحقق من اختيار مستوى التعليم
             if (!educationLevel) {
                 showNotification('⚠️ الرجاء اختيار المستوى التعليمي', 'warning');
                 document.getElementById('educationLevel').focus();
                 return;
             }
             
-            // إذا كان المستوى "آخر"، التحقق من إدخال النص
             let finalLevel = educationLevel;
             if (educationLevel === 'other') {
                 const otherText = document.getElementById('otherLevelText').value.trim();
@@ -2211,7 +2387,7 @@
                 offer_date: offer_date,
                 is_free: document.getElementById('isFree').checked,
                 price: document.getElementById('isFree').checked ? 0 : document.getElementById('price').value,
-                education_level: finalLevel // إضافة مستوى التعليم
+                education_level: finalLevel
             };
             
             try {
@@ -2254,7 +2430,8 @@
             if (document.getElementById('offersSection').style.display !== 'none') loadOffers(); 
             if (document.getElementById('messagesSection').style.display !== 'none') loadConversations();
             if (document.getElementById('referralSection').style.display !== 'none') loadReferralData();
-        }, 10000);
+            loadNotifications();
+        }, 15000);
     </script>
 </body>
 </html>
