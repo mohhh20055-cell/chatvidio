@@ -349,23 +349,16 @@ app.use(cors(corsOptions));
 // 4. Cookie Parser للجلسات الآمنة
 app.use(cookieParser());
 
-// 5. Rate Limiting متقدم
-const limiter = rateLimit({
-    windowMs: RATE_LIMIT_WINDOW,
-    max: RATE_LIMIT_MAX,
-    message: { success: false, error: 'عدد الطلبات كبير جداً، حاول لاحقاً' },
+const authLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 10,
+    message: { success: false, error: 'عدد محاولات تسجيل الدخول كبير جداً، حاول بعد ساعة' },
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => {
-        return req.ip || req.connection.remoteAddress;
-    },
-    skip: (req) => {
-        const skipPaths = ['/api/stream', '/api/public/stats', '/api/public/offers', '/api/join-stream', '/api/verify-email', '/api/wallet/deposit/success', '/api/wallet/deposit/failure', '/api/chargily-webhook', '/api/test-cors'];
-        return skipPaths.some(path => req.path.startsWith(path));
+        return req.body.email || req.ip;  // ❌ هذا هو السطر 341
     }
 });
-app.use('/api/', limiter);
-
 // 6. Rate Limiting خاص لتسجيل الدخول
 const authLimiter = rateLimit({
     windowMs: 60 * 60 * 1000,
