@@ -377,6 +377,29 @@ function generateReferralCode(name, id) {
 }
 
 // ============================================================
+// ✅ دالة إرسال إشعار (الجزء المضاف)
+// ============================================================
+async function sendNotification(userId, userType, title, message, additionalData = {}) {
+    try {
+        const notificationData = {
+            user_id: userId,
+            user_type: userType,
+            title: title,
+            message: message,
+            is_read: false,
+            created_at: new Date().toISOString(),
+            ...additionalData
+        };
+        
+        await insert('notifications', notificationData);
+        console.log(`📨 إشعار مرسل إلى ${userType} ${userId}: ${title}`);
+        return true;
+    } catch (error) {
+        console.error('خطأ في إرسال الإشعار:', error.message);
+        return false;
+    }
+}
+
 // ============================================================
 // مسارات التحقق من البريد الإلكتروني
 // ============================================================
@@ -1527,9 +1550,8 @@ app.get('/api/student/wallet/:student_id', async (req, res) => {
 // ============================================================
 async function createChargilyCheckout(amount, studentName, studentEmail, studentPhone, description, successUrl, failureUrl) {
     try {
-        // التأكد من أن المبلغ رقم صحيح وفي الحدود المسموح بها
         let finalAmount = Math.max(Number(amount), 50);
-        finalAmount = Math.min(finalAmount, 1000000); // الحد الأقصى مليون دج
+        finalAmount = Math.min(finalAmount, 1000000);
         finalAmount = Math.round(finalAmount);
 
         const checkoutData = {
@@ -1548,7 +1570,6 @@ async function createChargilyCheckout(amount, studentName, studentEmail, student
 
         console.log('📦 إنشاء دفع للمبلغ:', finalAmount, 'DZD');
 
-        // محاولات متعددة مع طرق مصادقة مختلفة
         const authMethods = [
             { 'Authorization': `Bearer ${CHARGILY_API_KEY}` },
             { 'X-Authorization': CHARGILY_API_KEY },
@@ -1612,18 +1633,15 @@ app.post('/api/student/wallet/deposit', [
 
         const { student_id, amount } = req.body;
 
-        // التحقق من وجود الطالب
         const student = await getOne('students', 'id', student_id);
         if (!student) {
             return res.status(404).json({ success: false, error: 'الطالب غير موجود' });
         }
 
-        // التأكد من أن المبلغ رقم صحيح
         const finalAmount = Math.round(Math.max(Number(amount), 100));
         
         console.log(`💰 طلب شحن رصيد: الطالب ${student.full_name} (${student_id}) - المبلغ: ${finalAmount} دج`);
 
-        // إنشاء معاملة جديدة بحالة pending
         const transaction = await insert('wallet_transactions', {
             student_id: student_id,
             amount: finalAmount,
@@ -1633,15 +1651,14 @@ app.post('/api/student/wallet/deposit', [
             created_at: new Date().toISOString()
         });
 
-       // بناء روابط النجاح والفشل
-const baseUrl = process.env.PLATFORM_URL || 
+        const baseUrl = process.env.PLATFORM_URL || 
                 process.env.RENDER_EXTERNAL_URL || 
                 (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
                 'https://chatvidio.vercel.app';
 
-const successUrl = `${baseUrl}/api/wallet/deposit/success/${transaction.id}`;
-const failureUrl = `${baseUrl}/api/wallet/deposit/failure/${transaction.id}`;
-        // إنشاء رابط الدفع عبر Chargily
+        const successUrl = `${baseUrl}/api/wallet/deposit/success/${transaction.id}`;
+        const failureUrl = `${baseUrl}/api/wallet/deposit/failure/${transaction.id}`;
+
         const checkout = await createChargilyCheckout(
             finalAmount,
             student.full_name,
@@ -1653,7 +1670,6 @@ const failureUrl = `${baseUrl}/api/wallet/deposit/failure/${transaction.id}`;
         );
 
         if (checkout.success && checkout.checkout_url) {
-            // تحديث المعاملة بمعرف Chargily
             await update('wallet_transactions', transaction.id, { 
                 chargily_checkout_id: checkout.checkout_id 
             });
@@ -1667,7 +1683,6 @@ const failureUrl = `${baseUrl}/api/wallet/deposit/failure/${transaction.id}`;
                 amount: finalAmount
             });
         } else {
-            // فشل إنشاء رابط الدفع
             await update('wallet_transactions', transaction.id, {
                 status: 'failed',
                 description: `فشل إنشاء رابط الدفع: ${checkout.error}`
@@ -1687,7 +1702,7 @@ const failureUrl = `${baseUrl}/api/wallet/deposit/failure/${transaction.id}`;
 });
 
 // ============================================================
-// ✅ معالجة نجاح الدفع - إضافة الرصيد بعد التأكيد
+// ✅ معالجة نجاح الدفع - إضافة الرصيد مع إشعار للطالب
 // ============================================================
 app.get('/api/wallet/deposit/success/:transaction_id', async (req, res) => {
     const { transaction_id } = req.params;
@@ -1695,7 +1710,6 @@ app.get('/api/wallet/deposit/success/:transaction_id', async (req, res) => {
     try {
         console.log(`✅ تأكيد نجاح الدفع للمعاملة: ${transaction_id}`);
 
-        // جلب المعاملة
         const transaction = await getOne('wallet_transactions', 'id', transaction_id);
         if (!transaction) {
             return res.send(`
@@ -1720,7 +1734,6 @@ app.get('/api/wallet/deposit/success/:transaction_id', async (req, res) => {
             `);
         }
 
-        // التحقق من أن المعاملة لم تتم معالجتها مسبقاً
         if (transaction.status === 'completed') {
             return res.send(`
                 <!DOCTYPE html>
@@ -1744,10 +1757,8 @@ app.get('/api/wallet/deposit/success/:transaction_id', async (req, res) => {
             `);
         }
 
-        // ✅ إضافة الرصيد فقط هنا (بعد تأكيد الدفع الفعلي)
         const amount = transaction.amount;
         
-        // جلب بيانات الطالب
         const student = await getOne('students', 'id', transaction.student_id);
         if (!student) {
             return res.send(`
@@ -1772,26 +1783,30 @@ app.get('/api/wallet/deposit/success/:transaction_id', async (req, res) => {
             `);
         }
 
-        // حساب الرصيد الجديد مع تجنب overflow
         const currentBalance = parseInt(student.wallet_balance) || 0;
         const addAmount = parseInt(amount) || 0;
         const newBalance = currentBalance + addAmount;
         
-        // ✅ استخدام parseInt للتأكد من أن القيمة عدد صحيح
         await supabase
             .from('students')
             .update({ wallet_balance: newBalance })
             .eq('id', transaction.student_id);
 
-        // تحديث حالة المعاملة
         await update('wallet_transactions', transaction_id, {
             status: 'completed',
             description: `تم شحن الرصيد بنجاح بمبلغ ${amount} دج`
         });
 
         console.log(`✅ تم إضافة ${amount} دج للطالب ${student.full_name} (الرصيد الجديد: ${newBalance} دج)`);
+        
+        // ✅ إرسال إشعار للطالب عند نجاح الدفع
+        await sendNotification(
+            transaction.student_id,
+            'student',
+            '💰 تم شحن الرصيد بنجاح',
+            `تم إضافة ${amount} دج إلى رصيدك. الرصيد الحالي: ${newBalance} دج`
+        );
 
-        // عرض صفحة النجاح
         res.send(`
             <!DOCTYPE html>
             <html>
@@ -1882,7 +1897,7 @@ app.get('/api/wallet/deposit/failure/:transaction_id', async (req, res) => {
 });
 
 // ============================================================
-// نظام الحجز
+// ✅ نظام الحجز - مع إرسال إشعارات للطالب والأستاذ
 // ============================================================
 app.post('/api/booking/create', [
     body('offer_id').isInt().withMessage('معرف العرض غير صالح'),
@@ -1920,6 +1935,9 @@ app.post('/api/booking/create', [
             .maybeSingle();
 
         if (existing) return res.status(400).json({ success: false, error: 'مسجل بالفعل' });
+        
+        // جلب بيانات الأستاذ للإشعارات
+        const teacher = await getOne('teachers', 'id', offer.teacher_id);
 
         if (offer.is_free === 1 || offer.price === 0) {
             const session = await insert('sessions', {
@@ -1931,6 +1949,27 @@ app.post('/api/booking/create', [
                 paid_from_wallet: false
             });
             await insert('waiting_room', { offer_id, student_id });
+            
+            // ✅ إشعار للطالب عند الحجز المجاني مع رسالة انتظر البث
+            await sendNotification(
+                student_id,
+                'student',
+                '📚 تم حجز الحصة بنجاح',
+                `تم حجز حصة "${offer.subject_name}" مجاناً. انتظر بداية البث في الوقت المحدد.`,
+                { offer_id: offer_id }
+            );
+            
+            // ✅ إشعار للأستاذ عند حجز طالب
+            if (teacher) {
+                await sendNotification(
+                    teacher.id,
+                    'teacher',
+                    '📚 حجز جديد',
+                    `قام الطالب ${student.full_name} بحجز حصتك "${offer.subject_name}" (مجانية)`,
+                    { offer_id: offer_id, student_id: student_id }
+                );
+            }
+            
             return res.json({ success: true, session_id: session.id, is_free: true });
         }
 
@@ -1968,7 +2007,6 @@ app.post('/api/booking/create', [
 
         await insert('waiting_room', { offer_id, student_id });
 
-        const teacher = await getOne('teachers', 'id', offer.teacher_id);
         const commission = offer.price * 0.1;
         const teacherEarned = offer.price - commission;
         await update('teachers', offer.teacher_id, {
@@ -1976,6 +2014,26 @@ app.post('/api/booking/create', [
             total_earned: (teacher.total_earned || 0) + teacherEarned
         });
         await update('sessions', session.id, { teacher_earned: teacherEarned });
+
+        // ✅ إشعار للطالب عند الحجز المدفوع مع رسالة انتظر البث
+        await sendNotification(
+            student_id,
+            'student',
+            '📚 تم حجز الحصة بنجاح',
+            `تم حجز حصة "${offer.subject_name}" مقابل ${offer.price} دج. انتظر بداية البث في الوقت المحدد.`,
+            { offer_id: offer_id }
+        );
+        
+        // ✅ إشعار للأستاذ عند حجز طالب
+        if (teacher) {
+            await sendNotification(
+                teacher.id,
+                'teacher',
+                '📚 حجز جديد',
+                `قام الطالب ${student.full_name} بحجز حصتك "${offer.subject_name}" مقابل ${offer.price} دج`,
+                { offer_id: offer_id, student_id: student_id }
+            );
+        }
 
         return res.json({
             success: true,
@@ -2142,7 +2200,7 @@ app.post('/api/reset-password', [
 });
 
 // ============================================================
-// نظام المراسلات
+// نظام المراسلات - مع إشعارات
 // ============================================================
 app.post('/api/messages/send', [
     body('sender_id').isInt().withMessage('معرف المرسل غير صالح'),
@@ -2169,14 +2227,14 @@ app.post('/api/messages/send', [
             is_read: false
         });
 
-        await insert('notifications', {
-            user_id: receiver_id,
-            user_type: receiver_type,
-            title: 'رسالة جديدة',
-            message: 'لديك رسالة جديدة',
-            is_read: false,
-            created_at: new Date().toISOString()
-        });
+        // ✅ إشعار للمستلم عند استلام رسالة جديدة
+        await sendNotification(
+            receiver_id,
+            receiver_type,
+            '💬 رسالة جديدة',
+            `لديك رسالة جديدة`,
+            { sender_id: sender_id, sender_type: sender_type }
+        );
 
         res.json({ success: true, message: newMessage });
     } catch (error) {
@@ -3198,7 +3256,7 @@ app.get('/api/waiting-count/:offer_id', async (req, res) => {
 });
 
 // ============================================================
-// نظام الرصيد والأرباح للأستاذ
+// ✅ نظام الرصيد والأرباح للأستاذ - مع إشعارات السحب
 // ============================================================
 app.get('/api/teacher/balance/:teacher_id', async (req, res) => {
     try {
@@ -3255,6 +3313,14 @@ app.post('/api/teacher/withdraw-request', [
             pending_withdraw: (teacher.pending_withdraw || 0) + amount
         });
 
+        // ✅ إشعار للأستاذ عند تقديم طلب سحب
+        await sendNotification(
+            teacher_id,
+            'teacher',
+            '💰 طلب سحب قيد المراجعة',
+            `تم تقديم طلب سحب بقيمة ${amount} دج إلى حساب ${ccp_account}. سيتم مراجعته من قبل الإدارة.`
+        );
+
         res.json({ success: true, request: withdrawRequest });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -3305,14 +3371,13 @@ app.post('/api/admin/withdraw-requests/:id/approve', async (req, res) => {
             pending_withdraw: (teacher.pending_withdraw || 0) - request.amount
         });
 
-        await insert('notifications', {
-            user_id: request.teacher_id,
-            user_type: 'teacher',
-            title: 'تمت معالجة طلب السحب',
-            message: `تم تحويل مبلغ ${request.amount} دج إلى حسابك ${request.ccp_account}`,
-            is_read: false,
-            created_at: new Date().toISOString()
-        });
+        // ✅ إشعار للأستاذ عند الموافقة على طلب السحب (تم الدفع له)
+        await sendNotification(
+            request.teacher_id,
+            'teacher',
+            '💰 تم تحويل المبلغ إلى حسابك',
+            `تمت الموافقة على طلب السحب وتحويل مبلغ ${request.amount} دج إلى حسابك ${request.ccp_account}`
+        );
 
         res.json({ success: true });
     } catch (error) {
@@ -3340,14 +3405,13 @@ app.post('/api/admin/withdraw-requests/:id/reject', async (req, res) => {
             pending_withdraw: (teacher.pending_withdraw || 0) - request.amount
         });
 
-        await insert('notifications', {
-            user_id: request.teacher_id,
-            user_type: 'teacher',
-            title: 'تم رفض طلب السحب',
-            message: `تم رفض طلب سحب مبلغ ${request.amount} دج. السبب: ${reason || 'لم يتم تحديد سبب'}`,
-            is_read: false,
-            created_at: new Date().toISOString()
-        });
+        // ✅ إشعار للأستاذ عند رفض طلب السحب
+        await sendNotification(
+            request.teacher_id,
+            'teacher',
+            '❌ تم رفض طلب السحب',
+            `تم رفض طلب سحب مبلغ ${request.amount} دج. السبب: ${reason || 'لم يتم تحديد سبب'}`
+        );
 
         res.json({ success: true });
     } catch (error) {
@@ -3399,15 +3463,14 @@ app.post('/api/stream/add-students/:offer_id', [
         for (const student of waitingStudents || []) {
             await insert('active_stream', { offer_id, student_id: student.student_id });
 
-            await insert('notifications', {
-                user_id: student.student_id,
-                user_type: 'student',
-                title: 'البث المباشر بدأ',
-                message: `الحصة "${offer.subject_name}" قد بدأت الآن. انضم إلى البث المباشر.`,
-                offer_id: offer_id,
-                is_read: false,
-                created_at: new Date().toISOString()
-            });
+            // ✅ إشعار للطالب عند بدء البث
+            await sendNotification(
+                student.student_id,
+                'student',
+                '📺 بدء البث المباشر',
+                `بدأت حصة "${offer.subject_name}" الآن! انضم إلى البث المباشر.`,
+                { offer_id: offer_id }
+            );
 
             addedStudents.push(student.student_id);
 
@@ -4146,6 +4209,7 @@ if (require.main === module) {
         console.log('👥 إدارة المستخدمين (حذف + حظر) مفعلة');
         console.log('🔄 نظام التوجيه (redirectTo) مفعل للمدير');
         console.log('💳 نظام الدفع عبر Chargily مفعل مع تأكيد الدفع');
+        console.log('📨 نظام الإشعارات مفعل للطلاب والأساتذة');
         console.log('='.repeat(60));
     });
 }
