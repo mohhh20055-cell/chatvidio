@@ -36,6 +36,11 @@ const LOCKOUT_TIME = 15 * 60 * 1000;
 const RATE_LIMIT_WINDOW = 15 * 60 * 1000;
 const RATE_LIMIT_MAX = 100;
 
+// reCAPTCHA من Google
+const RECAPTCHA_SITE_KEY = process.env.RECAPTCHA_SITE_KEY || '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI'; // مفتاح اختبار Google
+const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY || '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe'; // مفتاح اختبار Google
+const RECAPTCHA_VERIFY_URL = 'https://www.google.com/recaptcha/api/siteverify';
+
 // تعريف التطبيق
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -191,6 +196,102 @@ function isOriginAllowed(origin) {
 }
 
 // ============================================================
+// دالة التحقق من reCAPTCHA من Google
+// ============================================================
+async function verifyRecaptcha(recaptchaToken) {
+    if (!recaptchaToken) {
+        return { success: false, error: 'رمز reCAPTCHA مطلوب' };
+    }
+
+    try {
+        const response = await axios.post(RECAPTCHA_VERIFY_URL, null, {
+            params: {
+                secret: RECAPTCHA_SECRET_KEY,
+                response: recaptchaToken
+            },
+            timeout: 10000
+        });
+
+        const data = response.data;
+
+        if (!data.success) {
+            const errorCodes = data['error-codes'] || [];
+            console.error('❌ فشل التحقق من reCAPTCHA:', errorCodes);
+            return { 
+                success: false, 
+                error: 'فشل التحقق من reCAPTCHA',
+                errorCodes: errorCodes 
+            };
+        }
+
+        // التحقق من أن النتيجة أعلى من 0.5 لـ reCAPTCHA v3
+        if (data.score !== undefined && data.score < 0.5) {
+            return { 
+                success: false, 
+                error: 'يبدو أنك روبوت، يرجى المحاولة مرة أخرى',
+                score: data.score 
+            };
+        }
+
+        return { 
+            success: true, 
+            score: data.score || 1,
+            action: data.action || 'verify'
+        };
+    } catch (error) {
+        console.error('❌ خطأ في التحقق من reCAPTCHA:', error.message);
+        return { 
+            success: false, 
+            error: 'حدث خطأ في التحقق من reCAPTCHA'
+        };
+    }
+}
+
+// ============================================================
+// Middleware للتحقق من reCAPTCHA للتسجيل
+// ============================================================
+const validateRecaptcha = async (req, res, next) => {
+    const recaptchaToken = req.body.recaptcha_token || req.body['g-recaptcha-response'] || req.headers['x-recaptcha-token'];
+    
+    if (!recaptchaToken) {
+        return res.status(400).json({ 
+            success: false, 
+            error: 'يجب التحقق من أنك لست روبوت (reCAPTCHA)',
+            recaptcha_required: true
+        });
+    }
+
+    const verification = await verifyRecaptcha(recaptchaToken);
+    
+    if (!verification.success) {
+        return res.status(400).json({ 
+            success: false, 
+            error: verification.error || 'فشل التحقق من reCAPTCHA، يرجى المحاولة مرة أخرى',
+            recaptcha_required: true
+        });
+    }
+
+    // تخزين نتيجة التحقق للاستخدام لاحقاً
+    req.recaptcha = verification;
+    next();
+};
+
+// Middleware للتحقق من reCAPTCHA (اختياري - فقط لعمليات حساسة)
+const validateRecaptchaOptional = async (req, res, next) => {
+    const recaptchaToken = req.body.recaptcha_token || req.body['g-recaptcha-response'] || req.headers['x-recaptcha-token'];
+    
+    if (!recaptchaToken) {
+        // السماح بالمتابعة ولكن مع تحذير
+        req.recaptcha = { success: false, skipped: true };
+        return next();
+    }
+
+    const verification = await verifyRecaptcha(recaptchaToken);
+    req.recaptcha = verification;
+    next();
+};
+
+// ============================================================
 // Middleware التحقق من المصادقة
 // ============================================================
 async function authenticate(req, res, next) {
@@ -252,13 +353,13 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://meet.jit.si", "https://cdnjs.cloudflare.com", "https://vercel.live", "https://*.vercel.app"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://meet.jit.si", "https://cdnjs.cloudflare.com", "https://vercel.live", "https://*.vercel.app", "https://www.google.com", "https://www.gstatic.com"],
             scriptSrcAttr: ["'unsafe-inline'"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
-            imgSrc: ["'self'", "data:", "https://ui-avatars.com", "https://api.qrserver.com", "https://*.supabase.co"],
-            connectSrc: ["'self'", "https://*.supabase.co", "https://pay.chargily.net", "https://meet.jit.si", "https://*.vercel.app"],
-            frameSrc: ["'self'", "https://meet.jit.si"]
+            imgSrc: ["'self'", "data:", "https://ui-avatars.com", "https://api.qrserver.com", "https://*.supabase.co", "https://www.google.com"],
+            connectSrc: ["'self'", "https://*.supabase.co", "https://pay.chargily.net", "https://meet.jit.si", "https://*.vercel.app", "https://www.google.com"],
+            frameSrc: ["'self'", "https://meet.jit.si", "https://www.google.com"]
         }
     },
     hsts: {
@@ -287,7 +388,7 @@ const corsOptions = {
         }
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-CSRF-Token', 'X-Signature', 'Accept', 'Origin', 'X-HTTP-Method-Override'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-CSRF-Token', 'X-Signature', 'Accept', 'Origin', 'X-HTTP-Method-Override', 'X-reCAPTCHA-Token'],
     credentials: true,
     maxAge: 86400,
     optionsSuccessStatus: 200
@@ -362,6 +463,15 @@ app.get('/api/test-cors', (req, res) => {
         origin: req.headers.origin || 'no origin',
         ip: req.ip,
         timestamp: new Date().toISOString()
+    });
+});
+
+// 10. مسار الحصول على مفتاح reCAPTCHA للواجهة الأمامية
+app.get('/api/recaptcha/site-key', (req, res) => {
+    res.json({
+        success: true,
+        siteKey: RECAPTCHA_SITE_KEY,
+        version: process.env.RECAPTCHA_VERSION || 'v2'
     });
 });
 
@@ -2753,11 +2863,11 @@ app.get('/api/messages/:user_id/:user_type/:other_id/:other_type', [
 });
 
 // ============================================================
-// مسارات التسجيل والدخول
+// مسارات التسجيل والدخول (مع reCAPTCHA)
 // ============================================================
 
-// تسجيل أستاذ جديد
-app.post('/api/teacher/register', checkBanned, upload.fields([
+// تسجيل أستاذ جديد - مع reCAPTCHA
+app.post('/api/teacher/register', checkBanned, validateRecaptcha, upload.fields([
     { name: 'profile_image', maxCount: 1 },
     { name: 'diploma_image', maxCount: 1 },
     { name: 'id_image', maxCount: 1 }
@@ -2777,7 +2887,7 @@ app.post('/api/teacher/register', checkBanned, upload.fields([
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        console.log('استلام طلب تسجيل أستاذ جديد');
+        console.log('استلام طلب تسجيل أستاذ جديد - مع reCAPTCHA');
 
         const { full_name, email, password, phone, specialization, bio, experience } = req.body;
 
@@ -2876,7 +2986,8 @@ app.post('/api/teacher/register', checkBanned, upload.fields([
             email: email,
             role: 'teacher',
             referral_code: referralCode,
-            token: token
+            token: token,
+            recaptcha_score: req.recaptcha?.score || null
         });
     } catch (error) {
         console.error('خطأ:', error.message);
@@ -2884,8 +2995,8 @@ app.post('/api/teacher/register', checkBanned, upload.fields([
     }
 });
 
-// تسجيل طالب
-app.post('/api/student/register', checkBanned, [
+// تسجيل طالب - مع reCAPTCHA
+app.post('/api/student/register', checkBanned, validateRecaptcha, [
     body('full_name').notEmpty().withMessage('الاسم الكامل مطلوب').isLength({ max: 100 }).withMessage('الاسم طويل جداً'),
     body('email').isEmail().withMessage('بريد إلكتروني غير صالح').trim().normalizeEmail(),
     body('password').isLength({ min: 8 }).withMessage('كلمة المرور يجب أن تكون 8 أحرف على الأقل')
@@ -2963,7 +3074,8 @@ app.post('/api/student/register', checkBanned, [
             email: email,
             role: 'student',
             referral_code: referralCode,
-            token: token
+            token: token,
+            recaptcha_score: req.recaptcha?.score || null
         });
     } catch (error) {
         console.error('خطأ:', error.message);
@@ -3189,9 +3301,9 @@ app.get('/api/teachers', async (req, res) => {
 });
 
 // ============================================================
-// تسجيل الدخول
+// تسجيل الدخول - مع reCAPTCHA اختياري للطلبات المشبوهة
 // ============================================================
-app.post('/api/login', checkBanned, [
+app.post('/api/login', checkBanned, validateRecaptchaOptional, [
     body('email').isEmail().withMessage('بريد إلكتروني غير صالح').trim().normalizeEmail(),
     body('password').notEmpty().withMessage('كلمة المرور مطلوبة'),
     body('role').isIn(['student', 'teacher', 'admin']).withMessage('دور غير صالح')
@@ -3205,6 +3317,15 @@ app.post('/api/login', checkBanned, [
         const { email, password, role } = req.body;
 
         console.log(`محاولة تسجيل دخول: ${email} كـ ${role}`);
+
+        // إذا كان هناك reCAPTCHA وتم التحقق منه، نستخدمه
+        if (req.recaptcha && req.recaptcha.success === false && !req.recaptcha.skipped) {
+            return res.status(400).json({ 
+                success: false, 
+                error: req.recaptcha.error || 'فشل التحقق من reCAPTCHA، يرجى المحاولة مرة أخرى',
+                recaptcha_required: true
+            });
+        }
 
         if (role === 'admin') {
             console.log('🔐 محاولة تسجيل دخول كمدير');
@@ -3343,12 +3464,25 @@ app.post('/api/login', checkBanned, [
                 balance: user.wallet_balance || user.balance || 0,
                 email_verified: user.email_verified,
                 referral_code: user.referral_code
-            }
+            },
+            recaptcha_score: req.recaptcha?.score || null
         });
     } catch (error) {
         console.error('خطأ في تسجيل الدخول:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
+});
+
+// ============================================================
+// مسار الحصول على حالة reCAPTCHA
+// ============================================================
+app.get('/api/recaptcha/status', (req, res) => {
+    res.json({
+        enabled: true,
+        siteKey: RECAPTCHA_SITE_KEY,
+        version: process.env.RECAPTCHA_VERSION || 'v2',
+        isTestKey: RECAPTCHA_SITE_KEY === '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI'
+    });
 });
 
 // ============================================================
@@ -4686,115 +4820,8 @@ app.get('/api/join-stream/:offer_id/:student_id', [
 });
 
 // ============================================================
-// نظام الكابتشا
+// تم إزالة نظام الكابتشا البسيط واستبداله بـ Google reCAPTCHA
 // ============================================================
-const captchaStore = {};
-
-function generateCaptcha() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let code = '';
-    for (let i = 0; i < 6; i++) {
-        code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return code;
-}
-
-function generateCaptchaImage(code) {
-    const colors = ['#0f5cbf', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899'];
-    const bgColors = ['#f0f4ff', '#f0fdf4', '#f5f3ff', '#fffbeb', '#fef2f2', '#fdf2f8'];
-    const randomColor = colors[Math.floor(Math.random() * colors.length)];
-    const randomBg = bgColors[Math.floor(Math.random() * bgColors.length)];
-
-    let noise = '';
-    for (let i = 0; i < 20; i++) {
-        const x = Math.random() * 200;
-        const y = Math.random() * 60;
-        noise += `<line x1="${x}" y1="${y}" x2="${x + Math.random() * 20}" y2="${y + Math.random() * 20}" stroke="${colors[Math.floor(Math.random() * colors.length)]}" stroke-width="1" opacity="0.3"/>`;
-    }
-
-    const svg = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="200" height="60" viewBox="0 0 200 60">
-            <rect width="200" height="60" fill="${randomBg}" rx="8"/>
-            ${noise}
-            <text x="100" y="40" font-family="Arial, sans-serif" font-size="28" font-weight="bold" 
-                  fill="${randomColor}" text-anchor="middle" letter-spacing="5">
-                ${code.split('').map((char, i) => {
-                    const angle = (Math.random() - 0.5) * 20;
-                    return `<tspan x="${20 + i * 30}" y="40" transform="rotate(${angle}, ${20 + i * 30}, 40)">${char}</tspan>`;
-                }).join('')}
-            </text>
-            ${Array.from({length: 5}, (_, i) => {
-                const x = Math.random() * 200;
-                const y = Math.random() * 60;
-                return `<circle cx="${x}" cy="${y}" r="${Math.random() * 3 + 1}" fill="${colors[Math.floor(Math.random() * colors.length)]}" opacity="0.5"/>`;
-            }).join('')}
-        </svg>
-    `;
-    return svg;
-}
-
-app.get('/api/captcha/generate', (req, res) => {
-    const code = generateCaptcha();
-    const captchaId = Date.now().toString(36) + crypto.randomBytes(8).toString('hex');
-
-    captchaStore[captchaId] = {
-        code: code,
-        expires: Date.now() + 5 * 60 * 1000
-    };
-
-    const now = Date.now();
-    Object.keys(captchaStore).forEach(key => {
-        if (captchaStore[key].expires < now) {
-            delete captchaStore[key];
-        }
-    });
-
-    const svg = generateCaptchaImage(code);
-
-    res.json({
-        captcha_id: captchaId,
-        image: svg,
-        expires_in: 300
-    });
-});
-
-app.post('/api/captcha/verify', [
-    body('captcha_id').notEmpty().withMessage('معرف الكابتشا مطلوب'),
-    body('captcha_code').notEmpty().withMessage('رمز التحقق مطلوب')
-], (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ success: false, errors: errors.array() });
-    }
-
-    const { captcha_id, captcha_code } = req.body;
-    const stored = captchaStore[captcha_id];
-
-    if (!stored) {
-        return res.status(400).json({ success: false, error: 'انتهت صلاحية رمز التحقق، يرجى تحديث الصورة' });
-    }
-
-    if (Date.now() > stored.expires) {
-        delete captchaStore[captcha_id];
-        return res.status(400).json({ success: false, error: 'انتهت صلاحية رمز التحقق، يرجى تحديث الصورة' });
-    }
-
-    if (stored.code.toLowerCase() === captcha_code.toLowerCase().trim()) {
-        delete captchaStore[captcha_id];
-        return res.json({ success: true });
-    } else {
-        return res.status(400).json({ success: false, error: 'رمز التحقق غير صحيح، يرجى المحاولة مرة أخرى' });
-    }
-});
-
-setInterval(() => {
-    const now = Date.now();
-    Object.keys(captchaStore).forEach(key => {
-        if (captchaStore[key].expires < now) {
-            delete captchaStore[key];
-        }
-    });
-}, 60000);
 
 // ============================================================
 // إرسال إشعار لجميع الطلاب
@@ -5059,6 +5086,9 @@ if (require.main === module) {
         console.log('👥 إدارة المستخدمين (حذف + حظر)');
         console.log('💳 نظام الدفع عبر Chargily مع Webhook');
         console.log('🔄 نظام التوجيه (redirectTo) للمدير');
+        console.log('🤖 Google reCAPTCHA مفعل');
+        console.log(`   📋 Site Key: ${RECAPTCHA_SITE_KEY}`);
+        console.log(`   🔑 Secret Key: ${RECAPTCHA_SECRET_KEY ? '✅ موجود' : '❌ غير موجود'}`);
         console.log('='.repeat(60));
         console.log(`📅 التاريخ: ${new Date().toLocaleString('ar-EG')}`);
         console.log('='.repeat(60));
