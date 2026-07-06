@@ -1,6 +1,6 @@
 // ============================================================
-// خادم منصة التعليم - إصدار آمن ومحسن
-// تم إصلاح جميع الثغرات الأمنية وإضافة المسار الرئيسي
+// خادم منصة التعليم - إصدار آمن ومحسن مع نظام الإحالة والتوثيق والحظر
+// تم إصلاح جميع الثغرات الأمنية وإضافة الكابتشا
 // ============================================================
 
 require('dotenv').config();
@@ -164,6 +164,7 @@ const globalLimiter = rateLimit({
             '/api/public/students-count',
             '/api/live-offers',
             '/api/webhook/chargily',
+            '/api/captcha/generate',
             '/health'
         ];
         return publicPaths.some(p => req.path.startsWith(p));
@@ -203,6 +204,14 @@ const bookingLimiter = rateLimit({
     legacyHeaders: false
 });
 
+const captchaLimiter = rateLimit({
+    windowMs: 5 * 60 * 1000,
+    max: 20,
+    message: { success: false, error: 'عدد محاولات الكابتشا كبير جداً، حاول بعد 5 دقائق' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
 app.use('/api/login', authLimiter);
 app.use('/api/forgot-password', authLimiter);
 app.use('/api/resend-verification', authLimiter);
@@ -210,6 +219,8 @@ app.use('/api/student/register', registerLimiter);
 app.use('/api/teacher/register', registerLimiter);
 app.use('/api/student/wallet/deposit', depositLimiter);
 app.use('/api/booking/create', bookingLimiter);
+app.use('/api/captcha/generate', captchaLimiter);
+app.use('/api/captcha/verify', captchaLimiter);
 
 // ============================================================
 // Middleware الأساسية
@@ -627,6 +638,176 @@ function generateReferralCode(name, id) {
     const suffix = id.toString(36).toUpperCase();
     return `${prefix}${suffix}`;
 }
+
+// ============================================================
+// نظام الكابتشا - إصدار آمن
+// ============================================================
+
+// تخزين الكابتشا في الذاكرة مع انتهاء صلاحية
+const captchaStore = new Map();
+const CAPTCHA_EXPIRY = 5 * 60 * 1000; // 5 دقائق
+
+// تنظيف الكابتشا المنتهية كل دقيقة
+setInterval(() => {
+    const now = Date.now();
+    for (const [key, value] of captchaStore.entries()) {
+        if (value.expires < now) {
+            captchaStore.delete(key);
+        }
+    }
+}, 60000);
+
+// توليد كود كابتشا آمن
+function generateCaptcha() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(crypto.randomInt(0, chars.length)));
+    }
+    return code;
+}
+
+// توليد صورة كابتشا بصيغة SVG مع تشويش
+function generateCaptchaImage(code) {
+    const colors = ['#0f5cbf', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899'];
+    const bgColors = ['#f0f4ff', '#f0fdf4', '#f5f3ff', '#fffbeb', '#fef2f2', '#fdf2f8'];
+    const randomColor = colors[Math.floor(crypto.randomInt(0, colors.length))];
+    const randomBg = bgColors[Math.floor(crypto.randomInt(0, bgColors.length))];
+
+    let noise = '';
+    for (let i = 0; i < 30; i++) {
+        const x = crypto.randomInt(0, 200);
+        const y = crypto.randomInt(0, 60);
+        const color = colors[Math.floor(crypto.randomInt(0, colors.length))];
+        noise += `<line x1="${x}" y1="${y}" x2="${x + crypto.randomInt(-20, 20)}" y2="${y + crypto.randomInt(-20, 20)}" stroke="${color}" stroke-width="1" opacity="0.3"/>`;
+    }
+
+    let circles = '';
+    for (let i = 0; i < 8; i++) {
+        const x = crypto.randomInt(0, 200);
+        const y = crypto.randomInt(0, 60);
+        const r = crypto.randomInt(1, 5);
+        const color = colors[Math.floor(crypto.randomInt(0, colors.length))];
+        circles += `<circle cx="${x}" cy="${y}" r="${r}" fill="${color}" opacity="0.3"/>`;
+    }
+
+    let chars = '';
+    const charArray = code.split('');
+    for (let i = 0; i < charArray.length; i++) {
+        const angle = (crypto.randomInt(0, 200) - 100) / 10;
+        const x = 20 + i * 30;
+        chars += `<tspan x="${x}" y="42" transform="rotate(${angle}, ${x}, 42)" font-weight="900" font-size="28" font-family="Arial, sans-serif">${charArray[i]}</tspan>`;
+    }
+
+    const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="200" height="60" viewBox="0 0 200 60">
+            <rect width="200" height="60" fill="${randomBg}" rx="8"/>
+            ${noise}
+            ${circles}
+            <text x="0" y="0" fill="${randomColor}" letter-spacing="5">
+                ${chars}
+            </text>
+            ${Array.from({length: 3}, () => {
+                const x = crypto.randomInt(0, 200);
+                const y = crypto.randomInt(0, 60);
+                return `<rect x="${x}" y="${y}" width="${crypto.randomInt(2, 8)}" height="${crypto.randomInt(2, 8)}" fill="${colors[Math.floor(crypto.randomInt(0, colors.length))]}" opacity="0.2"/>`;
+            }).join('')}
+        </svg>
+    `;
+    return svg;
+}
+
+// ============================================================
+// مسارات الكابتشا
+// ============================================================
+
+// توليد كابتشا جديدة
+app.get('/api/captcha/generate', (req, res) => {
+    try {
+        const code = generateCaptcha();
+        const captchaId = Date.now().toString(36) + crypto.randomBytes(8).toString('hex');
+
+        captchaStore.set(captchaId, {
+            code: code,
+            expires: Date.now() + CAPTCHA_EXPIRY,
+            attempts: 0
+        });
+
+        const svg = generateCaptchaImage(code);
+
+        res.json({
+            success: true,
+            captcha_id: captchaId,
+            image: svg,
+            expires_in: 300
+        });
+    } catch (error) {
+        console.error('❌ خطأ في توليد الكابتشا:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في توليد الكابتشا' });
+    }
+});
+
+// التحقق من كابتشا
+app.post('/api/captcha/verify', [
+    body('captcha_id').notEmpty().withMessage('معرف الكابتشا مطلوب'),
+    body('captcha_code').notEmpty().withMessage('رمز التحقق مطلوب')
+], (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { captcha_id, captcha_code } = req.body;
+
+        // التحقق من وجود الكابتشا
+        const stored = captchaStore.get(captcha_id);
+        if (!stored) {
+            return res.status(400).json({
+                success: false,
+                error: 'انتهت صلاحية رمز التحقق، يرجى تحديث الصورة',
+                expired: true
+            });
+        }
+
+        // التحقق من صلاحية الكابتشا
+        if (Date.now() > stored.expires) {
+            captchaStore.delete(captcha_id);
+            return res.status(400).json({
+                success: false,
+                error: 'انتهت صلاحية رمز التحقق، يرجى تحديث الصورة',
+                expired: true
+            });
+        }
+
+        // زيادة عدد المحاولات
+        stored.attempts += 1;
+
+        // منع محاولات متكررة لنفس الكابتشا
+        if (stored.attempts > 3) {
+            captchaStore.delete(captcha_id);
+            return res.status(400).json({
+                success: false,
+                error: 'عدد المحاولات كبير جداً، يرجى تحديث الصورة',
+                expired: true
+            });
+        }
+
+        // التحقق من الكود (مقارنة غير حساسة لحالة الأحرف)
+        if (stored.code.toLowerCase() === captcha_code.toLowerCase().trim()) {
+            captchaStore.delete(captcha_id);
+            return res.json({ success: true });
+        } else {
+            return res.status(400).json({
+                success: false,
+                error: 'رمز التحقق غير صحيح، يرجى المحاولة مرة أخرى'
+            });
+        }
+    } catch (error) {
+        console.error('❌ خطأ في التحقق من الكابتشا:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في التحقق من الكابتشا' });
+    }
+});
 
 // ============================================================
 // نظام ويب هوكس Chargily
@@ -2487,6 +2668,1364 @@ app.get('/api/student/stream-status/:offer_id/:student_id', authenticateToken, a
 });
 
 // ============================================================
+// مسار الدخول إلى البث المباشر
+// ============================================================
+app.get('/api/join-stream/:offer_id/:student_id', authenticateToken, async (req, res) => {
+    try {
+        const { offer_id, student_id } = req.params;
+
+        if (req.user.userId !== parseInt(student_id) || req.user.userRole !== 'student') {
+            return res.status(403).send('غير مصرح لك');
+        }
+
+        const offer = await getOne('offers', 'id', offer_id);
+        if (!offer || offer.status !== 'live') {
+            return res.redirect('/student-dashboard.html');
+        }
+
+        const { data: active } = await supabase
+            .from('active_stream')
+            .select('*')
+            .eq('offer_id', offer_id)
+            .eq('student_id', student_id)
+            .single();
+
+        if (!active) {
+            return res.redirect('/student-dashboard.html');
+        }
+
+        res.send(`
+            <!DOCTYPE html>
+            <html>
+            <head><meta charset="UTF-8"><title>حصة مباشرة</title>
+            <script src="https://meet.jit.si/external_api.js"></script>
+            <style>
+                *{margin:0;padding:0;box-sizing:border-box}
+                body{font-family:Cairo,sans-serif;background:#0a0a1a;overflow:hidden}
+                .header{background:linear-gradient(135deg,#0f3460,#1a1a2e);color:white;padding:12px 24px;display:flex;justify-content:space-between;align-items:center;position:fixed;top:0;left:0;right:0;z-index:100}
+                .btn{background:#ef4444;color:white;border:none;padding:8px 20px;border-radius:30px;cursor:pointer;transition:all 0.3s}
+                .btn:hover{background:#dc2626;transform:scale(1.05)}
+                .badge{background:#10b981;padding:5px 15px;border-radius:30px;font-size:0.8rem}
+                #jitsi-container{position:fixed;top:60px;left:0;right:0;bottom:0}
+            </style>
+            </head>
+            <body>
+            <div class="header">
+                <div><span class="badge">انت طالب</span></div>
+                <button class="btn" onclick="leaveStream()">مغادرة</button>
+            </div>
+            <div id="jitsi-container"></div>
+            <script>
+                const api = new JitsiMeetExternalAPI('meet.jit.si', {
+                    roomName: '${offer.room_name}',
+                    width: '100%',
+                    height: window.innerHeight - 60,
+                    parentNode: document.querySelector('#jitsi-container'),
+                    userInfo: { displayName: 'طالب' },
+                    configOverwrite: {
+                        startWithVideoMuted: true,
+                        startWithAudioMuted: true,
+                        p2p: { enabled: true }
+                    }
+                });
+                function leaveStream() {
+                    api.dispose();
+                    window.location.href = '/student-dashboard.html';
+                }
+            </script>
+            </body>
+            </html>
+        `);
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.redirect('/student-dashboard.html');
+    }
+});
+
+// ============================================================
+// نظام العروض
+// ============================================================
+app.post('/api/offer/create', authenticateToken, [
+    body('teacher_id').isInt({ min: 1 }).withMessage('معرف الأستاذ غير صالح'),
+    body('subject_name').notEmpty().withMessage('اسم المادة مطلوب'),
+    body('duration').isInt({ min: 1 }).withMessage('المدة غير صالحة'),
+    body('offer_date').notEmpty().withMessage('تاريخ العرض مطلوب'),
+    body('price').isFloat({ min: 0 }).withMessage('السعر غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { teacher_id, subject_name, duration, offer_date, price, is_free, education_level } = req.body;
+
+        if (req.user.userId !== parseInt(teacher_id) || req.user.userRole !== 'teacher') {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        const room_name = `stream_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
+
+        await insert('offers', {
+            teacher_id,
+            subject_name: subject_name.trim(),
+            duration: parseInt(duration),
+            offer_date: new Date(offer_date).toISOString(),
+            price: parseFloat(price),
+            is_free: is_free ? 1 : 0,
+            room_name,
+            education_level: education_level || null,
+            status: 'upcoming'
+        });
+
+        res.json({ success: true, room_name });
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.get('/api/offers', async (req, res) => {
+    try {
+        const { data } = await supabase
+            .from('offers')
+            .select('*, teachers:teacher_id (id, full_name, specialization, profile_image, profile_url)')
+            .eq('status', 'upcoming')
+            .gt('offer_date', new Date().toISOString())
+            .order('offer_date', { ascending: true });
+
+        const formatted = (data || []).map(o => ({
+            ...o,
+            teacher_name: o.teachers?.full_name,
+            teacher_specialization: o.teachers?.specialization,
+            teacher_profile_image: o.teachers?.profile_image,
+            teacher_profile_url: o.teachers?.profile_url,
+            teacher_id: o.teachers?.id
+        }));
+
+        res.json(formatted);
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.status(500).json([]);
+    }
+});
+
+app.get('/api/teacher/offers/:teacher_id', authenticateToken, async (req, res) => {
+    try {
+        const { teacher_id } = req.params;
+
+        if (req.user.userId !== parseInt(teacher_id) || req.user.userRole !== 'teacher') {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        const { data } = await supabase
+            .from('offers')
+            .select('*')
+            .eq('teacher_id', teacher_id)
+            .order('offer_date', { ascending: false });
+
+        res.json(data || []);
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.status(500).json([]);
+    }
+});
+
+app.delete('/api/offer/delete/:offer_id', authenticateToken, [
+    body('teacher_id').isInt({ min: 1 }).withMessage('معرف الأستاذ غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { teacher_id } = req.body;
+
+        if (req.user.userId !== parseInt(teacher_id) || req.user.userRole !== 'teacher') {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        const offer = await getOne('offers', 'id', req.params.offer_id);
+
+        if (!offer || offer.teacher_id != teacher_id) {
+            return res.status(403).json({ success: false, error: 'غير مصرح' });
+        }
+
+        await supabase.from('sessions').delete().eq('offer_id', req.params.offer_id);
+        await supabase.from('waiting_room').delete().eq('offer_id', req.params.offer_id);
+        await supabase.from('active_stream').delete().eq('offer_id', req.params.offer_id);
+        await supabase.from('offers').delete().eq('id', req.params.offer_id);
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.get('/api/student/bookings/:student_id', authenticateToken, async (req, res) => {
+    try {
+        const { student_id } = req.params;
+
+        if (req.user.userId !== parseInt(student_id) || req.user.userRole !== 'student') {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        const { data } = await supabase
+            .from('sessions')
+            .select('*, offers:offer_id (id, subject_name, offer_date, duration, price, is_free, status, room_name, teachers:teacher_id (id, full_name, profile_image, profile_url))')
+            .eq('student_id', student_id)
+            .order('created_at', { ascending: false });
+
+        if (!data) return res.json([]);
+
+        const formatted = data.map(s => ({
+            id: s.id,
+            offer_id: s.offer_id,
+            student_id: s.student_id,
+            payment_status: s.payment_status,
+            payment_amount: s.payment_amount,
+            paid_from_wallet: s.paid_from_wallet || false,
+            created_at: s.created_at,
+            subject_name: s.offers?.subject_name,
+            offer_date: s.offers?.offer_date,
+            duration: s.offers?.duration,
+            price: s.offers?.price,
+            is_free: s.offers?.is_free,
+            offer_status: s.offers?.status,
+            room_name: s.offers?.room_name,
+            teacher_id: s.offers?.teachers?.id,
+            teacher_name: s.offers?.teachers?.full_name,
+            teacher_image: s.offers?.teachers?.profile_image,
+            teacher_image_url: s.offers?.teachers?.profile_url
+        }));
+
+        res.json(formatted);
+    } catch (error) {
+        console.error('❌ خطأ في جلب الحجوزات:', error.message);
+        res.status(500).json([]);
+    }
+});
+
+// ============================================================
+// نظام البث المباشر (المعلم)
+// ============================================================
+app.post('/api/stream/enter-teacher/:offer_id', authenticateToken, [
+    body('teacher_id').isInt({ min: 1 }).withMessage('معرف الأستاذ غير صالح')
+], async (req, res) => {
+    try {
+        const { offer_id, teacher_id } = req.body;
+
+        if (req.user.userId !== parseInt(teacher_id) || req.user.userRole !== 'teacher') {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        const offer = await getOne('offers', 'id', offer_id);
+
+        if (!offer || offer.teacher_id != teacher_id) {
+            return res.status(403).json({ success: false });
+        }
+
+        await update('offers', offer_id, { status: 'teacher_ready' });
+        res.json({ success: true, room_name: offer.room_name });
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.status(500).json({ success: false });
+    }
+});
+
+app.post('/api/stream/add-students/:offer_id', authenticateToken, [
+    body('teacher_id').isInt({ min: 1 }).withMessage('معرف الأستاذ غير صالح')
+], async (req, res) => {
+    try {
+        const { offer_id, teacher_id } = req.body;
+
+        if (req.user.userId !== parseInt(teacher_id) || req.user.userRole !== 'teacher') {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        const offer = await getOne('offers', 'id', offer_id);
+
+        if (!offer || offer.teacher_id != teacher_id) {
+            return res.status(403).json({ success: false });
+        }
+
+        await update('offers', offer_id, { status: 'live' });
+
+        const { data: waitingStudents } = await supabase
+            .from('waiting_room')
+            .select('student_id')
+            .eq('offer_id', offer_id);
+
+        const addedStudents = [];
+
+        for (const student of waitingStudents || []) {
+            await insert('active_stream', { 
+                offer_id, 
+                student_id: student.student_id,
+                created_at: new Date().toISOString()
+            });
+
+            await insert('notifications', {
+                user_id: student.student_id,
+                user_type: 'student',
+                title: '🔴 البث المباشر بدأ',
+                message: `الحصة "${offer.subject_name}" قد بدأت الآن. انضم إلى البث المباشر.`,
+                offer_id: offer_id,
+                is_read: false,
+                created_at: new Date().toISOString()
+            });
+
+            addedStudents.push(student.student_id);
+
+            await supabase
+                .from('waiting_room')
+                .delete()
+                .eq('offer_id', offer_id)
+                .eq('student_id', student.student_id);
+        }
+
+        res.json({ success: true, students_count: addedStudents.length, students: addedStudents });
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.status(500).json({ success: false });
+    }
+});
+
+app.post('/api/stream/end/:offer_id', authenticateToken, async (req, res) => {
+    try {
+        const { offer_id } = req.params;
+
+        await update('offers', offer_id, { status: 'completed' });
+        await supabase.from('active_stream').delete().eq('offer_id', offer_id);
+        await supabase.from('waiting_room').delete().eq('offer_id', offer_id);
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.status(500).json({ success: false });
+    }
+});
+
+app.get('/api/stream/status/:offer_id', async (req, res) => {
+    try {
+        const offer = await getOne('offers', 'id', req.params.offer_id);
+        res.json({ status: offer?.status || 'not_found', room_name: offer?.room_name });
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.status(500).json({ status: 'not_found' });
+    }
+});
+
+// ============================================================
+// نظام الرصيد والأرباح للأستاذ
+// ============================================================
+app.get('/api/teacher/balance/:teacher_id', authenticateToken, async (req, res) => {
+    try {
+        const { teacher_id } = req.params;
+
+        if (req.user.userId !== parseInt(teacher_id) || req.user.userRole !== 'teacher') {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        const teacher = await getOne('teachers', 'id', teacher_id);
+        if (!teacher) return res.status(404).json({ error: 'أستاذ غير موجود' });
+
+        const { data: paidSessions } = await supabase
+            .from('sessions')
+            .select('*, offers:offer_id (subject_name)')
+            .eq('payment_status', 'paid')
+            .eq('offer_id', teacher_id)
+            .order('created_at', { ascending: false });
+
+        res.json({
+            balance: teacher.balance || 0,
+            total_earned: teacher.total_earned || 0,
+            sessions: paidSessions || []
+        });
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/teacher/withdraw-request', authenticateToken, [
+    body('teacher_id').isInt({ min: 1 }).withMessage('معرف الأستاذ غير صالح'),
+    body('amount').isFloat({ min: 1 }).withMessage('المبلغ غير صالح'),
+    body('ccp_account').isLength({ min: 10 }).withMessage('رقم حساب CCP غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { teacher_id, amount, ccp_account } = req.body;
+
+        if (req.user.userId !== parseInt(teacher_id) || req.user.userRole !== 'teacher') {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        const teacher = await getOne('teachers', 'id', teacher_id);
+        if (!teacher) return res.status(404).json({ success: false, error: 'أستاذ غير موجود' });
+
+        if ((teacher.balance || 0) < amount) {
+            return res.status(400).json({ success: false, error: 'الرصيد غير كافٍ' });
+        }
+
+        const withdrawRequest = await insert('withdraw_requests', {
+            teacher_id: parseInt(teacher_id),
+            amount: parseFloat(amount),
+            ccp_account: ccp_account.trim(),
+            status: 'pending',
+            created_at: new Date().toISOString()
+        });
+
+        await update('teachers', teacher_id, {
+            balance: (teacher.balance || 0) - amount,
+            pending_withdraw: (teacher.pending_withdraw || 0) + amount
+        });
+
+        // إشعار للمعلم
+        await insert('notifications', {
+            user_id: teacher_id,
+            user_type: 'teacher',
+            title: '📤 طلب سحب جديد',
+            message: `تم تقديم طلب سحب بمبلغ ${amount} دج. في انتظار المراجعة.`,
+            is_read: false,
+            created_at: new Date().toISOString()
+        });
+
+        res.json({ success: true, request: withdrawRequest });
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.get('/api/teacher/withdraw-requests/:teacher_id', authenticateToken, async (req, res) => {
+    try {
+        const { teacher_id } = req.params;
+
+        if (req.user.userId !== parseInt(teacher_id) || req.user.userRole !== 'teacher') {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        const { data } = await supabase
+            .from('withdraw_requests')
+            .select('*')
+            .eq('teacher_id', teacher_id)
+            .order('created_at', { ascending: false });
+
+        res.json(data || []);
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.status(500).json([]);
+    }
+});
+
+// ============================================================
+// نظام الملف الشخصي للطالب
+// ============================================================
+app.get('/api/student/:student_id', authenticateToken, async (req, res) => {
+    try {
+        const { student_id } = req.params;
+
+        if (req.user.userId !== parseInt(student_id) || req.user.userRole !== 'student') {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        const student = await getOne('students', 'id', student_id);
+        if (!student) return res.status(404).json({ error: 'طالب غير موجود' });
+
+        // إزالة كلمة المرور قبل الإرسال
+        delete student.password;
+
+        res.json(student);
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/student/update-profile', authenticateToken, upload.single('profile_image'), [
+    body('student_id').isInt({ min: 1 }).withMessage('معرف الطالب غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { student_id, full_name, phone } = req.body;
+
+        if (req.user.userId !== parseInt(student_id) || req.user.userRole !== 'student') {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        let profile_image = null;
+        let profile_url = null;
+
+        const oldStudent = await getOne('students', 'id', student_id);
+
+        if (req.file) {
+            const uploaded = await uploadToSupabase(req.file, 'students', oldStudent?.profile_image);
+            if (uploaded) {
+                profile_image = uploaded.filename;
+                profile_url = uploaded.url;
+            }
+        }
+
+        const updateData = {};
+        if (full_name) updateData.full_name = full_name.trim();
+        if (phone) updateData.phone = phone.trim();
+        if (profile_image) updateData.profile_image = profile_image;
+        if (profile_url) updateData.profile_url = profile_url;
+
+        const { data, error } = await supabase
+            .from('students')
+            .update(updateData)
+            .eq('id', parseInt(student_id))
+            .select();
+
+        if (error) throw error;
+
+        res.json({ success: true, message: 'تم تحديث الملف الشخصي', user: data[0] });
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
+// نظام الملف الشخصي للأستاذ
+// ============================================================
+app.get('/api/teacher/:teacher_id', authenticateToken, async (req, res) => {
+    try {
+        const { teacher_id } = req.params;
+
+        const teacher = await getOne('teachers', 'id', teacher_id);
+        if (!teacher) return res.status(404).json({ error: 'أستاذ غير موجود' });
+
+        // إزالة كلمة المرور قبل الإرسال
+        delete teacher.password;
+
+        res.json(teacher);
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/teacher/update-profile', authenticateToken, upload.single('profile_image'), [
+    body('teacher_id').isInt({ min: 1 }).withMessage('معرف الأستاذ غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { teacher_id } = req.body;
+
+        if (req.user.userId !== parseInt(teacher_id) || req.user.userRole !== 'teacher') {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({ success: false, error: 'الرجاء اختيار صورة' });
+        }
+
+        const oldTeacher = await getOne('teachers', 'id', teacher_id);
+        const uploaded = await uploadToSupabase(req.file, 'teachers', oldTeacher?.profile_image);
+        if (!uploaded) return res.status(500).json({ success: false, error: 'فشل رفع الصورة' });
+
+        const updateData = {
+            profile_image: uploaded.filename,
+            profile_url: uploaded.url
+        };
+
+        const { data, error } = await supabase
+            .from('teachers')
+            .update(updateData)
+            .eq('id', parseInt(teacher_id))
+            .select();
+
+        if (error) throw error;
+
+        res.json({ success: true, message: 'تم تحديث الصورة الشخصية', user: data[0] });
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/teacher/update-profile-with-social', authenticateToken, upload.fields([
+    { name: 'profile_image', maxCount: 1 }
+]), [
+    body('teacher_id').isInt({ min: 1 }).withMessage('معرف الأستاذ مطلوب')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { teacher_id, facebook_url, instagram_url, linkedin_url, youtube_url, twitter_url, website_url, whatsapp_url } = req.body;
+
+        if (req.user.userId !== parseInt(teacher_id) || req.user.userRole !== 'teacher') {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        let profile_image = null;
+        let profile_url = null;
+
+        const oldTeacher = await getOne('teachers', 'id', teacher_id);
+        if (!oldTeacher) {
+            return res.status(404).json({ success: false, error: 'الأستاذ غير موجود' });
+        }
+
+        if (req.files?.['profile_image']?.[0]) {
+            const file = req.files['profile_image'][0];
+            const uploaded = await uploadToSupabase(file, 'teachers', oldTeacher?.profile_image);
+            if (uploaded) {
+                profile_image = uploaded.filename;
+                profile_url = uploaded.url;
+            }
+        }
+
+        const updateData = {};
+
+        if (profile_image) { updateData.profile_image = profile_image; }
+        if (profile_url) { updateData.profile_url = profile_url; }
+
+        const socialFields = {
+            facebook_url,
+            instagram_url,
+            linkedin_url,
+            youtube_url,
+            twitter_url,
+            website_url,
+            whatsapp_url
+        };
+
+        for (const [key, value] of Object.entries(socialFields)) {
+            if (value !== undefined && value !== null) {
+                const cleaned = value.trim();
+                updateData[key] = cleaned === '' ? null : cleaned;
+            }
+        }
+
+        const { data, error } = await supabase
+            .from('teachers')
+            .update(updateData)
+            .eq('id', teacher_id)
+            .select();
+
+        if (error) throw error;
+
+        res.json({
+            success: true,
+            message: 'تم تحديث الملف الشخصي وروابط التواصل الاجتماعي بنجاح',
+            user: data ? data[0] : null
+        });
+    } catch (error) {
+        console.error('❌ خطأ في تحديث الملف الشخصي:', error.message);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'حدث خطأ أثناء تحديث الملف الشخصي'
+        });
+    }
+});
+
+// ============================================================
+// نظام الحجوزات للأستاذ
+// ============================================================
+app.get('/api/teacher/bookings/:teacher_id', authenticateToken, async (req, res) => {
+    try {
+        const { teacher_id } = req.params;
+
+        if (req.user.userId !== parseInt(teacher_id) || req.user.userRole !== 'teacher') {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        const { data } = await supabase
+            .from('offers')
+            .select('id, subject_name, offer_date, status, sessions:student_id (student_id, payment_status)')
+            .eq('teacher_id', teacher_id)
+            .order('offer_date', { ascending: false });
+
+        res.json(data || []);
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.status(500).json([]);
+    }
+});
+
+// ============================================================
+// نظام الرصيد للطالب
+// ============================================================
+app.get('/api/student/wallet/:student_id', authenticateToken, async (req, res) => {
+    try {
+        const { student_id } = req.params;
+
+        if (req.user.userId !== parseInt(student_id) || req.user.userRole !== 'student') {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        const student = await getOne('students', 'id', student_id);
+        if (!student) return res.status(404).json({ error: 'طالب غير موجود' });
+
+        const { data: transactions } = await supabase
+            .from('wallet_transactions')
+            .select('*')
+            .eq('student_id', student_id)
+            .order('created_at', { ascending: false })
+            .limit(50);
+
+        res.json({
+            balance: student.wallet_balance || 0,
+            transactions: transactions || []
+        });
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.status(500).json({ error: error.message, transactions: [] });
+    }
+});
+
+// ============================================================
+// نظام تسجيل الأستاذ
+// ============================================================
+app.post('/api/teacher/register', checkBanned, upload.fields([
+    { name: 'profile_image', maxCount: 1 },
+    { name: 'diploma_image', maxCount: 1 },
+    { name: 'id_image', maxCount: 1 }
+]), [
+    body('full_name').notEmpty().withMessage('الاسم الكامل مطلوب'),
+    body('email').isEmail().withMessage('بريد إلكتروني غير صالح'),
+    body('password').isLength({ min: 8 }).withMessage('كلمة المرور يجب أن تكون 8 أحرف على الأقل'),
+    body('phone').notEmpty().withMessage('رقم الهاتف مطلوب'),
+    body('specialization').notEmpty().withMessage('التخصص مطلوب'),
+    body('bio').notEmpty().withMessage('نبذة عنك مطلوبة'),
+    body('experience').notEmpty().withMessage('سنوات الخبرة مطلوبة'),
+    body('captcha_id').notEmpty().withMessage('معرف الكابتشا مطلوب'),
+    body('captcha_code').notEmpty().withMessage('رمز الكابتشا مطلوب')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { captcha_id, captcha_code } = req.body;
+
+        // التحقق من الكابتشا
+        const stored = captchaStore.get(captcha_id);
+        if (!stored || Date.now() > stored.expires) {
+            captchaStore.delete(captcha_id);
+            return res.status(400).json({
+                success: false,
+                error: 'انتهت صلاحية رمز التحقق، يرجى تحديث الصورة',
+                captcha_expired: true
+            });
+        }
+
+        if (stored.code.toLowerCase() !== captcha_code.toLowerCase().trim()) {
+            stored.attempts += 1;
+            if (stored.attempts > 3) captchaStore.delete(captcha_id);
+            return res.status(400).json({
+                success: false,
+                error: 'رمز التحقق غير صحيح',
+                captcha_invalid: true
+            });
+        }
+
+        // حذف الكابتشا بعد التحقق الناجح
+        captchaStore.delete(captcha_id);
+
+        console.log('📝 استلام طلب تسجيل أستاذ جديد');
+
+        const { full_name, email, password, phone, specialization, bio, experience } = req.body;
+
+        const existingTeacher = await getOne('teachers', 'email', email);
+        if (existingTeacher) {
+            return res.status(400).json({ success: false, error: 'البريد الإلكتروني مستخدم مسبقاً' });
+        }
+
+        const hashedPassword = bcrypt.hashSync(password, 12);
+        let profile_image = null;
+        let profile_url = null;
+        let diploma_image = null;
+        let id_image = null;
+
+        if (req.files?.['profile_image']?.[0]) {
+            const uploaded = await uploadToSupabase(req.files['profile_image'][0], 'teachers');
+            if (uploaded) {
+                profile_image = uploaded.filename;
+                profile_url = uploaded.url;
+            }
+        }
+
+        if (req.files?.['diploma_image']?.[0]) {
+            const uploaded = await uploadToSupabase(req.files['diploma_image'][0], 'diplomas');
+            if (uploaded) diploma_image = uploaded.filename;
+        }
+
+        if (req.files?.['id_image']?.[0]) {
+            const uploaded = await uploadToSupabase(req.files['id_image'][0], 'ids');
+            if (uploaded) id_image = uploaded.filename;
+        }
+
+        const newTeacher = await insert('teachers', {
+            full_name: full_name.trim(),
+            email: email.trim(),
+            password: hashedPassword,
+            phone: phone.trim(),
+            specialization: specialization.trim(),
+            bio: bio.trim(),
+            experience: experience.trim(),
+            profile_image,
+            profile_url,
+            diploma_image,
+            id_image,
+            status: 'pending',
+            email_verified: false,
+            balance: 0,
+            referral_balance: 0,
+            total_earned: 0,
+            total_withdrawn: 0,
+            pending_withdraw: 0,
+            referral_code: null,
+            is_banned: false,
+            ban_reason: null,
+            created_at: new Date().toISOString()
+        });
+
+        const referralCode = generateReferralCode(full_name, newTeacher.id);
+        await supabase
+            .from('teachers')
+            .update({ referral_code: referralCode })
+            .eq('id', newTeacher.id);
+
+        const verificationToken = generateVerificationToken();
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + 24);
+
+        await insert('email_verifications', {
+            email: email,
+            role: 'teacher',
+            token: verificationToken,
+            expires_at: expiresAt.toISOString(),
+            used: false,
+            created_at: new Date().toISOString()
+        });
+
+        const baseUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+        const verificationUrl = `${baseUrl}/api/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}&role=teacher`;
+        
+        const emailSent = await sendVerificationEmail(email, full_name, verificationUrl);
+
+        const refCode = req.cookies?.referral_code || req.query.ref;
+        if (refCode) {
+            try {
+                await processReferralReward(newTeacher.id, 'teacher');
+            } catch (e) {
+                console.error('❌ خطأ في معالجة الإحالة:', e.message);
+            }
+        }
+
+        res.json({ 
+            success: true, 
+            message: 'تم تسجيل حسابك بنجاح! يرجى تأكيد بريدك الإلكتروني من خلال الرابط المرسل إليك.',
+            email_verification_sent: emailSent,
+            email: email,
+            role: 'teacher',
+            referral_code: referralCode
+        });
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
+// نظام تسجيل الطالب
+// ============================================================
+app.post('/api/student/register', checkBanned, [
+    body('full_name').notEmpty().withMessage('الاسم الكامل مطلوب'),
+    body('email').isEmail().withMessage('بريد إلكتروني غير صالح'),
+    body('password').isLength({ min: 8 }).withMessage('كلمة المرور يجب أن تكون 8 أحرف على الأقل'),
+    body('phone').notEmpty().withMessage('رقم الهاتف مطلوب'),
+    body('captcha_id').notEmpty().withMessage('معرف الكابتشا مطلوب'),
+    body('captcha_code').notEmpty().withMessage('رمز الكابتشا مطلوب')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { captcha_id, captcha_code } = req.body;
+
+        // التحقق من الكابتشا
+        const stored = captchaStore.get(captcha_id);
+        if (!stored || Date.now() > stored.expires) {
+            captchaStore.delete(captcha_id);
+            return res.status(400).json({
+                success: false,
+                error: 'انتهت صلاحية رمز التحقق، يرجى تحديث الصورة',
+                captcha_expired: true
+            });
+        }
+
+        if (stored.code.toLowerCase() !== captcha_code.toLowerCase().trim()) {
+            stored.attempts += 1;
+            if (stored.attempts > 3) captchaStore.delete(captcha_id);
+            return res.status(400).json({
+                success: false,
+                error: 'رمز التحقق غير صحيح',
+                captcha_invalid: true
+            });
+        }
+
+        // حذف الكابتشا بعد التحقق الناجح
+        captchaStore.delete(captcha_id);
+
+        const { full_name, email, password, phone } = req.body;
+
+        const existingStudent = await getOne('students', 'email', email);
+        if (existingStudent) {
+            return res.status(400).json({ success: false, error: 'البريد الإلكتروني مستخدم' });
+        }
+
+        const hashedPassword = bcrypt.hashSync(password, 12);
+        
+        const newStudent = await insert('students', {
+            full_name: full_name.trim(),
+            email: email.trim(),
+            password: hashedPassword,
+            phone: phone.trim(),
+            wallet_balance: 0,
+            email_verified: false,
+            referral_balance: 0,
+            gift_box_chances: 0,
+            referral_code: null,
+            is_banned: false,
+            ban_reason: null,
+            created_at: new Date().toISOString()
+        });
+
+        const referralCode = generateReferralCode(full_name, newStudent.id);
+        await supabase
+            .from('students')
+            .update({ referral_code: referralCode })
+            .eq('id', newStudent.id);
+
+        const verificationToken = generateVerificationToken();
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + 24);
+
+        await insert('email_verifications', {
+            email: email,
+            role: 'student',
+            token: verificationToken,
+            expires_at: expiresAt.toISOString(),
+            used: false,
+            created_at: new Date().toISOString()
+        });
+
+        const baseUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+        const verificationUrl = `${baseUrl}/api/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}&role=student`;
+        
+        const emailSent = await sendVerificationEmail(email, full_name, verificationUrl);
+
+        const refCode = req.cookies?.referral_code || req.query.ref;
+        if (refCode) {
+            try {
+                await processReferralReward(newStudent.id, 'student');
+            } catch (e) {
+                console.error('❌ خطأ في معالجة الإحالة:', e.message);
+            }
+        }
+
+        res.json({ 
+            success: true, 
+            message: 'تم تسجيل حسابك بنجاح! يرجى تأكيد بريدك الإلكتروني من خلال الرابط المرسل إليك.',
+            email_verification_sent: emailSent,
+            email: email,
+            role: 'student',
+            referral_code: referralCode
+        });
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
+// نظام إدارة المستخدمين (Admin)
+// ============================================================
+app.get('/api/admin/students', authenticateToken, requireRole('admin'), async (req, res) => {
+    try {
+        const { data } = await supabase
+            .from('students')
+            .select('*')
+            .order('created_at', { ascending: false });
+        res.json(data || []);
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.status(500).json([]);
+    }
+});
+
+app.get('/api/admin/teachers', authenticateToken, requireRole('admin'), async (req, res) => {
+    try {
+        const { data } = await supabase
+            .from('teachers')
+            .select('*')
+            .order('created_at', { ascending: false });
+        res.json(data || []);
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.status(500).json([]);
+    }
+});
+
+app.get('/api/admin/pending-teachers', authenticateToken, requireRole('admin'), async (req, res) => {
+    try {
+        const { data } = await supabase
+            .from('teachers')
+            .select('*')
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false });
+        res.json(data || []);
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.status(500).json([]);
+    }
+});
+
+app.post('/api/admin/approve-teacher/:id', authenticateToken, requireRole('admin'), async (req, res) => {
+    try {
+        const { id } = req.params;
+        await update('teachers', id, { status: 'approved' });
+
+        // إشعار للمعلم
+        const teacher = await getOne('teachers', 'id', id);
+        if (teacher) {
+            await insert('notifications', {
+                user_id: id,
+                user_type: 'teacher',
+                title: '✅ تم قبول طلبك',
+                message: 'تم قبول طلب التسجيل الخاص بك. يمكنك الآن بدء تقديم الدروس.',
+                is_read: false,
+                created_at: new Date().toISOString()
+            });
+        }
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/admin/reject-teacher/:id', authenticateToken, requireRole('admin'), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { reason } = req.body;
+        await update('teachers', id, {
+            status: 'rejected',
+            rejection_reason: reason || 'لم يتم تحديد سبب'
+        });
+
+        // إشعار للمعلم
+        const teacher = await getOne('teachers', 'id', id);
+        if (teacher) {
+            await insert('notifications', {
+                user_id: id,
+                user_type: 'teacher',
+                title: '❌ تم رفض طلبك',
+                message: `تم رفض طلب التسجيل الخاص بك. السبب: ${reason || 'لم يتم تحديد سبب'}`,
+                is_read: false,
+                created_at: new Date().toISOString()
+            });
+        }
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/admin/delete-user', authenticateToken, requireRole('admin'), [
+    body('user_id').isInt({ min: 1 }).withMessage('معرف المستخدم مطلوب'),
+    body('role').isIn(['student', 'teacher']).withMessage('دور غير صالح')
+], async (req, res) => {
+    try {
+        const { user_id, role, ban } = req.body;
+        const tableName = role === 'student' ? 'students' : 'teachers';
+        
+        const user = await getOne(tableName, 'id', user_id);
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
+        }
+        
+        const { data: loginLog } = await supabase
+            .from('login_logs')
+            .select('ip_address')
+            .eq('user_id', user_id)
+            .eq('user_role', role)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+        
+        const userIp = loginLog?.ip_address || null;
+        
+        await supabase
+            .from(tableName)
+            .delete()
+            .eq('id', user_id);
+        
+        if (ban && userIp) {
+            const { data: existingBan } = await supabase
+                .from('banned_users')
+                .select('*')
+                .eq('ip_address', userIp)
+                .single();
+            
+            if (!existingBan) {
+                await insert('banned_users', {
+                    user_id: user_id,
+                    user_role: role,
+                    full_name: user.full_name,
+                    email: user.email,
+                    ip_address: userIp,
+                    ban_reason: 'تم حظر المستخدم تلقائياً عند حذف الحساب',
+                    banned_at: new Date().toISOString(),
+                    banned_by: 'admin'
+                });
+            }
+        }
+        
+        res.json({ 
+            success: true, 
+            message: 'تم حذف المستخدم بنجاح',
+            banned: ban && userIp ? true : false
+        });
+    } catch (error) {
+        console.error('❌ خطأ في حذف المستخدم:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/admin/ban-user', authenticateToken, requireRole('admin'), [
+    body('user_id').isInt({ min: 1 }).withMessage('معرف المستخدم مطلوب'),
+    body('role').isIn(['student', 'teacher']).withMessage('دور غير صالح')
+], async (req, res) => {
+    try {
+        const { user_id, role, reason } = req.body;
+        const tableName = role === 'student' ? 'students' : 'teachers';
+        
+        const user = await getOne(tableName, 'id', user_id);
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
+        }
+        
+        const { data: loginLog } = await supabase
+            .from('login_logs')
+            .select('ip_address')
+            .eq('user_id', user_id)
+            .eq('user_role', role)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+        
+        const userIp = loginLog?.ip_address || null;
+        
+        if (!userIp) {
+            return res.status(400).json({ success: false, error: 'لا يمكن تحديد IP المستخدم' });
+        }
+        
+        const { data: existingBan } = await supabase
+            .from('banned_users')
+            .select('*')
+            .eq('ip_address', userIp)
+            .single();
+        
+        if (existingBan) {
+            return res.status(400).json({ success: false, error: 'هذا المستخدم محظور بالفعل' });
+        }
+        
+        await insert('banned_users', {
+            user_id: user_id,
+            user_role: role,
+            full_name: user.full_name,
+            email: user.email,
+            ip_address: userIp,
+            ban_reason: reason || 'لم يتم تحديد سبب',
+            banned_at: new Date().toISOString(),
+            banned_by: 'admin'
+        });
+        
+        await supabase
+            .from(tableName)
+            .update({ is_banned: true, ban_reason: reason || 'لم يتم تحديد سبب' })
+            .eq('id', user_id);
+
+        // إشعار للمستخدم
+        await insert('notifications', {
+            user_id: user_id,
+            user_type: role,
+            title: '⛔ تم حظر حسابك',
+            message: `تم حظر حسابك من المنصة. السبب: ${reason || 'لم يتم تحديد سبب'}`,
+            is_read: false,
+            created_at: new Date().toISOString()
+        });
+        
+        res.json({ success: true, message: 'تم حظر المستخدم بنجاح' });
+    } catch (error) {
+        console.error('❌ خطأ في حظر المستخدم:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/admin/unban-user', authenticateToken, requireRole('admin'), [
+    body('user_id').isInt({ min: 1 }).withMessage('معرف المستخدم مطلوب'),
+    body('role').isIn(['student', 'teacher']).withMessage('دور غير صالح')
+], async (req, res) => {
+    try {
+        const { user_id, role } = req.body;
+        const tableName = role === 'student' ? 'students' : 'teachers';
+        
+        const { data: banRecord } = await supabase
+            .from('banned_users')
+            .select('*')
+            .eq('user_id', user_id)
+            .eq('user_role', role)
+            .single();
+        
+        if (!banRecord) {
+            return res.status(404).json({ success: false, error: 'المستخدم غير محظور' });
+        }
+        
+        await supabase
+            .from('banned_users')
+            .delete()
+            .eq('id', banRecord.id);
+        
+        await supabase
+            .from(tableName)
+            .update({ is_banned: false, ban_reason: null })
+            .eq('id', user_id);
+
+        // إشعار للمستخدم
+        await insert('notifications', {
+            user_id: user_id,
+            user_type: role,
+            title: '✅ تم إلغاء حظر حسابك',
+            message: 'تم إلغاء حظر حسابك. يمكنك الآن تسجيل الدخول مرة أخرى.',
+            is_read: false,
+            created_at: new Date().toISOString()
+        });
+        
+        res.json({ success: true, message: 'تم إلغاء حظر المستخدم بنجاح' });
+    } catch (error) {
+        console.error('❌ خطأ في إلغاء الحظر:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
+// نظام طلبات السحب (Admin)
+// ============================================================
+app.get('/api/admin/withdraw-requests', authenticateToken, requireRole('admin'), async (req, res) => {
+    try {
+        const { data } = await supabase
+            .from('withdraw_requests')
+            .select('*, teachers:teacher_id (full_name, email, phone)')
+            .eq('status', 'pending')
+            .order('created_at', { ascending: true });
+        res.json(data || []);
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.status(500).json([]);
+    }
+});
+
+app.post('/api/admin/withdraw-requests/:id/approve', authenticateToken, requireRole('admin'), async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const request = await getOne('withdraw_requests', 'id', id);
+        if (!request) return res.status(404).json({ success: false, error: 'الطلب غير موجود' });
+
+        await update('withdraw_requests', id, {
+            status: 'completed',
+            processed_at: new Date().toISOString()
+        });
+
+        const teacher = await getOne('teachers', 'id', request.teacher_id);
+        await update('teachers', request.teacher_id, {
+            total_withdrawn: (teacher.total_withdrawn || 0) + request.amount,
+            pending_withdraw: (teacher.pending_withdraw || 0) - request.amount
+        });
+
+        await insert('notifications', {
+            user_id: request.teacher_id,
+            user_type: 'teacher',
+            title: '✅ تمت معالجة طلب السحب',
+            message: `تم تحويل مبلغ ${request.amount} دج إلى حسابك ${request.ccp_account}`,
+            is_read: false,
+            created_at: new Date().toISOString()
+        });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/admin/withdraw-requests/:id/reject', authenticateToken, requireRole('admin'), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { reason } = req.body;
+
+        const request = await getOne('withdraw_requests', 'id', id);
+        if (!request) return res.status(404).json({ success: false, error: 'الطلب غير موجود' });
+
+        await update('withdraw_requests', id, {
+            status: 'rejected',
+            rejection_reason: reason || 'لم يتم تحديد سبب',
+            processed_at: new Date().toISOString()
+        });
+
+        const teacher = await getOne('teachers', 'id', request.teacher_id);
+        await update('teachers', request.teacher_id, {
+            balance: (teacher.balance || 0) + request.amount,
+            pending_withdraw: (teacher.pending_withdraw || 0) - request.amount
+        });
+
+        await insert('notifications', {
+            user_id: request.teacher_id,
+            user_type: 'teacher',
+            title: '❌ تم رفض طلب السحب',
+            message: `تم رفض طلب سحب مبلغ ${request.amount} دج. السبب: ${reason || 'لم يتم تحديد سبب'}`,
+            is_read: false,
+            created_at: new Date().toISOString()
+        });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
 // ============================================================
 // ⭐ المسارات الرئيسية - تم إضافتها لحل مشكلة Cannot GET /
 // ============================================================
@@ -2603,6 +4142,7 @@ if (require.main === module) {
         console.log('💰 مكافأة الإحالة: 100 دج للمعلم، فرصة صندوق هدايا للطالب');
         console.log('🔒 نظام الحظر (IP Ban) مع Caching مفعل');
         console.log('💳 نظام الدفع عبر Chargily مع Webhook مفعل');
+        console.log('🔄 نظام الكابتشا مفعل');
         console.log('📍 المسار الرئيسي: /');
         console.log('🏥 مسار الصحة: /health');
         console.log('='.repeat(60));
