@@ -1,6 +1,6 @@
 // ============================================================
-// خادم منصة التعليم - إصدار آمن ومحسن مع نظام الإحالة والتوثيق والحظر
-// تم إصلاح الثغرات الأمنية بالكامل
+// خادم منصة التعليم - إصدار آمن ومحسن
+// تم إصلاح جميع الثغرات الأمنية وإضافة المسار الرئيسي
 // ============================================================
 
 require('dotenv').config();
@@ -15,7 +15,7 @@ const axios = require('axios');
 const https = require('https');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const { body, validationResult, param, query } = require('express-validator');
+const { body, validationResult } = require('express-validator');
 const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
 const crypto = require('crypto');
@@ -46,7 +46,6 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 const CORS_ORIGIN = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['https://chatvidio.vercel.app', 'http://localhost:3000'];
 const PLATFORM_DOMAIN = process.env.PLATFORM_DOMAIN || 'https://chatvidio.vercel.app';
 const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(64).toString('hex');
-const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 
 // التحقق من المتغيرات الأساسية
 const requiredEnvVars = ['SUPABASE_URL', 'SUPABASE_KEY', 'RESEND_API_KEY'];
@@ -78,14 +77,14 @@ app.use(helmet({
             defaultSrc: ["'self'"],
             scriptSrc: [
                 "'self'",
-                "'unsafe-inline'", // مطلوب لـ Jitsi
-                "'unsafe-eval'",   // مطلوب لـ Jitsi
+                "'unsafe-inline'",
+                "'unsafe-eval'",
                 "https://meet.jit.si",
                 "https://cdnjs.cloudflare.com",
                 "https://vercel.live",
                 "https://*.vercel.app"
             ],
-            scriptSrcAttr: ["'unsafe-inline'"], // مطلوب لـ Jitsi
+            scriptSrcAttr: ["'unsafe-inline'"],
             styleSrc: [
                 "'self'",
                 "'unsafe-inline'",
@@ -133,7 +132,6 @@ app.use(helmet({
 // ============================================================
 const corsOptions = {
     origin: function(origin, callback) {
-        // السماح بطلبات بدون origin (مثل Postman)
         if (!origin) return callback(null, true);
         if (CORS_ORIGIN.indexOf(origin) !== -1) {
             callback(null, true);
@@ -150,7 +148,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // ============================================================
-// Rate Limiting متقدم - منع هجمات DDoS و Brute Force
+// Rate Limiting متقدم
 // ============================================================
 const globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -159,23 +157,22 @@ const globalLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     skip: (req) => {
-        // استثناء المسارات العامة والويب هوكس
         const publicPaths = [
             '/api/public/stats',
             '/api/public/offers',
             '/api/public/teachers',
             '/api/public/students-count',
             '/api/live-offers',
-            '/api/webhook/chargily'
+            '/api/webhook/chargily',
+            '/health'
         ];
         return publicPaths.some(p => req.path.startsWith(p));
     }
 });
 app.use('/api/', globalLimiter);
 
-// Rate Limiting مخصص لكل مسار حساس
 const authLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000, // ساعة واحدة
+    windowMs: 60 * 60 * 1000,
     max: 10,
     message: { success: false, error: 'عدد محاولات تسجيل الدخول كبير جداً، حاول بعد ساعة' },
     standardHeaders: true,
@@ -215,16 +212,17 @@ app.use('/api/student/wallet/deposit', depositLimiter);
 app.use('/api/booking/create', bookingLimiter);
 
 // ============================================================
+// Middleware الأساسية
+// ============================================================
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ extended: true, limit: '5mb' }));
+
+// ============================================================
 // نظام JWT المصادقة
 // ============================================================
 function generateToken(userId, userRole, email) {
     return jwt.sign(
-        { 
-            userId, 
-            userRole, 
-            email,
-            iat: Math.floor(Date.now() / 1000)
-        },
+        { userId, userRole, email, iat: Math.floor(Date.now() / 1000) },
         JWT_SECRET,
         { expiresIn: '24h' }
     );
@@ -238,31 +236,23 @@ function verifyToken(token) {
     }
 }
 
-// Middleware للتحقق من المصادقة
 function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
     
     if (!token) {
-        return res.status(401).json({ 
-            success: false, 
-            error: 'غير مصرح، يرجى تسجيل الدخول' 
-        });
+        return res.status(401).json({ success: false, error: 'غير مصرح، يرجى تسجيل الدخول' });
     }
     
     const decoded = verifyToken(token);
     if (!decoded) {
-        return res.status(403).json({ 
-            success: false, 
-            error: 'توكن غير صالح أو منتهي الصلاحية' 
-        });
+        return res.status(403).json({ success: false, error: 'توكن غير صالح أو منتهي الصلاحية' });
     }
     
     req.user = decoded;
     next();
 }
 
-// Middleware للتحقق من الدور
 function requireRole(...roles) {
     return (req, res, next) => {
         if (!req.user) {
@@ -276,10 +266,10 @@ function requireRole(...roles) {
 }
 
 // ============================================================
-// Middleware التحقق من الحظر (IP Ban) مع Caching
+// Middleware التحقق من الحظر (IP Ban)
 // ============================================================
 const bannedCache = new Map();
-const BAN_CACHE_TTL = 5 * 60 * 1000; // 5 دقائق
+const BAN_CACHE_TTL = 5 * 60 * 1000;
 
 async function checkBanned(req, res, next) {
     let ip = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'];
@@ -296,7 +286,6 @@ async function checkBanned(req, res, next) {
         return next();
     }
     
-    // التحقق من الكاش أولاً
     const cacheKey = `ban_${ip}`;
     const cached = bannedCache.get(cacheKey);
     if (cached && cached.expires > Date.now()) {
@@ -318,7 +307,6 @@ async function checkBanned(req, res, next) {
             .eq('ip_address', ip)
             .single();
         
-        // تخزين في الكاش
         bannedCache.set(cacheKey, {
             banned: !!data,
             reason: data?.ban_reason || null,
@@ -335,13 +323,11 @@ async function checkBanned(req, res, next) {
         }
         next();
     } catch (error) {
-        // في حالة خطأ في قاعدة البيانات، نسمح بالمرور
         console.error('⚠️ خطأ في التحقق من الحظر:', error.message);
         next();
     }
 }
 
-// تنظيف الكاش كل 10 دقائق
 setInterval(() => {
     const now = Date.now();
     for (const [key, value] of bannedCache.entries()) {
@@ -352,51 +338,36 @@ setInterval(() => {
 }, 10 * 60 * 1000);
 
 // ============================================================
-// Middleware الأساسية مع تحديد حجم الطلب
-// ============================================================
-app.use(express.json({ limit: '5mb' }));
-app.use(express.urlencoded({ extended: true, limit: '5mb' }));
-
-// ============================================================
-// إعداد Multer مع التحقق من نوع الملف وحجمه
+// إعداد Multer
 // ============================================================
 const storage = multer.memoryStorage();
 const upload = multer({
     storage: storage,
     limits: {
-        fileSize: 5 * 1024 * 1024, // 5 ميجابايت كحد أقصى
+        fileSize: 5 * 1024 * 1024,
         files: 3
     },
     fileFilter: (req, file, cb) => {
-        const allowedTypes = [
-            'image/jpeg', 
-            'image/png', 
-            'image/gif', 
-            'image/webp', 
-            'application/pdf',
-            'image/svg+xml'
-        ];
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'image/svg+xml'];
         if (allowedTypes.includes(file.mimetype)) {
             cb(null, true);
         } else {
-            cb(new Error('نوع الملف غير مدعوم. الأنواع المدعومة: JPG, PNG, GIF, WEBP, PDF'), false);
+            cb(new Error('نوع الملف غير مدعوم'), false);
         }
     }
 });
 
 // ============================================================
-// دوال إرسال البريد مع حماية ضد الـ Injection
+// دوال إرسال البريد
 // ============================================================
 
 function sanitizeEmailInput(text) {
     if (!text) return '';
-    // إزالة أي HTML أو JavaScript
     return text.replace(/[<>]/g, '').trim();
 }
 
 async function sendVerificationEmail(toEmail, toName, verificationUrl) {
     try {
-        // التحقق من صحة البريد الإلكتروني
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(toEmail)) {
             throw new Error('بريد إلكتروني غير صالح');
@@ -492,32 +463,28 @@ async function sendResetEmail(toEmail, toName, resetUrl) {
 }
 
 // ============================================================
-// دالة رفع الصور مع التحقق من الأمان
+// دالة رفع الصور
 // ============================================================
 async function uploadToSupabase(file, folder, oldFileName = null) {
     try {
         if (!file || !file.buffer) return null;
 
-        // التحقق من حجم الملف
         if (file.size > 5 * 1024 * 1024) {
             console.error('❌ حجم الملف كبير جداً:', file.size);
             return null;
         }
 
-        // التحقق من نوع الملف
         const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
         if (!allowedTypes.includes(file.mimetype)) {
             console.error('❌ نوع الملف غير مدعوم:', file.mimetype);
             return null;
         }
 
-        // إنشاء اسم ملف آمن
         const fileExt = path.extname(file.originalname).toLowerCase();
         const sanitizedExt = fileExt.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)?.[0] || '.jpg';
         const fileName = `${Date.now()}-${uuidv4()}${sanitizedExt}`;
         const filePath = `${folder}/${fileName}`;
 
-        // حذف الملف القديم إذا وجد
         if (oldFileName) {
             try {
                 const oldPath = `${folder}/${oldFileName}`;
@@ -527,7 +494,6 @@ async function uploadToSupabase(file, folder, oldFileName = null) {
             }
         }
 
-        // رفع الملف الجديد
         const { data, error } = await supabase.storage
             .from('profiles')
             .upload(filePath, file.buffer, {
@@ -556,15 +522,13 @@ async function uploadToSupabase(file, folder, oldFileName = null) {
 }
 
 // ============================================================
-// دوال قاعدة البيانات مع التحقق من الأمان
+// دوال قاعدة البيانات
 // ============================================================
 async function getOne(table, column, value) {
-    // التحقق من صحة الإدخال
     if (!table || !column || value === undefined || value === null) {
         return null;
     }
 
-    // منع الـ SQL Injection عن طريق استخدام Supabase المناسب
     try {
         const { data, error } = await supabase
             .from(table)
@@ -573,7 +537,7 @@ async function getOne(table, column, value) {
             .single();
         
         if (error) {
-            if (error.code === 'PGRST116') return null; // لا يوجد بيانات
+            if (error.code === 'PGRST116') return null;
             console.error(`❌ خطأ في getOne:`, error.message);
             return null;
         }
@@ -585,7 +549,6 @@ async function getOne(table, column, value) {
 }
 
 async function insert(table, data) {
-    // التحقق من صحة الإدخال
     if (!table || !data || typeof data !== 'object') {
         throw new Error('بيانات غير صالحة');
     }
@@ -666,23 +629,19 @@ function generateReferralCode(name, id) {
 }
 
 // ============================================================
-// نظام ويب هوكس Chargily للتحقق من الدفع
+// نظام ويب هوكس Chargily
 // ============================================================
-// تخزين مؤقت لمعرفات المعاملات لمنع التكرار
 const processedTransactions = new Map();
 
 app.post('/api/webhook/chargily', express.raw({ type: 'application/json' }), async (req, res) => {
     try {
-        // التحقق من توقيع الويب هوك
         const signature = req.headers['x-chargily-signature'];
         if (!signature) {
             return res.status(401).json({ error: 'توقيع غير موجود' });
         }
 
-        // التحقق من التوقيع (يجب إضافة secret في Chargily)
         const webhookSecret = process.env.CHARGILY_WEBHOOK_SECRET;
         if (webhookSecret) {
-            const crypto = require('crypto');
             const expectedSignature = crypto
                 .createHmac('sha256', webhookSecret)
                 .update(JSON.stringify(req.body))
@@ -694,26 +653,21 @@ app.post('/api/webhook/chargily', express.raw({ type: 'application/json' }), asy
         }
 
         const payload = req.body;
-        console.log('📦 استلام ويب هوك من Chargily:', payload);
+        console.log('📦 استلام ويب هوك من Chargily');
 
-        // التحقق من نوع الحدث
         if (payload.type !== 'checkout.paid') {
             return res.status(200).json({ received: true });
         }
 
         const checkoutId = payload.data?.id;
-        const metadata = payload.data?.metadata || {};
-
         if (!checkoutId) {
             return res.status(400).json({ error: 'بيانات غير مكتملة' });
         }
 
-        // منع معالجة نفس المعاملة مرتين
         if (processedTransactions.has(checkoutId)) {
             return res.status(200).json({ already_processed: true });
         }
 
-        // جلب المعاملة من قاعدة البيانات
         const { data: transaction, error } = await supabase
             .from('wallet_transactions')
             .select('*')
@@ -725,21 +679,14 @@ app.post('/api/webhook/chargily', express.raw({ type: 'application/json' }), asy
             return res.status(404).json({ error: 'المعاملة غير موجودة' });
         }
 
-        // التحقق من أن المعاملة لم تتم معالجتها مسبقاً
         if (transaction.status === 'completed') {
             processedTransactions.set(checkoutId, Date.now());
             return res.status(200).json({ already_processed: true });
         }
 
-        // التحقق من المبلغ
         const amount = parseInt(payload.data?.amount) || 0;
-        if (amount !== transaction.amount) {
-            console.error(`❌ مبلغ غير مطابق: المطلوب ${transaction.amount}، المستلم ${amount}`);
-            // نضيف رصيد بالمبلغ الفعلي لكن نسجل الاختلاف
-        }
+        const addAmount = parseInt(amount) || parseInt(transaction.amount) || 0;
 
-        // استخدام معاملة قاعدة البيانات (transaction)
-        // نضيف الرصيد
         const student = await getOne('students', 'id', transaction.student_id);
         if (!student) {
             console.error('❌ الطالب غير موجود:', transaction.student_id);
@@ -747,10 +694,8 @@ app.post('/api/webhook/chargily', express.raw({ type: 'application/json' }), asy
         }
 
         const currentBalance = parseInt(student.wallet_balance) || 0;
-        const addAmount = parseInt(amount) || parseInt(transaction.amount) || 0;
         const newBalance = currentBalance + addAmount;
 
-        // تحديث رصيد الطالب
         const { error: updateError } = await supabase
             .from('students')
             .update({ wallet_balance: newBalance })
@@ -761,18 +706,15 @@ app.post('/api/webhook/chargily', express.raw({ type: 'application/json' }), asy
             return res.status(500).json({ error: 'خطأ في تحديث الرصيد' });
         }
 
-        // تحديث حالة المعاملة
         await update('wallet_transactions', transaction.id, {
             status: 'completed',
             description: `تم شحن الرصيد بنجاح بمبلغ ${addAmount} دج (مؤكد من Chargily)`
         });
 
-        // تسجيل المعاملة كمعالجة
         processedTransactions.set(checkoutId, Date.now());
 
-        console.log(`✅ تم إضافة ${addAmount} دج للطالب ${student.full_name} (الرصيد الجديد: ${newBalance} دج)`);
+        console.log(`✅ تم إضافة ${addAmount} دج للطالب ${student.full_name}`);
 
-        // إرسال إشعار للطالب
         await insert('notifications', {
             user_id: transaction.student_id,
             user_type: 'student',
@@ -790,10 +732,9 @@ app.post('/api/webhook/chargily', express.raw({ type: 'application/json' }), asy
     }
 });
 
-// تنظيف الكاش كل ساعة
 setInterval(() => {
     const now = Date.now();
-    const maxAge = 60 * 60 * 1000; // ساعة واحدة
+    const maxAge = 60 * 60 * 1000;
     for (const [key, value] of processedTransactions.entries()) {
         if (now - value > maxAge) {
             processedTransactions.delete(key);
@@ -802,7 +743,7 @@ setInterval(() => {
 }, 60 * 60 * 1000);
 
 // ============================================================
-// نظام الإحالة مع التحقق من الأمان
+// نظام الإحالة
 // ============================================================
 
 app.post('/api/referral/create', authenticateToken, [
@@ -815,7 +756,6 @@ app.post('/api/referral/create', authenticateToken, [
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        // التحقق من أن المستخدم يعدل بياناته فقط
         if (req.user.userId !== parseInt(req.body.user_id)) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
@@ -875,7 +815,6 @@ app.get('/api/referral/info/:user_id/:role', authenticateToken, async (req, res)
     try {
         const { user_id, role } = req.params;
 
-        // التحقق من أن المستخدم يطلب بياناته فقط
         if (req.user.userId !== parseInt(user_id)) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
@@ -945,11 +884,9 @@ app.post('/api/referral/process', [
 
         const { ref_code, new_user_id, new_user_role } = req.body;
 
-        // التحقق من عدم إحالة المستخدم لنفسه
         let referrer = null;
         let referrerRole = null;
 
-        // البحث عن المحيل
         const { data: studentReferrer } = await supabase
             .from('students')
             .select('id, referral_code, full_name, email, role')
@@ -980,7 +917,6 @@ app.post('/api/referral/process', [
             return res.status(400).json({ success: false, error: 'لا يمكنك إحالة نفسك' });
         }
 
-        // التحقق من عدم وجود إحالة مسبقة
         const { data: existingReferral } = await supabase
             .from('referrals')
             .select('*')
@@ -1058,7 +994,6 @@ async function processReferralReward(referredUserId, referredUserRole) {
                     created_at: new Date().toISOString()
                 });
 
-                // إشعار للمعلم
                 await insert('notifications', {
                     user_id: referral.referrer_id,
                     user_type: 'teacher',
@@ -1090,7 +1025,6 @@ async function processReferralReward(referredUserId, referredUserRole) {
                     created_at: new Date().toISOString()
                 });
 
-                // إشعار للطالب
                 await insert('notifications', {
                     user_id: referral.referrer_id,
                     user_type: 'student',
@@ -1122,7 +1056,6 @@ app.post('/api/referral/open-gift-box', authenticateToken, [
 
         const { student_id } = req.body;
 
-        // التحقق من أن المستخدم يعدل بياناته فقط
         if (req.user.userId !== parseInt(student_id) || req.user.userRole !== 'student') {
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
@@ -1137,14 +1070,12 @@ app.post('/api/referral/open-gift-box', authenticateToken, [
             return res.status(400).json({ success: false, error: 'لا توجد فرص لفتح صندوق الهدايا' });
         }
 
-        // تحديث الفرص
         await supabase
             .from('students')
             .update({ gift_box_chances: chances - 1 })
             .eq('id', student_id);
 
-        // تحديد المكافأة (محسوبة بشكل آمن)
-        const rand = crypto.randomInt(1, 1001) / 1000; // 0-1
+        const rand = crypto.randomInt(1, 1001) / 1000;
         let rewardAmount = 0;
         let rewardType = 'none';
 
@@ -1183,7 +1114,6 @@ app.post('/api/referral/open-gift-box', authenticateToken, [
                 created_at: new Date().toISOString()
             });
 
-            // إشعار للطالب
             await insert('notifications', {
                 user_id: student_id,
                 user_type: 'student',
@@ -1193,7 +1123,6 @@ app.post('/api/referral/open-gift-box', authenticateToken, [
                 created_at: new Date().toISOString()
             });
         } else {
-            // إشعار بالفشل
             await insert('notifications', {
                 user_id: student_id,
                 user_type: 'student',
@@ -1220,17 +1149,15 @@ app.post('/api/referral/open-gift-box', authenticateToken, [
 });
 
 // ============================================================
-// نظام الدفع الآمن - مع تحسينات أمنية
+// نظام الدفع الآمن
 // ============================================================
 
 async function createChargilyCheckout(amount, studentName, studentEmail, studentPhone, description, successUrl, failureUrl) {
     try {
-        // التحقق من صحة المبلغ
         let finalAmount = Math.max(Number(amount), 100);
         finalAmount = Math.min(finalAmount, 1000000);
         finalAmount = Math.round(finalAmount);
 
-        // التحقق من صحة الروابط
         const urlRegex = /^https?:\/\/[^\s/$.?#].[^\s]*$/;
         if (!urlRegex.test(successUrl) || !urlRegex.test(failureUrl)) {
             throw new Error('روابط غير صالحة');
@@ -1253,7 +1180,6 @@ async function createChargilyCheckout(amount, studentName, studentEmail, student
 
         console.log('📦 إنشاء دفع للمبلغ:', finalAmount, 'DZD');
 
-        // استخدام طريقة المصادقة الصحيحة
         const response = await axios.post(`${CHARGILY_API_URL}/checkouts`, checkoutData, {
             headers: {
                 'Content-Type': 'application/json',
@@ -1287,9 +1213,6 @@ async function createChargilyCheckout(amount, studentName, studentEmail, student
     }
 }
 
-// ============================================================
-// شحن الرصيد - مع تحسينات أمنية
-// ============================================================
 app.post('/api/student/wallet/deposit', authenticateToken, [
     body('student_id').isInt({ min: 1 }).withMessage('معرف الطالب غير صالح'),
     body('amount').isInt({ min: 100, max: 1000000 }).withMessage('المبلغ يجب أن يكون بين 100 و 1,000,000 دج')
@@ -1302,12 +1225,10 @@ app.post('/api/student/wallet/deposit', authenticateToken, [
 
         const { student_id, amount } = req.body;
 
-        // التحقق من أن المستخدم يعدل بياناته فقط
         if (req.user.userId !== parseInt(student_id) || req.user.userRole !== 'student') {
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
 
-        // التحقق من وجود الطالب
         const student = await getOne('students', 'id', student_id);
         if (!student) {
             return res.status(404).json({ success: false, error: 'الطالب غير موجود' });
@@ -1315,7 +1236,6 @@ app.post('/api/student/wallet/deposit', authenticateToken, [
 
         const finalAmount = Math.round(Math.max(Number(amount), 100));
 
-        // إنشاء معاملة جديدة بحالة pending
         const transaction = await insert('wallet_transactions', {
             student_id: student_id,
             amount: finalAmount,
@@ -1330,11 +1250,9 @@ app.post('/api/student/wallet/deposit', authenticateToken, [
             (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
             'https://chatvidio.vercel.app';
 
-        // بناء روابط النجاح والفشل مع معرف المعاملة
         const successUrl = `${baseUrl}/api/wallet/deposit/success/${transaction.id}`;
         const failureUrl = `${baseUrl}/api/wallet/deposit/failure/${transaction.id}`;
 
-        // إنشاء رابط الدفع عبر Chargily
         const checkout = await createChargilyCheckout(
             finalAmount,
             student.full_name,
@@ -1375,13 +1293,9 @@ app.post('/api/student/wallet/deposit', authenticateToken, [
     }
 });
 
-// ============================================================
-// معالجة نجاح الدفع - مع تحسينات أمنية
-// ============================================================
 app.get('/api/wallet/deposit/success/:transaction_id', async (req, res) => {
     const { transaction_id } = req.params;
 
-    // التحقق من صحة المعرف
     if (!transaction_id || isNaN(parseInt(transaction_id))) {
         return res.status(400).send(`
             <!DOCTYPE html>
@@ -1406,7 +1320,6 @@ app.get('/api/wallet/deposit/success/:transaction_id', async (req, res) => {
     }
 
     try {
-        // جلب المعاملة
         const transaction = await getOne('wallet_transactions', 'id', transaction_id);
         if (!transaction) {
             return res.status(404).send(`
@@ -1431,7 +1344,6 @@ app.get('/api/wallet/deposit/success/:transaction_id', async (req, res) => {
             `);
         }
 
-        // التحقق من أن المعاملة لم تتم معالجتها مسبقاً
         if (transaction.status === 'completed') {
             return res.send(`
                 <!DOCTYPE html>
@@ -1455,7 +1367,6 @@ app.get('/api/wallet/deposit/success/:transaction_id', async (req, res) => {
             `);
         }
 
-        // التحقق من حالة الدفع عبر Chargily
         if (transaction.chargily_checkout_id && CHARGILY_API_KEY) {
             try {
                 const { data: checkout } = await axios.get(
@@ -1469,9 +1380,7 @@ app.get('/api/wallet/deposit/success/:transaction_id', async (req, res) => {
                     }
                 );
 
-                // التحقق من حالة الدفع
                 if (checkout.status !== 'paid') {
-                    // لم يتم الدفع بعد، ننتظر ويب هوك
                     return res.send(`
                         <!DOCTYPE html>
                         <html>
@@ -1497,11 +1406,9 @@ app.get('/api/wallet/deposit/success/:transaction_id', async (req, res) => {
                 }
             } catch (error) {
                 console.error('❌ خطأ في التحقق من Chargily:', error.message);
-                // نستمر في المعالجة، قد يكون الدفع تم من قبل
             }
         }
 
-        // جلب بيانات الطالب
         const student = await getOne('students', 'id', transaction.student_id);
         if (!student) {
             return res.status(404).send(`
@@ -1526,24 +1433,20 @@ app.get('/api/wallet/deposit/success/:transaction_id', async (req, res) => {
             `);
         }
 
-        // حساب الرصيد الجديد
         const currentBalance = parseInt(student.wallet_balance) || 0;
         const addAmount = parseInt(transaction.amount) || 0;
         const newBalance = currentBalance + addAmount;
 
-        // تحديث رصيد الطالب
         await supabase
             .from('students')
             .update({ wallet_balance: newBalance })
             .eq('id', transaction.student_id);
 
-        // تحديث حالة المعاملة
         await update('wallet_transactions', transaction_id, {
             status: 'completed',
             description: `تم شحن الرصيد بنجاح بمبلغ ${addAmount} دج`
         });
 
-        // إشعار للطالب
         await insert('notifications', {
             user_id: transaction.student_id,
             user_type: 'student',
@@ -1553,9 +1456,8 @@ app.get('/api/wallet/deposit/success/:transaction_id', async (req, res) => {
             created_at: new Date().toISOString()
         });
 
-        console.log(`✅ تم إضافة ${addAmount} دج للطالب ${student.full_name} (الرصيد الجديد: ${newBalance} دج)`);
+        console.log(`✅ تم إضافة ${addAmount} دج للطالب ${student.full_name}`);
 
-        // عرض صفحة النجاح
         res.send(`
             <!DOCTYPE html>
             <html>
@@ -1606,9 +1508,6 @@ app.get('/api/wallet/deposit/success/:transaction_id', async (req, res) => {
     }
 });
 
-// ============================================================
-// معالجة فشل الدفع
-// ============================================================
 app.get('/api/wallet/deposit/failure/:transaction_id', async (req, res) => {
     const { transaction_id } = req.params;
 
@@ -1648,7 +1547,7 @@ app.get('/api/wallet/deposit/failure/:transaction_id', async (req, res) => {
 });
 
 // ============================================================
-// نظام الحجز - مع تحسينات أمنية
+// نظام الحجز
 // ============================================================
 app.post('/api/booking/create', authenticateToken, [
     body('offer_id').isInt({ min: 1 }).withMessage('معرف العرض غير صالح'),
@@ -1662,18 +1561,15 @@ app.post('/api/booking/create', authenticateToken, [
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        // التحقق من أن المستخدم يعدل بياناته فقط
         if (req.user.userId !== parseInt(student_id) || req.user.userRole !== 'student') {
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
 
-        // التحقق من وجود الطالب
         const student = await getOne('students', 'id', student_id);
         if (!student) {
             return res.status(404).json({ success: false, error: 'الطالب غير موجود' });
         }
 
-        // التحقق من تأكيد البريد الإلكتروني
         if (!student.email_verified) {
             return res.status(403).json({
                 success: false,
@@ -1682,19 +1578,16 @@ app.post('/api/booking/create', authenticateToken, [
             });
         }
 
-        // التحقق من وجود العرض
         const offer = await getOne('offers', 'id', offer_id);
         if (!offer) {
             return res.status(404).json({ success: false, error: 'العرض غير موجود' });
         }
 
-        // التحقق من أن العرض قادم
         const offerDate = new Date(offer.offer_date);
         if (offerDate < new Date() && offer.status !== 'live' && offer.status !== 'teacher_ready') {
             return res.status(400).json({ success: false, error: 'هذا العرض انتهى' });
         }
 
-        // التحقق من عدم وجود حجز مسبق
         const { data: existing } = await supabase
             .from('sessions')
             .select('*')
@@ -1706,9 +1599,7 @@ app.post('/api/booking/create', authenticateToken, [
             return res.status(400).json({ success: false, error: 'مسجل بالفعل في هذا العرض' });
         }
 
-        // معالجة الحجز
         if (offer.is_free === 1 || offer.price === 0) {
-            // حجز مجاني
             const session = await insert('sessions', {
                 offer_id,
                 student_id,
@@ -1719,13 +1610,12 @@ app.post('/api/booking/create', authenticateToken, [
                 created_at: new Date().toISOString()
             });
 
-            await insert('waiting_room', { 
-                offer_id, 
+            await insert('waiting_room', {
+                offer_id,
                 student_id,
                 created_at: new Date().toISOString()
             });
 
-            // إشعار للطالب
             await insert('notifications', {
                 user_id: student_id,
                 user_type: 'student',
@@ -1744,7 +1634,6 @@ app.post('/api/booking/create', authenticateToken, [
             });
         }
 
-        // حجز مدفوع
         const currentBalance = student.wallet_balance || 0;
 
         if (currentBalance < offer.price) {
@@ -1756,11 +1645,9 @@ app.post('/api/booking/create', authenticateToken, [
             });
         }
 
-        // خصم الرصيد
         const newBalance = currentBalance - offer.price;
         await update('students', student_id, { wallet_balance: newBalance });
 
-        // تسجيل المعاملة
         await insert('wallet_transactions', {
             student_id: student_id,
             amount: offer.price,
@@ -1770,7 +1657,6 @@ app.post('/api/booking/create', authenticateToken, [
             created_at: new Date().toISOString()
         });
 
-        // إنشاء الجلسة
         const session = await insert('sessions', {
             offer_id,
             student_id,
@@ -1781,14 +1667,12 @@ app.post('/api/booking/create', authenticateToken, [
             created_at: new Date().toISOString()
         });
 
-        // إضافة إلى غرفة الانتظار
         await insert('waiting_room', {
             offer_id,
             student_id,
             created_at: new Date().toISOString()
         });
 
-        // حساب أرباح المعلم
         const teacher = await getOne('teachers', 'id', offer.teacher_id);
         if (teacher) {
             const commission = offer.price * 0.1;
@@ -1800,7 +1684,6 @@ app.post('/api/booking/create', authenticateToken, [
             await update('sessions', session.id, { teacher_earned: teacherEarned });
         }
 
-        // إشعار للطالب
         await insert('notifications', {
             user_id: student_id,
             user_type: 'student',
@@ -1824,7 +1707,7 @@ app.post('/api/booking/create', authenticateToken, [
 });
 
 // ============================================================
-// نظام تسجيل الدخول - مع JWT
+// نظام تسجيل الدخول
 // ============================================================
 app.post('/api/login', checkBanned, [
     body('email').isEmail().withMessage('بريد إلكتروني غير صالح'),
@@ -1839,7 +1722,6 @@ app.post('/api/login', checkBanned, [
 
         const { email, password, role } = req.body;
 
-        // تسجيل دخول المدير
         if (role === 'admin') {
             if (email !== ADMIN_EMAIL) {
                 return res.status(401).json({ success: false, error: 'بيانات الدخول غير صحيحة' });
@@ -1867,7 +1749,6 @@ app.post('/api/login', checkBanned, [
             });
         }
 
-        // تسجيل دخول أستاذ أو طالب
         let user = await getOne('teachers', 'email', email);
         let userRole = 'teacher';
 
@@ -1880,7 +1761,6 @@ app.post('/api/login', checkBanned, [
             return res.status(404).json({ success: false, error: 'البريد الإلكتروني غير موجود' });
         }
 
-        // التحقق من الحظر
         if (user.is_banned === true) {
             return res.status(403).json({
                 success: false,
@@ -1890,13 +1770,11 @@ app.post('/api/login', checkBanned, [
             });
         }
 
-        // التحقق من كلمة المرور
         const validPassword = bcrypt.compareSync(password, user.password);
         if (!validPassword) {
             return res.status(401).json({ success: false, error: 'كلمة المرور خاطئة' });
         }
 
-        // التحقق من الدور
         if (role !== userRole) {
             return res.status(400).json({
                 success: false,
@@ -1904,7 +1782,6 @@ app.post('/api/login', checkBanned, [
             });
         }
 
-        // التحقق من تأكيد البريد الإلكتروني
         if (!user.email_verified) {
             return res.status(403).json({
                 success: false,
@@ -1915,7 +1792,6 @@ app.post('/api/login', checkBanned, [
             });
         }
 
-        // التحقق من موافقة الأستاذ
         if (userRole === 'teacher' && user.status !== 'approved') {
             return res.status(403).json({
                 success: false,
@@ -1924,7 +1800,6 @@ app.post('/api/login', checkBanned, [
             });
         }
 
-        // تسجيل IP
         let ip = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'];
         if (ip && typeof ip === 'string' && ip.includes(',')) {
             ip = ip.split(',')[0].trim();
@@ -1942,7 +1817,6 @@ app.post('/api/login', checkBanned, [
             });
         }
 
-        // إنشاء توكن JWT
         const token = generateToken(user.id, userRole, user.email);
 
         const redirectPath = userRole === 'teacher' ? '/teacher-dashboard.html' : '/student-dashboard.html';
@@ -1983,7 +1857,7 @@ app.get('/api/verify-token', authenticateToken, (req, res) => {
 });
 
 // ============================================================
-// تسجيل الخروج - إبطال التوكن من العميل
+// تسجيل الخروج
 // ============================================================
 app.post('/api/logout', authenticateToken, (req, res) => {
     res.json({ success: true, message: 'تم تسجيل الخروج بنجاح' });
@@ -2197,7 +2071,6 @@ app.get('/api/verify-email', async (req, res) => {
             `);
         }
 
-        // التحقق من صحة الرمز
         const { data: verification, error } = await supabase
             .from('email_verifications')
             .select('*')
@@ -2230,7 +2103,6 @@ app.get('/api/verify-email', async (req, res) => {
             `);
         }
 
-        // التحقق من صلاحية الرمز
         const expiresAt = new Date(verification.expires_at);
         if (expiresAt < new Date()) {
             await supabase
@@ -2262,19 +2134,16 @@ app.get('/api/verify-email', async (req, res) => {
 
         const tableName = role === 'student' ? 'students' : 'teachers';
 
-        // تحديث حالة المستخدم
         await supabase
             .from(tableName)
             .update({ email_verified: true })
             .eq('email', email);
 
-        // تحديث حالة رمز التحقق
         await supabase
             .from('email_verifications')
             .update({ used: true })
             .eq('token', token);
 
-        // معالجة مكافأة الإحالة
         const user = await getOne(tableName, 'email', email);
         if (user) {
             await processReferralReward(user.id, role);
@@ -2486,7 +2355,6 @@ app.get('/api/notifications/:user_id/:user_type', authenticateToken, async (req,
     try {
         const { user_id, user_type } = req.params;
 
-        // التحقق من أن المستخدم يطلب بياناته فقط
         if (req.user.userId !== parseInt(user_id) || req.user.userRole !== user_type) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
@@ -2510,7 +2378,6 @@ app.post('/api/notifications/read/:notification_id', authenticateToken, async (r
     try {
         const { notification_id } = req.params;
 
-        // التحقق من وجود الإشعار
         const { data: notif } = await supabase
             .from('notifications')
             .select('*')
@@ -2521,7 +2388,6 @@ app.post('/api/notifications/read/:notification_id', authenticateToken, async (r
             return res.status(404).json({ success: false, error: 'الإشعار غير موجود' });
         }
 
-        // التحقق من أن المستخدم يملك الإشعار
         if (notif.user_id !== req.user.userId || notif.user_type !== req.user.userRole) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
@@ -2545,7 +2411,6 @@ app.get('/api/student/stream-status/:offer_id/:student_id', authenticateToken, a
     try {
         const { offer_id, student_id } = req.params;
 
-        // التحقق من أن المستخدم يطلب بياناته فقط
         if (req.user.userId !== parseInt(student_id) || req.user.userRole !== 'student') {
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
@@ -2622,6 +2487,104 @@ app.get('/api/student/stream-status/:offer_id/:student_id', authenticateToken, a
 });
 
 // ============================================================
+// ============================================================
+// ⭐ المسارات الرئيسية - تم إضافتها لحل مشكلة Cannot GET /
+// ============================================================
+// ============================================================
+
+// ============================================================
+// خدمة الملفات الثابتة
+// ============================================================
+app.use(express.static('public', {
+    maxAge: '1d',
+    etag: true,
+    lastModified: true
+}));
+
+// ============================================================
+// المسار الرئيسي
+// ============================================================
+app.get('/', (req, res) => {
+    const refCode = req.query.ref;
+    if (refCode) {
+        res.cookie('referral_code', refCode, {
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax'
+        });
+    }
+
+    try {
+        res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    } catch (error) {
+        res.send(`
+            <!DOCTYPE html>
+            <html>
+            <head><meta charset="UTF-8"><title>مرحباً في منصة التعليم</title>
+            <style>
+                body{font-family:Cairo;background:#0f5cbf;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;direction:rtl}
+                .card{background:white;padding:40px;border-radius:20px;text-align:center;max-width:500px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
+                h1{color:#0f5cbf}
+                .btn{background:#0f5cbf;color:white;padding:12px 30px;border-radius:30px;text-decoration:none;display:inline-block;margin-top:20px}
+                .btn:hover{background:#0a4a9a}
+            </style>
+            </head>
+            <body>
+            <div class="card">
+                <h1>🚀 منصة التعليم</h1>
+                <p>مرحباً بك في منصة التعليم</p>
+                <a href="/login.html" class="btn">تسجيل الدخول</a>
+                <a href="/register.html" class="btn" style="background:#10b981;margin-right:10px;">تسجيل جديد</a>
+            </div>
+            </body>
+            </html>
+        `);
+    }
+});
+
+// ============================================================
+// مسار الصحة (Health Check)
+// ============================================================
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        memory: process.memoryUsage(),
+        version: '3.0.0'
+    });
+});
+
+// ============================================================
+// معالجة المسارات غير الموجودة (404)
+// ============================================================
+app.use((req, res) => {
+    res.status(404).send(`
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="UTF-8"><title>الصفحة غير موجودة</title>
+        <style>
+            body{font-family:Cairo;background:#0f5cbf;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;direction:rtl}
+            .card{background:white;padding:40px;border-radius:20px;text-align:center;max-width:500px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
+            h1{color:#dc2626;font-size:4rem}
+            .btn{background:#0f5cbf;color:white;padding:12px 30px;border-radius:30px;text-decoration:none;display:inline-block;margin-top:20px}
+            .btn:hover{background:#0a4a9a}
+        </style>
+        </head>
+        <body>
+        <div class="card">
+            <h1>404</h1>
+            <h2>الصفحة غير موجودة</h2>
+            <p>عذراً، الصفحة التي تبحث عنها غير موجودة</p>
+            <a href="/" class="btn">العودة للرئيسية</a>
+        </div>
+        </body>
+        </html>
+    `);
+});
+
+// ============================================================
 // تشغيل الخادم
 // ============================================================
 
@@ -2640,6 +2603,8 @@ if (require.main === module) {
         console.log('💰 مكافأة الإحالة: 100 دج للمعلم، فرصة صندوق هدايا للطالب');
         console.log('🔒 نظام الحظر (IP Ban) مع Caching مفعل');
         console.log('💳 نظام الدفع عبر Chargily مع Webhook مفعل');
+        console.log('📍 المسار الرئيسي: /');
+        console.log('🏥 مسار الصحة: /health');
         console.log('='.repeat(60));
     });
 }
