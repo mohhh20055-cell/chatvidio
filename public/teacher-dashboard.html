@@ -1438,6 +1438,10 @@
 </div>
 
 <script>
+    // ================================================================
+    // ⚠️ تم إصلاح مشكلة التوكن
+    // ================================================================
+
     let userData = null;
     let teacherId = null;
     let currentConversations = [];
@@ -1445,6 +1449,91 @@
     let referralData = null;
     let notifications = [];
     let unreadCount = 0;
+    let authToken = null;
+    let csrfToken = null;
+
+    // ================================================================
+    // دوال المصادقة والأمان
+    // ================================================================
+
+    function getAuthHeaders() {
+        return {
+            'Authorization': `Bearer ${authToken}`,
+            'X-CSRF-Token': csrfToken || '',
+            'Content-Type': 'application/json'
+        };
+    }
+
+    async function fetchWithAuth(url, options = {}) {
+        const isFormData = options.body instanceof FormData;
+        const headers = {
+            ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+            'Authorization': `Bearer ${authToken}`,
+            'X-CSRF-Token': csrfToken || '',
+            ...options.headers
+        };
+        
+        const response = await fetch(url, {
+            ...options,
+            headers: headers
+        });
+
+        if (response.status === 401) {
+            showToast('⏳ انتهت صلاحية الجلسة، جاري إعادة التوجيه...', 'error');
+            localStorage.clear();
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1500);
+            throw new Error('انتهت صلاحية الجلسة');
+        }
+
+        if (response.status === 403) {
+            try {
+                const data = await response.json();
+                if (data.banned) {
+                    showToast('⚠️ تم حظر حسابك من المنصة', 'error');
+                    localStorage.clear();
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
+                    throw new Error('حساب محظور');
+                }
+                if (data.error && data.error.includes('CSRF')) {
+                    await getCsrfToken();
+                    const retryResponse = await fetch(url, {
+                        ...options,
+                        headers: {
+                            ...headers,
+                            'X-CSRF-Token': csrfToken
+                        }
+                    });
+                    if (retryResponse.ok) {
+                        return retryResponse;
+                    }
+                }
+                throw new Error(data.error || 'غير مصرح به');
+            } catch (e) {
+                if (e.message === 'حساب محظور' || e.message === 'انتهت صلاحية الجلسة') throw e;
+                throw new Error('غير مصرح به');
+            }
+        }
+
+        return response;
+    }
+
+    async function getCsrfToken() {
+        try {
+            const response = await fetch('/api/csrf-token', {
+                credentials: 'include'
+            });
+            const data = await response.json();
+            csrfToken = data.csrfToken;
+            return csrfToken;
+        } catch (error) {
+            console.error('خطأ في جلب CSRF Token:', error);
+            return null;
+        }
+    }
 
     // ================================================================
     // NOTIFICATIONS SYSTEM
@@ -1452,14 +1541,16 @@
 
     async function loadNotifications() {
         try {
-            const res = await fetch(`/api/notifications/${teacherId}/teacher`);
+            const res = await fetchWithAuth(`/api/notifications/${teacherId}/teacher`);
             const data = await res.json();
             notifications = data || [];
             unreadCount = notifications.filter(n => !n.is_read).length;
             updateNotifBadge();
             renderNotifications();
         } catch (e) {
-            console.error('خطأ في جلب الإشعارات:', e);
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                console.error('خطأ في جلب الإشعارات:', e);
+            }
         }
     }
 
@@ -1533,7 +1624,7 @@
 
     async function markNotificationRead(notifId) {
         try {
-            const res = await fetch(`/api/notifications/read/${notifId}`, {
+            const res = await fetchWithAuth(`/api/notifications/read/${notifId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -1545,18 +1636,24 @@
                 renderNotifications();
             }
         } catch (e) {
-            console.error('خطأ في تحديث الإشعار:', e);
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                console.error('خطأ في تحديث الإشعار:', e);
+            }
         }
     }
 
     async function markAllNotifications() {
         const unreadNotifs = notifications.filter(n => !n.is_read);
         for (const notif of unreadNotifs) {
-            await fetch(`/api/notifications/read/${notif.id}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            });
-            notif.is_read = true;
+            try {
+                await fetchWithAuth(`/api/notifications/read/${notif.id}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                notif.is_read = true;
+            } catch(e) { 
+                if (e.message !== 'انتهت صلاحية الجلسة') console.error(e); 
+            }
         }
         unreadCount = 0;
         updateNotifBadge();
@@ -1640,19 +1737,33 @@
     }
 
     // ================================================================
-    // USER DATA
+    // USER DATA - ✅ تم التصحيح
     // ================================================================
 
     async function loadUserData() {
         try {
+            // ✅ استخدام نفس المفتاح المستخدم في تسجيل الدخول
             const storedData = localStorage.getItem('userData');
+            const token = localStorage.getItem('token'); // ✅ تم التصحيح من 'authToken' إلى 'token'
+            
             if (storedData) {
                 userData = JSON.parse(storedData);
                 teacherId = userData.id;
             }
-            if (!teacherId) { window.location.href = '/'; return; }
+            
+            if (token) {
+                authToken = token;
+            }
+            
+            if (!teacherId || !authToken) {
+                console.log('⚠️ لا يوجد توكن أو معرف أستاذ، جاري التوجيه إلى الصفحة الرئيسية');
+                window.location.href = '/';
+                return;
+            }
 
-            const res = await fetch(`/api/teacher/${teacherId}`);
+            await getCsrfToken();
+
+            const res = await fetchWithAuth(`/api/teacher/${teacherId}`);
             const data = await res.json();
             if (!data.error) {
                 userData = data;
@@ -1662,7 +1773,12 @@
             loadBalance();
             loadReferralData();
             loadNotifications();
-        } catch(e) { console.error(e); }
+        } catch(e) {
+            console.error('خطأ في تحميل بيانات المستخدم:', e);
+            if (e.message === 'انتهت صلاحية الجلسة') {
+                window.location.href = '/';
+            }
+        }
     }
 
     // ===== دالة عرض روابط التواصل الاجتماعي =====
@@ -1777,7 +1893,7 @@
 
     async function loadBalance() {
         try {
-            const res = await fetch(`/api/teacher/balance/${teacherId}`);
+            const res = await fetchWithAuth(`/api/teacher/balance/${teacherId}`);
             const data = await res.json();
             const balance = data.balance || 0;
             document.getElementById('navBalanceAmount').textContent = balance;
@@ -1812,12 +1928,16 @@
             earningsHtml += `</tbody></table></div>`;
             document.getElementById('earningsInfo').innerHTML = earningsHtml;
             loadWithdrawRequests();
-        } catch(e) { console.error(e); }
+        } catch(e) { 
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                console.error(e);
+            }
+        }
     }
 
     async function loadWithdrawRequests() {
         try {
-            const res = await fetch(`/api/teacher/withdraw-requests/${teacherId}`);
+            const res = await fetchWithAuth(`/api/teacher/withdraw-requests/${teacherId}`);
             const requests = await res.json();
             if (requests.length === 0) {
                 document.getElementById('withdrawRequestsList').innerHTML = '<p style="text-align:center; padding:15px; color:var(--gray-400);">لا توجد طلبات سحب</p>';
@@ -1839,7 +1959,11 @@
             }
             html += '</div>';
             document.getElementById('withdrawRequestsList').innerHTML = html;
-        } catch(e) { console.error(e); }
+        } catch(e) { 
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                console.error(e);
+            }
+        }
     }
 
     // ================================================================
@@ -1848,7 +1972,7 @@
 
     async function loadReferralData() {
         try {
-            const createRes = await fetch('/api/referral/create', {
+            const createRes = await fetchWithAuth('/api/referral/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ user_id: teacherId, role: 'teacher' })
@@ -1858,7 +1982,7 @@
                 document.getElementById('referralCodeText').textContent = createData.referral_code || 'غير متوفر';
             }
 
-            const infoRes = await fetch(`/api/referral/info/${teacherId}/teacher`);
+            const infoRes = await fetchWithAuth(`/api/referral/info/${teacherId}/teacher`);
             const infoData = await infoRes.json();
             if (infoData.success) {
                 referralData = infoData;
@@ -1867,7 +1991,9 @@
                 renderRewardHistory(infoData.rewards || []);
             }
         } catch(e) {
-            console.error('خطأ في تحميل بيانات الإحالة:', e);
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                console.error('خطأ في تحميل بيانات الإحالة:', e);
+            }
         }
     }
 
@@ -1999,12 +2125,14 @@
         const container = document.getElementById('chatMessages');
         container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
         try {
-            const res = await fetch(`/api/messages/${teacherId}/teacher/${otherId}/teacher`);
+            const res = await fetchWithAuth(`/api/messages/${teacherId}/teacher/${otherId}/teacher`);
             const messages = await res.json();
             renderChatMessages(messages);
         } catch(e) {
-            console.log(e);
-            container.innerHTML = '<p style="text-align:center; padding:20px; color:var(--danger);">حدث خطأ في تحميل الرسائل</p>';
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                console.log(e);
+                container.innerHTML = '<p style="text-align:center; padding:20px; color:var(--danger);">حدث خطأ في تحميل الرسائل</p>';
+            }
         }
     }
 
@@ -2042,7 +2170,7 @@
             return;
         }
         try {
-            const res = await fetch('/api/messages/send', {
+            const res = await fetchWithAuth('/api/messages/send', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -2062,7 +2190,9 @@
                 showToast(data.error || 'حدث خطأ', 'error');
             }
         } catch(e) {
-            showToast('حدث خطأ في الإرسال', 'error');
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                showToast('حدث خطأ في الإرسال', 'error');
+            }
         }
     }
 
@@ -2070,13 +2200,15 @@
         const container = document.getElementById('conversationsList');
         container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
         try {
-            const res = await fetch(`/api/messages/conversations/${teacherId}/teacher`);
+            const res = await fetchWithAuth(`/api/messages/conversations/${teacherId}/teacher`);
             const conversations = await res.json();
             currentConversations = conversations;
             renderConversations(conversations);
         } catch(e) {
-            console.log(e);
-            container.innerHTML = '<p style="text-align:center; padding:20px; color:var(--danger);">حدث خطأ</p>';
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                console.log(e);
+                container.innerHTML = '<p style="text-align:center; padding:20px; color:var(--danger);">حدث خطأ</p>';
+            }
         }
     }
 
@@ -2136,10 +2268,14 @@
         const container = document.getElementById('offersList');
         container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
         try {
-            const res = await fetch(`/api/teacher/offers/${teacherId}`);
+            const res = await fetchWithAuth(`/api/teacher/offers/${teacherId}`);
             const offers = await res.json();
             renderOffers(offers);
-        } catch(e) { showToast('حدث خطأ', 'error'); }
+        } catch(e) { 
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                showToast('حدث خطأ', 'error');
+            }
+        }
     }
 
     function renderOffers(offers) {
@@ -2196,7 +2332,7 @@
     }
 
     async function deleteExpiredOffers() {
-        const res = await fetch(`/api/teacher/offers/${teacherId}`);
+        const res = await fetchWithAuth(`/api/teacher/offers/${teacherId}`);
         const offers = await res.json();
         const now = new Date();
         const expiredOffers = offers.filter(o => {
@@ -2214,14 +2350,16 @@
         let deletedCount = 0;
         for (const offer of expiredOffers) {
             try {
-                const deleteRes = await fetch(`/api/offer/delete/${offer.id}`, {
+                const deleteRes = await fetchWithAuth(`/api/offer/delete/${offer.id}`, {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ teacher_id: teacherId })
                 });
                 const data = await deleteRes.json();
                 if (data.success) deletedCount++;
-            } catch(e) { console.log(e); }
+            } catch(e) { 
+                if (e.message !== 'انتهت صلاحية الجلسة') console.log(e); 
+            }
         }
 
         showToast(`✅ تم حذف ${deletedCount} عرض منتهٍ`, 'success');
@@ -2241,7 +2379,7 @@
 
     async function deleteOffer(offerId) {
         if (confirm('⚠️ هل أنت متأكد من حذف هذا العرض؟')) {
-            const res = await fetch(`/api/offer/delete/${offerId}`, {
+            const res = await fetchWithAuth(`/api/offer/delete/${offerId}`, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ teacher_id: teacherId })
@@ -2324,7 +2462,7 @@
         };
 
         try {
-            const res = await fetch('/api/offer/create', {
+            const res = await fetchWithAuth('/api/offer/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
@@ -2338,7 +2476,9 @@
                 showToast(result.error || '❌ حدث خطأ', 'error');
             }
         } catch(e) {
-            showToast('❌ حدث خطأ في الاتصال', 'error');
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                showToast('❌ حدث خطأ في الاتصال', 'error');
+            }
         }
     }
 
@@ -2366,7 +2506,7 @@
             return;
         }
         try {
-            const res = await fetch('/api/teacher/withdraw-request', {
+            const res = await fetchWithAuth('/api/teacher/withdraw-request', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ teacher_id: teacherId, amount: amount, ccp_account: ccpAccount })
@@ -2380,7 +2520,9 @@
                 showToast(data.error, 'error');
             }
         } catch(e) {
-            showToast('حدث خطأ', 'error');
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                showToast('حدث خطأ', 'error');
+            }
         }
     }
 
@@ -2426,7 +2568,7 @@
         }
 
         try {
-            const res = await fetch('/api/teacher/update-profile-with-social', {
+            const res = await fetchWithAuth('/api/teacher/update-profile-with-social', {
                 method: 'POST',
                 body: formData
             });
@@ -2439,7 +2581,9 @@
                 showToast(data.error || 'حدث خطأ', 'error');
             }
         } catch(e) {
-            showToast('حدث خطأ في الاتصال', 'error');
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                showToast('حدث خطأ في الاتصال', 'error');
+            }
         }
     }
 
@@ -2463,7 +2607,8 @@
     // ================================================================
 
     function logout() {
-        localStorage.clear();
+        localStorage.removeItem('token');
+        localStorage.removeItem('userData');
         window.location.href = '/';
     }
 
