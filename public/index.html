@@ -13,6 +13,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     
+    <!-- ===== reCAPTCHA v2 ===== -->
+    <script src="https://www.google.com/recaptcha/api.js?hl=ar" async defer></script>
+    
     <style>
         /* ============================================================
            تصميم احترافي وجذاب - ZoomDz
@@ -1148,95 +1151,30 @@
         }
 
         /* ============================================================
-           CAPTCHA - تصميم عصري
+           reCAPTCHA - تصميم عصري
            ============================================================ */
-        .captcha-container {
+        .recaptcha-wrapper {
             display: flex;
-            align-items: center;
-            gap: 14px;
-            margin-bottom: 14px;
-            flex-wrap: wrap;
-            background: var(--gray-light);
-            padding: 12px 16px;
-            border-radius: var(--radius-sm);
-            border: 2px solid #edf2f7;
-        }
-        
-        .captcha-container .captcha-image {
-            flex-shrink: 0;
-            border-radius: 8px;
-            overflow: hidden;
-            cursor: pointer;
-            border: 2px solid var(--primary);
-            background: white;
-            min-height: 44px;
-            display: flex;
-            align-items: center;
-        }
-        
-        .captcha-container .captcha-image svg {
-            display: block;
-            width: 140px;
-            height: 44px;
-        }
-        
-        .captcha-container .captcha-input {
-            flex: 1;
-            min-width: 100px;
-        }
-        
-        .captcha-container .captcha-input input {
-            width: 100%;
-            padding: 10px 14px;
-            border: 2px solid #edf2f7;
-            border-radius: 8px;
-            font-family: 'Cairo', sans-serif;
-            font-size: 0.95rem;
-            direction: ltr;
-            text-align: center;
-            letter-spacing: 4px;
-            background: white;
-            margin: 0;
-        }
-        
-        .captcha-container .captcha-input input:focus {
-            border-color: var(--primary);
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(15, 92, 191, 0.08);
-        }
-        
-        .captcha-refresh-btn {
-            background: #edf2f7;
-            border: none;
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
-            cursor: pointer;
-            font-size: 1.1rem;
-            color: var(--gray);
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
             justify-content: center;
-            flex-shrink: 0;
+            margin: 16px 0;
+            min-height: 78px;
         }
         
-        .captcha-refresh-btn:hover {
-            background: var(--primary);
-            color: white;
-            transform: rotate(180deg);
+        .recaptcha-wrapper .g-recaptcha {
+            transform: scale(0.9);
+            transform-origin: center;
         }
         
-        .captcha-error {
+        .recaptcha-error {
             color: var(--danger);
-            font-size: 0.8rem;
-            margin-top: -10px;
+            font-size: 0.85rem;
+            text-align: center;
+            margin-top: -6px;
             margin-bottom: 14px;
             display: none;
-            text-align: right;
         }
         
-        .captcha-error.show { display: block; }
+        .recaptcha-error.show { display: block; }
 
         /* ============================================================
            NAME VALIDATION - التحقق من صحة الاسم
@@ -1620,8 +1558,6 @@
             .download-card h2 { font-size: 1.5rem; }
             .download-btn-android { padding: 14px 28px; font-size: 1rem; }
             .download-card .features { grid-template-columns: 1fr; }
-            .captcha-container { flex-direction: column; align-items: stretch; }
-            .captcha-container .captcha-image svg { width: 100%; height: 40px; }
             .navbar { padding: 10px 16px; }
             .logo { font-size: 1.3rem; }
             .logo-icon-wrapper { width: 36px; height: 36px; }
@@ -1637,6 +1573,9 @@
             .about-card { padding: 30px 20px; }
             .about-grid .about-features { grid-template-columns: 1fr; }
             .about-steps { grid-template-columns: 1fr; }
+            .recaptcha-wrapper .g-recaptcha {
+                transform: scale(0.75);
+            }
         }
 
         @media (max-width: 480px) {
@@ -1983,7 +1922,7 @@
         </section>
 
         <!-- ============================================================
-        LOGIN SECTION - تم إضافة خيار "مدير"
+        LOGIN SECTION - مع reCAPTCHA
         ============================================================ -->
         <section id="loginSection" class="form-section" style="display: none;">
             <div class="form-tabs">
@@ -1998,23 +1937,19 @@
                 <input type="email" id="loginEmail" placeholder="البريد الإلكتروني">
                 <input type="password" id="loginPassword" placeholder="كلمة المرور">
                 
-                <!-- ✅ تم إضافة خيار "مدير" -->
                 <select id="loginRole">
                     <option value="student">طالب</option>
                     <option value="teacher">أستاذ</option>
                     <option value="admin">مدير</option>
                 </select>
                 
-                <div id="loginCaptchaContainer" class="captcha-container">
-                    <div class="captcha-image" id="loginCaptchaImage" onclick="refreshCaptcha('login')"></div>
-                    <div class="captcha-input">
-                        <input type="text" id="loginCaptchaInput" placeholder="أدخل الرمز" maxlength="6" dir="ltr">
-                    </div>
-                    <button class="captcha-refresh-btn" onclick="refreshCaptcha('login')" title="تحديث الرمز">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
+                <!-- reCAPTCHA v2 -->
+                <div class="recaptcha-wrapper">
+                    <div class="g-recaptcha" data-sitekey="YOUR_SITE_KEY" data-callback="onLoginCaptchaSuccess"></div>
                 </div>
-                <div id="loginCaptchaError" class="captcha-error"></div>
+                <div id="loginRecaptchaError" class="recaptcha-error">
+                    <i class="fas fa-exclamation-circle"></i> يرجى تأكيد أنك لست روبوتاً
+                </div>
                 
                 <button class="btn-primary" onclick="login()" style="width:100%; justify-content:center;">دخول</button>
                 <a href="#" class="forgot-link" onclick="showForgotPassword()"><i class="fas fa-key"></i> نسيت كلمة المرور؟</a>
@@ -2039,28 +1974,24 @@
             <div id="studentRegisterTab" class="form-container" style="display: none;">
                 <h3><i class="fas fa-user-plus"></i> تسجيل طالب جديد</h3>
                 
-                <!-- حقل الاسم مع التحقق من الحروف اللاتينية -->
                 <input type="text" id="studentName" placeholder="الاسم الكامل (بالحروف اللاتينية فقط)" 
                        oninput="validateLatinName('student')" onblur="validateLatinName('student')">
                 <div id="studentNameError" class="name-error">
                     <i class="fas fa-exclamation-circle"></i> 
-                    الاسم يجب أن يحتوي على أحرف لاتينية فقط (A-Z, a-z) ولا يحتوي على أرقام أو رموز
+                    الاسم يجب أن يحتوي على أحرف لاتينية فقط (A-Z, a-z)
                 </div>
                 
                 <input type="email" id="studentEmail" placeholder="البريد الإلكتروني">
                 <input type="password" id="studentPassword" placeholder="كلمة المرور">
                 <input type="tel" id="studentPhone" placeholder="رقم الهاتف">
                 
-                <div id="studentCaptchaContainer" class="captcha-container">
-                    <div class="captcha-image" id="studentCaptchaImage" onclick="refreshCaptcha('student')"></div>
-                    <div class="captcha-input">
-                        <input type="text" id="studentCaptchaInput" placeholder="أدخل الرمز" maxlength="6" dir="ltr">
-                    </div>
-                    <button class="captcha-refresh-btn" onclick="refreshCaptcha('student')" title="تحديث الرمز">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
+                <!-- reCAPTCHA v2 -->
+                <div class="recaptcha-wrapper">
+                    <div class="g-recaptcha" data-sitekey="YOUR_SITE_KEY" data-callback="onStudentCaptchaSuccess"></div>
                 </div>
-                <div id="studentCaptchaError" class="captcha-error"></div>
+                <div id="studentRecaptchaError" class="recaptcha-error">
+                    <i class="fas fa-exclamation-circle"></i> يرجى تأكيد أنك لست روبوتاً
+                </div>
                 
                 <button class="btn-primary" onclick="registerStudent()" style="width:100%; justify-content:center;">تسجيل</button>
             </div>
@@ -2069,12 +2000,11 @@
             <div id="teacherRegisterTab" class="form-container" style="display: none;">
                 <h3><i class="fas fa-chalkboard-user"></i> تقديم طلب أستاذ</h3>
                 
-                <!-- حقل الاسم مع التحقق من الحروف اللاتينية -->
                 <input type="text" id="teacherName" placeholder="الاسم الكامل (بالحروف اللاتينية فقط)" required
                        oninput="validateLatinName('teacher')" onblur="validateLatinName('teacher')">
                 <div id="teacherNameError" class="name-error">
                     <i class="fas fa-exclamation-circle"></i> 
-                    الاسم يجب أن يحتوي على أحرف لاتينية فقط (A-Z, a-z) ولا يحتوي على أرقام أو رموز
+                    الاسم يجب أن يحتوي على أحرف لاتينية فقط (A-Z, a-z)
                 </div>
                 
                 <input type="email" id="teacherEmail" placeholder="البريد الإلكتروني" required>
@@ -2090,16 +2020,13 @@
                 <label><i class="fas fa-id-card"></i> صورة بطاقة الهوية</label>
                 <input type="file" id="idImage" accept="image/*">
                 
-                <div id="teacherCaptchaContainer" class="captcha-container">
-                    <div class="captcha-image" id="teacherCaptchaImage" onclick="refreshCaptcha('teacher')"></div>
-                    <div class="captcha-input">
-                        <input type="text" id="teacherCaptchaInput" placeholder="أدخل الرمز" maxlength="6" dir="ltr">
-                    </div>
-                    <button class="captcha-refresh-btn" onclick="refreshCaptcha('teacher')" title="تحديث الرمز">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
+                <!-- reCAPTCHA v2 -->
+                <div class="recaptcha-wrapper">
+                    <div class="g-recaptcha" data-sitekey="YOUR_SITE_KEY" data-callback="onTeacherCaptchaSuccess"></div>
                 </div>
-                <div id="teacherCaptchaError" class="captcha-error"></div>
+                <div id="teacherRecaptchaError" class="recaptcha-error">
+                    <i class="fas fa-exclamation-circle"></i> يرجى تأكيد أنك لست روبوتاً
+                </div>
                 
                 <button class="btn-primary" onclick="registerTeacher()" style="width:100%; justify-content:center;">تقديم الطلب</button>
             </div>
@@ -2215,8 +2142,31 @@
 
     <script>
         // ============================================================
-        // الكود الكامل مع نظام الإحالة والتحقق من الاسم
+        // الكود الكامل مع نظام الإحالة و reCAPTCHA v2
         // ============================================================
+
+        // ===== reCAPTCHA STATE =====
+        var recaptchaState = {
+            login: false,
+            student: false,
+            teacher: false
+        };
+
+        // ===== reCAPTCHA CALLBACKS =====
+        function onLoginCaptchaSuccess() {
+            recaptchaState.login = true;
+            document.getElementById('loginRecaptchaError').classList.remove('show');
+        }
+        
+        function onStudentCaptchaSuccess() {
+            recaptchaState.student = true;
+            document.getElementById('studentRecaptchaError').classList.remove('show');
+        }
+        
+        function onTeacherCaptchaSuccess() {
+            recaptchaState.teacher = true;
+            document.getElementById('teacherRecaptchaError').classList.remove('show');
+        }
 
         // ===== NAME VALIDATION - التحقق من صحة الاسم =====
         function validateLatinName(type) {
@@ -2230,7 +2180,6 @@
             }
             
             var value = input.value;
-            
             var latinPattern = /^[A-Za-z\s\.\-']+$/;
             var hasNumbers = /\d/.test(value);
             var hasSpecialChars = /[^A-Za-z\s\.\-']/.test(value);
@@ -2251,20 +2200,11 @@
         }
 
         function isNameValid(type) {
-            var input;
-            if (type === 'student') {
-                input = document.getElementById('studentName');
-            } else {
-                input = document.getElementById('teacherName');
-            }
+            var input = type === 'student' ? document.getElementById('studentName') : document.getElementById('teacherName');
             var value = input.value.trim();
             if (!value) return false;
-            
             var latinPattern = /^[A-Za-z\s\.\-']+$/;
-            var hasNumbers = /\d/.test(value);
-            var hasSpecialChars = /[^A-Za-z\s\.\-']/.test(value);
-            
-            return !hasNumbers && !hasSpecialChars && latinPattern.test(value);
+            return !/\d/.test(value) && !/[^A-Za-z\s\.\-']/.test(value) && latinPattern.test(value);
         }
 
         // ===== REFERRAL VARIABLES =====
@@ -2276,30 +2216,19 @@
             try {
                 var urlParams = new URLSearchParams(window.location.search);
                 var ref = urlParams.get('ref');
-                
                 if (ref && ref.length > 3) {
                     referralCode = ref;
-                    console.log('🔗 تم اكتشاف رمز إحالة:', referralCode);
-                    
                     var banner = document.getElementById('referralBanner');
-                    var codeDisplay = document.getElementById('referralCodeDisplay');
-                    codeDisplay.innerText = referralCode;
-                    
+                    document.getElementById('referralCodeDisplay').innerText = referralCode;
                     fetchReferrerInfo(ref);
-                    
                     banner.classList.add('show');
-                    
                     if (window.history && window.history.replaceState) {
-                        var newUrl = window.location.pathname + window.location.hash;
-                        window.history.replaceState({}, document.title, newUrl);
+                        window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
                     }
                 }
-            } catch(e) {
-                console.log('⚠️ خطأ في قراءة رمز الإحالة:', e);
-            }
+            } catch(e) { console.log('⚠️ خطأ في قراءة رمز الإحالة:', e); }
         }
 
-        // ===== FETCH REFERRER INFO =====
         async function fetchReferrerInfo(refCode) {
             try {
                 var res = await fetch('/api/referral/info?code=' + encodeURIComponent(refCode));
@@ -2308,228 +2237,24 @@
                     if (data.success && data.referrer_name) {
                         document.getElementById('referrerName').innerText = data.referrer_name;
                         referralData = data;
-                    } else {
-                        document.getElementById('referrerName').innerText = 'أحد المستخدمين';
                     }
-                } else {
-                    document.getElementById('referrerName').innerText = 'أحد المستخدمين';
                 }
-            } catch(e) {
-                console.log('⚠️ لا يمكن جلب معلومات المحيل:', e);
-                document.getElementById('referrerName').innerText = 'أحد المستخدمين';
-            }
+            } catch(e) { console.log('⚠️ لا يمكن جلب معلومات المحيل:', e); }
         }
 
-        // ===== REFERRAL BANNER FUNCTIONS =====
         function closeReferralBanner() {
-            var banner = document.getElementById('referralBanner');
-            banner.classList.remove('show');
-            try {
-                localStorage.setItem('referralBannerClosed', 'true');
-            } catch(e) {}
+            document.getElementById('referralBanner').classList.remove('show');
+            try { localStorage.setItem('referralBannerClosed', 'true'); } catch(e) {}
         }
 
         function jumpToRegister() {
             showLogin();
             switchTab('student-register');
             if (referralCode) {
-                try {
-                    localStorage.setItem('pendingReferral', referralCode);
-                } catch(e) {}
+                try { localStorage.setItem('pendingReferral', referralCode); } catch(e) {}
                 showNotification('🔗 تم تطبيق رمز الإحالة: ' + referralCode, 'success');
             }
             closeReferralBanner();
-        }
-
-        // ===== CAPTCHA VARIABLES =====
-        var captchaData = {
-            login: { id: null, image: null, loading: false },
-            student: { id: null, image: null, loading: false },
-            teacher: { id: null, image: null, loading: false }
-        };
-
-        // ===== CAPTCHA FUNCTIONS =====
-        async function refreshCaptcha(type) {
-            if (captchaData[type].loading) return;
-            
-            try {
-                captchaData[type].loading = true;
-                
-                var imageContainer = document.getElementById(type + 'CaptchaImage');
-                if (imageContainer) {
-                    imageContainer.innerHTML = '<div style="padding:8px;font-size:0.8rem;color:#94a3b8;">جاري التحميل...</div>';
-                }
-                
-                var response = await fetch('/api/captcha/generate', {
-                    method: 'GET',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                
-                if (!response.ok) {
-                    throw new Error('HTTP error! status: ' + response.status);
-                }
-                
-                var data = await response.json();
-                
-                if (data.captcha_id && data.image) {
-                    captchaData[type].id = data.captcha_id;
-                    captchaData[type].image = data.image;
-                    
-                    if (imageContainer) {
-                        imageContainer.innerHTML = data.image;
-                    }
-                    
-                    var input = document.getElementById(type + 'CaptchaInput');
-                    if (input) {
-                        input.value = '';
-                        input.focus();
-                    }
-                    
-                    var errorEl = document.getElementById(type + 'CaptchaError');
-                    if (errorEl) {
-                        errorEl.classList.remove('show');
-                        errorEl.textContent = '';
-                    }
-                    
-                    console.log('تم تحديث الكابتشا لـ ' + type);
-                } else {
-                    console.error('بيانات الكابتشا غير مكتملة:', data);
-                    if (imageContainer) {
-                        imageContainer.innerHTML = '<div style="padding:8px;font-size:0.8rem;color:#ef4444;">خطأ، انقر للتحديث</div>';
-                    }
-                }
-            } catch (error) {
-                console.error('خطأ في تحميل الكابتشا:', error);
-                var errorEl = document.getElementById(type + 'CaptchaError');
-                if (errorEl) {
-                    errorEl.textContent = 'حدث خطأ في تحميل الكابتشا، حاول مرة أخرى';
-                    errorEl.classList.add('show');
-                }
-                var imageContainer = document.getElementById(type + 'CaptchaImage');
-                if (imageContainer) {
-                    imageContainer.innerHTML = '<div style="padding:8px;font-size:0.8rem;color:#ef4444;">انقر لإعادة التحميل</div>';
-                }
-            } finally {
-                captchaData[type].loading = false;
-            }
-        }
-
-        async function verifyCaptcha(type) {
-            var input = document.getElementById(type + 'CaptchaInput');
-            var errorEl = document.getElementById(type + 'CaptchaError');
-            
-            if (!input) {
-                console.error('مدخل الكابتشا لـ ' + type + ' غير موجود');
-                return false;
-            }
-            
-            var code = input.value.trim();
-            
-            if (!code || code === '') {
-                if (errorEl) {
-                    errorEl.textContent = 'الرجاء إدخال رمز التحقق';
-                    errorEl.classList.add('show');
-                }
-                return false;
-            }
-            
-            var captchaId = captchaData[type].id;
-            
-            if (!captchaId) {
-                if (errorEl) {
-                    errorEl.textContent = 'الرجاء تحديث رمز التحقق (انقر على الصورة)';
-                    errorEl.classList.add('show');
-                }
-                await refreshCaptcha(type);
-                return false;
-            }
-            
-            try {
-                console.log('التحقق من الكابتشا ' + type);
-                
-                var response = await fetch('/api/captcha/verify', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({ 
-                        captcha_id: captchaId, 
-                        captcha_code: code 
-                    })
-                });
-                
-                var data = await response.json();
-                console.log('رد التحقق ' + type + ':', data);
-                
-                if (data.success) {
-                    if (errorEl) {
-                        errorEl.classList.remove('show');
-                        errorEl.textContent = '';
-                    }
-                    return true;
-                } else {
-                    if (errorEl) {
-                        errorEl.textContent = data.error || 'رمز التحقق غير صحيح';
-                        errorEl.classList.add('show');
-                    }
-                    await refreshCaptcha(type);
-                    return false;
-                }
-            } catch (error) {
-                console.error('خطأ في التحقق من الكابتشا ' + type + ':', error);
-                if (errorEl) {
-                    errorEl.textContent = 'حدث خطأ في التحقق، حاول مرة أخرى';
-                    errorEl.classList.add('show');
-                }
-                return false;
-            }
-        }
-
-        function loadCaptchas() {
-            refreshCaptcha('login');
-            refreshCaptcha('student');
-            refreshCaptcha('teacher');
-        }
-
-        // ===== NOTIFICATION =====
-        function showNotification(message, type) {
-            if (type === undefined) type = 'success';
-            var toast = document.getElementById('notificationToast');
-            toast.className = 'notification-toast';
-            if (type === 'error') toast.classList.add('error');
-            else if (type === 'warning') toast.classList.add('warning');
-            toast.innerHTML = '<i class="fas ' + (type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle') + '"></i> ' + message;
-            toast.style.display = 'block';
-            setTimeout(function() { toast.style.display = 'none'; }, 5000);
-        }
-
-        // ===== STATS =====
-        async function loadStats() {
-            try {
-                var response = await fetch('/api/public/stats');
-                if (!response.ok) throw new Error('HTTP error! status: ' + response.status);
-                var stats = await response.json();
-                
-                document.getElementById('teacherCount').innerText = stats.teachers || 0;
-                document.getElementById('offerCount').innerText = stats.offers || 0;
-                document.getElementById('liveCountStat').innerText = stats.live || 0;
-                document.getElementById('studentCount').innerText = stats.students || 0;
-                
-                var liveBadge = document.getElementById('liveCount');
-                if (stats.live > 0) {
-                    liveBadge.style.display = 'inline-block';
-                    liveBadge.innerText = stats.live;
-                } else {
-                    liveBadge.style.display = 'none';
-                }
-            } catch (error) {
-                console.error('خطأ في جلب الإحصائيات:', error);
-                document.getElementById('teacherCount').innerText = '?';
-                document.getElementById('offerCount').innerText = '?';
-                document.getElementById('liveCountStat').innerText = '?';
-                document.getElementById('studentCount').innerText = '?';
-            }
         }
 
         // ============================================================
@@ -2537,7 +2262,6 @@
         // ============================================================
         
         function showHome() {
-            console.log('showHome تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'flex';
             document.getElementById('aboutSection').style.display = 'block';
             document.getElementById('teachersSection').style.display = 'none';
@@ -2552,7 +2276,6 @@
         }
 
         function showTeachers() {
-            console.log('showTeachers تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'block';
@@ -2567,7 +2290,6 @@
         }
 
         function showOffers() {
-            console.log('showOffers تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
@@ -2582,7 +2304,6 @@
         }
 
         function showLiveStreams() {
-            console.log('showLiveStreams تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
@@ -2597,7 +2318,6 @@
         }
 
         function showDevelopers() {
-            console.log('showDevelopers تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
@@ -2611,7 +2331,6 @@
         }
 
         function showLogin() {
-            console.log('showLogin تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
@@ -2623,11 +2342,13 @@
             document.getElementById('supportSection').style.display = 'none';
             setActiveTab('loginTabNav');
             switchTab('login');
-            setTimeout(loadCaptchas, 500);
+            // reset recaptcha state
+            recaptchaState.login = false;
+            recaptchaState.student = false;
+            recaptchaState.teacher = false;
         }
 
         function showDownloadApp() {
-            console.log('showDownloadApp تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
@@ -2641,7 +2362,6 @@
         }
 
         function showSupport() {
-            console.log('showSupport تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
@@ -2655,7 +2375,6 @@
         }
 
         function showTeacherRegister() {
-            console.log('showTeacherRegister تم استدعاؤها');
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
@@ -2667,7 +2386,7 @@
             document.getElementById('supportSection').style.display = 'none';
             setActiveTab('loginTabNav');
             switchTab('teacher-register');
-            setTimeout(loadCaptchas, 500);
+            recaptchaState.teacher = false;
         }
 
         function showForgotPassword() {
@@ -2705,12 +2424,8 @@
         window.showForgotPassword = showForgotPassword;
         window.hideForgotPassword = hideForgotPassword;
         window.setActiveTab = setActiveTab;
-        window.refreshCaptcha = refreshCaptcha;
-        window.verifyCaptcha = verifyCaptcha;
-        window.loadStats = loadStats;
-        window.loadCaptchas = loadCaptchas;
-        window.showNotification = showNotification;
         window.switchTab = switchTab;
+        window.showNotification = showNotification;
         window.sendResetLink = sendResetLink;
         window.login = login;
         window.registerStudent = registerStudent;
@@ -2724,51 +2439,297 @@
         window.jumpToRegister = jumpToRegister;
         window.validateLatinName = validateLatinName;
         window.isNameValid = isNameValid;
+        window.onLoginCaptchaSuccess = onLoginCaptchaSuccess;
+        window.onStudentCaptchaSuccess = onStudentCaptchaSuccess;
+        window.onTeacherCaptchaSuccess = onTeacherCaptchaSuccess;
+        window.loadStats = loadStats;
 
-        console.log('جميع دوال التبويبات مرتبطة بالنافذة العامة');
+        // ============================================================
+        // NOTIFICATION
+        // ============================================================
+        function showNotification(message, type) {
+            if (type === undefined) type = 'success';
+            var toast = document.getElementById('notificationToast');
+            toast.className = 'notification-toast';
+            if (type === 'error') toast.classList.add('error');
+            else if (type === 'warning') toast.classList.add('warning');
+            toast.innerHTML = '<i class="fas ' + (type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle') + '"></i> ' + message;
+            toast.style.display = 'block';
+            setTimeout(function() { toast.style.display = 'none'; }, 5000);
+        }
 
-        // ===== SUPPORT FORM =====
-        document.getElementById('supportForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
+        // ============================================================
+        // STATS
+        // ============================================================
+        async function loadStats() {
+            try {
+                var res = await fetch('/api/public/stats');
+                if (!res.ok) throw new Error('HTTP error! status: ' + res.status);
+                var stats = await res.json();
+                document.getElementById('teacherCount').innerText = stats.teachers || 0;
+                document.getElementById('offerCount').innerText = stats.offers || 0;
+                document.getElementById('liveCountStat').innerText = stats.live || 0;
+                document.getElementById('studentCount').innerText = stats.students || 0;
+                var liveBadge = document.getElementById('liveCount');
+                if (stats.live > 0) {
+                    liveBadge.style.display = 'inline-block';
+                    liveBadge.innerText = stats.live;
+                } else {
+                    liveBadge.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('خطأ في جلب الإحصائيات:', error);
+            }
+        }
+
+        // ============================================================
+        // SWITCH TAB
+        // ============================================================
+        function switchTab(tab) {
+            document.getElementById('loginTab').style.display = 'none';
+            document.getElementById('forgotPasswordTab').style.display = 'none';
+            document.getElementById('studentRegisterTab').style.display = 'none';
+            document.getElementById('teacherRegisterTab').style.display = 'none';
             
-            var name = document.getElementById('supportName').value;
-            var email = document.getElementById('supportEmail').value;
-            var phone = document.getElementById('supportPhone').value;
-            var subject = document.getElementById('supportSubject').value;
-            var message = document.getElementById('supportMessage').value;
+            if (tab === 'login') document.getElementById('loginTab').style.display = 'block';
+            else if (tab === 'student-register') document.getElementById('studentRegisterTab').style.display = 'block';
+            else if (tab === 'teacher-register') document.getElementById('teacherRegisterTab').style.display = 'block';
             
-            if (!name || !email || !subject || !message) {
-                showNotification('الرجاء ملء جميع الحقول المطلوبة', 'error');
+            document.querySelectorAll('.tab-btn').forEach(function(btn, index) {
+                btn.classList.remove('active');
+                if ((tab === 'login' && index === 0) || 
+                    (tab === 'student-register' && index === 1) || 
+                    (tab === 'teacher-register' && index === 2)) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+
+        // ============================================================
+        // SEND RESET LINK
+        // ============================================================
+        async function sendResetLink() {
+            var email = document.getElementById('resetEmail').value;
+            var role = document.getElementById('resetRole').value;
+            if (!email) {
+                showNotification('الرجاء إدخال البريد الإلكتروني', 'error');
                 return;
             }
-            
-            var btn = e.target.querySelector('button');
+            var btn = event.target;
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإرسال...';
-            
             try {
-                var res = await fetch('/api/support/send', {
+                var res = await fetch('/api/forgot-password', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: name, email: email, phone: phone, subject: subject, message: message })
+                    body: JSON.stringify({ email: email, role: role })
+                });
+                var data = await res.json();
+                if (data.success) {
+                    showNotification('تم إرسال رابط إعادة التعيين إلى بريدك الإلكتروني', 'success');
+                    hideForgotPassword();
+                } else {
+                    showNotification(data.error, 'error');
+                }
+            } catch(e) {
+                showNotification('حدث خطأ', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-paper-plane"></i> إرسال رابط إعادة التعيين';
+            }
+        }
+
+        // ============================================================
+        // LOGIN - مع reCAPTCHA
+        // ============================================================
+        async function login() {
+            var email = document.getElementById('loginEmail').value;
+            var password = document.getElementById('loginPassword').value;
+            var role = document.getElementById('loginRole').value;
+            
+            if (!email || !password) { 
+                showNotification('يرجى إدخال البريد الإلكتروني وكلمة المرور', 'error'); 
+                return; 
+            }
+            
+            // ✅ التحقق من reCAPTCHA
+            var recaptchaToken = grecaptcha.getResponse();
+            if (!recaptchaToken) {
+                document.getElementById('loginRecaptchaError').classList.add('show');
+                showNotification('يرجى تأكيد أنك لست روبوتاً', 'error');
+                return;
+            }
+            document.getElementById('loginRecaptchaError').classList.remove('show');
+            
+            try {
+                var res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        email: email, 
+                        password: password, 
+                        role: role,
+                        recaptcha_token: recaptchaToken 
+                    })
                 });
                 var data = await res.json();
                 
                 if (data.success) {
-                    showNotification('تم إرسال رسالتك بنجاح! سيتم الرد عليك قريباً', 'success');
-                    document.getElementById('supportForm').reset();
-                } else {
-                    showNotification(data.error || 'حدث خطأ', 'error');
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('userData', JSON.stringify(data.user));
+                    var redirectPath = data.redirectTo || '/';
+                    window.location.href = redirectPath;
+                } else { 
+                    showNotification(data.error, 'error');
+                    grecaptcha.reset();
+                    recaptchaState.login = false;
                 }
             } catch(e) {
-                showNotification('حدث خطأ في الاتصال', 'error');
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-paper-plane"></i> إرسال الرسالة';
+                console.error('❌ خطأ في تسجيل الدخول:', e);
+                showNotification('خطأ في الاتصال بالخادم', 'error');
             }
-        });
+        }
 
-        // ===== TEACHERS =====
+        // ============================================================
+        // REGISTER STUDENT - مع reCAPTCHA
+        // ============================================================
+        async function registerStudent() {
+            if (!isNameValid('student')) {
+                showNotification('⚠️ الاسم يجب أن يحتوي على أحرف لاتينية فقط (A-Z, a-z)', 'error');
+                document.getElementById('studentNameError').classList.add('show');
+                document.getElementById('studentName').style.borderColor = '#ef4444';
+                return;
+            }
+            
+            var full_name = document.getElementById('studentName').value.trim();
+            var email = document.getElementById('studentEmail').value;
+            var password = document.getElementById('studentPassword').value;
+            var phone = document.getElementById('studentPhone').value;
+            
+            if (!full_name || !email || !password || !phone) {
+                showNotification('يرجى ملء جميع الحقول', 'error');
+                return;
+            }
+            
+            // ✅ التحقق من reCAPTCHA
+            var recaptchaToken = grecaptcha.getResponse();
+            if (!recaptchaToken) {
+                document.getElementById('studentRecaptchaError').classList.add('show');
+                showNotification('يرجى تأكيد أنك لست روبوتاً', 'error');
+                return;
+            }
+            document.getElementById('studentRecaptchaError').classList.remove('show');
+            
+            var refCode = localStorage.getItem('pendingReferral') || referralCode;
+            
+            try {
+                var res = await fetch('/api/student/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        full_name: full_name, 
+                        email: email, 
+                        password: password, 
+                        phone: phone,
+                        ref: refCode,
+                        recaptcha_token: recaptchaToken
+                    })
+                });
+                var data = await res.json();
+                if (data.success) { 
+                    var msg = 'تم التسجيل بنجاح! يمكنك تسجيل الدخول الآن';
+                    if (refCode) {
+                        msg += ' 🎉 تم تطبيق رمز الإحالة الخاص بك!';
+                        localStorage.removeItem('pendingReferral');
+                    }
+                    showNotification(msg, 'success'); 
+                    switchTab('login');
+                    grecaptcha.reset();
+                } else { 
+                    showNotification(data.error, 'error');
+                    grecaptcha.reset();
+                }
+            } catch(e) {
+                showNotification('خطأ في الاتصال بالخادم', 'error');
+            }
+        }
+
+        // ============================================================
+        // REGISTER TEACHER - مع reCAPTCHA
+        // ============================================================
+        async function registerTeacher() {
+            if (!isNameValid('teacher')) {
+                showNotification('⚠️ الاسم يجب أن يحتوي على أحرف لاتينية فقط (A-Z, a-z)', 'error');
+                document.getElementById('teacherNameError').classList.add('show');
+                document.getElementById('teacherName').style.borderColor = '#ef4444';
+                return;
+            }
+            
+            var formData = new FormData();
+            formData.append('full_name', document.getElementById('teacherName').value.trim());
+            formData.append('email', document.getElementById('teacherEmail').value);
+            formData.append('password', document.getElementById('teacherPassword').value);
+            formData.append('phone', document.getElementById('teacherPhone').value);
+            formData.append('specialization', document.getElementById('teacherSpecialization').value);
+            formData.append('bio', document.getElementById('teacherBio').value);
+            formData.append('experience', document.getElementById('teacherExperience').value);
+            
+            var profileImage = document.getElementById('profileImage');
+            var diplomaImage = document.getElementById('diplomaImage');
+            var idImage = document.getElementById('idImage');
+            
+            if (profileImage && profileImage.files[0]) {
+                formData.append('profile_image', profileImage.files[0]);
+            }
+            if (diplomaImage && diplomaImage.files[0]) {
+                formData.append('diploma_image', diplomaImage.files[0]);
+            }
+            if (idImage && idImage.files[0]) {
+                formData.append('id_image', idImage.files[0]);
+            }
+            
+            var refCode = localStorage.getItem('pendingReferral') || referralCode;
+            if (refCode) {
+                formData.append('ref', refCode);
+            }
+            
+            // ✅ التحقق من reCAPTCHA
+            var recaptchaToken = grecaptcha.getResponse();
+            if (!recaptchaToken) {
+                document.getElementById('teacherRecaptchaError').classList.add('show');
+                showNotification('يرجى تأكيد أنك لست روبوتاً', 'error');
+                return;
+            }
+            document.getElementById('teacherRecaptchaError').classList.remove('show');
+            formData.append('recaptcha_token', recaptchaToken);
+            
+            try {
+                var res = await fetch('/api/teacher/register', { 
+                    method: 'POST', 
+                    body: formData 
+                });
+                var data = await res.json();
+                if (data.success) { 
+                    var msg = 'تم إرسال طلبك بنجاح! سيتم مراجعته';
+                    if (refCode) {
+                        msg += ' 🎉 تم تطبيق رمز الإحالة الخاص بك!';
+                        localStorage.removeItem('pendingReferral');
+                    }
+                    showNotification(msg, 'success'); 
+                    switchTab('login');
+                    grecaptcha.reset();
+                } else { 
+                    showNotification(data.error, 'error');
+                    grecaptcha.reset();
+                }
+            } catch(e) {
+                showNotification('خطأ في الاتصال بالخادم', 'error');
+            }
+        }
+
+        // ============================================================
+        // TEACHERS / OFFERS / LIVE
+        // ============================================================
         async function loadPublicTeachers() {
             var container = document.getElementById('teachersList');
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
@@ -2776,7 +2737,6 @@
                 var res = await fetch('/api/public/teachers');
                 if (!res.ok) throw new Error('HTTP error! status: ' + res.status);
                 var teachers = await res.json();
-                
                 if (!teachers || teachers.length === 0) {
                     container.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8;">لا يوجد أساتذة معتمدون حالياً</p>';
                     return;
@@ -2802,7 +2762,6 @@
             }
         }
 
-        // ===== OFFERS =====
         async function loadPublicOffers() {
             var container = document.getElementById('offersListPublic');
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
@@ -2810,7 +2769,6 @@
                 var res = await fetch('/api/public/offers');
                 if (!res.ok) throw new Error('HTTP error! status: ' + res.status);
                 var offers = await res.json();
-                
                 if (!offers || offers.length === 0) {
                     container.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8;">لا توجد عروض متاحة حالياً</p>';
                     return;
@@ -2845,7 +2803,6 @@
             }
         }
 
-        // ===== LIVE STREAMS =====
         async function loadLiveStreams() {
             var container = document.getElementById('liveOffersList');
             try {
@@ -2887,236 +2844,8 @@
             }
         }
 
-        // ===== VIEW TEACHER PROFILE =====
         function viewTeacherProfile(teacherId) {
             window.open('/teacher-profile.html?id=' + teacherId, '_blank');
-        }
-
-        // ===== LOGIN / REGISTER =====
-        async function sendResetLink() {
-            var email = document.getElementById('resetEmail').value;
-            var role = document.getElementById('resetRole').value;
-            
-            if (!email) {
-                showNotification('الرجاء إدخال البريد الإلكتروني', 'error');
-                return;
-            }
-            
-            var btn = event.target;
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإرسال...';
-            
-            try {
-                var res = await fetch('/api/forgot-password', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: email, role: role })
-                });
-                var data = await res.json();
-                
-                if (data.success) {
-                    showNotification('تم إرسال رابط إعادة التعيين إلى بريدك الإلكتروني', 'success');
-                    hideForgotPassword();
-                } else {
-                    showNotification(data.error, 'error');
-                }
-            } catch(e) {
-                showNotification('حدث خطأ', 'error');
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-paper-plane"></i> إرسال رابط إعادة التعيين';
-            }
-        }
-
-        function switchTab(tab) {
-            document.getElementById('loginTab').style.display = 'none';
-            document.getElementById('forgotPasswordTab').style.display = 'none';
-            document.getElementById('studentRegisterTab').style.display = 'none';
-            document.getElementById('teacherRegisterTab').style.display = 'none';
-            
-            if (tab === 'login') document.getElementById('loginTab').style.display = 'block';
-            else if (tab === 'student-register') document.getElementById('studentRegisterTab').style.display = 'block';
-            else if (tab === 'teacher-register') document.getElementById('teacherRegisterTab').style.display = 'block';
-            
-            document.querySelectorAll('.tab-btn').forEach(function(btn, index) {
-                btn.classList.remove('active');
-                if ((tab === 'login' && index === 0) || 
-                    (tab === 'student-register' && index === 1) || 
-                    (tab === 'teacher-register' && index === 2)) {
-                    btn.classList.add('active');
-                }
-            });
-            
-            setTimeout(loadCaptchas, 300);
-        }
-
-        // ============================================================
-        // ✅ دالة تسجيل الدخول المعدلة - تستخدم redirectTo من السيرفر
-        // ============================================================
-        async function login() {
-            var email = document.getElementById('loginEmail').value;
-            var password = document.getElementById('loginPassword').value;
-            var role = document.getElementById('loginRole').value;
-            
-            if (!email || !password) { 
-                showNotification('يرجى إدخال البريد الإلكتروني وكلمة المرور', 'error'); 
-                return; 
-            }
-            
-            var captchaValid = await verifyCaptcha('login');
-            if (!captchaValid) {
-                return;
-            }
-            
-            try {
-                var res = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: email, password: password, role: role })
-                });
-                var data = await res.json();
-                
-                console.log('📩 رد تسجيل الدخول:', data);
-                
-                if (data.success) {
-                    localStorage.setItem('token', data.token);
-                    localStorage.setItem('userData', JSON.stringify(data.user));
-                    
-                    // ✅ استخدام redirectTo من السيرفر
-                    var redirectPath = data.redirectTo || '/';
-                    
-                    console.log(`🔄 توجيه إلى: ${redirectPath}`);
-                    console.log(`👤 الدور: ${data.user.role}`);
-                    
-                    // ✅ توجيه مباشر باستخدام redirectTo
-                    window.location.href = redirectPath;
-                } else { 
-                    showNotification(data.error, 'error'); 
-                    refreshCaptcha('login');
-                }
-            } catch(e) {
-                console.error('❌ خطأ في تسجيل الدخول:', e);
-                showNotification('خطأ في الاتصال بالخادم', 'error');
-            }
-        }
-
-        // ===== REGISTER STUDENT =====
-        async function registerStudent() {
-            if (!isNameValid('student')) {
-                showNotification('⚠️ الاسم يجب أن يحتوي على أحرف لاتينية فقط (A-Z, a-z)', 'error');
-                document.getElementById('studentNameError').classList.add('show');
-                document.getElementById('studentName').style.borderColor = '#ef4444';
-                return;
-            }
-            
-            var full_name = document.getElementById('studentName').value.trim();
-            var email = document.getElementById('studentEmail').value;
-            var password = document.getElementById('studentPassword').value;
-            var phone = document.getElementById('studentPhone').value;
-            
-            if (!full_name || !email || !password || !phone) {
-                showNotification('يرجى ملء جميع الحقول', 'error');
-                return;
-            }
-            
-            var captchaValid = await verifyCaptcha('student');
-            if (!captchaValid) {
-                return;
-            }
-            
-            var refCode = localStorage.getItem('pendingReferral') || referralCode;
-            
-            try {
-                var res = await fetch('/api/student/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        full_name: full_name, 
-                        email: email, 
-                        password: password, 
-                        phone: phone,
-                        ref: refCode
-                    })
-                });
-                var data = await res.json();
-                if (data.success) { 
-                    var msg = 'تم التسجيل بنجاح! يمكنك تسجيل الدخول الآن';
-                    if (refCode) {
-                        msg += ' 🎉 تم تطبيق رمز الإحالة الخاص بك!';
-                        localStorage.removeItem('pendingReferral');
-                    }
-                    showNotification(msg, 'success'); 
-                    switchTab('login'); 
-                } else { 
-                    showNotification(data.error, 'error'); 
-                }
-            } catch(e) {
-                showNotification('خطأ في الاتصال بالخادم', 'error');
-            }
-        }
-
-        // ===== REGISTER TEACHER =====
-        async function registerTeacher() {
-            if (!isNameValid('teacher')) {
-                showNotification('⚠️ الاسم يجب أن يحتوي على أحرف لاتينية فقط (A-Z, a-z)', 'error');
-                document.getElementById('teacherNameError').classList.add('show');
-                document.getElementById('teacherName').style.borderColor = '#ef4444';
-                return;
-            }
-            
-            var formData = new FormData();
-            formData.append('full_name', document.getElementById('teacherName').value.trim());
-            formData.append('email', document.getElementById('teacherEmail').value);
-            formData.append('password', document.getElementById('teacherPassword').value);
-            formData.append('phone', document.getElementById('teacherPhone').value);
-            formData.append('specialization', document.getElementById('teacherSpecialization').value);
-            formData.append('bio', document.getElementById('teacherBio').value);
-            formData.append('experience', document.getElementById('teacherExperience').value);
-            
-            var profileImage = document.getElementById('profileImage');
-            var diplomaImage = document.getElementById('diplomaImage');
-            var idImage = document.getElementById('idImage');
-            
-            if (profileImage && profileImage.files[0]) {
-                formData.append('profile_image', profileImage.files[0]);
-            }
-            if (diplomaImage && diplomaImage.files[0]) {
-                formData.append('diploma_image', diplomaImage.files[0]);
-            }
-            if (idImage && idImage.files[0]) {
-                formData.append('id_image', idImage.files[0]);
-            }
-            
-            var refCode = localStorage.getItem('pendingReferral') || referralCode;
-            if (refCode) {
-                formData.append('ref', refCode);
-            }
-            
-            var captchaValid = await verifyCaptcha('teacher');
-            if (!captchaValid) {
-                return;
-            }
-            
-            try {
-                var res = await fetch('/api/teacher/register', { 
-                    method: 'POST', 
-                    body: formData 
-                });
-                var data = await res.json();
-                if (data.success) { 
-                    var msg = 'تم إرسال طلبك بنجاح! سيتم مراجعته';
-                    if (refCode) {
-                        msg += ' 🎉 تم تطبيق رمز الإحالة الخاص بك!';
-                        localStorage.removeItem('pendingReferral');
-                    }
-                    showNotification(msg, 'success'); 
-                    switchTab('login'); 
-                } else { 
-                    showNotification(data.error, 'error'); 
-                }
-            } catch(e) {
-                showNotification('خطأ في الاتصال بالخادم', 'error');
-            }
         }
 
         function escapeHtml(text) {
@@ -3127,37 +2856,62 @@
         }
 
         // ============================================================
+        // SUPPORT FORM
+        // ============================================================
+        document.getElementById('supportForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            var name = document.getElementById('supportName').value;
+            var email = document.getElementById('supportEmail').value;
+            var phone = document.getElementById('supportPhone').value;
+            var subject = document.getElementById('supportSubject').value;
+            var message = document.getElementById('supportMessage').value;
+            
+            if (!name || !email || !subject || !message) {
+                showNotification('الرجاء ملء جميع الحقول المطلوبة', 'error');
+                return;
+            }
+            
+            var btn = e.target.querySelector('button');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإرسال...';
+            
+            try {
+                var res = await fetch('/api/support/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: name, email: email, phone: phone, subject: subject, message: message })
+                });
+                var data = await res.json();
+                if (data.success) {
+                    showNotification('تم إرسال رسالتك بنجاح! سيتم الرد عليك قريباً', 'success');
+                    document.getElementById('supportForm').reset();
+                } else {
+                    showNotification(data.error || 'حدث خطأ', 'error');
+                }
+            } catch(e) {
+                showNotification('حدث خطأ في الاتصال', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-paper-plane"></i> إرسال الرسالة';
+            }
+        });
+
+        // ============================================================
         // INIT - تشغيل التطبيق
         // ============================================================
-        
         function init() {
-            console.log('بدء تشغيل المنصة...');
-            console.log('📍 الرابط الحالي:', window.location.href);
-            
+            console.log('🚀 بدء تشغيل المنصة مع reCAPTCHA v2...');
             readReferralFromURL();
-            
-            var sections = ['homeSection', 'aboutSection', 'teachersSection', 'offersSection', 'liveSection', 'developersSection', 'loginSection', 'downloadAppSection', 'supportSection'];
-            sections.forEach(function(id) {
-                var el = document.getElementById(id);
-                if (el) {
-                    console.log('✅ القسم ' + id + ' موجود');
-                } else {
-                    console.warn('⚠️ القسم ' + id + ' غير موجود');
-                }
-            });
-            
             showHome();
+            loadStats();
             
-            setTimeout(loadCaptchas, 1000);
+            // تحديث الإحصائيات والبث المباشر كل 30 ثانية
             setInterval(loadLiveStreams, 30000);
             setInterval(loadStats, 60000);
             
             console.log('✅ تم تحميل المنصة بنجاح');
-            console.log('📅 التاريخ:', new Date().toLocaleString('ar-EG'));
+            console.log('🔐 reCAPTCHA v2 مفعل لحماية النماذج');
             console.log('👨‍💻 فريق المطورين: عثمانية محمد الصالح، مليك صالح، زينب لكفيفي');
-            console.log('🚀 جميع التبويبات جاهزة للعمل!');
-            console.log('🔤 التحقق من الاسم: يجب أن يكون بالحروف اللاتينية فقط');
-            console.log('🔄 استخدام redirectTo من السيرفر للتوجيه');
             if (referralCode) {
                 console.log('🔗 تم اكتشاف رمز إحالة:', referralCode);
             }
