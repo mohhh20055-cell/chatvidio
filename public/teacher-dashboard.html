@@ -217,8 +217,13 @@
             justify-content: center;
             border: 2px solid white;
             box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+            animation: pulse-dot 2s infinite;
         }
         .nav-notifications-btn .notif-badge.hidden { display: none; }
+        @keyframes pulse-dot {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
 
         .notif-dropdown {
             position: absolute;
@@ -308,6 +313,18 @@
             color: var(--gray-400);
             margin-top: 4px;
         }
+        .notif-item .notif-action button {
+            background: var(--secondary);
+            color: white;
+            border: none;
+            padding: 2px 12px;
+            border-radius: 15px;
+            font-size: 0.6rem;
+            cursor: pointer;
+            transition: var(--transition);
+            margin-top: 4px;
+        }
+        .notif-item .notif-action button:hover { background: var(--secondary-dark); }
         .notif-empty {
             padding: 30px 20px;
             text-align: center;
@@ -1324,7 +1341,7 @@
 ================================================================ -->
 <div class="modal-overlay" id="modalOverlay"></div>
 
-<!-- EDIT PROFILE MODAL - مع جميع روابط التواصل الاجتماعي -->
+<!-- EDIT PROFILE MODAL -->
 <div id="editProfileModal" class="modal">
     <div class="modal-header">
         <h3><i class="fas fa-edit"></i> تعديل الملف الشخصي</h3>
@@ -1438,6 +1455,41 @@
 </div>
 
 <script>
+    // ================================================================
+    // دالة مساعدة لإجراء طلبات مع التوكن (JWT)
+    // ================================================================
+    async function fetchWithAuth(url, options = {}) {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            showToast('الرجاء تسجيل الدخول أولاً', 'error');
+            setTimeout(() => window.location.href = '/login.html', 1500);
+            throw new Error('غير مصرح');
+        }
+        
+        const headers = {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            ...options.headers
+        };
+        
+        const response = await fetch(url, {
+            ...options,
+            headers
+        });
+        
+        if (response.status === 401) {
+            localStorage.clear();
+            showToast('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى', 'error');
+            setTimeout(() => window.location.href = '/login.html', 1500);
+            throw new Error('انتهت صلاحية الجلسة');
+        }
+        
+        return response;
+    }
+
+    // ================================================================
+    // VARIABLES
+    // ================================================================
     let userData = null;
     let teacherId = null;
     let currentConversations = [];
@@ -1452,7 +1504,7 @@
 
     async function loadNotifications() {
         try {
-            const res = await fetch(`/api/notifications/${teacherId}/teacher`);
+            const res = await fetchWithAuth(`/api/notifications/${teacherId}/teacher`);
             const data = await res.json();
             notifications = data || [];
             unreadCount = notifications.filter(n => !n.is_read).length;
@@ -1533,7 +1585,7 @@
 
     async function markNotificationRead(notifId) {
         try {
-            const res = await fetch(`/api/notifications/read/${notifId}`, {
+            const res = await fetchWithAuth(`/api/notifications/read/${notifId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -1552,7 +1604,7 @@
     async function markAllNotifications() {
         const unreadNotifs = notifications.filter(n => !n.is_read);
         for (const notif of unreadNotifs) {
-            await fetch(`/api/notifications/read/${notif.id}`, {
+            await fetchWithAuth(`/api/notifications/read/${notif.id}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -1652,7 +1704,7 @@
             }
             if (!teacherId) { window.location.href = '/'; return; }
 
-            const res = await fetch(`/api/teacher/${teacherId}`);
+            const res = await fetchWithAuth(`/api/teacher/${teacherId}`);
             const data = await res.json();
             if (!data.error) {
                 userData = data;
@@ -1750,7 +1802,7 @@
                     ${renderSocialLinks(userData)}
                 </div>
 
-                <!-- ===== زر تعديل الملف الشخصي - يفتح نموذج إضافة الروابط ===== -->
+                <!-- ===== زر تعديل الملف الشخصي ===== -->
                 <button onclick="showEditProfileModal()" 
                         style="background: var(--gradient-main); color: white; 
                                border: none; padding: 10px 30px; border-radius: 30px; 
@@ -1777,7 +1829,7 @@
 
     async function loadBalance() {
         try {
-            const res = await fetch(`/api/teacher/balance/${teacherId}`);
+            const res = await fetchWithAuth(`/api/teacher/balance/${teacherId}`);
             const data = await res.json();
             const balance = data.balance || 0;
             document.getElementById('navBalanceAmount').textContent = balance;
@@ -1817,7 +1869,7 @@
 
     async function loadWithdrawRequests() {
         try {
-            const res = await fetch(`/api/teacher/withdraw-requests/${teacherId}`);
+            const res = await fetchWithAuth(`/api/teacher/withdraw-requests/${teacherId}`);
             const requests = await res.json();
             if (requests.length === 0) {
                 document.getElementById('withdrawRequestsList').innerHTML = '<p style="text-align:center; padding:15px; color:var(--gray-400);">لا توجد طلبات سحب</p>';
@@ -1848,7 +1900,7 @@
 
     async function loadReferralData() {
         try {
-            const createRes = await fetch('/api/referral/create', {
+            const createRes = await fetchWithAuth('/api/referral/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ user_id: teacherId, role: 'teacher' })
@@ -1858,7 +1910,7 @@
                 document.getElementById('referralCodeText').textContent = createData.referral_code || 'غير متوفر';
             }
 
-            const infoRes = await fetch(`/api/referral/info/${teacherId}/teacher`);
+            const infoRes = await fetchWithAuth(`/api/referral/info/${teacherId}/teacher`);
             const infoData = await infoRes.json();
             if (infoData.success) {
                 referralData = infoData;
@@ -1943,7 +1995,7 @@
         const container = document.getElementById('teachersList');
         container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
         try {
-            const res = await fetch('/api/teachers');
+            const res = await fetchWithAuth('/api/teachers');
             const teachers = await res.json();
             if (teachers.length === 0) {
                 container.innerHTML = '<p style="text-align:center; padding:25px; color:var(--gray-400);">لا يوجد أساتذة حالياً</p>';
@@ -1999,7 +2051,7 @@
         const container = document.getElementById('chatMessages');
         container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
         try {
-            const res = await fetch(`/api/messages/${teacherId}/teacher/${otherId}/teacher`);
+            const res = await fetchWithAuth(`/api/messages/${teacherId}/teacher/${otherId}/teacher`);
             const messages = await res.json();
             renderChatMessages(messages);
         } catch(e) {
@@ -2042,7 +2094,7 @@
             return;
         }
         try {
-            const res = await fetch('/api/messages/send', {
+            const res = await fetchWithAuth('/api/messages/send', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -2070,7 +2122,7 @@
         const container = document.getElementById('conversationsList');
         container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
         try {
-            const res = await fetch(`/api/messages/conversations/${teacherId}/teacher`);
+            const res = await fetchWithAuth(`/api/messages/conversations/${teacherId}/teacher`);
             const conversations = await res.json();
             currentConversations = conversations;
             renderConversations(conversations);
@@ -2136,7 +2188,7 @@
         const container = document.getElementById('offersList');
         container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
         try {
-            const res = await fetch(`/api/teacher/offers/${teacherId}`);
+            const res = await fetchWithAuth(`/api/teacher/offers/${teacherId}`);
             const offers = await res.json();
             renderOffers(offers);
         } catch(e) { showToast('حدث خطأ', 'error'); }
@@ -2196,7 +2248,7 @@
     }
 
     async function deleteExpiredOffers() {
-        const res = await fetch(`/api/teacher/offers/${teacherId}`);
+        const res = await fetchWithAuth(`/api/teacher/offers/${teacherId}`);
         const offers = await res.json();
         const now = new Date();
         const expiredOffers = offers.filter(o => {
@@ -2214,7 +2266,7 @@
         let deletedCount = 0;
         for (const offer of expiredOffers) {
             try {
-                const deleteRes = await fetch(`/api/offer/delete/${offer.id}`, {
+                const deleteRes = await fetchWithAuth(`/api/offer/delete/${offer.id}`, {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ teacher_id: teacherId })
@@ -2241,7 +2293,7 @@
 
     async function deleteOffer(offerId) {
         if (confirm('⚠️ هل أنت متأكد من حذف هذا العرض؟')) {
-            const res = await fetch(`/api/offer/delete/${offerId}`, {
+            const res = await fetchWithAuth(`/api/offer/delete/${offerId}`, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ teacher_id: teacherId })
@@ -2324,7 +2376,7 @@
         };
 
         try {
-            const res = await fetch('/api/offer/create', {
+            const res = await fetchWithAuth('/api/offer/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
@@ -2366,7 +2418,7 @@
             return;
         }
         try {
-            const res = await fetch('/api/teacher/withdraw-request', {
+            const res = await fetchWithAuth('/api/teacher/withdraw-request', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ teacher_id: teacherId, amount: amount, ccp_account: ccpAccount })
@@ -2385,7 +2437,7 @@
     }
 
     // ================================================================
-    // PROFILE EDIT - تعديل الملف الشخصي وإضافة الروابط
+    // PROFILE EDIT
     // ================================================================
 
     function showEditProfileModal() {
@@ -2426,7 +2478,7 @@
         }
 
         try {
-            const res = await fetch('/api/teacher/update-profile-with-social', {
+            const res = await fetchWithAuth('/api/teacher/update-profile-with-social', {
                 method: 'POST',
                 body: formData
             });
@@ -2499,6 +2551,12 @@
     // ================================================================
     // INIT
     // ================================================================
+
+    // التحقق من وجود التوكن عند بدء التشغيل
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = '/login.html';
+    }
 
     loadUserData().then(() => {
         showSection('profile');
