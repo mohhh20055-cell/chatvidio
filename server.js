@@ -4162,5 +4162,5 @@ if (require.main === module) {
         console.log('🏥 مسار الصحة: /health');
         console.log('🌐 CORS مفعل لـ Vercel');
         console.log('='.repeat(60));
-    });
+  });
 }
