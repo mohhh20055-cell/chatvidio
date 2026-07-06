@@ -29,7 +29,18 @@ const compression = require('compression');
 // ============================================================
 // متغيرات البيئة والثوابت الأمنية
 // ============================================================
-const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(64).toString('hex');
+// ============================================================
+// JWT_SECRET - مفتاح التوقيع للجلسات
+// ============================================================
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+    console.warn('⚠️ تحذير: JWT_SECRET غير موجود في متغيرات البيئة!');
+    console.warn('⚠️ سيتم استخدام مفتاح افتراضي (غير آمن للإنتاج)');
+    // ✅ هذا المفتاح للاختبار فقط - استخدم مفتاحاً خاصاً في الإنتاج
+    const JWT_SECRET = 'zoomdz_secret_key_2024_for_testing_only';
+} else {
+    console.log('✅ JWT_SECRET موجود ومستقر');
+}
 const JWT_EXPIRY = '24h';
 const SALT_ROUNDS = 12;
 const MAX_LOGIN_ATTEMPTS = 5;
@@ -37,17 +48,6 @@ const LOCKOUT_TIME = 15 * 60 * 1000;
 const RATE_LIMIT_WINDOW = 15 * 60 * 1000;
 const RATE_LIMIT_MAX = 100;
 // ============================================================
-// JWT_SECRET - تأكد من وجوده
-// ============================================================
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-    console.error('❌ خطأ: JWT_SECRET غير موجود في متغيرات البيئة!');
-    console.error('⚠️ سيتم استخدام مفتاح عشوائي مؤقت (غير مستقر)');
-    // استخدم مفتاحاً ثابتاً بدلاً من العشوائي
-    const JWT_SECRET = 'my_fallback_secret_key_please_change_this_in_production';
-} else {
-    console.log('✅ JWT_SECRET موجود ومستقر');
-}
 // reCAPTCHA v2
 const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY;
 if (!RECAPTCHA_SECRET_KEY) {
