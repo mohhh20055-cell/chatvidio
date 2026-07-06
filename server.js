@@ -348,6 +348,7 @@ app.use(cors(corsOptions));
 
 // 4. Cookie Parser للجلسات الآمنة
 app.use(cookieParser());
+
 const authLimiter = rateLimit({
     windowMs: 60 * 60 * 1000,
     max: 10,
@@ -355,7 +356,12 @@ const authLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => {
-        return req.body.email || req.ip;
+        // ✅ التحقق من وجود req.body قبل قراءة email
+        if (req.body && req.body.email) {
+            return req.body.email;
+        }
+        // ✅ استخدام IP كبديل آمن
+        return req.ip || req.connection?.remoteAddress || 'unknown';
     }
 });
 app.use('/api/login', authLimiter);
