@@ -1418,6 +1418,10 @@
 
 <script>
     // ================================================================
+    // ⚠️ تم إزالة جميع إشارات الكابتشا القديم
+    // ================================================================
+
+    // ================================================================
     // متغيرات وتكوينات الأمان
     // ================================================================
     let userData = null;
@@ -1442,8 +1446,12 @@
     }
 
     async function fetchWithAuth(url, options = {}) {
+        // إزالة Content-Type إذا كان body من نوع FormData
+        const isFormData = options.body instanceof FormData;
         const headers = {
-            ...getAuthHeaders(),
+            ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+            'Authorization': `Bearer ${authToken}`,
+            'X-CSRF-Token': csrfToken || '',
             ...options.headers
         };
         
@@ -1452,27 +1460,48 @@
             headers: headers
         });
 
+        // إذا كان 401 -> انتهت الجلسة
         if (response.status === 401) {
-            // انتهت صلاحية الجلسة
-            showToast('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى', 'error');
+            showToast('⏳ انتهت صلاحية الجلسة، جاري إعادة التوجيه...', 'error');
+            localStorage.clear();
             setTimeout(() => {
-                localStorage.clear();
                 window.location.href = '/login.html';
             }, 1500);
             throw new Error('انتهت صلاحية الجلسة');
         }
 
+        // إذا كان 403 -> حساب محظور أو CSRF
         if (response.status === 403) {
-            const data = await response.json();
-            if (data.banned) {
-                showToast('⚠️ تم حظر حسابك من المنصة', 'error');
-                setTimeout(() => {
+            try {
+                const data = await response.json();
+                if (data.banned) {
+                    showToast('⚠️ تم حظر حسابك من المنصة', 'error');
                     localStorage.clear();
-                    window.location.href = '/';
-                }, 2000);
-                throw new Error('حساب محظور');
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
+                    throw new Error('حساب محظور');
+                }
+                if (data.error && data.error.includes('CSRF')) {
+                    // محاولة تجديد CSRF Token
+                    await getCsrfToken();
+                    // إعادة المحاولة مرة واحدة
+                    const retryResponse = await fetch(url, {
+                        ...options,
+                        headers: {
+                            ...headers,
+                            'X-CSRF-Token': csrfToken
+                        }
+                    });
+                    if (retryResponse.ok) {
+                        return retryResponse;
+                    }
+                }
+                throw new Error(data.error || 'غير مصرح به');
+            } catch (e) {
+                if (e.message === 'حساب محظور' || e.message === 'انتهت صلاحية الجلسة') throw e;
+                throw new Error('غير مصرح به');
             }
-            throw new Error(data.error || 'غير مصرح به');
         }
 
         return response;
@@ -1480,7 +1509,9 @@
 
     async function getCsrfToken() {
         try {
-            const response = await fetch('/api/csrf-token');
+            const response = await fetch('/api/csrf-token', {
+                credentials: 'include'
+            });
             const data = await response.json();
             csrfToken = data.csrfToken;
             return csrfToken;
@@ -1502,7 +1533,9 @@
             renderNotifications();
             updateNotifBadge();
         } catch (e) {
-            console.error('خطأ في جلب الإشعارات:', e);
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                console.error('خطأ في جلب الإشعارات:', e);
+            }
         }
     }
 
@@ -1601,7 +1634,9 @@
                 }
             }
         } catch (e) {
-            console.error('خطأ في تحديث الإشعار:', e);
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                console.error('خطأ في تحديث الإشعار:', e);
+            }
         }
     }
 
@@ -1618,7 +1653,9 @@
                     headers: { 'Content-Type': 'application/json' }
                 });
                 notif.is_read = true;
-            } catch(e) { console.error(e); }
+            } catch(e) { 
+                if (e.message !== 'انتهت صلاحية الجلسة') console.error(e); 
+            }
         }
         updateNotifBadge();
         renderNotifications();
@@ -1632,13 +1669,15 @@
             if (data.can_join) {
                 window.open(`/api/join-stream/${offerId}/${studentId}`, '_blank');
             } else if (data.is_waiting) {
-                showNotification('⏳ جاري التحضير للبث، انتظر قليلاً...', 'warning');
+                showToast('⏳ جاري التحضير للبث، انتظر قليلاً...', 'warning');
             } else {
-                showNotification('البث غير متاح حالياً', 'warning');
+                showToast('البث غير متاح حالياً', 'warning');
                 showSection('bookings');
             }
         } catch(e) {
-            showNotification('حدث خطأ', 'error');
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                showToast('حدث خطأ', 'error');
+            }
         }
         document.getElementById('notifDropdown').classList.remove('open');
     }
@@ -1712,9 +1751,8 @@
 
     async function loadUserData() {
         try {
-            // جلب بيانات المستخدم والتوكن من localStorage
             const storedData = localStorage.getItem('userData');
-            const token = localStorage.getItem('authToken');
+            const token = localStorage.getItem('token');
             
             if (storedData) {
                 userData = JSON.parse(storedData);
@@ -1730,7 +1768,6 @@
                 return;
             }
 
-            // جلب CSRF Token
             await getCsrfToken();
 
             const res = await fetchWithAuth(`/api/student/${studentId}`);
@@ -1746,7 +1783,7 @@
         } catch(e) {
             console.error('خطأ في تحميل بيانات المستخدم:', e);
             if (e.message === 'انتهت صلاحية الجلسة') {
-                window.location.href = '/login.html';
+                // يتم التعامل معه في fetchWithAuth
             }
         }
     }
@@ -1776,7 +1813,9 @@
             document.getElementById('walletAmount').textContent = balanceText;
             document.getElementById('navBalanceAmount').textContent = currentBalance;
         } catch(e) { 
-            console.error('خطأ في تحميل المحفظة:', e);
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                console.error('خطأ في تحميل المحفظة:', e);
+            }
         }
     }
 
@@ -1877,7 +1916,11 @@
                     showToast(data.error || 'حدث خطأ', 'error');
                 }
             }
-        } catch(e) { showToast('حدث خطأ', 'error'); }
+        } catch(e) { 
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                showToast('حدث خطأ', 'error');
+            }
+        }
     }
 
     // ================================================================
@@ -1968,7 +2011,11 @@
             `;
             document.getElementById('modalOverlay').style.display = 'block';
             document.getElementById('teacherProfileModal').style.display = 'block';
-        } catch(e) { showToast('حدث خطأ', 'error'); }
+        } catch(e) { 
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                showToast('حدث خطأ', 'error');
+            }
+        }
     }
 
     // ================================================================
@@ -1983,7 +2030,11 @@
             const bookings = await res.json();
             renderBookings(bookings);
             loadUpcomingBookings(bookings);
-        } catch(e) { showToast('حدث خطأ', 'error'); }
+        } catch(e) { 
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                showToast('حدث خطأ', 'error');
+            }
+        }
     }
 
     function renderBookings(bookings) {
@@ -2088,7 +2139,11 @@
                 `;
             }
             container.innerHTML = html;
-        } catch(e) { showToast('حدث خطأ', 'error'); }
+        } catch(e) { 
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                showToast('حدث خطأ', 'error');
+            }
+        }
     }
 
     // ================================================================
@@ -2202,7 +2257,9 @@
                 renderRewardHistory(infoData.rewards || []);
             }
         } catch(e) {
-            console.error('خطأ في تحميل بيانات الإحالة:', e);
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                console.error('خطأ في تحميل بيانات الإحالة:', e);
+            }
         }
     }
 
@@ -2341,7 +2398,9 @@
                 showToast(data.error || 'حدث خطأ', 'error');
             }
         } catch(e) {
-            showToast('حدث خطأ أثناء فتح الصندوق', 'error');
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                showToast('حدث خطأ أثناء فتح الصندوق', 'error');
+            }
         } finally {
             btn.disabled = false;
             const chances = referralData?.gift_box_chances || 0;
@@ -2392,7 +2451,9 @@
                 btn.innerHTML = 'شحن';
             }
         } catch(e) {
-            showToast('حدث خطأ', 'error');
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                showToast('حدث خطأ', 'error');
+            }
             btn.disabled = false;
             btn.innerHTML = 'شحن';
         }
@@ -2428,10 +2489,7 @@
         try {
             const res = await fetchWithAuth('/api/student/update-profile', { 
                 method: 'POST', 
-                body: formData,
-                headers: {
-                    // لا نضع Content-Type لأن FormData يحددها تلقائياً
-                }
+                body: formData
             });
             const data = await res.json();
             if (data.success) {
@@ -2443,7 +2501,11 @@
             } else {
                 showToast(data.error || 'حدث خطأ', 'error');
             }
-        } catch(e) { showToast('حدث خطأ', 'error'); }
+        } catch(e) {
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                showToast('حدث خطأ', 'error');
+            }
+        }
     }
 
     function closeModal() {
