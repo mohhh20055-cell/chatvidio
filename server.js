@@ -346,9 +346,12 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-// 4. Cookie Parser للجلسات الآمنة
+// 4. Cookie Parser للجلسات الآمنة (يجب أن يكون قبل Rate Limiter و CSRF)
 app.use(cookieParser());
 
+// ============================================================
+// 5. Rate Limiting خاص لتسجيل الدخول (بعد Cookie Parser)
+// ============================================================
 const authLimiter = rateLimit({
     windowMs: 60 * 60 * 1000,
     max: 10,
@@ -356,7 +359,7 @@ const authLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => {
-        // ✅ التحقق من وجود req.body قبل قراءة email
+        // ✅ التحقق الآمن من وجود req.body و email
         if (req.body && req.body.email) {
             return req.body.email;
         }
@@ -364,24 +367,15 @@ const authLimiter = rateLimit({
         return req.ip || req.connection?.remoteAddress || 'unknown';
     }
 });
+
+// تطبيق Rate Limiter على المسارات المطلوبة
 app.use('/api/login', authLimiter);
 app.use('/api/forgot-password', authLimiter);
 app.use('/api/resend-verification', authLimiter);
 
-// 7. CSRF Protection
-app.use((req, res, next) => {
-    const publicMethods = ['GET', 'HEAD', 'OPTIONS'];
-    if (!publicMethods.includes(req.method)) {
-        const csrfToken = req.headers['x-csrf-token'];
-        const cookieToken = req.cookies.csrf_token;
-        if (!csrfToken || !cookieToken || csrfToken !== cookieToken) {
-            return res.status(403).json({ success: false, error: 'طلب غير مصرح به (CSRF)' });
-        }
-    }
-    next();
-});
-
-// 8. توليد CSRF Token
+// ============================================================
+// 6. CSRF Token Generator (يجب أن يكون قبل CSRF Protection)
+// ============================================================
 app.get('/api/csrf-token', (req, res) => {
     const token = crypto.randomBytes(32).toString('hex');
     res.cookie('csrf_token', token, {
@@ -393,7 +387,57 @@ app.get('/api/csrf-token', (req, res) => {
     res.json({ csrfToken: token });
 });
 
-// 9. مسار اختبار CORS
+// ============================================================
+// 7. CSRF Protection - مع استثناء المسارات العامة
+// ============================================================
+app.use((req, res, next) => {
+    // استثناء مسارات معينة من التحقق
+    const publicPaths = [
+        '/api/login',
+        '/api/student/register',
+        '/api/teacher/register',
+        '/api/forgot-password',
+        '/api/reset-password',
+        '/api/verify-email',
+        '/api/resend-verification',
+        '/api/csrf-token',
+        '/api/public/teachers',
+        '/api/public/offers',
+        '/api/public/stats',
+        '/api/public/students-count',
+        '/api/live-offers',
+        '/api/offers',
+        '/api/teachers',
+        '/api/test-cors'
+    ];
+    
+    const publicMethods = ['GET', 'HEAD', 'OPTIONS'];
+    
+    // التحقق من أن المسار ليس عاماً
+    const isPublicPath = publicPaths.some(path => req.path === path);
+    const isPublicMethod = publicMethods.includes(req.method);
+    
+    // إذا كان المسار عاماً أو الطريقة عامة → تجاوز التحقق
+    if (isPublicPath || isPublicMethod) {
+        return next();
+    }
+    
+    // التحقق من CSRF للطلبات المحمية فقط
+    const csrfToken = req.headers['x-csrf-token'];
+    const cookieToken = req.cookies.csrf_token;
+    
+    if (!csrfToken || !cookieToken || csrfToken !== cookieToken) {
+        return res.status(403).json({ 
+            success: false, 
+            error: 'طلب غير مصرح به (CSRF)',
+            code: 'CSRF_ERROR'
+        });
+    }
+    
+    next();
+});
+
+// 8. مسار اختبار CORS
 app.get('/api/test-cors', (req, res) => {
     res.json({
         success: true,
@@ -5000,8 +5044,8 @@ if (require.main === module) {
         console.log('🔒 الأمان:');
         console.log('   ✅ Helmet مع CSP محسن');
         console.log('   ✅ JWT للمصادقة');
-        console.log('   ✅ CSRF Protection');
-        console.log('   ✅ Rate Limiting متقدم');
+        console.log('   ✅ CSRF Protection - مع استثناء المسارات العامة');
+        console.log('   ✅ Rate Limiting متقدم مع التحقق الآمن من req.body');
         console.log('   ✅ تنقية جميع المدخلات (XSS)');
         console.log('   ✅ تشفير عناوين IP');
         console.log('   ✅ التحقق من صحة الملفات');
