@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
+        /* جميع الأنماط تبقى كما هي - لم يتم تغييرها */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
             --primary: #0f5cbf;
@@ -432,7 +433,7 @@
 
         /* ================================================================
            MAIN CONTENT
-================================================================ */
+        ================================================================ */
         .main-wrapper {
             max-width: 1400px;
             margin: 0 auto;
@@ -1417,7 +1418,7 @@
 
 <script>
     // ================================================================
-    // VARIABLES
+    // متغيرات وتكوينات الأمان
     // ================================================================
     let userData = null;
     let studentId = null;
@@ -1425,6 +1426,69 @@
     let currentBalance = 0;
     let notifications = [];
     let referralData = null;
+    let authToken = null;
+    let csrfToken = null;
+
+    // ================================================================
+    // دوال المصادقة والأمان
+    // ================================================================
+
+    function getAuthHeaders() {
+        return {
+            'Authorization': `Bearer ${authToken}`,
+            'X-CSRF-Token': csrfToken || '',
+            'Content-Type': 'application/json'
+        };
+    }
+
+    async function fetchWithAuth(url, options = {}) {
+        const headers = {
+            ...getAuthHeaders(),
+            ...options.headers
+        };
+        
+        const response = await fetch(url, {
+            ...options,
+            headers: headers
+        });
+
+        if (response.status === 401) {
+            // انتهت صلاحية الجلسة
+            showToast('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى', 'error');
+            setTimeout(() => {
+                localStorage.clear();
+                window.location.href = '/login.html';
+            }, 1500);
+            throw new Error('انتهت صلاحية الجلسة');
+        }
+
+        if (response.status === 403) {
+            const data = await response.json();
+            if (data.banned) {
+                showToast('⚠️ تم حظر حسابك من المنصة', 'error');
+                setTimeout(() => {
+                    localStorage.clear();
+                    window.location.href = '/';
+                }, 2000);
+                throw new Error('حساب محظور');
+            }
+            throw new Error(data.error || 'غير مصرح به');
+        }
+
+        return response;
+    }
+
+    async function getCsrfToken() {
+        try {
+            const response = await fetch('/api/csrf-token');
+            const data = await response.json();
+            csrfToken = data.csrfToken;
+            return csrfToken;
+        } catch (error) {
+            console.error('خطأ في جلب CSRF Token:', error);
+            return null;
+        }
+    }
 
     // ================================================================
     // NOTIFICATIONS SYSTEM
@@ -1432,7 +1496,7 @@
 
     async function loadNotifications() {
         try {
-            const res = await fetch(`/api/notifications/${studentId}/student`);
+            const res = await fetchWithAuth(`/api/notifications/${studentId}/student`);
             const data = await res.json();
             notifications = data || [];
             renderNotifications();
@@ -1460,7 +1524,6 @@
             const time = new Date(notif.created_at);
             const timeStr = time.toLocaleString('ar', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' });
 
-            // تحديد نوع الإشعار
             let iconClass = 'info';
             let icon = 'fa-bell';
             const title = notif.title || '';
@@ -1524,7 +1587,7 @@
 
     async function markNotificationRead(notifId, offerId) {
         try {
-            const res = await fetch(`/api/notifications/read/${notifId}`, {
+            const res = await fetchWithAuth(`/api/notifications/read/${notifId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -1550,7 +1613,7 @@
         }
         for (const notif of unreadNotifs) {
             try {
-                await fetch(`/api/notifications/read/${notif.id}`, {
+                await fetchWithAuth(`/api/notifications/read/${notif.id}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                 });
@@ -1564,7 +1627,7 @@
 
     async function joinFromNotification(offerId) {
         try {
-            const res = await fetch(`/api/student/stream-status/${offerId}/${studentId}`);
+            const res = await fetchWithAuth(`/api/student/stream-status/${offerId}/${studentId}`);
             const data = await res.json();
             if (data.can_join) {
                 window.open(`/api/join-stream/${offerId}/${studentId}`, '_blank');
@@ -1649,14 +1712,28 @@
 
     async function loadUserData() {
         try {
+            // جلب بيانات المستخدم والتوكن من localStorage
             const storedData = localStorage.getItem('userData');
+            const token = localStorage.getItem('authToken');
+            
             if (storedData) {
                 userData = JSON.parse(storedData);
                 studentId = userData.id;
             }
-            if (!studentId) { window.location.href = '/'; return; }
+            
+            if (token) {
+                authToken = token;
+            }
+            
+            if (!studentId || !authToken) {
+                window.location.href = '/login.html';
+                return;
+            }
 
-            const res = await fetch(`/api/student/${studentId}`);
+            // جلب CSRF Token
+            await getCsrfToken();
+
+            const res = await fetchWithAuth(`/api/student/${studentId}`);
             const data = await res.json();
             if (!data.error) {
                 userData = data;
@@ -1666,7 +1743,12 @@
             loadWallet();
             loadNotifications();
             loadReferralData();
-        } catch(e) { console.error(e); }
+        } catch(e) {
+            console.error('خطأ في تحميل بيانات المستخدم:', e);
+            if (e.message === 'انتهت صلاحية الجلسة') {
+                window.location.href = '/login.html';
+            }
+        }
     }
 
     function updateUI() {
@@ -1687,13 +1769,15 @@
 
     async function loadWallet() {
         try {
-            const res = await fetch(`/api/student/wallet/${studentId}`);
+            const res = await fetchWithAuth(`/api/student/wallet/${studentId}`);
             const data = await res.json();
             currentBalance = data.balance || 0;
             const balanceText = currentBalance + ' دج';
             document.getElementById('walletAmount').textContent = balanceText;
             document.getElementById('navBalanceAmount').textContent = currentBalance;
-        } catch(e) { console.error(e); }
+        } catch(e) { 
+            console.error('خطأ في تحميل المحفظة:', e);
+        }
     }
 
     // ================================================================
@@ -1723,7 +1807,6 @@
             const isFree = offer.is_free === 1;
             const teacherImage = offer.teacher_profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(offer.teacher_name) + '&background=0f5cbf&color=fff&size=40';
             
-            // عرض مستوى التعليم
             let levelDisplay = '';
             if (offer.education_level) {
                 const levelMap = {
@@ -1771,7 +1854,7 @@
         }
         showToast('جاري معالجة طلبك...', 'warning');
         try {
-            const res = await fetch('/api/booking/create', {
+            const res = await fetchWithAuth('/api/booking/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ offer_id: offerId, student_id: studentId })
@@ -1841,7 +1924,7 @@
 
     async function showTeacherProfile(teacherId) {
         try {
-            const res = await fetch(`/api/teacher/${teacherId}`);
+            const res = await fetchWithAuth(`/api/teacher/${teacherId}`);
             const teacher = await res.json();
             const teacherImage = teacher.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(teacher.full_name) + '&background=0f5cbf&color=fff&size=100';
             
@@ -1896,7 +1979,7 @@
         const container = document.getElementById('bookingsList');
         container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
         try {
-            const res = await fetch(`/api/student/bookings/${studentId}`);
+            const res = await fetchWithAuth(`/api/student/bookings/${studentId}`);
             const bookings = await res.json();
             renderBookings(bookings);
             loadUpcomingBookings(bookings);
@@ -1962,7 +2045,7 @@
         const container = document.getElementById('transactionsList');
         container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
         try {
-            const res = await fetch(`/api/student/wallet/${studentId}`);
+            const res = await fetchWithAuth(`/api/student/wallet/${studentId}`);
             const data = await res.json();
             const transactions = data.transactions || [];
             if (transactions.length === 0) {
@@ -2072,7 +2155,7 @@
 
     async function loadReferralData() {
         try {
-            const createRes = await fetch('/api/referral/create', {
+            const createRes = await fetchWithAuth('/api/referral/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ user_id: studentId, role: 'student' })
@@ -2082,7 +2165,7 @@
                 document.getElementById('referralCodeText').textContent = createData.referral_code || 'غير متوفر';
             }
 
-            const infoRes = await fetch(`/api/referral/info/${studentId}/student`);
+            const infoRes = await fetchWithAuth(`/api/referral/info/${studentId}/student`);
             const infoData = await infoRes.json();
             if (infoData.success) {
                 referralData = infoData;
@@ -2219,7 +2302,7 @@
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري فتح الصندوق...';
         
         try {
-            const res = await fetch('/api/referral/open-gift-box', {
+            const res = await fetchWithAuth('/api/referral/open-gift-box', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ student_id: studentId })
@@ -2295,7 +2378,7 @@
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري...';
         try {
-            const res = await fetch('/api/student/wallet/deposit', {
+            const res = await fetchWithAuth('/api/student/wallet/deposit', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ student_id: studentId, amount: amount })
@@ -2343,7 +2426,13 @@
             formData.append('profile_image', imageFile);
         }
         try {
-            const res = await fetch('/api/student/update-profile', { method: 'POST', body: formData });
+            const res = await fetchWithAuth('/api/student/update-profile', { 
+                method: 'POST', 
+                body: formData,
+                headers: {
+                    // لا نضع Content-Type لأن FormData يحددها تلقائياً
+                }
+            });
             const data = await res.json();
             if (data.success) {
                 showToast('تم تحديث الملف الشخصي', 'success');
