@@ -1,5 +1,5 @@
 // ============================================================
-// خادم منصة التعليم - إصدار آمن ومحسن مع نظام الإحالة والتوثيق والحظر
+// خادم منصة التعليم - إصدار آمن ومحسن
 // تم إصلاح جميع الثغرات الأمنية وإضافة الكابتشا وإصلاح CORS و Rate Limiting
 // ============================================================
 
@@ -30,9 +30,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ============================================================
-// حل مشكلة X-Forwarded-For (لـ Vercel) - معدل
+// حل مشكلة X-Forwarded-For (لـ Vercel)
 // ============================================================
-app.set('trust proxy', false); // تم التعطيل مؤقتاً لحل مشكلة rate limiting
+app.set('trust proxy', true);
 
 // ============================================================
 // قراءة المتغيرات البيئية مع التحقق الصارم
@@ -44,12 +44,12 @@ const CHARGILY_API_KEY = process.env.CHARGILY_API_KEY;
 const CHARGILY_API_URL = process.env.CHARGILY_API_URL || 'https://pay.chargily.net/api/v2';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@platform.com';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
-const PLATFORM_DOMAIN = process.env.PLATFORM_DOMAIN || 'https://chatvidio-g7ucpgt3t-zoomdz.vercel.app';
+const PLATFORM_DOMAIN = process.env.PLATFORM_DOMAIN || 'https://chatvidio-m2vdmqz6z-zoomdz.vercel.app';
 const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(64).toString('hex');
 
 // نطاقات CORS الأساسية
 const DEFAULT_CORS_ORIGINS = [
-    'https://chatvidio-g7ucpgt3t-zoomdz.vercel.app',
+    'https://chatvidio-m2vdmqz6z-zoomdz.vercel.app',
     'https://chatvidio.vercel.app',
     'http://localhost:3000',
     'http://localhost:3001',
@@ -141,21 +141,15 @@ app.use(helmet({
 // ============================================================
 const corsOptions = {
     origin: function(origin, callback) {
-        // السماح بطلبات بدون origin (مثل Postman)
         if (!origin) {
             return callback(null, true);
         }
         
-        // قائمة النطاقات المسموحة
         const allowedOrigins = [...DEFAULT_CORS_ORIGINS];
         
-        // التحقق من النطاق
         const isAllowed = allowedOrigins.some(allowed => {
-            // التحقق من التطابق التام
             if (origin === allowed) return true;
-            // التحقق من التطابق الجزئي لـ vercel.app
             if (allowed.includes('vercel.app') && origin.includes('vercel.app')) return true;
-            // التحقق من التطابق مع localhost
             if (origin.includes('localhost')) return true;
             return false;
         });
@@ -184,7 +178,10 @@ const globalLimiter = rateLimit({
     message: { success: false, error: 'عدد الطلبات كبير جداً، حاول لاحقاً' },
     standardHeaders: true,
     legacyHeaders: false,
-    trustProxy: false,
+    validate: {
+        trustProxy: false,
+        xForwardedForHeader: false
+    },
     skip: (req) => {
         const publicPaths = [
             '/api/public/stats',
@@ -208,7 +205,7 @@ const authLimiter = rateLimit({
     message: { success: false, error: 'عدد محاولات تسجيل الدخول كبير جداً، حاول بعد ساعة' },
     standardHeaders: true,
     legacyHeaders: false,
-    trustProxy: false
+    validate: { trustProxy: false, xForwardedForHeader: false }
 });
 
 const registerLimiter = rateLimit({
@@ -217,7 +214,7 @@ const registerLimiter = rateLimit({
     message: { success: false, error: 'عدد محاولات التسجيل كبير جداً، حاول بعد ساعة' },
     standardHeaders: true,
     legacyHeaders: false,
-    trustProxy: false
+    validate: { trustProxy: false, xForwardedForHeader: false }
 });
 
 const depositLimiter = rateLimit({
@@ -226,7 +223,7 @@ const depositLimiter = rateLimit({
     message: { success: false, error: 'عدد محاولات الشحن كبير جداً، حاول بعد 15 دقيقة' },
     standardHeaders: true,
     legacyHeaders: false,
-    trustProxy: false
+    validate: { trustProxy: false, xForwardedForHeader: false }
 });
 
 const bookingLimiter = rateLimit({
@@ -235,7 +232,7 @@ const bookingLimiter = rateLimit({
     message: { success: false, error: 'عدد محاولات الحجز كبير جداً، حاول بعد 15 دقيقة' },
     standardHeaders: true,
     legacyHeaders: false,
-    trustProxy: false
+    validate: { trustProxy: false, xForwardedForHeader: false }
 });
 
 const captchaLimiter = rateLimit({
@@ -244,7 +241,7 @@ const captchaLimiter = rateLimit({
     message: { success: false, error: 'عدد محاولات الكابتشا كبير جداً، حاول بعد 5 دقائق' },
     standardHeaders: true,
     legacyHeaders: false,
-    trustProxy: false
+    validate: { trustProxy: false, xForwardedForHeader: false }
 });
 
 app.use('/api/login', authLimiter);
@@ -680,14 +677,11 @@ function generateReferralCode(name, id) {
 }
 
 // ============================================================
-// نظام الكابتشا - إصدار آمن ومحسن
+// نظام الكابتشا
 // ============================================================
-
-// تخزين الكابتشا في الذاكرة مع انتهاء صلاحية
 const captchaStore = new Map();
-const CAPTCHA_EXPIRY = 5 * 60 * 1000; // 5 دقائق
+const CAPTCHA_EXPIRY = 5 * 60 * 1000;
 
-// تنظيف الكابتشا المنتهية كل دقيقة
 setInterval(() => {
     const now = Date.now();
     for (const [key, value] of captchaStore.entries()) {
@@ -697,7 +691,6 @@ setInterval(() => {
     }
 }, 60000);
 
-// توليد كود كابتشا آمن
 function generateCaptcha() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code = '';
@@ -707,7 +700,6 @@ function generateCaptcha() {
     return code;
 }
 
-// توليد صورة كابتشا بصيغة SVG مع تشويش
 function generateCaptchaImage(code) {
     const colors = ['#0f5cbf', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899'];
     const bgColors = ['#f0f4ff', '#f0fdf4', '#f5f3ff', '#fffbeb', '#fef2f2', '#fdf2f8'];
@@ -760,8 +752,6 @@ function generateCaptchaImage(code) {
 // ============================================================
 // مسارات الكابتشا
 // ============================================================
-
-// توليد كابتشا جديدة
 app.get('/api/captcha/generate', (req, res) => {
     try {
         const code = generateCaptcha();
@@ -787,7 +777,6 @@ app.get('/api/captcha/generate', (req, res) => {
     }
 });
 
-// التحقق من كابتشا
 app.post('/api/captcha/verify', [
     body('captcha_id').notEmpty().withMessage('معرف الكابتشا مطلوب'),
     body('captcha_code').notEmpty().withMessage('رمز التحقق مطلوب')
@@ -800,7 +789,6 @@ app.post('/api/captcha/verify', [
 
         const { captcha_id, captcha_code } = req.body;
 
-        // التحقق من وجود الكابتشا
         const stored = captchaStore.get(captcha_id);
         if (!stored) {
             return res.status(400).json({
@@ -810,7 +798,6 @@ app.post('/api/captcha/verify', [
             });
         }
 
-        // التحقق من صلاحية الكابتشا
         if (Date.now() > stored.expires) {
             captchaStore.delete(captcha_id);
             return res.status(400).json({
@@ -820,10 +807,8 @@ app.post('/api/captcha/verify', [
             });
         }
 
-        // زيادة عدد المحاولات
         stored.attempts += 1;
 
-        // منع محاولات متكررة لنفس الكابتشا
         if (stored.attempts > 3) {
             captchaStore.delete(captcha_id);
             return res.status(400).json({
@@ -833,7 +818,6 @@ app.post('/api/captcha/verify', [
             });
         }
 
-        // التحقق من الكود (مقارنة غير حساسة لحالة الأحرف)
         if (stored.code.toLowerCase() === captcha_code.toLowerCase().trim()) {
             captchaStore.delete(captcha_id);
             return res.json({ 
@@ -1267,7 +1251,7 @@ async function processReferralReward(referredUserId, referredUserRole) {
         console.error('❌ خطأ في معالجة مكافأة الإحالة:', error.message);
         return false;
     }
-}
+});
 
 app.post('/api/referral/open-gift-box', authenticateToken, [
     body('student_id').isInt({ min: 1 }).withMessage('معرف الطالب غير صالح')
@@ -3611,7 +3595,6 @@ app.post('/api/student/register', checkBanned, [
 
         const { captcha_id, captcha_code } = req.body;
 
-        // التحقق من الكابتشا
         const stored = captchaStore.get(captcha_id);
         if (!stored || Date.now() > stored.expires) {
             captchaStore.delete(captcha_id);
@@ -3632,7 +3615,6 @@ app.post('/api/student/register', checkBanned, [
             });
         }
 
-        // حذف الكابتشا بعد التحقق الناجح
         captchaStore.delete(captcha_id);
 
         const { full_name, email, password, phone } = req.body;
@@ -3754,7 +3736,6 @@ app.post('/api/admin/approve-teacher/:id', authenticateToken, requireRole('admin
         const { id } = req.params;
         await update('teachers', id, { status: 'approved' });
 
-        // إشعار للمعلم
         const teacher = await getOne('teachers', 'id', id);
         if (teacher) {
             await insert('notifications', {
@@ -3783,7 +3764,6 @@ app.post('/api/admin/reject-teacher/:id', authenticateToken, requireRole('admin'
             rejection_reason: reason || 'لم يتم تحديد سبب'
         });
 
-        // إشعار للمعلم
         const teacher = await getOne('teachers', 'id', id);
         if (teacher) {
             await insert('notifications', {
@@ -3918,7 +3898,6 @@ app.post('/api/admin/ban-user', authenticateToken, requireRole('admin'), [
             .update({ is_banned: true, ban_reason: reason || 'لم يتم تحديد سبب' })
             .eq('id', user_id);
 
-        // إشعار للمستخدم
         await insert('notifications', {
             user_id: user_id,
             user_type: role,
@@ -3964,7 +3943,6 @@ app.post('/api/admin/unban-user', authenticateToken, requireRole('admin'), [
             .update({ is_banned: false, ban_reason: null })
             .eq('id', user_id);
 
-        // إشعار للمستخدم
         await insert('notifications', {
             user_id: user_id,
             user_type: role,
