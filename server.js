@@ -1119,7 +1119,7 @@ app.get('/api/verify-email', [
                 .update({ used: true })
                 .eq('token', token);
 
-            return res.status(400).send(renderErrorPage('انتهت الصلاحية', 'انتهت صلاحية رابط التأكيد. يمكنك طلب رابط جديد من خلال صفحة تسجيل الدخول.', '/login.html'));
+            return res.status(400).send(renderErrorPage('انتهت الصلاحية', 'انتهت صلاحية رابط التأكيد. يمكنك طلب رابط جديد من خلال صفحة تسجيل الدخول.', '/'));
         }
 
         const tableName = role === 'student' ? 'students' : 'teachers';
@@ -1140,7 +1140,7 @@ app.get('/api/verify-email', [
             await processReferralReward(user.id, role);
         }
 
-        return res.send(renderSuccessPage('تم تأكيد الحساب', 'تم تأكيد حسابك بنجاح 🎉', 'يمكنك الآن تسجيل الدخول والاستفادة من جميع خدمات المنصة.', 'تسجيل الدخول', '/login.html'));
+        return res.send(renderSuccessPage('تم تأكيد الحساب', 'تم تأكيد حسابك بنجاح 🎉', 'يمكنك الآن تسجيل الدخول والاستفادة من جميع خدمات المنصة.', 'تسجيل الدخول', '/'));
     } catch (error) {
         console.error('خطأ في تأكيد البريد:', error.message);
         return res.status(500).send(renderErrorPage('حدث خطأ', 'حدث خطأ أثناء تأكيد الحساب. يرجى المحاولة مرة أخرى.'));
