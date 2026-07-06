@@ -55,7 +55,7 @@
         ::-webkit-scrollbar-thumb:hover { background: var(--primary-dark); }
 
         /* ================================================================
-           NAVBAR - الشريط العلوي المتطور
+           NAVBAR
         ================================================================ */
         .navbar {
             position: fixed;
@@ -83,7 +83,6 @@
             gap: 8px;
         }
 
-        /* اللوغو */
         .nav-logo {
             display: flex;
             align-items: center;
@@ -114,7 +113,6 @@
             background-clip: text;
         }
 
-        /* التبويبات */
         .nav-tabs {
             display: flex;
             gap: 2px;
@@ -155,20 +153,7 @@
             color: white;
             box-shadow: 0 4px 14px rgba(15, 92, 191, 0.3);
         }
-        .nav-tab .badge-dot {
-            width: 8px;
-            height: 8px;
-            background: var(--danger);
-            border-radius: 50%;
-            display: inline-block;
-            animation: pulse-dot 1.5s infinite;
-        }
-        @keyframes pulse-dot {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(0.8); }
-        }
 
-        /* الرصيد في الشريط العلوي */
         .nav-balance {
             display: flex;
             align-items: center;
@@ -192,7 +177,6 @@
         .nav-balance i { font-size: 0.9rem; opacity: 0.8; }
         .nav-balance .currency { font-size: 0.7rem; opacity: 0.7; margin-right: 2px; }
 
-        /* أيقونة الإشعارات */
         .nav-notifications {
             position: relative;
             flex-shrink: 0;
@@ -236,7 +220,6 @@
         }
         .nav-notifications-btn .notif-badge.hidden { display: none; }
 
-        /* القائمة المنسدلة للإشعارات */
         .notif-dropdown {
             position: absolute;
             top: 48px;
@@ -265,10 +248,7 @@
             align-items: center;
             background: var(--gray-50);
         }
-        .notif-dropdown-header h4 {
-            font-size: 0.85rem;
-            color: var(--gray-800);
-        }
+        .notif-dropdown-header h4 { font-size: 0.85rem; color: var(--gray-800); }
         .notif-dropdown-header .mark-read {
             font-size: 0.7rem;
             color: var(--primary);
@@ -335,7 +315,6 @@
         }
         .notif-empty i { font-size: 2rem; margin-bottom: 8px; display: block; }
 
-        /* الملف الشخصي في الشريط */
         .nav-profile {
             display: flex;
             align-items: center;
@@ -376,7 +355,6 @@
         }
         .nav-profile:hover .profile-chevron { color: var(--primary); }
 
-        /* القائمة المنسدلة للملف الشخصي */
         .profile-dropdown {
             position: absolute;
             top: 52px;
@@ -450,46 +428,6 @@
             color: var(--gray-800);
         }
         .section-title i { color: var(--primary); }
-
-        /* ================================================================
-           CARDS & GRIDS
-        ================================================================ */
-        .section-actions {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-bottom: 16px;
-        }
-        .btn-primary, .btn-danger, .btn-outline {
-            border: none;
-            padding: 8px 20px;
-            border-radius: 30px;
-            cursor: pointer;
-            font-weight: 700;
-            font-size: 0.8rem;
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .btn-primary {
-            background: var(--gradient-secondary);
-            color: white;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
-        }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3); }
-        .btn-danger {
-            background: var(--gradient-danger);
-            color: white;
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
-        }
-        .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(239, 68, 68, 0.3); }
-        .btn-outline {
-            background: transparent;
-            color: var(--gray-600);
-            border: 2px solid var(--gray-200);
-        }
-        .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
 
         .offers-grid {
             display: grid;
@@ -599,9 +537,39 @@
         }
         .message-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(15, 92, 191, 0.3); }
 
-        /* ================================================================
-           REFERRAL
-        ================================================================ */
+        .btn-primary, .btn-danger {
+            border: none;
+            padding: 8px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.8rem;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-primary {
+            background: var(--gradient-secondary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3); }
+        .btn-danger {
+            background: var(--gradient-danger);
+            color: white;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+        }
+        .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(239, 68, 68, 0.3); }
+
+        .section-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        /* ===== REFERRAL ===== */
         .referral-card {
             background: var(--gradient-gold);
             color: white;
@@ -665,9 +633,7 @@
             border-bottom: 1px solid rgba(255,255,255,0.05);
         }
 
-        /* ================================================================
-           EARNINGS TABLE
-        ================================================================ */
+        /* ===== EARNINGS ===== */
         .earnings-table {
             width: 100%;
             border-collapse: collapse;
@@ -708,9 +674,7 @@
         .status-completed { background: var(--secondary); color: white; }
         .status-rejected { background: var(--danger); color: white; }
 
-        /* ================================================================
-           MESSAGES
-        ================================================================ */
+        /* ===== MESSAGES ===== */
         .messages-list { max-height: 500px; overflow-y: auto; }
         .conversation-item {
             padding: 14px 12px;
@@ -801,9 +765,7 @@
         }
         .back-to-list:hover { text-decoration: underline; }
 
-        /* ================================================================
-           PROFILE SECTION - مع روابط التواصل الاجتماعي
-        ================================================================ */
+        /* ===== PROFILE SECTION ===== */
         .profile-display {
             text-align: center;
             padding: 12px 0;
@@ -926,9 +888,7 @@
             padding: 8px 0;
         }
 
-        /* ================================================================
-           MODALS
-        ================================================================ */
+        /* ===== MODALS ===== */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -1084,9 +1044,7 @@
         }
         .education-level-group label i { color: var(--primary); margin-left: 6px; }
 
-        /* ================================================================
-           TOAST
-        ================================================================ */
+        /* ===== TOAST ===== */
         .toast-container {
             position: fixed;
             bottom: 20px;
@@ -1189,17 +1147,15 @@
 <body>
 
 <!-- ================================================================
-     NAVBAR - الشريط العلوي المتطور
+     NAVBAR
 ================================================================ -->
 <nav class="navbar">
     <div class="navbar-inner">
-        <!-- اللوغو -->
         <a class="nav-logo" onclick="showSection('profile')">
             <i class="fas fa-graduation-cap"></i>
             <span>Zoom<span class="highlight">Dz</span></span>
         </a>
 
-        <!-- التبويبات -->
         <div class="nav-tabs" id="navTabs">
             <button class="nav-tab active" data-section="profile" onclick="showSection('profile')">
                 <i class="fas fa-user"></i>
@@ -1227,7 +1183,6 @@
             </button>
         </div>
 
-        <!-- الرصيد -->
         <div class="nav-balance" onclick="showSection('earnings')" title="الرصيد المتاح">
             <i class="fas fa-wallet"></i>
             <span class="balance-label">الرصيد:</span>
@@ -1235,7 +1190,6 @@
             <span class="currency">دج</span>
         </div>
 
-        <!-- الإشعارات -->
         <div class="nav-notifications">
             <button class="nav-notifications-btn" onclick="toggleNotifications()" id="notifBtn">
                 <i class="fas fa-bell"></i>
@@ -1255,7 +1209,6 @@
             </div>
         </div>
 
-        <!-- الملف الشخصي -->
         <div class="nav-profile" onclick="toggleProfileDropdown()" id="profileBtn">
             <img id="navProfileImg" src="https://ui-avatars.com/api/?name=أستاذ&background=0f5cbf&color=fff&size=64" alt="صورة">
             <span class="profile-name" id="navProfileName">أستاذ</span>
@@ -1371,7 +1324,7 @@
 ================================================================ -->
 <div class="modal-overlay" id="modalOverlay"></div>
 
-<!-- EDIT PROFILE MODAL -->
+<!-- EDIT PROFILE MODAL - مع جميع روابط التواصل الاجتماعي -->
 <div id="editProfileModal" class="modal">
     <div class="modal-header">
         <h3><i class="fas fa-edit"></i> تعديل الملف الشخصي</h3>
@@ -1387,23 +1340,12 @@
             </label>
             <input type="file" id="editProfileImage" accept="image/*">
         </div>
+        
         <hr class="social-divider">
+        
+        <!-- روابط التواصل الاجتماعي -->
         <div style="margin: 16px 0;">
             <div class="social-label"><i class="fas fa-share-alt"></i> روابط التواصل الاجتماعي</div>
-            // بعد قسم روابط التواصل الاجتماعي
-<div style="margin-top: 12px;">
-    <button onclick="showEditProfileModal()" 
-            style="background: var(--gradient-main); color: white; 
-                   border: none; padding: 8px 24px; border-radius: 30px; 
-                   cursor: pointer; font-weight: 700; font-size: 0.85rem;
-                   transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(15,92,191,0.2);
-                   display: inline-flex; align-items: center; gap: 8px;"
-            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(15,92,191,0.3)';"
-            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(15,92,191,0.2)';">
-        <i class="fas fa-link"></i>
-        إضافة / تعديل روابط التواصل الاجتماعي
-    </button>
-</div>
             <p style="font-size: 0.75rem; color: var(--gray-400); margin-bottom: 12px;">أضف روابط صفحاتك على منصات التواصل الاجتماعي لتظهر للطلاب</p>
             
             <div class="social-input-group">
@@ -1808,8 +1750,22 @@
                     ${renderSocialLinks(userData)}
                 </div>
 
-                <p style="color: var(--gray-400); margin-top: 12px; font-size: 0.7rem;">
-                    <i class="fas fa-lock"></i> لا يمكن تعديل المعلومات الشخصية إلا عبر الإدارة
+                <!-- ===== زر تعديل الملف الشخصي - يفتح نموذج إضافة الروابط ===== -->
+                <button onclick="showEditProfileModal()" 
+                        style="background: var(--gradient-main); color: white; 
+                               border: none; padding: 10px 30px; border-radius: 30px; 
+                               cursor: pointer; font-weight: 700; font-size: 0.9rem;
+                               transition: all 0.3s ease; box-shadow: 0 4px 16px rgba(15,92,191,0.25);
+                               display: inline-flex; align-items: center; gap: 10px;
+                               margin-top: 8px;"
+                        onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 28px rgba(15,92,191,0.35)';"
+                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 16px rgba(15,92,191,0.25)';">
+                    <i class="fas fa-edit"></i>
+                    تعديل الملف الشخصي وإضافة الروابط
+                </button>
+
+                <p style="color: var(--gray-400); margin-top: 16px; font-size: 0.7rem;">
+                    <i class="fas fa-lock"></i> لا يمكن تعديل المعلومات الشخصية (الاسم، التخصص، الخبرة) إلا عبر الإدارة
                 </p>
             </div>
         `;
@@ -2429,7 +2385,7 @@
     }
 
     // ================================================================
-    // PROFILE EDIT
+    // PROFILE EDIT - تعديل الملف الشخصي وإضافة الروابط
     // ================================================================
 
     function showEditProfileModal() {
