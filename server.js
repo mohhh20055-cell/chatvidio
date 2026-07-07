@@ -5042,6 +5042,34 @@ app.get('/api/admin/performance', [
         res.status(500).json({ status: 'error', error: error.message });
     }
 });
+// ============================================================
+// مسار عام لعرض ملف الأستاذ (بدون مصادقة)
+// ============================================================
+app.get('/api/public/teacher/:teacher_id', async (req, res) => {
+    try {
+        const teacher_id = parseInt(req.params.teacher_id);
+        if (isNaN(teacher_id)) {
+            return res.status(400).json({ error: 'معرف غير صالح' });
+        }
+
+        // جلب بيانات الأستاذ (بدون كلمة المرور)
+        const { data: teacher, error } = await supabase
+            .from('teachers')
+            .select('id, full_name, email, phone, specialization, bio, experience, profile_url, status, facebook_url, instagram_url, linkedin_url, youtube_url, twitter_url, website_url, whatsapp_url')
+            .eq('id', teacher_id)
+            .eq('status', 'approved')
+            .single();
+
+        if (error || !teacher) {
+            return res.status(404).json({ error: 'الأستاذ غير موجود' });
+        }
+
+        res.json(teacher);
+    } catch (error) {
+        console.error('خطأ في جلب ملف الأستاذ:', error.message);
+        res.status(500).json({ error: 'حدث خطأ في الخادم' });
+    }
+});
 
 // ============================================================
 // تشغيل الخادم
