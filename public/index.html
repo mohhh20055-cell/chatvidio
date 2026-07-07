@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
@@ -12,7 +12,6 @@
     <!-- ===== FONTS & ICONS ===== -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <!-- ===== reCAPTCHA v2 ===== -->
     <script src="https://www.google.com/recaptcha/api.js?hl=ar" async defer></script>
@@ -35,7 +34,6 @@
             --accent-light: #ede9fe;
             --gold: #f59e0b;
             --gold-light: #fef3c7;
-            --gold-dark: #d97706;
             --danger: #ef4444;
             --danger-light: #fef2f2;
             --dark: #1a2332;
@@ -62,42 +60,6 @@
             min-height: 100vh;
             color: var(--dark);
             overflow-x: hidden;
-        }
-        
-        /* ===== LANGUAGE SWITCHER ===== */
-        .lang-switcher {
-            display: flex;
-            gap: 4px;
-            align-items: center;
-            margin-right: 10px;
-        }
-        
-        .lang-btn {
-            background: transparent;
-            border: 2px solid transparent;
-            padding: 4px 10px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-weight: 700;
-            font-size: 0.7rem;
-            transition: var(--transition);
-            color: var(--gray);
-            font-family: inherit;
-        }
-        
-        .lang-btn:hover {
-            background: var(--gray-light);
-            color: var(--dark);
-        }
-        
-        .lang-btn.active {
-            border-color: var(--primary);
-            color: var(--primary);
-            background: var(--primary-light);
-        }
-        
-        .lang-btn .flag {
-            margin-left: 4px;
         }
 
         ::-webkit-scrollbar { width: 8px; }
@@ -316,20 +278,6 @@
         
         .nav-links a.active::after {
             display: none;
-        }
-        
-        .nav-links a .nav-icon {
-            margin-left: 6px;
-        }
-        
-        .nav-links a .nav-badge {
-            background: var(--danger);
-            color: white;
-            font-size: 0.55rem;
-            padding: 1px 8px;
-            border-radius: 20px;
-            margin-right: 4px;
-            font-weight: 700;
         }
         
         .download-app-btn {
@@ -881,7 +829,7 @@
             margin-top: 8px;
         }
 
-        /* ===== SEARCH & FILTER ===== */
+        /* ===== SEARCH & FILTER - بدون فلتر العمر ===== */
         .search-filter-container {
             background: white;
             border-radius: var(--radius-md);
@@ -1213,198 +1161,6 @@
             0%, 100% { opacity: 0.7; transform: scale(1); }
             50% { opacity: 1; transform: scale(1.05); }
         }
-
-        /* ===== REFERRAL SECTION ===== */
-        .referral-guide {
-            background: white;
-            border-radius: var(--radius-lg);
-            padding: 40px;
-            margin-bottom: 30px;
-            box-shadow: var(--shadow-sm);
-            border: 1px solid rgba(0,0,0,0.04);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .referral-guide::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 5px;
-            background: var(--gradient-gold);
-        }
-        
-        .referral-guide h2 {
-            font-size: 1.6rem;
-            font-weight: 900;
-            color: var(--dark);
-            margin-bottom: 24px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .referral-guide h2 i {
-            color: var(--gold);
-        }
-        
-        .referral-guide .guide-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 24px;
-        }
-        
-        .referral-guide .guide-card {
-            background: var(--gray-light);
-            border-radius: var(--radius-sm);
-            padding: 24px 20px;
-            text-align: center;
-            transition: var(--transition);
-            border: 1px solid rgba(0,0,0,0.04);
-        }
-        
-        .referral-guide .guide-card:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-sm);
-            border-color: var(--gold-light);
-        }
-        
-        .referral-guide .guide-card .step-icon {
-            font-size: 2.8rem;
-            margin-bottom: 12px;
-            display: block;
-        }
-        
-        .referral-guide .guide-card .step-number-badge {
-            display: inline-block;
-            background: var(--gradient-gold);
-            color: white;
-            padding: 2px 16px;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            font-weight: 700;
-            margin-bottom: 10px;
-        }
-        
-        .referral-guide .guide-card h4 {
-            font-size: 1.05rem;
-            color: var(--dark);
-            margin-bottom: 6px;
-        }
-        
-        .referral-guide .guide-card p {
-            font-size: 0.85rem;
-            color: var(--gray);
-            line-height: 1.6;
-        }
-        
-        .referral-guide .guide-card .reward-badge {
-            display: inline-block;
-            margin-top: 12px;
-            padding: 6px 18px;
-            border-radius: 30px;
-            font-weight: 700;
-            font-size: 0.8rem;
-        }
-        
-        .referral-guide .guide-card .reward-badge.teacher {
-            background: #dbeafe;
-            color: #1d4ed8;
-        }
-        
-        .referral-guide .guide-card .reward-badge.student {
-            background: var(--gold-light);
-            color: var(--gold-dark);
-        }
-        
-        .referral-guide .guide-card .reward-badge.gift {
-            background: var(--accent-light);
-            color: var(--accent);
-        }
-        
-        .referral-guide .guide-divider {
-            text-align: center;
-            padding: 16px 0;
-            font-size: 1.2rem;
-            color: var(--gold);
-            font-weight: 700;
-        }
-        
-        /* ===== REFERRAL CARD ===== */
-        .referral-card {
-            background: var(--gradient-gold);
-            color: white;
-            border-radius: var(--radius-sm);
-            padding: 24px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 20px rgba(245, 158, 11, 0.15);
-        }
-        
-        .referral-card .referral-code {
-            background: rgba(255, 255, 255, 0.2);
-            border: 2px dashed rgba(255, 255, 255, 0.4);
-            border-radius: var(--radius-sm);
-            padding: 12px;
-            text-align: center;
-            font-size: 1.5rem;
-            font-weight: 900;
-            letter-spacing: 2px;
-            font-family: 'Courier New', monospace, sans-serif;
-            cursor: pointer;
-            transition: var(--transition);
-            margin: 12px 0;
-        }
-        
-        .referral-card .referral-code:hover { background: rgba(255, 255, 255, 0.3); }
-        .referral-card .share-btn {
-            background: white;
-            color: var(--gold-dark);
-            border: none;
-            padding: 10px 18px;
-            border-radius: 30px;
-            cursor: pointer;
-            width: 100%;
-            font-weight: 800;
-            font-size: 0.88rem;
-            font-family: 'Cairo', sans-serif;
-            transition: var(--transition);
-            margin-top: 10px;
-            box-shadow: var(--shadow-sm);
-        }
-        .referral-card .share-btn:hover { background: var(--gray-50); transform: translateY(-2px); }
-        
-        .referral-stats {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-top: 16px;
-        }
-        
-        .referral-stats .stat-item {
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: var(--radius-sm);
-            padding: 12px;
-            text-align: center;
-        }
-        
-        .referral-stats .stat-item .stat-number { font-size: 1.6rem; font-weight: 900; }
-        .referral-stats .stat-item .stat-label { font-size: 0.75rem; opacity: 0.9; margin-top: 4px; }
-        
-        .reward-item {
-            background: white;
-            border-radius: var(--radius-sm);
-            padding: 14px 18px;
-            margin-bottom: 10px;
-            border: 1px solid var(--gray-200);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .reward-item .reward-icon { font-size: 1.3rem; margin-left: 10px; }
-        .reward-item .reward-amount { font-weight: 800; color: var(--gold-dark); font-size: 1rem; }
 
         /* ===== FORMS ===== */
         .form-section {
@@ -2181,15 +1937,11 @@
             .social-links-grid {
                 grid-template-columns: 1fr 1fr;
             }
-            .referral-guide .guide-grid {
-                grid-template-columns: 1fr;
-            }
         }
         
         @media (max-width: 768px) {
             .hero-content h1 { font-size: 2rem; }
             .nav-links a { padding: 6px 12px; font-size: 0.75rem; }
-            .nav-links a .nav-label { display: none; }
             .teachers-grid, .offers-grid, .developers-grid { grid-template-columns: 1fr; }
             .stats-container { flex-direction: column; }
             .stat-card { min-width: auto; }
@@ -2236,10 +1988,6 @@
                 flex: 1;
                 min-width: 100px;
             }
-            .referral-guide { padding: 24px; }
-            .referral-guide h2 { font-size: 1.3rem; }
-            .lang-switcher .lang-btn span { display: none; }
-            .lang-switcher .lang-btn .flag { margin-left: 0; }
         }
 
         @media (max-width: 480px) {
@@ -2272,9 +2020,6 @@
                 width: 100%;
                 justify-content: center;
             }
-            .referral-stats {
-                grid-template-columns: 1fr;
-            }
         }
     </style>
 </head>
@@ -2287,7 +2032,7 @@
             <span id="referralMessage">تمت دعوتك من قبل <span id="referrerName">أحد المستخدمين</span>!</span>
             <span class="highlight-text" id="referralCodeDisplay">---</span>
             <button class="btn-jump" onclick="jumpToRegister()">
-                <i class="fas fa-arrow-left"></i> <span data-i18n="registerNow">سجل الآن</span>
+                <i class="fas fa-arrow-left"></i> سجل الآن
             </button>
         </div>
     </div>
@@ -2305,56 +2050,18 @@
                     <span class="logo-badge">.edu</span>
                 </div>
             </div>
-            
-            <!-- ===== LANGUAGE SWITCHER ===== -->
-            <div class="lang-switcher">
-                <button class="lang-btn active" data-lang="ar" onclick="switchLanguage('ar')">
-                    <span class="flag">🇩🇿</span>
-                    <span>العربية</span>
-                </button>
-                <button class="lang-btn" data-lang="fr" onclick="switchLanguage('fr')">
-                    <span class="flag">🇫🇷</span>
-                    <span>Français</span>
-                </button>
-                <button class="lang-btn" data-lang="en" onclick="switchLanguage('en')">
-                    <span class="flag">🇬🇧</span>
-                    <span>English</span>
-                </button>
-            </div>
-            
             <div class="nav-links">
-                <a onclick="showHome()" id="homeTab" class="active">
-                    <i class="fas fa-home nav-icon"></i>
-                    <span class="nav-label" data-i18n="home">الرئيسية</span>
-                </a>
-                <a onclick="showTeachers()" id="teachersTab">
-                    <i class="fas fa-chalkboard-user nav-icon"></i>
-                    <span class="nav-label" data-i18n="teachers">الأساتذة</span>
-                </a>
-                <a onclick="showOffers()" id="offersTab">
-                    <i class="fas fa-book nav-icon"></i>
-                    <span class="nav-label" data-i18n="lessons">الدروس</span>
-                </a>
+                <a onclick="showHome()" id="homeTab" class="active">الرئيسية</a>
+                <a onclick="showTeachers()" id="teachersTab">الأساتذة</a>
+                <a onclick="showOffers()" id="offersTab">الدروس</a>
                 <a onclick="showLiveStreams()" id="liveTab">
-                    <i class="fas fa-broadcast nav-icon"></i>
-                    <span class="nav-label" data-i18n="live">مباشر</span>
-                    <span id="liveCount" class="nav-badge" style="display:none;">0</span>
+                    <i class="fas fa-broadcast"></i>
+                    <span id="liveCount" class="live-badge" style="display:none; padding:2px 10px; font-size:0.55rem; margin-right:4px;">0</span>
                 </a>
-                <a onclick="showReferral()" id="referralTab">
-                    <i class="fas fa-link nav-icon" style="color:var(--gold);"></i>
-                    <span class="nav-label" data-i18n="referral">الإحالة</span>
-                    <span class="nav-badge" style="background:var(--gold);">💰</span>
-                </a>
-                <a onclick="showDevelopers()" id="developersTab">
-                    <i class="fas fa-code nav-icon"></i>
-                </a>
-                <a onclick="showLogin()" id="loginTabNav">
-                    <i class="fas fa-user nav-icon"></i>
-                    <span class="nav-label" data-i18n="login">تسجيل الدخول</span>
-                </a>
+                <a onclick="showDevelopers()" id="developersTab"><i class="fas fa-code"></i></a>
+                <a onclick="showLogin()" id="loginTabNav"><i class="fas fa-user"></i> تسجيل الدخول</a>
                 <button class="download-app-btn" onclick="showDownloadApp()">
-                    <i class="fas fa-download"></i>
-                    <span data-i18n="app">التطبيق</span>
+                    <i class="fas fa-download"></i> التطبيق
                 </button>
             </div>
         </div>
@@ -2366,55 +2073,39 @@
         <section id="homeSection" class="hero">
             <div class="hero-content">
                 <div class="hero-badge">
-                    <i class="fas fa-rocket"></i>
-                    <span data-i18n="algerianPlatform">منصة تعليمية جزائرية</span>
+                    <i class="fas fa-rocket"></i> منصة تعليمية جزائرية
                 </div>
-                <h1>
-                    <span data-i18n="heroTitle1">تعلم مع أفضل الأساتذة</span>
-                    <span class="highlight" data-i18n="heroTitle2">في الجزائر</span>
-                </h1>
-                <p data-i18n="heroDesc">دروس خصوصية عبر الفيديو مع نخبة من الأساتذة المعتمدين. ادفع عبر البطاقة الذهبية بسهولة وأمان</p>
+                <h1>تعلم مع أفضل الأساتذة <span class="highlight">في الجزائر</span></h1>
+                <p>دروس خصوصية عبر الفيديو مع نخبة من الأساتذة المعتمدين. ادفع عبر البطاقة الذهبية بسهولة وأمان</p>
                 
                 <div class="stats-container">
                     <div class="stat-card">
                         <span class="icon"><i class="fas fa-chalkboard-user"></i></span>
                         <div class="number" id="teacherCount">0</div>
-                        <div class="label" data-i18n="teachersCount">أستاذ معتمد</div>
+                        <div class="label">أستاذ معتمد</div>
                     </div>
                     <div class="stat-card">
                         <span class="icon"><i class="fas fa-book"></i></span>
                         <div class="number" id="totalOffersCount">0</div>
-                        <div class="label" data-i18n="totalLessons">عدد الدروس</div>
+                        <div class="label">عدد الدروس</div>
                     </div>
                     <div class="stat-card">
                         <span class="icon"><i class="fas fa-video"></i></span>
                         <div class="number" id="liveCountStat">0</div>
-                        <div class="label" data-i18n="liveNow">بث مباشر الآن</div>
+                        <div class="label">بث مباشر الآن</div>
                     </div>
                     <div class="stat-card">
                         <span class="icon"><i class="fas fa-users"></i></span>
                         <div class="number" id="studentCount">0</div>
-                        <div class="label" data-i18n="studentsCount">طالب مسجل</div>
+                        <div class="label">طالب مسجل</div>
                     </div>
                 </div>
                 
                 <div class="hero-buttons">
-                    <button class="btn-primary" onclick="showTeachers()">
-                        <i class="fas fa-users"></i>
-                        <span data-i18n="meetTeachers">تعرف على أساتذتنا</span>
-                    </button>
-                    <button class="btn-outline" onclick="showOffers()">
-                        <i class="fas fa-calendar-alt"></i>
-                        <span data-i18n="browseLessons">استعرض الدروس</span>
-                    </button>
-                    <button class="btn-success" onclick="showTeacherRegister()">
-                        <i class="fas fa-chalkboard-user"></i>
-                        <span data-i18n="joinAsTeacher">انضم كأستاذ</span>
-                    </button>
-                    <button class="btn-accent" onclick="showSupport()">
-                        <i class="fas fa-headset"></i>
-                        <span data-i18n="support">الدعم الفني</span>
-                    </button>
+                    <button class="btn-primary" onclick="showTeachers()"><i class="fas fa-users"></i> تعرف على أساتذتنا</button>
+                    <button class="btn-outline" onclick="showOffers()"><i class="fas fa-calendar-alt"></i> استعرض الدروس</button>
+                    <button class="btn-success" onclick="showTeacherRegister()"><i class="fas fa-chalkboard-user"></i> انضم كأستاذ</button>
+                    <button class="btn-accent" onclick="showSupport()"><i class="fas fa-headset"></i> الدعم الفني</button>
                 </div>
             </div>
             <div class="hero-image">
@@ -2423,15 +2114,15 @@
                     <div class="badge-float">
                         <span class="badge-icon video"><i class="fas fa-video"></i></span>
                         <div>
-                            <div style="font-size:0.9rem; color:var(--dark);" data-i18n="liveLessons">دروس مباشرة</div>
-                            <div style="font-size:0.7rem; color:var(--gray);" data-i18n="interactive">تفاعل فوري</div>
+                            <div style="font-size:0.9rem; color:var(--dark);">دروس مباشرة</div>
+                            <div style="font-size:0.7rem; color:var(--gray);">تفاعل فوري</div>
                         </div>
                     </div>
                     <div class="badge-float">
                         <span class="badge-icon star"><i class="fas fa-star"></i></span>
                         <div>
-                            <div style="font-size:0.9rem; color:var(--dark);" data-i18n="bestTeachers">أفضل الأساتذة</div>
-                            <div style="font-size:0.7rem; color:var(--gray);" data-i18n="certified">معتمدون</div>
+                            <div style="font-size:0.9rem; color:var(--dark);">أفضل الأساتذة</div>
+                            <div style="font-size:0.7rem; color:var(--gray);">معتمدون</div>
                         </div>
                     </div>
                 </div>
@@ -2443,46 +2134,49 @@
             <div class="about-card">
                 <div class="about-grid">
                     <div class="about-text">
-                        <h2><i class="fas fa-info-circle"></i> <span data-i18n="aboutTitle">عن منصة ZoomDz</span></h2>
+                        <h2><i class="fas fa-info-circle"></i> عن منصة ZoomDz</h2>
                         <p>
-                            <span class="highlight-text">ZoomDz</span>
-                            <span data-i18n="aboutP1">هي منصة تعليمية جزائرية مبتكرة تهدف إلى ربط الطلاب مع أفضل الأساتذة في مختلف التخصصات عبر دروس خصوصية مباشرة عن بعد.</span>
+                            <span class="highlight-text">ZoomDz</span> هي منصة تعليمية جزائرية مبتكرة تهدف إلى 
+                            <span class="highlight-text">ربط الطلاب مع أفضل الأساتذة</span> في مختلف التخصصات 
+                            عبر دروس خصوصية مباشرة عن بعد.
                         </p>
                         <p>
-                            <i class="fas fa-check-circle" style="color:var(--primary);"></i>
-                            <strong data-i18n="vision">رؤيتنا:</strong>
-                            <span data-i18n="visionText">تمكين كل طالب في الجزائر من الوصول إلى تعليم نوعي بأسعار معقولة، دون قيود جغرافية أو زمانية.</span>
+                            <i class="fas fa-check-circle" style="color:var(--primary);"></i> 
+                            <strong>رؤيتنا:</strong> تمكين كل طالب في الجزائر من الوصول إلى تعليم نوعي بأسعار معقولة، 
+                            دون قيود جغرافية أو زمانية.
                         </p>
                         <p>
-                            <i class="fas fa-bullseye" style="color:var(--secondary);"></i>
-                            <strong data-i18n="mission">هدفنا:</strong>
-                            <span data-i18n="missionText">بناء مجتمع تعليمي رقمي متكامل يجمع بين الجودة، السهولة، والأمان، حيث يمكن للطلاب التعلم بمرونة والأساتذة مشاركة خبراتهم بكفاءة.</span>
+                            <i class="fas fa-bullseye" style="color:var(--secondary);"></i> 
+                            <strong>هدفنا:</strong> بناء مجتمع تعليمي رقمي متكامل يجمع بين 
+                            <span class="highlight-text">الجودة، السهولة، والأمان</span>، 
+                            حيث يمكن للطلاب التعلم بمرونة والأساتذة مشاركة خبراتهم بكفاءة.
                         </p>
                         <p style="font-size:0.95rem; color:var(--gray); background:var(--gray-light); padding:14px; border-radius:var(--radius-sm); border-right:4px solid var(--primary);">
-                            <i class="fas fa-quote-right" style="color:var(--primary);"></i>
-                            <span data-i18n="aboutQuote">نؤمن بأن التعليم الجيد هو حق لكل جزائري، ومنصتنا هي الجسر الذي يوصلك إلى أفضل الكفاءات في وطننا.</span>
+                            <i class="fas fa-quote-right" style="color:var(--primary);"></i> 
+                            نؤمن بأن التعليم الجيد هو حق لكل جزائري، ومنصتنا هي الجسر الذي يوصلك إلى 
+                            أفضل الكفاءات في وطننا.
                         </p>
                     </div>
                     <div class="about-features">
                         <div class="about-feature-item">
                             <span class="icon blue"><i class="fas fa-video"></i></span>
-                            <h4 data-i18n="featureLive">دروس مباشرة</h4>
-                            <p data-i18n="featureLiveDesc">بث فيديو تفاعلي مع الأستاذ في الوقت الفعلي</p>
+                            <h4>دروس مباشرة</h4>
+                            <p>بث فيديو تفاعلي مع الأستاذ في الوقت الفعلي</p>
                         </div>
                         <div class="about-feature-item">
                             <span class="icon green"><i class="fas fa-credit-card"></i></span>
-                            <h4 data-i18n="featurePayment">دفع آمن</h4>
-                            <p data-i18n="featurePaymentDesc">عبر شارجيلي، EDAHABIA، و CCP</p>
+                            <h4>دفع آمن</h4>
+                            <p>عبر شارجيلي، EDAHABIA، و CCP</p>
                         </div>
                         <div class="about-feature-item">
                             <span class="icon gold"><i class="fas fa-trophy"></i></span>
-                            <h4 data-i18n="featureTeachers">أساتذة معتمدون</h4>
-                            <p data-i18n="featureTeachersDesc">نخبة من أفضل الأساتذة في الجزائر</p>
+                            <h4>أساتذة معتمدون</h4>
+                            <p>نخبة من أفضل الأساتذة في الجزائر</p>
                         </div>
                         <div class="about-feature-item">
                             <span class="icon purple"><i class="fas fa-mobile-alt"></i></span>
-                            <h4 data-i18n="featureEasy">سهولة الاستخدام</h4>
-                            <p data-i18n="featureEasyDesc">تصميم عصري يتكيف مع جميع الأجهزة</p>
+                            <h4>سهولة الاستخدام</h4>
+                            <p>تصميم عصري يتكيف مع جميع الأجهزة</p>
                         </div>
                     </div>
                 </div>
@@ -2490,19 +2184,19 @@
                 <div class="about-steps">
                     <div class="about-step">
                         <span class="step-number">1</span>
-                        <span class="step-text" data-i18n="step1">اختر الأستاذ المناسب</span>
+                        <span class="step-text">اختر الأستاذ المناسب</span>
                     </div>
                     <div class="about-step">
                         <span class="step-number">2</span>
-                        <span class="step-text" data-i18n="step2">احجز الدرس المناسب</span>
+                        <span class="step-text">احجز الدرس المناسب</span>
                     </div>
                     <div class="about-step">
                         <span class="step-number">3</span>
-                        <span class="step-text" data-i18n="step3">ادفع بأمان عبر شارجيلي</span>
+                        <span class="step-text">ادفع بأمان عبر شارجيلي</span>
                     </div>
                     <div class="about-step">
                         <span class="step-number">4</span>
-                        <span class="step-text" data-i18n="step4">انضم إلى البث المباشر وتعلم</span>
+                        <span class="step-text">انضم إلى البث المباشر وتعلم</span>
                     </div>
                 </div>
             </div>
@@ -2511,11 +2205,12 @@
         <!-- ===== TEACHERS SECTION ===== -->
         <section id="teachersSection" class="section-container" style="display: none;">
             <div class="section-header">
-                <span class="section-tag"><i class="fas fa-users"></i> <span data-i18n="topTeachers">نخبة الأساتذة</span></span>
-                <h2 class="section-title"><span data-i18n="certifiedTeachers">أساتذتنا المعتمدون</span> <i class="fas fa-chalkboard-user"></i></h2>
-                <p class="section-subtitle" data-i18n="teachersSubtitle">تعلم على يد أفضل الخبراء في مختلف التخصصات</p>
+                <span class="section-tag"><i class="fas fa-users"></i> نخبة الأساتذة</span>
+                <h2 class="section-title">أساتذتنا المعتمدون <i class="fas fa-chalkboard-user"></i></h2>
+                <p class="section-subtitle">تعلم على يد أفضل الخبراء في مختلف التخصصات</p>
             </div>
             
+            <!-- ===== SEARCH & FILTER ===== -->
             <div class="search-filter-container">
                 <div class="search-box">
                     <i class="fas fa-search"></i>
@@ -2546,9 +2241,9 @@
         <!-- ===== OFFERS SECTION ===== -->
         <section id="offersSection" class="section-container" style="display: none;">
             <div class="section-header">
-                <span class="section-tag"><i class="fas fa-calendar-alt"></i> <span data-i18n="availableLessons">الدروس المتاحة</span></span>
-                <h2 class="section-title"><span data-i18n="availableNow">الدروس المتاحة الآن</span> <i class="fas fa-book"></i></h2>
-                <p class="section-subtitle" data-i18n="offersSubtitle">دروس خصوصية بأفضل الأسعار، اختر ما يناسب احتياجاتك</p>
+                <span class="section-tag"><i class="fas fa-calendar-alt"></i> الدروس المتاحة</span>
+                <h2 class="section-title">الدروس المتاحة الآن <i class="fas fa-book"></i></h2>
+                <p class="section-subtitle">دروس خصوصية بأفضل الأسعار، اختر ما يناسب احتياجاتك</p>
             </div>
             <div id="offersListPublic" class="offers-grid"></div>
         </section>
@@ -2556,126 +2251,19 @@
         <!-- ===== LIVE SECTION ===== -->
         <section id="liveSection" class="section-container" style="display: none;">
             <div class="section-header">
-                <span class="section-tag"><i class="fas fa-broadcast"></i> <span data-i18n="liveStream">بث مباشر</span></span>
-                <h2 class="section-title"><span data-i18n="liveNowTitle">البث المباشر الآن</span> <i class="fas fa-video"></i></h2>
-                <p class="section-subtitle" data-i18n="liveSubtitle">انضم إلى الدروس المباشرة وتفاعل مع الأساتذة في الوقت الفعلي</p>
+                <span class="section-tag"><i class="fas fa-broadcast"></i> بث مباشر</span>
+                <h2 class="section-title">البث المباشر الآن <i class="fas fa-video"></i></h2>
+                <p class="section-subtitle">انضم إلى الدروس المباشرة وتفاعل مع الأساتذة في الوقت الفعلي</p>
             </div>
             <div id="liveOffersList" class="offers-grid"></div>
-        </section>
-
-        <!-- ===== REFERRAL SECTION ===== -->
-        <section id="referralSection" class="section-container" style="display: none;">
-            <div class="section-header">
-                <span class="section-tag"><i class="fas fa-link"></i> <span data-i18n="referralSystem">نظام الإحالة</span></span>
-                <h2 class="section-title"><span data-i18n="referralTitle">نظام الإحالة والمكافآت</span> <i class="fas fa-gift" style="color:var(--gold);"></i></h2>
-                <p class="section-subtitle" data-i18n="referralSubtitle">ادعُ أصدقاءك واحصل على مكافآت مجزية</p>
-            </div>
-            
-            <div class="referral-guide">
-                <h2><i class="fas fa-info-circle"></i> <span data-i18n="howItWorks">كيف يعمل نظام الإحالة؟</span></h2>
-                
-                <div class="guide-grid">
-                    <div class="guide-card">
-                        <span class="step-icon">🔗</span>
-                        <span class="step-number-badge">الخطوة 1</span>
-                        <h4 data-i18n="guide1Title">احصل على رمز الإحالة الخاص بك</h4>
-                        <p data-i18n="guide1Desc">سجل دخولك إلى المنصة وانسخ رمز الإحالة الفريد الخاص بك من لوحة التحكم.</p>
-                    </div>
-                    
-                    <div class="guide-card">
-                        <span class="step-icon">📤</span>
-                        <span class="step-number-badge">الخطوة 2</span>
-                        <h4 data-i18n="guide2Title">شارك الرمز مع أصدقائك</h4>
-                        <p data-i18n="guide2Desc">أرسل رمز الإحالة الخاص بك إلى أصدقائك، زملائك، أو طلابك عبر واتساب، فيسبوك، أو أي وسيلة أخرى.</p>
-                    </div>
-                    
-                    <div class="guide-card">
-                        <span class="step-icon">✅</span>
-                        <span class="step-number-badge">الخطوة 3</span>
-                        <h4 data-i18n="guide3Title">يُسجل الشخص المحال</h4>
-                        <p data-i18n="guide3Desc">عندما يسجل شخص جديد باستخدام رمزك، يتم ربط حسابه تلقائياً بإحالتك.</p>
-                    </div>
-                    
-                    <div class="guide-card">
-                        <span class="step-icon">🎁</span>
-                        <span class="step-number-badge">الخطوة 4</span>
-                        <h4 data-i18n="guide4Title">احصل على مكافأتك</h4>
-                        <p data-i18n="guide4Desc">بمجرد تفعيل الحساب، تحصل على المكافأة المخصصة حسب نوع الشخص المحال.</p>
-                    </div>
-                </div>
-                
-                <div class="guide-divider">
-                    <i class="fas fa-arrow-down"></i>
-                    <span data-i18n="rewardDetails">تفاصيل المكافآت</span>
-                    <i class="fas fa-arrow-down"></i>
-                </div>
-                
-                <div class="guide-grid" style="margin-top: 10px;">
-                    <div class="guide-card" style="border: 2px solid #dbeafe;">
-                        <span class="step-icon">👨‍🏫</span>
-                        <h4 data-i18n="teacherRewardTitle">مكافأة إحالة الأستاذ</h4>
-                        <p data-i18n="teacherRewardDesc">عندما تحيل أستاذاً جديداً إلى المنصة، تحصل على <strong>100 دج</strong> فور قبوله من الإدارة.</p>
-                        <span class="reward-badge teacher">💰 +100 دج</span>
-                    </div>
-                    
-                    <div class="guide-card" style="border: 2px solid var(--gold-light);">
-                        <span class="step-icon">🎓</span>
-                        <h4 data-i18n="studentRewardTitle">مكافأة إحالة الطالب</h4>
-                        <p data-i18n="studentRewardDesc">عندما تحيل طالباً جديداً، تحصل على <strong>فرصة لفتح صندوق الهدايا</strong> بعد أن يحجز المحال درساً مدفوعاً.</p>
-                        <span class="reward-badge student">🎁 فرصة صندوق هدايا</span>
-                    </div>
-                    
-                    <div class="guide-card" style="border: 2px solid var(--accent-light);">
-                        <span class="step-icon">🎉</span>
-                        <h4 data-i18n="extraRewardTitle">مكافآت إضافية</h4>
-                        <p data-i18n="extraRewardDesc">يمكن أن يحتوي صندوق الهدايا على <strong>50 أو 100 دج</strong> إضافية! كلما زادت إحالاتك، زادت فرصك.</p>
-                        <span class="reward-badge gift">🎁 50 - 100 دج</span>
-                    </div>
-                </div>
-                
-                <div style="margin-top: 24px; padding: 16px; background: var(--gold-light); border-radius: var(--radius-sm); border-right: 4px solid var(--gold);">
-                    <p style="font-size: 0.9rem; color: var(--gold-dark); font-weight: 700;">
-                        <i class="fas fa-lightbulb"></i>
-                        <span data-i18n="tip">نصيحة: شارك رمز الإحالة الخاص بك في مجموعات الطلاب والأساتذة على فيسبوك وواتساب لتحقيق أقصى استفادة!</span>
-                    </p>
-                </div>
-            </div>
-            
-            <div class="referral-card">
-                <h4 style="margin-bottom:6px; font-weight:800;"><i class="fas fa-gift"></i> <span data-i18n="yourReferralCode">رمز الإحالة الخاص بك</span></h4>
-                <p style="font-size:0.8rem; opacity:0.9; margin-bottom:6px;" data-i18n="shareCode">شارك هذا الرمز مع أصدقائك واحصل على مكافآت</p>
-                <div class="referral-code" onclick="copyReferralCode()">
-                    <span id="referralCodeText">جاري التحميل...</span>
-                </div>
-                <button class="share-btn" onclick="shareReferral()"><i class="fas fa-share-alt"></i> <span data-i18n="shareLink">مشاركة الرابط</span></button>
-                
-                <div class="referral-stats">
-                    <div class="stat-item">
-                        <div class="stat-number" id="referredCount">0</div>
-                        <div class="stat-label" data-i18n="referredCount">عدد المحالين</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number" id="referralBalance">0 دج</div>
-                        <div class="stat-label" data-i18n="referralRewards">مكافآت الإحالة</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div style="margin-top:24px;">
-                <h4 style="font-size:1rem; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
-                    <i class="fas fa-history" style="color:var(--gold);"></i>
-                    <span data-i18n="rewardHistory">سجل المكافآت</span>
-                </h4>
-                <div id="rewardHistory"></div>
-            </div>
         </section>
 
         <!-- ===== DEVELOPERS SECTION ===== -->
         <section id="developersSection" class="section-container" style="display: none;">
             <div class="section-header">
-                <span class="section-tag"><i class="fas fa-code"></i> <span data-i18n="devTeam">فريق الإبداع</span></span>
-                <h2 class="section-title"><span data-i18n="devTitle">فريق المطورين</span> <i class="fas fa-rocket"></i></h2>
-                <p class="section-subtitle" data-i18n="devSubtitle">هذا المشروع من إبداع نخبة من المطورين الجزائريين الطموحين</p>
+                <span class="section-tag"><i class="fas fa-code"></i> فريق الإبداع</span>
+                <h2 class="section-title">فريق المطورين <i class="fas fa-rocket"></i></h2>
+                <p class="section-subtitle">هذا المشروع من إبداع نخبة من المطورين الجزائريين الطموحين</p>
             </div>
             
             <div id="developersList" class="developers-grid">
@@ -2735,11 +2323,13 @@
 
             <div style="text-align: center; margin-top: 50px; padding: 35px; background: white; border-radius: var(--radius-md); box-shadow: var(--shadow-sm); border: 1px solid rgba(0,0,0,0.04);">
                 <h3 style="color: var(--primary); margin-bottom: 15px; font-size: 1.3rem;">
-                    <i class="fas fa-rocket"></i> <span data-i18n="thanksDev">شكراً لفريق المطورين</span>
+                    <i class="fas fa-rocket"></i> شكراً لفريق المطورين
                 </h3>
                 <p style="color: var(--gray); font-size: 1rem; line-height: 1.8; max-width: 700px; margin: 0 auto;">
                     <i class="fas fa-quote-right" style="color: var(--primary); font-size: 1.2rem;"></i>
-                    <span data-i18n="devQuote">هذا المشروع هو ثمرة تعاون ثلاثة مطورين جزائريين طموحين، كل منهم ساهم بخبرته وإبداعه لإخراج هذه المنصة التعليمية المتكاملة إلى النور. نسعى من خلالها إلى تقديم تعليم رقمي متميز في الجزائر.</span>
+                    هذا المشروع هو ثمرة تعاون ثلاثة مطورين جزائريين طموحين، 
+                    كل منهم ساهم بخبرته وإبداعه لإخراج هذه المنصة التعليمية المتكاملة إلى النور. 
+                    نسعى من خلالها إلى تقديم تعليم رقمي متميز في الجزائر.
                     <i class="fas fa-quote-left" style="color: var(--primary); font-size: 1.2rem;"></i>
                 </p>
                 <div style="display: flex; justify-content: center; gap: 16px; margin-top: 20px; flex-wrap: wrap;">
@@ -2764,13 +2354,13 @@
         <!-- ===== LOGIN SECTION ===== -->
         <section id="loginSection" class="form-section" style="display: none;">
             <div class="form-tabs">
-                <button class="tab-btn active" onclick="switchTab('login')" data-i18n="login">تسجيل الدخول</button>
-                <button class="tab-btn" onclick="switchTab('student-register')" data-i18n="studentRegister">تسجيل طالب</button>
-                <button class="tab-btn" onclick="switchTab('teacher-register')" data-i18n="teacherRegister">تسجيل أستاذ</button>
+                <button class="tab-btn active" onclick="switchTab('login')">تسجيل الدخول</button>
+                <button class="tab-btn" onclick="switchTab('student-register')">تسجيل طالب</button>
+                <button class="tab-btn" onclick="switchTab('teacher-register')">تسجيل أستاذ</button>
             </div>
 
             <div id="loginTab" class="form-container">
-                <h3><i class="fas fa-sign-in-alt"></i> <span data-i18n="loginTitle">تسجيل الدخول</span></h3>
+                <h3><i class="fas fa-sign-in-alt"></i> تسجيل الدخول</h3>
                 <input type="email" id="loginEmail" placeholder="البريد الإلكتروني">
                 <input type="password" id="loginPassword" placeholder="كلمة المرور">
                 
@@ -2787,30 +2377,26 @@
                     <i class="fas fa-exclamation-circle"></i> يرجى تأكيد أنك لست روبوتاً
                 </div>
                 
-                <button class="btn-primary" onclick="login()" style="width:100%; justify-content:center;"><span data-i18n="loginBtn">دخول</span></button>
-                <a href="#" class="forgot-link" onclick="showForgotPassword()" style="display:block; text-align:center; margin-top:12px; color:var(--primary); font-weight:600; text-decoration:none;">
-                    <i class="fas fa-key"></i> <span data-i18n="forgotPassword">نسيت كلمة المرور؟</span>
-                </a>
+                <button class="btn-primary" onclick="login()" style="width:100%; justify-content:center;">دخول</button>
+                <a href="#" class="forgot-link" onclick="showForgotPassword()"><i class="fas fa-key"></i> نسيت كلمة المرور؟</a>
             </div>
 
             <div id="forgotPasswordTab" class="form-container" style="display: none;">
-                <h3><i class="fas fa-key"></i> <span data-i18n="resetPassword">استعادة كلمة المرور</span></h3>
-                <p style="color: var(--gray); margin-bottom: 18px;" data-i18n="resetDesc">أدخل بريدك الإلكتروني وسنرسل لك رابطاً لإعادة تعيين كلمة المرور</p>
+                <h3><i class="fas fa-key"></i> استعادة كلمة المرور</h3>
+                <p style="color: var(--gray); margin-bottom: 18px;">أدخل بريدك الإلكتروني وسنرسل لك رابطاً لإعادة تعيين كلمة المرور</p>
                 <input type="email" id="resetEmail" placeholder="البريد الإلكتروني">
                 <select id="resetRole">
                     <option value="student">طالب</option>
                     <option value="teacher">أستاذ</option>
                 </select>
                 <button class="btn-primary" onclick="sendResetLink()" style="width:100%; justify-content:center;">
-                    <i class="fas fa-paper-plane"></i> <span data-i18n="sendResetLink">إرسال رابط إعادة التعيين</span>
+                    <i class="fas fa-paper-plane"></i> إرسال رابط إعادة التعيين
                 </button>
-                <a href="#" class="back-link" onclick="hideForgotPassword()" style="display:block; text-align:center; margin-top:12px; color:var(--gray); font-weight:600; text-decoration:none;">
-                    <i class="fas fa-arrow-right"></i> <span data-i18n="backToLogin">العودة إلى تسجيل الدخول</span>
-                </a>
+                <a href="#" class="back-link" onclick="hideForgotPassword()"><i class="fas fa-arrow-right"></i> العودة إلى تسجيل الدخول</a>
             </div>
 
             <div id="studentRegisterTab" class="form-container" style="display: none;">
-                <h3><i class="fas fa-user-plus"></i> <span data-i18n="studentRegisterTitle">تسجيل طالب جديد</span></h3>
+                <h3><i class="fas fa-user-plus"></i> تسجيل طالب جديد</h3>
                 
                 <input type="text" id="studentName" placeholder="الاسم الكامل (بالحروف اللاتينية فقط)" 
                        oninput="validateLatinName('student')" onblur="validateLatinName('student')">
@@ -2830,11 +2416,11 @@
                     <i class="fas fa-exclamation-circle"></i> يرجى تأكيد أنك لست روبوتاً
                 </div>
                 
-                <button class="btn-primary" onclick="registerStudent()" style="width:100%; justify-content:center;"><span data-i18n="registerBtn">تسجيل</span></button>
+                <button class="btn-primary" onclick="registerStudent()" style="width:100%; justify-content:center;">تسجيل</button>
             </div>
 
             <div id="teacherRegisterTab" class="form-container" style="display: none;">
-                <h3><i class="fas fa-chalkboard-user"></i> <span data-i18n="teacherRegisterTitle">تقديم طلب أستاذ</span></h3>
+                <h3><i class="fas fa-chalkboard-user"></i> تقديم طلب أستاذ</h3>
                 
                 <input type="text" id="teacherName" placeholder="الاسم الكامل (بالحروف اللاتينية فقط)" required
                        oninput="validateLatinName('teacher')" onblur="validateLatinName('teacher')">
@@ -2863,7 +2449,7 @@
                     <i class="fas fa-exclamation-circle"></i> يرجى تأكيد أنك لست روبوتاً
                 </div>
                 
-                <button class="btn-primary" onclick="registerTeacher()" style="width:100%; justify-content:center;"><span data-i18n="submitRequest">تقديم الطلب</span></button>
+                <button class="btn-primary" onclick="registerTeacher()" style="width:100%; justify-content:center;">تقديم الطلب</button>
             </div>
         </section>
 
@@ -2871,31 +2457,31 @@
         <section id="downloadAppSection" class="download-app-section" style="display: none;">
             <div class="download-card">
                 <div class="app-icon"><i class="fas fa-graduation-cap"></i></div>
-                <h2>📱 <span data-i18n="downloadAppTitle">تحميل تطبيق ZoomDz</span></h2>
-                <p class="subtitle">🎓 <span data-i18n="downloadAppSubtitle">تعلم مع أفضل الأساتذة في الجزائر</span></p>
+                <h2>📱 تحميل تطبيق <span style="color:var(--primary);">ZoomDz</span></h2>
+                <p class="subtitle">🎓 تعلم مع أفضل الأساتذة في الجزائر</p>
                 
                 <div class="features">
                     <div class="feature">
                         <i class="fas fa-video"></i>
-                        <span data-i18n="featureLive2">دروس فيديو مباشرة</span>
+                        <span>دروس فيديو مباشرة</span>
                     </div>
                     <div class="feature">
                         <i class="fas fa-chalkboard-teacher"></i>
-                        <span data-i18n="featureBestTeachers">أفضل الأساتذة المعتمدين</span>
+                        <span>أفضل الأساتذة المعتمدين</span>
                     </div>
                     <div class="feature">
                         <i class="fas fa-credit-card"></i>
-                        <span data-i18n="featurePayment2">الدفع عبر شارجيلي</span>
+                        <span>الدفع عبر شارجيلي</span>
                     </div>
                     <div class="feature">
                         <i class="fas fa-mobile-alt"></i>
-                        <span data-i18n="featureMobile">تجربة سلسة على الجوال</span>
+                        <span>تجربة سلسة على الجوال</span>
                     </div>
                 </div>
 
                 <a href="https://www.appcreator24.com/app4089108-lwkt4d" target="_blank" class="download-btn-android">
                     <i class="fab fa-android"></i>
-                    <span data-i18n="downloadNow">تحميل التطبيق الآن</span>
+                    تحميل التطبيق الآن
                 </a>
 
                 <div class="qr-code">
@@ -2903,12 +2489,12 @@
                 </div>
 
                 <div class="install-instructions">
-                    <h4><i class="fas fa-info-circle"></i> <span data-i18n="installSteps">خطوات التثبيت:</span></h4>
+                    <h4><i class="fas fa-info-circle"></i> خطوات التثبيت:</h4>
                     <ol>
-                        <li data-i18n="installStep1">اضغط على زر "تحميل التطبيق الآن"</li>
-                        <li data-i18n="installStep2">سيتم تحميل ملف APK</li>
-                        <li data-i18n="installStep3">افتح الملف واختر "تثبيت"</li>
-                        <li data-i18n="installStep4">قد تحتاج إلى تفعيل "التثبيت من مصادر غير معروفة" في إعدادات هاتفك</li>
+                        <li>اضغط على زر "تحميل التطبيق الآن"</li>
+                        <li>سيتم تحميل ملف APK</li>
+                        <li>افتح الملف واختر "تثبيت"</li>
+                        <li>قد تحتاج إلى تفعيل "التثبيت من مصادر غير معروفة" في إعدادات هاتفك</li>
                     </ol>
                 </div>
 
@@ -2921,31 +2507,29 @@
         <!-- ===== SUPPORT SECTION ===== -->
         <section id="supportSection" class="section-container" style="display: none;">
             <div class="support-card">
-                <h3><i class="fas fa-headset"></i> <span data-i18n="supportTitle">تواصل مع الدعم الفني</span></h3>
+                <h3><i class="fas fa-headset"></i> تواصل مع الدعم الفني</h3>
                 <form id="supportForm">
                     <div class="form-group">
-                        <label data-i18n="fullName">الاسم الكامل</label>
+                        <label>الاسم الكامل</label>
                         <input type="text" id="supportName" placeholder="أدخل اسمك" required>
                     </div>
                     <div class="form-group">
-                        <label data-i18n="email">البريد الإلكتروني</label>
+                        <label>البريد الإلكتروني</label>
                         <input type="email" id="supportEmail" placeholder="بريدك الإلكتروني" required>
                     </div>
                     <div class="form-group">
-                        <label data-i18n="phoneOptional">رقم الهاتف (اختياري)</label>
+                        <label>رقم الهاتف (اختياري)</label>
                         <input type="tel" id="supportPhone" placeholder="رقم الهاتف">
                     </div>
                     <div class="form-group">
-                        <label data-i18n="subject">الموضوع</label>
+                        <label>الموضوع</label>
                         <input type="text" id="supportSubject" placeholder="موضوع الرسالة" required>
                     </div>
                     <div class="form-group">
-                        <label data-i18n="message">الرسالة</label>
+                        <label>الرسالة</label>
                         <textarea id="supportMessage" placeholder="اكتب رسالتك هنا..." required></textarea>
                     </div>
-                    <button type="submit" class="btn-primary" style="width: 100%; justify-content:center;">
-                        <i class="fas fa-paper-plane"></i> <span data-i18n="sendMessage">إرسال الرسالة</span>
-                    </button>
+                    <button type="submit" class="btn-primary" style="width: 100%; justify-content:center;"><i class="fas fa-paper-plane"></i> إرسال الرسالة</button>
                 </form>
             </div>
         </section>
@@ -2971,395 +2555,17 @@
 
     <script>
         // ============================================================
-        // نظام الترجمة (i18n) - الكامل
+        // الكود الكامل مع التعديلات المطلوبة
         // ============================================================
-        var translations = {
-            ar: {
-                home: "الرئيسية",
-                teachers: "الأساتذة",
-                lessons: "الدروس",
-                live: "مباشر",
-                referral: "الإحالة",
-                login: "تسجيل الدخول",
-                app: "التطبيق",
-                registerNow: "سجل الآن",
-                algerianPlatform: "منصة تعليمية جزائرية",
-                heroTitle1: "تعلم مع أفضل الأساتذة",
-                heroTitle2: "في الجزائر",
-                heroDesc: "دروس خصوصية عبر الفيديو مع نخبة من الأساتذة المعتمدين. ادفع عبر البطاقة الذهبية بسهولة وأمان",
-                teachersCount: "أستاذ معتمد",
-                totalLessons: "عدد الدروس",
-                liveNow: "بث مباشر الآن",
-                studentsCount: "طالب مسجل",
-                meetTeachers: "تعرف على أساتذتنا",
-                browseLessons: "استعرض الدروس",
-                joinAsTeacher: "انضم كأستاذ",
-                support: "الدعم الفني",
-                liveLessons: "دروس مباشرة",
-                interactive: "تفاعل فوري",
-                bestTeachers: "أفضل الأساتذة",
-                certified: "معتمدون",
-                aboutTitle: "عن منصة ZoomDz",
-                aboutP1: "هي منصة تعليمية جزائرية مبتكرة تهدف إلى ربط الطلاب مع أفضل الأساتذة في مختلف التخصصات عبر دروس خصوصية مباشرة عن بعد.",
-                vision: "رؤيتنا:",
-                visionText: "تمكين كل طالب في الجزائر من الوصول إلى تعليم نوعي بأسعار معقولة، دون قيود جغرافية أو زمانية.",
-                mission: "هدفنا:",
-                missionText: "بناء مجتمع تعليمي رقمي متكامل يجمع بين الجودة، السهولة، والأمان، حيث يمكن للطلاب التعلم بمرونة والأساتذة مشاركة خبراتهم بكفاءة.",
-                aboutQuote: "نؤمن بأن التعليم الجيد هو حق لكل جزائري، ومنصتنا هي الجسر الذي يوصلك إلى أفضل الكفاءات في وطننا.",
-                featureLive: "دروس مباشرة",
-                featureLiveDesc: "بث فيديو تفاعلي مع الأستاذ في الوقت الفعلي",
-                featurePayment: "دفع آمن",
-                featurePaymentDesc: "عبر شارجيلي، EDAHABIA، و CCP",
-                featureTeachers: "أساتذة معتمدون",
-                featureTeachersDesc: "نخبة من أفضل الأساتذة في الجزائر",
-                featureEasy: "سهولة الاستخدام",
-                featureEasyDesc: "تصميم عصري يتكيف مع جميع الأجهزة",
-                step1: "اختر الأستاذ المناسب",
-                step2: "احجز الدرس المناسب",
-                step3: "ادفع بأمان عبر شارجيلي",
-                step4: "انضم إلى البث المباشر وتعلم",
-                topTeachers: "نخبة الأساتذة",
-                certifiedTeachers: "أساتذتنا المعتمدون",
-                teachersSubtitle: "تعلم على يد أفضل الخبراء في مختلف التخصصات",
-                availableLessons: "الدروس المتاحة",
-                availableNow: "الدروس المتاحة الآن",
-                offersSubtitle: "دروس خصوصية بأفضل الأسعار، اختر ما يناسب احتياجاتك",
-                liveStream: "بث مباشر",
-                liveNowTitle: "البث المباشر الآن",
-                liveSubtitle: "انضم إلى الدروس المباشرة وتفاعل مع الأساتذة في الوقت الفعلي",
-                referralSystem: "نظام الإحالة",
-                referralTitle: "نظام الإحالة والمكافآت",
-                referralSubtitle: "ادعُ أصدقاءك واحصل على مكافآت مجزية",
-                howItWorks: "كيف يعمل نظام الإحالة؟",
-                guide1Title: "احصل على رمز الإحالة الخاص بك",
-                guide1Desc: "سجل دخولك إلى المنصة وانسخ رمز الإحالة الفريد الخاص بك من لوحة التحكم.",
-                guide2Title: "شارك الرمز مع أصدقائك",
-                guide2Desc: "أرسل رمز الإحالة الخاص بك إلى أصدقائك، زملائك، أو طلابك عبر واتساب، فيسبوك، أو أي وسيلة أخرى.",
-                guide3Title: "يُسجل الشخص المحال",
-                guide3Desc: "عندما يسجل شخص جديد باستخدام رمزك، يتم ربط حسابه تلقائياً بإحالتك.",
-                guide4Title: "احصل على مكافأتك",
-                guide4Desc: "بمجرد تفعيل الحساب، تحصل على المكافأة المخصصة حسب نوع الشخص المحال.",
-                rewardDetails: "تفاصيل المكافآت",
-                teacherRewardTitle: "مكافأة إحالة الأستاذ",
-                teacherRewardDesc: "عندما تحيل أستاذاً جديداً إلى المنصة، تحصل على 100 دج فور قبوله من الإدارة.",
-                studentRewardTitle: "مكافأة إحالة الطالب",
-                studentRewardDesc: "عندما تحيل طالباً جديداً، تحصل على فرصة لفتح صندوق الهدايا بعد أن يحجز المحال درساً مدفوعاً.",
-                extraRewardTitle: "مكافآت إضافية",
-                extraRewardDesc: "يمكن أن يحتوي صندوق الهدايا على 50 أو 100 دج إضافية! كلما زادت إحالاتك، زادت فرصك.",
-                tip: "نصيحة: شارك رمز الإحالة الخاص بك في مجموعات الطلاب والأساتذة على فيسبوك وواتساب لتحقيق أقصى استفادة!",
-                yourReferralCode: "رمز الإحالة الخاص بك",
-                shareCode: "شارك هذا الرمز مع أصدقائك واحصل على مكافآت",
-                shareLink: "مشاركة الرابط",
-                referredCount: "عدد المحالين",
-                referralRewards: "مكافآت الإحالة",
-                rewardHistory: "سجل المكافآت",
-                devTeam: "فريق الإبداع",
-                devTitle: "فريق المطورين",
-                devSubtitle: "هذا المشروع من إبداع نخبة من المطورين الجزائريين الطموحين",
-                thanksDev: "شكراً لفريق المطورين",
-                devQuote: "هذا المشروع هو ثمرة تعاون ثلاثة مطورين جزائريين طموحين، كل منهم ساهم بخبرته وإبداعه لإخراج هذه المنصة التعليمية المتكاملة إلى النور. نسعى من خلالها إلى تقديم تعليم رقمي متميز في الجزائر.",
-                loginTitle: "تسجيل الدخول",
-                studentRegister: "تسجيل طالب",
-                teacherRegister: "تسجيل أستاذ",
-                loginBtn: "دخول",
-                forgotPassword: "نسيت كلمة المرور؟",
-                resetPassword: "استعادة كلمة المرور",
-                resetDesc: "أدخل بريدك الإلكتروني وسنرسل لك رابطاً لإعادة تعيين كلمة المرور",
-                sendResetLink: "إرسال رابط إعادة التعيين",
-                backToLogin: "العودة إلى تسجيل الدخول",
-                studentRegisterTitle: "تسجيل طالب جديد",
-                registerBtn: "تسجيل",
-                teacherRegisterTitle: "تقديم طلب أستاذ",
-                submitRequest: "تقديم الطلب",
-                downloadAppTitle: "تحميل تطبيق ZoomDz",
-                downloadAppSubtitle: "تعلم مع أفضل الأساتذة في الجزائر",
-                featureLive2: "دروس فيديو مباشرة",
-                featureBestTeachers: "أفضل الأساتذة المعتمدين",
-                featurePayment2: "الدفع عبر شارجيلي",
-                featureMobile: "تجربة سلسة على الجوال",
-                downloadNow: "تحميل التطبيق الآن",
-                installSteps: "خطوات التثبيت:",
-                installStep1: "اضغط على زر 'تحميل التطبيق الآن'",
-                installStep2: "سيتم تحميل ملف APK",
-                installStep3: "افتح الملف واختر 'تثبيت'",
-                installStep4: "قد تحتاج إلى تفعيل 'التثبيت من مصادر غير معروفة' في إعدادات هاتفك",
-                supportTitle: "تواصل مع الدعم الفني",
-                fullName: "الاسم الكامل",
-                email: "البريد الإلكتروني",
-                phoneOptional: "رقم الهاتف (اختياري)",
-                subject: "الموضوع",
-                message: "الرسالة",
-                sendMessage: "إرسال الرسالة"
-            },
-            fr: {
-                home: "Accueil",
-                teachers: "Enseignants",
-                lessons: "Cours",
-                live: "En direct",
-                referral: "Parrainage",
-                login: "Connexion",
-                app: "Application",
-                registerNow: "S'inscrire maintenant",
-                algerianPlatform: "Plateforme éducative algérienne",
-                heroTitle1: "Apprenez avec les meilleurs enseignants",
-                heroTitle2: "en Algérie",
-                heroDesc: "Cours particuliers en vidéo avec des enseignants certifiés. Paiement sécurisé via carte dorée.",
-                teachersCount: "Enseignant certifié",
-                totalLessons: "Nombre de cours",
-                liveNow: "En direct maintenant",
-                studentsCount: "Étudiant inscrit",
-                meetTeachers: "Rencontrez nos enseignants",
-                browseLessons: "Parcourir les cours",
-                joinAsTeacher: "Rejoindre comme enseignant",
-                support: "Support technique",
-                liveLessons: "Cours en direct",
-                interactive: "Interaction en temps réel",
-                bestTeachers: "Meilleurs enseignants",
-                certified: "Certifiés",
-                aboutTitle: "À propos de ZoomDz",
-                aboutP1: "est une plateforme éducative algérienne innovante visant à connecter les étudiants avec les meilleurs enseignants dans diverses spécialités à travers des cours particuliers en direct à distance.",
-                vision: "Notre vision:",
-                visionText: "Permettre à chaque étudiant en Algérie d'accéder à une éducation de qualité à des prix abordables, sans contraintes géographiques ou temporelles.",
-                mission: "Notre mission:",
-                missionText: "Construire une communauté éducative numérique intégrée alliant qualité, simplicité et sécurité, où les étudiants peuvent apprendre en toute flexibilité et les enseignants partager leur expertise efficacement.",
-                aboutQuote: "Nous croyons qu'une bonne éducation est un droit pour chaque Algérien, et notre plateforme est le pont qui vous relie aux meilleures compétences de notre pays.",
-                featureLive: "Cours en direct",
-                featureLiveDesc: "Vidéo interactive avec l'enseignant en temps réel",
-                featurePayment: "Paiement sécurisé",
-                featurePaymentDesc: "Via Chargily, EDAHABIA et CCP",
-                featureTeachers: "Enseignants certifiés",
-                featureTeachersDesc: "L'élite des meilleurs enseignants en Algérie",
-                featureEasy: "Facilité d'utilisation",
-                featureEasyDesc: "Design moderne adapté à tous les appareils",
-                step1: "Choisissez le bon enseignant",
-                step2: "Réservez le cours approprié",
-                step3: "Payez en toute sécurité via Chargily",
-                step4: "Rejoignez la diffusion en direct et apprenez",
-                topTeachers: "L'élite des enseignants",
-                certifiedTeachers: "Nos enseignants certifiés",
-                teachersSubtitle: "Apprenez auprès des meilleurs experts dans diverses spécialités",
-                availableLessons: "Cours disponibles",
-                availableNow: "Cours disponibles maintenant",
-                offersSubtitle: "Cours particuliers aux meilleurs prix, choisissez ce qui vous convient",
-                liveStream: "Diffusion en direct",
-                liveNowTitle: "Diffusion en direct maintenant",
-                liveSubtitle: "Rejoignez les cours en direct et interagissez avec les enseignants en temps réel",
-                referralSystem: "Système de parrainage",
-                referralTitle: "Système de parrainage et récompenses",
-                referralSubtitle: "Invitez vos amis et obtenez des récompenses",
-                howItWorks: "Comment fonctionne le système de parrainage?",
-                guide1Title: "Obtenez votre code de parrainage",
-                guide1Desc: "Connectez-vous à la plateforme et copiez votre code de parrainage unique depuis votre tableau de bord.",
-                guide2Title: "Partagez le code avec vos amis",
-                guide2Desc: "Envoyez votre code de parrainage à vos amis, collègues ou étudiants via WhatsApp, Facebook ou tout autre moyen.",
-                guide3Title: "La personne parrainée s'inscrit",
-                guide3Desc: "Lorsqu'une nouvelle personne s'inscrit avec votre code, son compte est automatiquement lié à votre parrainage.",
-                guide4Title: "Obtenez votre récompense",
-                guide4Desc: "Une fois le compte activé, vous recevez la récompense correspondant au type de personne parrainée.",
-                rewardDetails: "Détails des récompenses",
-                teacherRewardTitle: "Récompense de parrainage enseignant",
-                teacherRewardDesc: "Lorsque vous parrainez un nouvel enseignant, vous recevez 100 DA dès son acceptation par l'administration.",
-                studentRewardTitle: "Récompense de parrainage étudiant",
-                studentRewardDesc: "Lorsque vous parrainez un nouvel étudiant, vous recevez une chance d'ouvrir une boîte cadeau après que la personne parrainée a réservé un cours payant.",
-                extraRewardTitle: "Récompenses supplémentaires",
-                extraRewardDesc: "La boîte cadeau peut contenir 50 ou 100 DA supplémentaires! Plus vous parrainez, plus vous avez de chances.",
-                tip: "Astuce: Partagez votre code de parrainage dans les groupes d'étudiants et d'enseignants sur Facebook et WhatsApp pour maximiser vos gains!",
-                yourReferralCode: "Votre code de parrainage",
-                shareCode: "Partagez ce code avec vos amis et obtenez des récompenses",
-                shareLink: "Partager le lien",
-                referredCount: "Nombre de parrainés",
-                referralRewards: "Récompenses de parrainage",
-                rewardHistory: "Historique des récompenses",
-                devTeam: "Équipe créative",
-                devTitle: "Équipe des développeurs",
-                devSubtitle: "Ce projet est l'œuvre d'une élite de développeurs algériens ambitieux",
-                thanksDev: "Merci à l'équipe des développeurs",
-                devQuote: "Ce projet est le fruit de la collaboration de trois développeurs algériens ambitieux, chacun ayant apporté son expertise et sa créativité pour donner vie à cette plateforme éducative intégrée. Nous visons à offrir une éducation numérique d'excellence en Algérie.",
-                loginTitle: "Connexion",
-                studentRegister: "Inscription étudiant",
-                teacherRegister: "Inscription enseignant",
-                loginBtn: "Se connecter",
-                forgotPassword: "Mot de passe oublié?",
-                resetPassword: "Réinitialiser le mot de passe",
-                resetDesc: "Entrez votre adresse e-mail et nous vous enverrons un lien pour réinitialiser votre mot de passe.",
-                sendResetLink: "Envoyer le lien de réinitialisation",
-                backToLogin: "Retour à la connexion",
-                studentRegisterTitle: "Inscription nouvel étudiant",
-                registerBtn: "S'inscrire",
-                teacherRegisterTitle: "Soumettre une demande d'enseignant",
-                submitRequest: "Soumettre la demande",
-                downloadAppTitle: "Télécharger l'application ZoomDz",
-                downloadAppSubtitle: "Apprenez avec les meilleurs enseignants en Algérie",
-                featureLive2: "Cours vidéo en direct",
-                featureBestTeachers: "Meilleurs enseignants certifiés",
-                featurePayment2: "Paiement via Chargily",
-                featureMobile: "Expérience fluide sur mobile",
-                downloadNow: "Télécharger l'application maintenant",
-                installSteps: "Étapes d'installation:",
-                installStep1: "Cliquez sur le bouton 'Télécharger l'application maintenant'",
-                installStep2: "Le fichier APK sera téléchargé",
-                installStep3: "Ouvrez le fichier et choisissez 'Installer'",
-                installStep4: "Vous devrez peut-être activer 'Installation à partir de sources inconnues' dans les paramètres de votre téléphone",
-                supportTitle: "Contacter le support technique",
-                fullName: "Nom complet",
-                email: "Adresse e-mail",
-                phoneOptional: "Numéro de téléphone (optionnel)",
-                subject: "Sujet",
-                message: "Message",
-                sendMessage: "Envoyer le message"
-            },
-            en: {
-                home: "Home",
-                teachers: "Teachers",
-                lessons: "Lessons",
-                live: "Live",
-                referral: "Referral",
-                login: "Login",
-                app: "App",
-                registerNow: "Register Now",
-                algerianPlatform: "Algerian Educational Platform",
-                heroTitle1: "Learn with the best teachers",
-                heroTitle2: "in Algeria",
-                heroDesc: "Private video lessons with certified teachers. Pay securely via golden card.",
-                teachersCount: "Certified Teacher",
-                totalLessons: "Total Lessons",
-                liveNow: "Live Now",
-                studentsCount: "Registered Student",
-                meetTeachers: "Meet Our Teachers",
-                browseLessons: "Browse Lessons",
-                joinAsTeacher: "Join as Teacher",
-                support: "Support",
-                liveLessons: "Live Lessons",
-                interactive: "Real-time Interaction",
-                bestTeachers: "Best Teachers",
-                certified: "Certified",
-                aboutTitle: "About ZoomDz",
-                aboutP1: "is an innovative Algerian educational platform that connects students with the best teachers in various specialties through remote private lessons.",
-                vision: "Our Vision:",
-                visionText: "Empower every student in Algeria to access quality education at affordable prices, without geographical or time constraints.",
-                mission: "Our Mission:",
-                missionText: "Build an integrated digital educational community that combines quality, ease, and security, where students can learn flexibly and teachers can share their expertise efficiently.",
-                aboutQuote: "We believe that quality education is a right for every Algerian, and our platform is the bridge that connects you to the best talents in our country.",
-                featureLive: "Live Lessons",
-                featureLiveDesc: "Interactive video streaming with the teacher in real-time",
-                featurePayment: "Secure Payment",
-                featurePaymentDesc: "Via Chargily, EDAHABIA, and CCP",
-                featureTeachers: "Certified Teachers",
-                featureTeachersDesc: "The elite of the best teachers in Algeria",
-                featureEasy: "Ease of Use",
-                featureEasyDesc: "Modern design adapted to all devices",
-                step1: "Choose the right teacher",
-                step2: "Book the right lesson",
-                step3: "Pay securely via Chargily",
-                step4: "Join the live stream and learn",
-                topTeachers: "Top Teachers",
-                certifiedTeachers: "Our Certified Teachers",
-                teachersSubtitle: "Learn from the best experts in various specialties",
-                availableLessons: "Available Lessons",
-                availableNow: "Available Now",
-                offersSubtitle: "Private lessons at the best prices, choose what suits your needs",
-                liveStream: "Live Stream",
-                liveNowTitle: "Live Now",
-                liveSubtitle: "Join live lessons and interact with teachers in real-time",
-                referralSystem: "Referral System",
-                referralTitle: "Referral & Rewards System",
-                referralSubtitle: "Invite your friends and get rewards",
-                howItWorks: "How does the referral system work?",
-                guide1Title: "Get your referral code",
-                guide1Desc: "Log in to the platform and copy your unique referral code from your dashboard.",
-                guide2Title: "Share the code with your friends",
-                guide2Desc: "Send your referral code to your friends, colleagues, or students via WhatsApp, Facebook, or any other means.",
-                guide3Title: "The referred person registers",
-                guide3Desc: "When a new person registers using your code, their account is automatically linked to your referral.",
-                guide4Title: "Get your reward",
-                guide4Desc: "Once the account is activated, you receive the reward corresponding to the type of person referred.",
-                rewardDetails: "Reward Details",
-                teacherRewardTitle: "Teacher Referral Reward",
-                teacherRewardDesc: "When you refer a new teacher to the platform, you get 100 DA immediately upon their acceptance by the administration.",
-                studentRewardTitle: "Student Referral Reward",
-                studentRewardDesc: "When you refer a new student, you get a chance to open a gift box after the referred person books a paid lesson.",
-                extraRewardTitle: "Extra Rewards",
-                extraRewardDesc: "The gift box can contain 50 or 100 DA extra! The more referrals you make, the more chances you get.",
-                tip: "Tip: Share your referral code in student and teacher groups on Facebook and WhatsApp to maximize your rewards!",
-                yourReferralCode: "Your Referral Code",
-                shareCode: "Share this code with your friends and get rewards",
-                shareLink: "Share Link",
-                referredCount: "Referred Count",
-                referralRewards: "Referral Rewards",
-                rewardHistory: "Reward History",
-                devTeam: "Creative Team",
-                devTitle: "Developers Team",
-                devSubtitle: "This project is created by an elite of ambitious Algerian developers",
-                thanksDev: "Thank You Developers Team",
-                devQuote: "This project is the result of collaboration between three ambitious Algerian developers, each contributing their expertise and creativity to bring this integrated educational platform to life. We aim to provide excellent digital education in Algeria.",
-                loginTitle: "Login",
-                studentRegister: "Student Register",
-                teacherRegister: "Teacher Register",
-                loginBtn: "Login",
-                forgotPassword: "Forgot Password?",
-                resetPassword: "Reset Password",
-                resetDesc: "Enter your email address and we will send you a link to reset your password.",
-                sendResetLink: "Send Reset Link",
-                backToLogin: "Back to Login",
-                studentRegisterTitle: "New Student Registration",
-                registerBtn: "Register",
-                teacherRegisterTitle: "Submit Teacher Request",
-                submitRequest: "Submit Request",
-                downloadAppTitle: "Download ZoomDz App",
-                downloadAppSubtitle: "Learn with the best teachers in Algeria",
-                featureLive2: "Live Video Lessons",
-                featureBestTeachers: "Best Certified Teachers",
-                featurePayment2: "Pay via Chargily",
-                featureMobile: "Smooth Mobile Experience",
-                downloadNow: "Download Now",
-                installSteps: "Installation Steps:",
-                installStep1: "Click on 'Download App Now'",
-                installStep2: "The APK file will be downloaded",
-                installStep3: "Open the file and choose 'Install'",
-                installStep4: "You may need to enable 'Install from Unknown Sources' in your phone settings",
-                supportTitle: "Contact Technical Support",
-                fullName: "Full Name",
-                email: "Email Address",
-                phoneOptional: "Phone Number (Optional)",
-                subject: "Subject",
-                message: "Message",
-                sendMessage: "Send Message"
-            }
-        };
 
-        var currentLang = 'ar';
-
-        function switchLanguage(lang) {
-            currentLang = lang;
-            document.querySelectorAll('.lang-btn').forEach(function(btn) {
-                btn.classList.toggle('active', btn.dataset.lang === lang);
-            });
-            document.querySelectorAll('[data-i18n]').forEach(function(el) {
-                var key = el.getAttribute('data-i18n');
-                if (translations[lang] && translations[lang][key]) {
-                    el.textContent = translations[lang][key];
-                }
-            });
-            if (lang === 'ar') {
-                document.documentElement.dir = 'rtl';
-                document.documentElement.lang = 'ar';
-                document.body.style.fontFamily = "'Cairo', sans-serif";
-            } else {
-                document.documentElement.dir = 'ltr';
-                document.documentElement.lang = lang;
-                document.body.style.fontFamily = "'Inter', 'Cairo', sans-serif";
-            }
-        }
-
-        // ============================================================
-        // reCAPTCHA STATE
-        // ============================================================
+        // ===== reCAPTCHA STATE =====
         var recaptchaState = {
             login: false,
             student: false,
             teacher: false
         };
 
+        // ===== reCAPTCHA CALLBACKS =====
         function onLoginCaptchaSuccess() {
             recaptchaState.login = true;
             document.getElementById('loginRecaptchaError').classList.remove('show');
@@ -3375,9 +2581,7 @@
             document.getElementById('teacherRecaptchaError').classList.remove('show');
         }
 
-        // ============================================================
-        // NAME VALIDATION
-        // ============================================================
+        // ===== NAME VALIDATION =====
         function validateLatinName(type) {
             var input, errorEl;
             if (type === 'student') {
@@ -3416,14 +2620,13 @@
             return !/\d/.test(value) && !/[^A-Za-z\s\.\-']/.test(value) && latinPattern.test(value);
         }
 
-        // ============================================================
-        // REFERRAL SYSTEM
-        // ============================================================
+        // ===== REFERRAL VARIABLES =====
         var referralCode = null;
         var referralData = null;
         var allTeachers = [];
         var filteredTeachers = [];
 
+        // ===== READ REFERRAL FROM URL =====
         function readReferralFromURL() {
             try {
                 var urlParams = new URLSearchParams(window.location.search);
@@ -3470,15 +2673,15 @@
         }
 
         // ============================================================
-        // NAVIGATION - جميع دوال التنقل
+        // دوال التبويبات
         // ============================================================
+        
         function showHome() {
             document.getElementById('homeSection').style.display = 'flex';
             document.getElementById('aboutSection').style.display = 'block';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
-            document.getElementById('referralSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
             document.getElementById('profileSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'none';
@@ -3494,7 +2697,6 @@
             document.getElementById('teachersSection').style.display = 'block';
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
-            document.getElementById('referralSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
             document.getElementById('profileSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'none';
@@ -3510,7 +2712,6 @@
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('offersSection').style.display = 'block';
             document.getElementById('liveSection').style.display = 'none';
-            document.getElementById('referralSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
             document.getElementById('profileSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'none';
@@ -3526,7 +2727,6 @@
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'block';
-            document.getElementById('referralSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
             document.getElementById('profileSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'none';
@@ -3536,29 +2736,12 @@
             loadLiveStreams();
         }
 
-        function showReferral() {
-            document.getElementById('homeSection').style.display = 'none';
-            document.getElementById('aboutSection').style.display = 'none';
-            document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('offersSection').style.display = 'none';
-            document.getElementById('liveSection').style.display = 'none';
-            document.getElementById('referralSection').style.display = 'block';
-            document.getElementById('developersSection').style.display = 'none';
-            document.getElementById('profileSection').style.display = 'none';
-            document.getElementById('loginSection').style.display = 'none';
-            document.getElementById('downloadAppSection').style.display = 'none';
-            document.getElementById('supportSection').style.display = 'none';
-            setActiveTab('referralTab');
-            loadReferralData();
-        }
-
         function showDevelopers() {
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
-            document.getElementById('referralSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'block';
             document.getElementById('profileSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'none';
@@ -3573,7 +2756,6 @@
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
-            document.getElementById('referralSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
             document.getElementById('profileSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'block';
@@ -3592,7 +2774,6 @@
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
-            document.getElementById('referralSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
             document.getElementById('profileSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'none';
@@ -3607,7 +2788,6 @@
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
-            document.getElementById('referralSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
             document.getElementById('profileSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'none';
@@ -3622,7 +2802,6 @@
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
-            document.getElementById('referralSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
             document.getElementById('profileSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'block';
@@ -3644,13 +2823,96 @@
         }
 
         function setActiveTab(tabId) {
-            var tabs = ['homeTab', 'teachersTab', 'offersTab', 'liveTab', 'referralTab', 'developersTab', 'loginTabNav'];
+            var tabs = ['homeTab', 'teachersTab', 'offersTab', 'liveTab', 'developersTab', 'loginTabNav'];
             tabs.forEach(function(id) {
                 var el = document.getElementById(id);
                 if (el) el.classList.remove('active');
             });
             var activeEl = document.getElementById(tabId);
             if (activeEl) activeEl.classList.add('active');
+        }
+
+        // ============================================================
+        // ربط الدوال بالنافذة العامة
+        // ============================================================
+        window.showHome = showHome;
+        window.showTeachers = showTeachers;
+        window.showOffers = showOffers;
+        window.showLiveStreams = showLiveStreams;
+        window.showDevelopers = showDevelopers;
+        window.showLogin = showLogin;
+        window.showDownloadApp = showDownloadApp;
+        window.showSupport = showSupport;
+        window.showTeacherRegister = showTeacherRegister;
+        window.showForgotPassword = showForgotPassword;
+        window.hideForgotPassword = hideForgotPassword;
+        window.setActiveTab = setActiveTab;
+        window.switchTab = switchTab;
+        window.showNotification = showNotification;
+        window.sendResetLink = sendResetLink;
+        window.login = login;
+        window.registerStudent = registerStudent;
+        window.registerTeacher = registerTeacher;
+        window.viewTeacherProfile = viewTeacherProfile;
+        window.loadPublicTeachers = loadPublicTeachers;
+        window.loadPublicOffers = loadPublicOffers;
+        window.loadLiveStreams = loadLiveStreams;
+        window.escapeHtml = escapeHtml;
+        window.closeReferralBanner = closeReferralBanner;
+        window.jumpToRegister = jumpToRegister;
+        window.validateLatinName = validateLatinName;
+        window.isNameValid = isNameValid;
+        window.onLoginCaptchaSuccess = onLoginCaptchaSuccess;
+        window.onStudentCaptchaSuccess = onStudentCaptchaSuccess;
+        window.onTeacherCaptchaSuccess = onTeacherCaptchaSuccess;
+        window.loadStats = loadStats;
+        window.filterTeachers = filterTeachers;
+        window.clearFilters = clearFilters;
+
+        // ============================================================
+        // NOTIFICATION
+        // ============================================================
+        function showNotification(message, type) {
+            if (type === undefined) type = 'success';
+            var toast = document.getElementById('notificationToast');
+            toast.className = 'notification-toast';
+            if (type === 'error') toast.classList.add('error');
+            else if (type === 'warning') toast.classList.add('warning');
+            toast.innerHTML = '<i class="fas ' + (type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle') + '"></i> ' + message;
+            toast.style.display = 'block';
+            setTimeout(function() { toast.style.display = 'none'; }, 5000);
+        }
+
+        // ============================================================
+        // STATS - مع إجمالي عدد الدروس
+        // ============================================================
+        async function loadStats() {
+            try {
+                // جلب الإحصائيات العامة
+                var res = await fetch('/api/public/stats');
+                if (!res.ok) throw new Error('HTTP error! status: ' + res.status);
+                var stats = await res.json();
+                
+                // جلب إجمالي عدد الدروس (جميع الدروس التي تم إنشاؤها)
+                var totalOffersRes = await fetch('/api/public/total-offers');
+                var totalOffersData = await totalOffersRes.json();
+                var totalOffers = totalOffersData.total || 0;
+                
+                document.getElementById('teacherCount').innerText = stats.teachers || 0;
+                document.getElementById('totalOffersCount').innerText = totalOffers;
+                document.getElementById('liveCountStat').innerText = stats.live || 0;
+                document.getElementById('studentCount').innerText = stats.students || 0;
+                
+                var liveBadge = document.getElementById('liveCount');
+                if (stats.live > 0) {
+                    liveBadge.style.display = 'inline-block';
+                    liveBadge.innerText = stats.live;
+                } else {
+                    liveBadge.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('خطأ في جلب الإحصائيات:', error);
+            }
         }
 
         // ============================================================
@@ -3674,50 +2936,6 @@
                     btn.classList.add('active');
                 }
             });
-        }
-
-        // ============================================================
-        // NOTIFICATION
-        // ============================================================
-        function showNotification(message, type) {
-            if (type === undefined) type = 'success';
-            var toast = document.getElementById('notificationToast');
-            toast.className = 'notification-toast';
-            if (type === 'error') toast.classList.add('error');
-            else if (type === 'warning') toast.classList.add('warning');
-            toast.innerHTML = '<i class="fas ' + (type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle') + '"></i> ' + message;
-            toast.style.display = 'block';
-            setTimeout(function() { toast.style.display = 'none'; }, 5000);
-        }
-
-        // ============================================================
-        // STATS
-        // ============================================================
-        async function loadStats() {
-            try {
-                var res = await fetch('/api/public/stats');
-                if (!res.ok) throw new Error('HTTP error! status: ' + res.status);
-                var stats = await res.json();
-                
-                var totalOffersRes = await fetch('/api/public/total-offers');
-                var totalOffersData = await totalOffersRes.json();
-                var totalOffers = totalOffersData.total || 0;
-                
-                document.getElementById('teacherCount').innerText = stats.teachers || 0;
-                document.getElementById('totalOffersCount').innerText = totalOffers;
-                document.getElementById('liveCountStat').innerText = stats.live || 0;
-                document.getElementById('studentCount').innerText = stats.students || 0;
-                
-                var liveBadge = document.getElementById('liveCount');
-                if (stats.live > 0) {
-                    liveBadge.style.display = 'inline-block';
-                    liveBadge.innerText = stats.live;
-                } else {
-                    liveBadge.style.display = 'none';
-                }
-            } catch (error) {
-                console.error('خطأ في جلب الإحصائيات:', error);
-            }
         }
 
         // ============================================================
@@ -3940,7 +3158,7 @@
         }
 
         // ============================================================
-        // TEACHERS - مع البحث والفلترة
+        // TEACHERS - مع البحث والفلترة (بدون فلتر العمر)
         // ============================================================
         async function loadPublicTeachers() {
             var container = document.getElementById('teachersList');
@@ -3992,11 +3210,13 @@
             container.innerHTML = html;
         }
 
+        // ===== فلترة الأساتذة (بدون فلتر العمر) =====
         function filterTeachers() {
             var searchTerm = document.getElementById('searchTeacher').value.toLowerCase().trim();
             var experienceFilter = document.getElementById('filterExperience').value;
             
             filteredTeachers = allTeachers.filter(function(t) {
+                // فلترة البحث
                 var matchesSearch = true;
                 if (searchTerm) {
                     var name = (t.full_name || '').toLowerCase();
@@ -4004,6 +3224,7 @@
                     matchesSearch = name.includes(searchTerm) || spec.includes(searchTerm);
                 }
                 
+                // فلترة الخبرة
                 var matchesExperience = true;
                 var exp = parseInt(t.experience) || 0;
                 if (experienceFilter !== 'all') {
@@ -4020,6 +3241,7 @@
             
             renderTeachers(filteredTeachers);
             
+            // تحديث عدد النتائج
             var resultsCount = document.querySelector('.results-count');
             if (!resultsCount) {
                 var container = document.getElementById('teachersList');
@@ -4126,7 +3348,7 @@
         }
 
         // ============================================================
-        // VIEW TEACHER PROFILE
+        // VIEW TEACHER PROFILE - بدون عمر
         // ============================================================
         async function viewTeacherProfile(teacherId) {
             document.getElementById('homeSection').style.display = 'none';
@@ -4134,7 +3356,6 @@
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
-            document.getElementById('referralSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('downloadAppSection').style.display = 'none';
@@ -4189,6 +3410,7 @@
                 
                 var imageUrl = teacher.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(teacher.full_name) + '&background=0f5cbf&color=fff&size=140';
                 
+                // ===== روابط التواصل الاجتماعي =====
                 var socialLinks = [];
                 var socialIcons = {
                     facebook_url: { icon: 'fab fa-facebook', name: 'فيسبوك', color: '#1877f2' },
@@ -4211,6 +3433,7 @@
                     }
                 }
                 
+                // ===== العروض =====
                 var offersHtml = '';
                 if (teacher.offers && teacher.offers.length > 0) {
                     offersHtml = `
@@ -4243,6 +3466,7 @@
                     `;
                 }
                 
+                // ===== روابط التواصل =====
                 var socialHtml = '';
                 if (socialLinks.length > 0) {
                     socialHtml = `
@@ -4272,6 +3496,7 @@
                     `;
                 }
                 
+                // ===== الصفحة الكاملة (بدون عمر) =====
                 var html = `
                     <button class="profile-back-btn" onclick="showTeachers()">
                         <i class="fas fa-arrow-right"></i> العودة إلى قائمة الأساتذة
@@ -4306,7 +3531,7 @@
                 `;
                 
                 container.innerHTML = html;
-                document.title = teacher.full_name + ' | ZoomDz';
+                document.title = `${teacher.full_name} | ZoomDz`;
                 window.scrollTo({ top: 0, behavior: 'smooth' });
                 
             } catch(e) {
@@ -4324,78 +3549,11 @@
             }
         }
 
-        // ============================================================
-        // REFERRAL DATA
-        // ============================================================
-        async function loadReferralData() {
-            try {
-                var token = localStorage.getItem('token');
-                if (!token) {
-                    document.getElementById('referralCodeText').textContent = 'يرجى تسجيل الدخول';
-                    return;
-                }
-                
-                var headers = {
-                    'Authorization': 'Bearer ' + token,
-                    'Content-Type': 'application/json'
-                };
-                
-                var createRes = await fetch('/api/referral/create', {
-                    method: 'POST',
-                    headers: headers,
-                    body: JSON.stringify({ user_id: 1, role: 'student' }) // يتم استبدالها بالمعرف الفعلي
-                });
-                var createData = await createRes.json();
-                if (createData.success) {
-                    document.getElementById('referralCodeText').textContent = createData.referral_code || 'غير متوفر';
-                }
-            } catch(e) {
-                console.error('خطأ في تحميل بيانات الإحالة:', e);
-                document.getElementById('referralCodeText').textContent = 'حدث خطأ';
-            }
-        }
-
-        function copyReferralCode() {
-            var code = document.getElementById('referralCodeText').textContent;
-            if (code && code !== 'جاري التحميل...' && code !== 'يرجى تسجيل الدخول' && code !== 'حدث خطأ') {
-                navigator.clipboard.writeText(code).then(function() {
-                    showNotification('✅ تم نسخ رمز الإحالة!', 'success');
-                }).catch(function() {
-                    var textArea = document.createElement('textarea');
-                    textArea.value = code;
-                    document.body.appendChild(textArea);
-                    textArea.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(textArea);
-                    showNotification('✅ تم نسخ رمز الإحالة!', 'success');
-                });
-            } else {
-                showNotification('⚠️ يرجى تسجيل الدخول للحصول على رمز الإحالة', 'warning');
-            }
-        }
-
-        function shareReferral() {
-            var code = document.getElementById('referralCodeText').textContent;
-            var link = window.location.origin + '?ref=' + code;
-            if (navigator.share) {
-                navigator.share({
-                    title: 'انضم إلى ZoomDz',
-                    text: 'استخدم رمز الإحالة الخاص بي: ' + code + ' واحصل على مكافآت!',
-                    url: link
-                }).catch(function() {});
-            } else {
-                navigator.clipboard.writeText(link).then(function() {
-                    showNotification('✅ تم نسخ رابط الإحالة! شاركه مع أصدقائك', 'success');
-                }).catch(function() {
-                    var textArea = document.createElement('textarea');
-                    textArea.value = link;
-                    document.body.appendChild(textArea);
-                    textArea.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(textArea);
-                    showNotification('✅ تم نسخ رابط الإحالة!', 'success');
-                });
-            }
+        function escapeHtml(text) {
+            if (!text) return '';
+            var div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         // ============================================================
@@ -4440,24 +3598,10 @@
         });
 
         // ============================================================
-        // UTILITY
-        // ============================================================
-        function escapeHtml(text) {
-            if (!text) return '';
-            var div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        // ============================================================
         // INIT
         // ============================================================
         function init() {
             console.log('🚀 بدء تشغيل المنصة مع reCAPTCHA v2...');
-            console.log('🔐 reCAPTCHA v2 مفعل لحماية النماذج');
-            console.log('🌍 دعم ثلاث لغات: العربية، الفرنسية، الإنجليزية');
-            console.log('👨‍💻 فريق المطورين: عثمانية محمد الصالح، مليك صالح، زينب لكفيفي');
-            
             readReferralFromURL();
             showHome();
             loadStats();
@@ -4465,11 +3609,12 @@
             setInterval(loadLiveStreams, 30000);
             setInterval(loadStats, 60000);
             
+            console.log('✅ تم تحميل المنصة بنجاح');
+            console.log('🔐 reCAPTCHA v2 مفعل لحماية النماذج');
+            console.log('👨‍💻 فريق المطورين: عثمانية محمد الصالح، مليك صالح، زينب لكفيفي');
             if (referralCode) {
                 console.log('🔗 تم اكتشاف رمز إحالة:', referralCode);
             }
-            
-            console.log('✅ تم تحميل المنصة بنجاح');
         }
 
         document.addEventListener('DOMContentLoaded', init);
