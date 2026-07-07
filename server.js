@@ -1,5 +1,5 @@
 // ============================================================
-// خادم منصة التعليم - إصدار آمن مع Google Meet (مجاني 100%)
+// خادم منصة التعليم - إصدار آمن ومحسن مع نظام الإحالة والتوثيق والحظر
 // يدعم آلاف المستخدمين مع أعلى معايير الأمان
 // ============================================================
 
@@ -4662,149 +4662,405 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
 });
 
 // ============================================================
-// صفحة دخول الطالب إلى البث
+// صفحة دخول الطالب إلى البث - ✅ معدلة مع التحقق من الحجز المدفوع
 // ============================================================
-app.get('/api/student-join-stream/:offer_id/:student_id', async (req, res) => {
+app.get('/api/join-stream/:offer_id/:student_id', async (req, res) => {
     try {
-        const token = req.query.token;
-        if (!token) return res.redirect('/student-dashboard.html');
+        // ✅ قراءة التوكن من Header أو Query Parameter
+        let token = req.headers.authorization?.substring(7);
+        if (!token && req.query.token) {
+            token = req.query.token;
+        }
+        
+        if (!token) {
+            console.log('❌ لا يوجد توكن في طلب دخول الطالب إلى البث');
+            return res.status(401).send(renderErrorPage('غير مصرح', 'يرجى تسجيل الدخول أولاً'));
+        }
         
         const decoded = verifyToken(token);
-        if (!decoded || decoded.role !== 'student') {
-            return res.redirect('/student-dashboard.html');
+        if (!decoded) {
+            console.log('❌ توكن غير صالح في طلب دخول الطالب');
+            return res.status(401).send(renderErrorPage('انتهت الصلاحية', 'انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى'));
+        }
+        
+        const { offer_id, student_id } = req.params;
+        
+        // ✅ التحقق من الصلاحيات
+        if (decoded.userId !== parseInt(student_id) || decoded.role !== 'student') {
+            console.log('❌ صلاحيات غير كافية لدخول البث');
+            return res.status(403).send(renderErrorPage('غير مصرح', 'غير مصرح لك بالدخول إلى هذا البث'));
         }
 
-        const { offer_id, student_id } = req.params;
-        if (decoded.userId !== parseInt(student_id)) {
-            return res.redirect('/student-dashboard.html');
+        // ✅ التحقق من أن الطالب لديه حجز مدفوع في هذه الحصة (الأمان)
+        const session = await getOne('sessions', 'offer_id', offer_id);
+        if (!session || session.student_id !== parseInt(student_id) || session.payment_status !== 'paid') {
+            console.log('❌ الطالب ليس لديه حجز مدفوع في هذه الحصة');
+            return res.status(403).send(renderErrorPage('غير مصرح', 'يجب حجز الحصة أولاً للدخول إلى البث'));
         }
 
         const offer = await getOne('offers', 'id', offer_id);
-        if (!offer) return res.redirect('/student-dashboard.html');
-
-        const session = await getOne('sessions', 'offer_id', offer_id);
-        if (!session || session.student_id !== parseInt(student_id)) {
+        if (!offer) {
             return res.redirect('/student-dashboard.html');
         }
 
-        // ✅ البث مباشر - إعادة توجيه إلى رابط البث
-        if (offer.status === 'live' && offer.stream_url) {
-            await supabase
-                .from('notifications')
-                .update({ is_read: true })
-                .eq('offer_id', offer_id)
-                .eq('user_id', student_id);
-
-            return res.redirect(offer.stream_url);
+        // ✅ التحقق من أن البث مباشر (Live)
+        if (offer.status !== 'live') {
+            return res.redirect('/student-dashboard.html');
         }
 
-        // ✅ البث لم يبدأ بعد - عرض صفحة انتظار
+        // ✅ التحقق من أن الطالب مضاف إلى active_stream
+        const { data: active } = await supabase
+            .from('active_stream')
+            .select('*')
+            .eq('offer_id', offer_id)
+            .eq('student_id', student_id)
+            .single();
+
+        if (!active) {
+            // محاولة إضافة الطالب إلى active_stream إذا كان لديه حجز مدفوع
+            await insert('active_stream', { 
+                offer_id: offer_id, 
+                student_id: parseInt(student_id),
+                joined_at: new Date().toISOString()
+            });
+            console.log(`✅ تم إضافة الطالب ${student_id} إلى active_stream تلقائياً`);
+        }
+
+        // ✅ عرض صفحة البث مع التوكن
         res.send(`
             <!DOCTYPE html>
-            <html dir="rtl" lang="ar">
+            <html lang="ar">
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>انتظار البث</title>
+                <title>حصة مباشرة</title>
                 <style>
-                    * { margin: 0; padding: 0; box-sizing: border-box; }
-                    body { font-family: 'Cairo', Arial, sans-serif; background: #0a0a1a; color: white; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-                    .container { max-width: 500px; width: 90%; background: #1a1a2e; border-radius: 24px; padding: 40px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
-                    .icon { font-size: 4rem; margin-bottom: 20px; }
-                    .spinner { width: 60px; height: 60px; border: 4px solid #0f3460; border-top: 4px solid #0f5cbf; border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto; }
-                    @keyframes spin { to { transform: rotate(360deg); } }
-                    h1 { color: #f59e0b; margin-bottom: 10px; }
-                    .btn { background: #0f5cbf; color: white; padding: 12px 30px; border-radius: 30px; border: none; cursor: pointer; font-size: 1rem; transition: all 0.3s; margin-top: 20px; }
-                    .btn:hover { background: #0a4a9a; transform: scale(1.05); }
-                    .btn-danger { background: #dc2626; }
-                    .btn-danger:hover { background: #b91c1c; }
-                    .info { color: #94a3b8; margin: 15px 0; }
+                    *{margin:0;padding:0;box-sizing:border-box}
+                    body{font-family:Cairo,sans-serif;background:#0a0a1a;overflow:hidden}
+                    .header{background:linear-gradient(135deg,#0f3460,#1a1a2e);color:white;padding:12px 24px;display:flex;justify-content:space-between;align-items:center;position:fixed;top:0;left:0;right:0;z-index:100}
+                    .btn{background:#ef4444;color:white;border:none;padding:8px 20px;border-radius:30px;cursor:pointer;transition:all 0.3s}
+                    .btn:hover{background:#dc2626;transform:scale(1.05)}
+                    .badge{background:#10b981;padding:5px 15px;border-radius:30px;font-size:0.8rem}
+                    .video-container{position:fixed;top:60px;left:0;right:0;bottom:0;background:#0a0a1a;display:flex;align-items:center;justify-content:center;flex-direction:column}
+                    .video-container iframe{width:100%;height:100%;border:none}
+                    .info-bar{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.7);color:white;padding:8px 20px;border-radius:30px;font-size:0.8rem;z-index:100;backdrop-filter:blur(10px);}
+                    .waiting-message{text-align:center;color:#94a3b8;padding:40px;font-size:1.2rem}
+                    .waiting-message .spinner{display:inline-block;width:40px;height:40px;border:4px solid #0f3460;border-top:4px solid #0f5cbf;border-radius:50%;animation:spin 1s linear infinite;margin-bottom:20px}
+                    @keyframes spin{to{transform:rotate(360deg)}}
                 </style>
             </head>
             <body>
-            <div class="container">
-                <div class="icon">⏳</div>
-                <h1>جاري الانتظار...</h1>
-                <p>لم يبدأ الأستاذ البث المباشر بعد</p>
-                <p class="info">📚 ${sanitizeInput(offer.subject_name)}</p>
-                <p class="info" style="font-size:0.8rem;">سيتم توجيهك تلقائياً عند بدء البث</p>
-                <div class="spinner"></div>
-                <button class="btn" onclick="checkStream()">🔄 تحديث</button>
-                <button class="btn btn-danger" onclick="window.location.href='/student-dashboard.html'">← العودة</button>
+            <div class="header">
+                <div><span class="badge">🎓 طالب</span></div>
+                <div>
+                    <span style="font-weight:700; font-size:0.9rem; margin-left:16px;">${sanitizeInput(offer.subject_name)}</span>
+                    <button class="btn" onclick="leaveStream()">مغادرة</button>
+                </div>
             </div>
+            <div class="video-container" id="videoContainer">
+                ${offer.stream_url ? `
+                    <iframe 
+                        src="${offer.stream_url}"
+                        allow="camera; microphone; autoplay; display-capture; fullscreen"
+                        allowfullscreen>
+                    </iframe>
+                ` : `
+                    <div class="waiting-message">
+                        <div class="spinner"></div>
+                        <p>⏳ جاري تحميل البث المباشر...</p>
+                        <p style="font-size:0.8rem;color:#64748b;margin-top:10px;">سيبدأ البث قريباً</p>
+                    </div>
+                `}
+            </div>
+            <div class="info-bar">🟢 البث المباشر جاري</div>
 
             <script>
-                let checkInterval = setInterval(checkStream, 5000);
-                let isRedirecting = false;
-
-                async function checkStream() {
-                    if (isRedirecting) return;
-                    try {
-                        const res = await fetch('/api/stream/status/${offer_id}');
-                        const data = await res.json();
-                        
-                        if (data.status === 'live') {
-                            isRedirecting = true;
-                            clearInterval(checkInterval);
-                            const offerRes = await fetch('/api/offer/${offer_id}');
-                            const offerData = await offerRes.json();
-                            if (offerData.stream_url) {
-                                window.location.href = offerData.stream_url;
-                            } else {
-                                window.location.href = '/student-dashboard.html';
-                            }
-                        } else if (data.status === 'completed') {
-                            clearInterval(checkInterval);
-                            alert('⏹️ انتهى البث المباشر');
-                            window.location.href = '/student-dashboard.html';
+                // ✅ التوكن للصفحة
+                const AUTH_TOKEN = '${token}';
+                const offerId = ${parseInt(offer_id)};
+                const studentId = ${parseInt(student_id)};
+                
+                // ✅ دالة للطلبات مع التوكن
+                async function fetchWithToken(url, options = {}) {
+                    const response = await fetch(url, {
+                        ...options,
+                        headers: {
+                            'Authorization': 'Bearer ' + AUTH_TOKEN,
+                            'Content-Type': 'application/json',
+                            ...options.headers
                         }
-                    } catch(e) {
-                        console.error('خطأ في التحقق:', e);
+                    });
+                    if (response.status === 401) {
+                        alert('⏳ انتهت صلاحية الجلسة، جاري إعادة التوجيه...');
+                        window.location.href = '/student-dashboard.html';
+                        return null;
                     }
+                    return response;
                 }
 
-                setTimeout(checkStream, 1000);
+                // ✅ مغادرة البث
+                function leaveStream() {
+                    window.location.href = '/student-dashboard.html';
+                }
+
+                // ✅ تحديث حالة البث كل 30 ثانية
+                setInterval(async () => {
+                    try {
+                        const res = await fetchWithToken('/api/stream/status/' + offerId);
+                        if (res && res.ok) {
+                            const data = await res.json();
+                            if (data.status !== 'live') {
+                                alert('⏹️ انتهى البث المباشر');
+                                leaveStream();
+                            }
+                        }
+                    } catch(e) {
+                        console.error('خطأ في التحقق من حالة البث:', e);
+                    }
+                }, 30000);
+
+                // ✅ إعادة تحميل الإطار إذا كان هناك رابط
+                const container = document.getElementById('videoContainer');
+                const iframe = container.querySelector('iframe');
+                if (iframe) {
+                    setInterval(() => {
+                        // إعادة تحميل الإطار كل 5 دقائق للحفاظ على الاتصال
+                        iframe.src = iframe.src;
+                    }, 300000);
+                }
+
+                console.log('✅ تم تهيئة صفحة البث للطالب');
             </script>
             </body>
             </html>
         `);
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
+        console.error('❌ خطأ في دخول الطالب إلى البث:', error.message);
         res.redirect('/student-dashboard.html');
     }
 });
 
 // ============================================================
-// مسار جلب تفاصيل العرض
+// مسار قائمة انتظار الطلاب (مع أزرار الإضافة)
 // ============================================================
-app.get('/api/offer/:offer_id', async (req, res) => {
+app.get('/api/stream/waiting-list/:offer_id/:teacher_id', [
+    authenticate,
+    authorize(['teacher']),
+    param('offer_id').isInt().withMessage('معرف العرض غير صالح'),
+    param('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
+], async (req, res) => {
     try {
-        const offer = await getOne('offers', 'id', req.params.offer_id);
-        if (!offer) {
-            return res.status(404).json({ success: false, error: 'العرض غير موجود' });
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
         }
-        res.json(offer);
+
+        const { offer_id, teacher_id } = req.params;
+
+        if (req.user.userId !== parseInt(teacher_id)) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        // جلب الطلاب في قائمة الانتظار
+        const { data } = await supabase
+            .from('waiting_room')
+            .select('*, students:student_id (id, full_name, email, profile_url)')
+            .eq('offer_id', offer_id);
+
+        // جلب الطلاب النشطين في البث
+        const { data: activeStudents } = await supabase
+            .from('active_stream')
+            .select('student_id')
+            .eq('offer_id', offer_id);
+
+        const activeStudentIds = new Set(activeStudents?.map(s => s.student_id) || []);
+
+        const formatted = (data || []).map(w => ({
+            ...w,
+            full_name: w.students?.full_name,
+            email: w.students?.email,
+            profile_url: w.students?.profile_url,
+            is_active: activeStudentIds.has(w.student_id)
+        }));
+
+        res.json(formatted);
     } catch (error) {
-        console.error('❌ خطأ:', error.message);
-        res.status(500).json({ success: false, error: 'حدث خطأ' });
+        console.error('❌ خطأ في جلب قائمة الانتظار:', error.message);
+        res.status(500).json([]);
     }
 });
 
-// مسار حالة البث (معدل لدعم Google Meet)
-app.get('/api/stream/status/:offer_id', async (req, res) => {
+// ============================================================
+// مسار إضافة طالب واحد من قائمة الانتظار
+// ============================================================
+app.post('/api/stream/add-student/:offer_id', [
+    authenticate,
+    authorize(['teacher']),
+    param('offer_id').isInt().withMessage('معرف العرض غير صالح'),
+    body('student_id').isInt().withMessage('معرف الطالب غير صالح'),
+    body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
+], async (req, res) => {
     try {
-        const offer = await getOne('offers', 'id', req.params.offer_id);
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { offer_id, student_id, teacher_id } = req.body;
+
+        if (req.user.userId !== teacher_id) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        const offer = await getOne('offers', 'id', offer_id);
+        if (!offer || offer.teacher_id !== teacher_id) {
+            return res.status(403).json({ success: false, error: 'غير مصرح' });
+        }
+
+        // ✅ التحقق من أن الطالب لديه حجز مدفوع
+        const session = await getOne('sessions', 'offer_id', offer_id);
+        if (!session || session.student_id !== student_id || session.payment_status !== 'paid') {
+            return res.status(403).json({ success: false, error: 'الطالب ليس لديه حجز مدفوع في هذه الحصة' });
+        }
+
+        // ✅ إضافة الطالب إلى active_stream
+        await insert('active_stream', {
+            offer_id: parseInt(offer_id),
+            student_id: parseInt(student_id),
+            added_at: new Date().toISOString(),
+            added_by_teacher: true
+        });
+
+        // ✅ حذف الطالب من waiting_room
+        await supabase
+            .from('waiting_room')
+            .delete()
+            .eq('offer_id', offer_id)
+            .eq('student_id', student_id);
+
+        // ✅ إرسال إشعار للطالب
+        await insert('notifications', {
+            user_id: student_id,
+            user_type: 'student',
+            title: '✅ تمت إضافتك إلى البث المباشر',
+            message: `تمت إضافتك إلى البث المباشر للحصة "${offer.subject_name}". انضم الآن عبر زر البث المباشر.`,
+            offer_id: offer_id,
+            is_read: false,
+            created_at: new Date().toISOString()
+        });
+
+        res.json({ success: true, message: 'تم إضافة الطالب إلى البث' });
+    } catch (error) {
+        console.error('❌ خطأ في إضافة الطالب:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// مسار إضافة جميع الطلاب من قائمة الانتظار
+// ============================================================
+app.post('/api/stream/add-all-students/:offer_id', [
+    authenticate,
+    authorize(['teacher']),
+    param('offer_id').isInt().withMessage('معرف العرض غير صالح'),
+    body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { offer_id, teacher_id } = req.body;
+
+        if (req.user.userId !== teacher_id) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        const offer = await getOne('offers', 'id', offer_id);
+        if (!offer || offer.teacher_id !== teacher_id) {
+            return res.status(403).json({ success: false, error: 'غير مصرح' });
+        }
+
+        // جلب الطلاب في قائمة الانتظار
+        const { data: waitingStudents } = await supabase
+            .from('waiting_room')
+            .select('student_id')
+            .eq('offer_id', offer_id);
+
+        if (!waitingStudents || waitingStudents.length === 0) {
+            return res.json({ success: true, students_count: 0, message: 'لا يوجد طلاب في قائمة الانتظار' });
+        }
+
+        let addedCount = 0;
+        const addedStudents = [];
+
+        for (const student of waitingStudents) {
+            // ✅ التحقق من أن الطالب لديه حجز مدفوع
+            const session = await getOne('sessions', 'offer_id', offer_id);
+            if (session && session.student_id === student.student_id && session.payment_status === 'paid') {
+                // ✅ إضافة الطالب إلى active_stream
+                await insert('active_stream', {
+                    offer_id: parseInt(offer_id),
+                    student_id: student.student_id,
+                    added_at: new Date().toISOString(),
+                    added_by_teacher: true
+                });
+
+                // ✅ حذف الطالب من waiting_room
+                await supabase
+                    .from('waiting_room')
+                    .delete()
+                    .eq('offer_id', offer_id)
+                    .eq('student_id', student.student_id);
+
+                // ✅ إرسال إشعار للطالب
+                await insert('notifications', {
+                    user_id: student.student_id,
+                    user_type: 'student',
+                    title: '✅ تمت إضافتك إلى البث المباشر',
+                    message: `تمت إضافتك إلى البث المباشر للحصة "${offer.subject_name}". انضم الآن عبر زر البث المباشر.`,
+                    offer_id: offer_id,
+                    is_read: false,
+                    created_at: new Date().toISOString()
+                });
+
+                addedCount++;
+                addedStudents.push(student.student_id);
+            } else {
+                // الطالب ليس لديه حجز مدفوع، حذفه من قائمة الانتظار
+                await supabase
+                    .from('waiting_room')
+                    .delete()
+                    .eq('offer_id', offer_id)
+                    .eq('student_id', student.student_id);
+
+                // إرسال إشعار للطالب
+                await insert('notifications', {
+                    user_id: student.student_id,
+                    user_type: 'student',
+                    title: '❌ لم تتمكن من الانضمام إلى البث',
+                    message: `لم تتمكن من الانضمام إلى البث المباشر للحصة "${offer.subject_name}" لأنك لم تقم بحجز الحصة.`,
+                    offer_id: offer_id,
+                    is_read: false,
+                    created_at: new Date().toISOString()
+                });
+            }
+        }
+
         res.json({ 
-            status: offer?.status || 'not_found', 
-            stream_url: offer?.stream_url || null,
-            platform: offer?.stream_platform || null
+            success: true, 
+            students_count: addedCount,
+            students: addedStudents,
+            message: `تم إضافة ${addedCount} طالب إلى البث`
         });
     } catch (error) {
-        res.status(500).json({ status: 'not_found' });
+        console.error('❌ خطأ في إضافة جميع الطلاب:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
 
-// مسار إضافة الطلاب إلى البث
+// مسار إضافة الطلاب إلى البث (API قديم - معدل)
 app.post('/api/stream/add-students/:offer_id', [
     authenticate,
     authorize(['teacher']),
@@ -4824,14 +5080,12 @@ app.post('/api/stream/add-students/:offer_id', [
         }
 
         const offer = await getOne('offers', 'id', offer_id);
+
         if (!offer || offer.teacher_id != teacher_id) {
             return res.status(403).json({ success: false });
         }
 
-        // تحديث حالة العرض إلى live إذا لم تكن بالفعل
-        if (offer.status !== 'live') {
-            await update('offers', offer_id, { status: 'live' });
-        }
+        await update('offers', offer_id, { status: 'live' });
 
         const { data: waitingStudents } = await supabase
             .from('waiting_room')
@@ -4841,26 +5095,41 @@ app.post('/api/stream/add-students/:offer_id', [
         const addedStudents = [];
 
         for (const student of waitingStudents || []) {
-            await insert('active_stream', { offer_id, student_id: student.student_id });
+            // ✅ التحقق من أن الطالب لديه حجز مدفوع
+            const session = await getOne('sessions', 'offer_id', offer_id);
+            if (session && session.student_id === student.student_id && session.payment_status === 'paid') {
+                await insert('active_stream', { 
+                    offer_id: parseInt(offer_id), 
+                    student_id: student.student_id,
+                    added_at: new Date().toISOString()
+                });
 
-            await insert('notifications', {
-                user_id: student.student_id,
-                user_type: 'student',
-                title: '🔴 البث المباشر بدأ',
-                message: `الحصة "${offer.subject_name}" قد بدأت الآن. انضم عبر الرابط: ${offer.stream_url || 'راجع منصة البث'}`,
-                offer_id: offer_id,
-                stream_url: offer.stream_url,
-                is_read: false,
-                created_at: new Date().toISOString()
-            });
+                await insert('notifications', {
+                    user_id: student.student_id,
+                    user_type: 'student',
+                    title: '🔴 البث المباشر بدأ',
+                    message: `الحصة "${offer.subject_name}" قد بدأت الآن. انضم إلى البث المباشر.`,
+                    offer_id: offer_id,
+                    stream_url: offer.stream_url,
+                    is_read: false,
+                    created_at: new Date().toISOString()
+                });
 
-            addedStudents.push(student.student_id);
+                addedStudents.push(student.student_id);
 
-            await supabase
-                .from('waiting_room')
-                .delete()
-                .eq('offer_id', offer_id)
-                .eq('student_id', student.student_id);
+                await supabase
+                    .from('waiting_room')
+                    .delete()
+                    .eq('offer_id', offer_id)
+                    .eq('student_id', student.student_id);
+            } else {
+                // حذف الطلاب غير المسجلين من قائمة الانتظار
+                await supabase
+                    .from('waiting_room')
+                    .delete()
+                    .eq('offer_id', offer_id)
+                    .eq('student_id', student.student_id);
+            }
         }
 
         res.json({ success: true, students_count: addedStudents.length, students: addedStudents });
@@ -4893,12 +5162,26 @@ app.post('/api/stream/end/:offer_id', [
     }
 });
 
-// مسار قائمة انتظار الطلاب (معدل)
-app.get('/api/stream/waiting-list/:offer_id/:teacher_id', [
+// مسار حالة البث
+app.get('/api/stream/status/:offer_id', async (req, res) => {
+    try {
+        const offer = await getOne('offers', 'id', req.params.offer_id);
+        res.json({ 
+            status: offer?.status || 'not_found', 
+            stream_url: offer?.stream_url || null,
+            platform: offer?.stream_platform || null
+        });
+    } catch (error) {
+        res.status(500).json({ status: 'not_found' });
+    }
+});
+
+// مسار حالة البث للطالب
+app.get('/api/student/stream-status/:offer_id/:student_id', [
     authenticate,
-    authorize(['teacher']),
+    authorize(['student']),
     param('offer_id').isInt().withMessage('معرف العرض غير صالح'),
-    param('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
+    param('student_id').isInt().withMessage('معرف الطالب غير صالح')
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -4906,26 +5189,61 @@ app.get('/api/stream/waiting-list/:offer_id/:teacher_id', [
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        const { offer_id, teacher_id } = req.params;
+        const { offer_id, student_id } = req.params;
 
-        if (req.user.userId !== parseInt(teacher_id)) {
+        if (req.user.userId !== parseInt(student_id)) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
 
-        const { data } = await supabase
-            .from('waiting_room')
-            .select('*, students:student_id (full_name, email)')
-            .eq('offer_id', offer_id);
+        // ✅ التحقق من أن الطالب لديه حجز مدفوع
+        const session = await getOne('sessions', 'offer_id', offer_id);
+        if (!session || session.student_id !== parseInt(student_id) || session.payment_status !== 'paid') {
+            return res.json({ can_join: false, error: 'لا يوجد حجز مدفوع' });
+        }
 
-        const formatted = (data || []).map(w => ({
-            ...w,
-            full_name: w.students?.full_name,
-            email: w.students?.email
-        }));
+        const offer = await getOne('offers', 'id', offer_id);
+        if (!offer) return res.json({ can_join: false, status: 'not_found' });
 
-        res.json(formatted);
+        if (offer.status === 'live') {
+            // ✅ التحقق من أن الطالب مضاف إلى active_stream
+            const { data: active } = await supabase
+                .from('active_stream')
+                .select('*')
+                .eq('offer_id', offer_id)
+                .eq('student_id', student_id)
+                .single();
+
+            if (active) {
+                await supabase
+                    .from('notifications')
+                    .update({ is_read: true })
+                    .eq('offer_id', offer_id)
+                    .eq('user_id', student_id);
+
+                return res.json({ can_join: true, stream_url: offer.stream_url, status: 'live' });
+            }
+            return res.json({ can_join: false, status: 'not_active' });
+        } else if (offer.status === 'teacher_ready') {
+            // ✅ الطالب في حالة الانتظار
+            const { data: existingWaiting } = await supabase
+                .from('waiting_room')
+                .select('*')
+                .eq('offer_id', offer_id)
+                .eq('student_id', student_id)
+                .maybeSingle();
+
+            if (!existingWaiting) {
+                await insert('waiting_room', { offer_id: offer_id, student_id: student_id });
+            }
+            return res.json({ can_join: false, is_waiting: true, status: 'waiting' });
+        } else if (offer.status === 'upcoming') {
+            return res.json({ can_join: false, is_upcoming: true, status: 'upcoming', offer_date: offer.offer_date });
+        }
+
+        return res.json({ can_join: false, status: 'unknown' });
     } catch (error) {
-        res.status(500).json([]);
+        console.error('خطأ:', error.message);
+        res.status(500).json({ can_join: false, status: 'error' });
     }
 });
 
@@ -5264,6 +5582,74 @@ app.post('/api/notifications/read/:notification_id', [
 });
 
 // ============================================================
+// مسار Ping للحفاظ على الاتصال
+// ============================================================
+app.post('/api/ping', [
+    authenticate,
+    body('offer_id').isInt().withMessage('معرف العرض غير صالح'),
+    body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { offer_id, teacher_id } = req.body;
+        
+        await supabase
+            .from('active_stream')
+            .update({ 
+                last_ping: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            })
+            .eq('offer_id', offer_id)
+            .eq('teacher_id', teacher_id);
+        
+        const offer = await getOne('offers', 'id', offer_id);
+        
+        res.json({ 
+            success: true, 
+            status: offer?.status || 'unknown',
+            timestamp: Date.now()
+        });
+    } catch (error) {
+        console.error('❌ خطأ في ping:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// مسار التحقق من صلاحية التوكن
+// ============================================================
+app.get('/api/verify-token', authenticate, (req, res) => {
+    res.json({ 
+        success: true, 
+        valid: true,
+        user: req.user,
+        expiresIn: 24 * 60 * 60 * 1000
+    });
+});
+
+// ============================================================
+// مسار تجديد التوكن
+// ============================================================
+app.post('/api/refresh-token', authenticate, (req, res) => {
+    try {
+        const { userId, role, email } = req.user;
+        const newToken = generateToken(userId, role, email);
+        res.json({ 
+            success: true, 
+            token: newToken,
+            expiresIn: 24 * 60 * 60 * 1000
+        });
+    } catch (error) {
+        console.error('❌ خطأ في تجديد التوكن:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في تجديد الجلسة' });
+    }
+});
+
+// ============================================================
 // تشغيل الخادم
 // ============================================================
 
@@ -5298,9 +5684,12 @@ if (require.main === module) {
         console.log('='.repeat(60));
         console.log('🎥 نظام البث المباشر: Google Meet (مجاني 100%)');
         console.log('   ✅ لا يوجد حد زمني للبث');
-        console.log('   ✅ 100 مشارك كحد أقصى');
+        console.log('   ✅ 100 مشارك كحد أقصى (Google Meet مجاني)');
         console.log('   ✅ لا يحتاج إلى أي اشتراك مدفوع');
         console.log('   ✅ يمكن إنشاء رابط مباشر من المنصة');
+        console.log('   ✅ فقط الطلاب الذين لديهم حجز مدفوع يمكنهم الدخول');
+        console.log('   ✅ الأستاذ يمكنه إضافة الطلاب من قائمة الانتظار');
+        console.log('   ✅ إضافة طالب واحد أو جميع الطلاب');
         console.log('='.repeat(60));
         console.log(`📅 التاريخ: ${new Date().toLocaleString('ar-EG')}`);
         console.log('='.repeat(60));
