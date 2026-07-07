@@ -493,92 +493,71 @@
         }
 
         // ================================================================
-        // ✅ دالة محسنة لجلب بيانات الأستاذ (تعمل مع المسارين العام والمحمي)
+        // ✅ دالة محسنة لجلب بيانات الأستاذ
         // ================================================================
         async function loadTeacherProfile() {
             const loading = document.getElementById('loadingIndicator');
             const content = document.getElementById('profileContent');
 
             try {
-                let teacher = null;
-                let errorMessage = null;
-
-                // ✅ المحاولة الأولى: المسار العام (public)
-                try {
-                    console.log('📡 محاولة جلب البيانات من المسار العام...');
-                    const res = await fetch(`/api/public/teacher/${teacherId}`);
-                    
-                    if (res.ok) {
-                        const data = await res.json();
-                        // التحقق من تنسيق الاستجابة
-                        if (data && data.id) {
-                            teacher = data;
-                            console.log('✅ تم جلب البيانات من المسار العام');
-                        } else if (data.success && data.data) {
-                            teacher = data.data;
-                            console.log('✅ تم جلب البيانات من المسار العام (مع success)');
-                        }
-                    } else if (res.status === 404) {
-                        errorMessage = 'الأستاذ غير موجود';
+                console.log(`📡 جلب بيانات الأستاذ: ${teacherId}`);
+                const res = await fetch(`/api/public/teacher/${teacherId}`);
+                
+                console.log('📡 حالة الاستجابة:', res.status);
+                
+                if (!res.ok) {
+                    if (res.status === 404) {
+                        showError('الأستاذ غير موجود', 'لم يتم العثور على الأستاذ المطلوب');
                     } else {
-                        console.log(`⚠️ المسار العام رد بـ ${res.status}`);
-                    }
-                } catch(e) {
-                    console.log('⚠️ فشل المسار العام:', e.message);
-                }
-
-                // ✅ المحاولة الثانية: المسار المحمي (إذا كان المستخدم مسجلاً)
-                if (!teacher) {
-                    const token = localStorage.getItem('token') || localStorage.getItem('studentToken');
-                    if (token) {
-                        try {
-                            console.log('📡 محاولة جلب البيانات من المسار المحمي...');
-                            const res = await fetch(`/api/teacher/${teacherId}`, {
-                                headers: {
-                                    'Authorization': `Bearer ${token}`,
-                                    'Content-Type': 'application/json'
-                                }
-                            });
-                            
-                            if (res.ok) {
-                                const data = await res.json();
-                                if (data && data.id) {
-                                    teacher = data;
-                                    console.log('✅ تم جلب البيانات من المسار المحمي');
-                                } else if (data.success && data.data) {
-                                    teacher = data.data;
-                                    console.log('✅ تم جلب البيانات من المسار المحمي (مع success)');
-                                }
-                            } else if (res.status === 404) {
-                                errorMessage = 'الأستاذ غير موجود';
-                            } else if (res.status === 401) {
-                                console.log('⚠️ التوكن غير صالح في المسار المحمي');
-                            } else {
-                                console.log(`⚠️ المسار المحمي رد بـ ${res.status}`);
-                            }
-                        } catch(e) {
-                            console.log('⚠️ فشل المسار المحمي:', e.message);
-                        }
-                    }
-                }
-
-                // ✅ إذا لم نجد الأستاذ
-                if (!teacher) {
-                    console.error('❌ فشل جلب بيانات الأستاذ');
-                    if (errorMessage) {
-                        showError('الأستاذ غير موجود', errorMessage);
-                    } else {
-                        showError('الأستاذ غير موجود', 'لم يتم العثور على الأستاذ المطلوب. قد يكون الحساب غير معتمد أو غير موجود.');
+                        showError('حدث خطأ', 'حدث خطأ أثناء تحميل البيانات');
                     }
                     return;
                 }
 
-                // ✅ عرض البيانات
-                loading.style.display = 'none';
-                content.style.display = 'block';
+                const teacher = await res.json();
+                console.log('📦 بيانات الأستاذ المستلمة:', teacher);
                 
-                renderTeacherProfile(teacher);
-                loadTeacherOffers(teacherId);
+                // ✅ التحقق من وجود البيانات
+                if (!teacher) {
+                    showError('حدث خطأ', 'البيانات غير صالحة');
+                    return;
+                }
+
+                // ✅ إذا كان هناك حقل error
+                if (teacher.error) {
+                    showError('حدث خطأ', teacher.error);
+                    return;
+                }
+
+                // ✅ البيانات مباشرة (كما هي في السيرفر)
+                if (teacher.id) {
+                    loading.style.display = 'none';
+                    content.style.display = 'block';
+                    renderTeacherProfile(teacher);
+                    loadTeacherOffers(teacherId);
+                    return;
+                }
+
+                // ✅ إذا كانت البيانات في { success: true, data: { ... } }
+                if (teacher.success && teacher.data) {
+                    loading.style.display = 'none';
+                    content.style.display = 'block';
+                    renderTeacherProfile(teacher.data);
+                    loadTeacherOffers(teacherId);
+                    return;
+                }
+
+                // ✅ إذا كانت البيانات في مصفوفة
+                if (Array.isArray(teacher) && teacher.length > 0) {
+                    loading.style.display = 'none';
+                    content.style.display = 'block';
+                    renderTeacherProfile(teacher[0]);
+                    loadTeacherOffers(teacherId);
+                    return;
+                }
+
+                // ✅ إذا لم تكن البيانات صالحة
+                showError('بيانات غير صالحة', 'لم نتمكن من قراءة بيانات الأستاذ');
 
             } catch (error) {
                 console.error('❌ خطأ في تحميل ملف الأستاذ:', error);
@@ -681,20 +660,8 @@
 
         async function loadTeacherOffers(teacherId) {
             try {
-                // ✅ محاولة جلب العروض من المسار العام
-                let res = await fetch(`/api/public/offers`);
-                
-                // ✅ إذا فشل المسار العام، جرب المسار المحمي
-                if (!res.ok) {
-                    const token = localStorage.getItem('token') || localStorage.getItem('studentToken');
-                    if (token) {
-                        res = await fetch(`/api/teacher/offers/${teacherId}`, {
-                            headers: {
-                                'Authorization': `Bearer ${token}`
-                            }
-                        });
-                    }
-                }
+                // ✅ جلب العروض من المسار العام
+                const res = await fetch(`/api/public/offers`);
                 
                 if (!res.ok) {
                     console.warn('⚠️ لا يمكن تحميل العروض');
@@ -705,7 +672,8 @@
                 console.log('📦 جميع العروض:', allOffers);
                 
                 // ✅ تصفية العروض الخاصة بهذا الأستاذ فقط
-                const teacherOffers = allOffers.filter(offer => offer.teacher_id === teacherId);
+                const teacherOffers = Array.isArray(allOffers) ? 
+                    allOffers.filter(offer => offer.teacher_id === teacherId) : [];
                 console.log('📦 عروض الأستاذ:', teacherOffers);
                 
                 renderOffers(teacherOffers);
