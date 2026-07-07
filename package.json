@@ -1,7 +1,7 @@
- {
+{
   "name": "education-platform",
   "version": "4.0.0",
-  "description": "منصة تعليمية عالية الأداء مع أعلى معايير الأمان - نسخة محسنة مع JWT وCSRF وWebhook",
+  "description": "منصة تعليمية عالية الأداء مع أعلى معايير الأمان - نسخة محسنة مع JWT وCSRF وWebhook - تدعم Google Meet للبث المباشر (مجاني 100%)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -53,7 +53,9 @@
     "chargily",
     "payment",
     "referral",
-    "live-streaming"
+    "live-streaming",
+    "google-meet",
+    "microsoft-teams"
   ],
   "author": "ZoomDz",
   "license": "MIT",
