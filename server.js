@@ -4413,12 +4413,12 @@ app.get('/api/enter-teacher-stream/:offer_id/:teacher_id', [
     }
 });
 
-// صفحة البث المباشر للأستاذ - ✅ معدلة لدعم التوكن
-app.get('/api/teacher-stream/:offer_id/:teacher_id', [
-    // ❌ تم إزالة authenticate من هنا
-], async (req, res) => {
+// ============================================================
+// صفحة البث المباشر للأستاذ - ✅ معدلة كاملة مع دعم CSRF
+// ============================================================
+app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
     try {
-        // ✅ قراءة التوكن من Query Parameter
+        // قراءة التوكن من Query Parameter
         const token = req.query.token;
         if (!token) {
             console.log('❌ لا يوجد توكن في طلب صفحة البث');
@@ -4438,14 +4438,13 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', [
             return res.redirect('/teacher-dashboard.html');
         }
 
-        // ✅ التحقق من وجود العرض
         const offer = await getOne('offers', 'id', offer_id);
         if (!offer || offer.teacher_id != parseInt(teacher_id)) {
             console.log('❌ العرض غير موجود أو لا يخص هذا الأستاذ');
             return res.redirect('/teacher-dashboard.html');
         }
 
-        // عرض صفحة البث مع التوكن
+        // عرض صفحة البث مع التوكن ودعم CSRF
         res.send(`
             <!DOCTYPE html>
             <html lang="ar">
@@ -4493,30 +4492,87 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', [
             </div>
             <div id="jitsi-container"></div>
             <script>
-                // ✅ التوكن للطلبات
+                // ============================================================
+                // ✅ التوكنات للطلبات
+                // ============================================================
                 const AUTH_TOKEN = '${token}';
                 const roomName = '${sanitizeInput(offer.room_name)}';
                 const offerId = ${parseInt(offer_id)};
                 const teacherId = ${parseInt(teacher_id)};
+                let csrfToken = null;
 
-                // ✅ دالة للطلبات مع التوكن
-                async function fetchWithToken(url, options = {}) {
+                // ============================================================
+                // ✅ دالة جلب CSRF Token
+                // ============================================================
+                async function getCsrfToken() {
+                    try {
+                        const response = await fetch('/api/csrf-token', {
+                            credentials: 'include'
+                        });
+                        const data = await response.json();
+                        csrfToken = data.csrfToken;
+                        return csrfToken;
+                    } catch (error) {
+                        console.error('خطأ في جلب CSRF Token:', error);
+                        return null;
+                    }
+                }
+
+                // ============================================================
+                // ✅ دالة للطلبات مع التوكن و CSRF
+                // ============================================================
+                async function fetchWithAuth(url, options = {}) {
+                    // إذا لم يكن لدينا CSRF Token، نجلب واحد
+                    if (!csrfToken) {
+                        await getCsrfToken();
+                    }
+
                     const response = await fetch(url, {
                         ...options,
                         headers: {
                             'Authorization': 'Bearer ' + AUTH_TOKEN,
+                            'X-CSRF-Token': csrfToken || '',
                             'Content-Type': 'application/json',
                             ...options.headers
                         }
                     });
+
+                    // إذا كان الخطأ بسبب CSRF، نجلب توكن جديد ونعيد المحاولة
+                    if (response.status === 403) {
+                        try {
+                            const data = await response.clone().json();
+                            if (data.code === 'CSRF_ERROR' || data.error?.includes('CSRF')) {
+                                console.log('🔄 CSRF Token منتهي، جلب توكن جديد...');
+                                await getCsrfToken();
+                                // إعادة المحاولة مع التوكن الجديد
+                                const retryResponse = await fetch(url, {
+                                    ...options,
+                                    headers: {
+                                        'Authorization': 'Bearer ' + AUTH_TOKEN,
+                                        'X-CSRF-Token': csrfToken || '',
+                                        'Content-Type': 'application/json',
+                                        ...options.headers
+                                    }
+                                });
+                                return retryResponse;
+                            }
+                        } catch (e) {
+                            console.error('خطأ في معالجة CSRF:', e);
+                        }
+                    }
+
                     if (response.status === 401) {
                         alert('⏳ انتهت صلاحية الجلسة، جاري إعادة التوجيه...');
                         window.location.href = '/teacher-dashboard.html';
                         return null;
                     }
+
                     return response;
                 }
 
+                // ============================================================
+                // ✅ تهيئة Jitsi
+                // ============================================================
                 let refreshInterval = null;
 
                 function initJitsi() {
@@ -4540,9 +4596,12 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', [
                     }
                 }
 
+                // ============================================================
+                // ✅ تحميل قائمة الانتظار
+                // ============================================================
                 async function loadWaitingList() {
                     try {
-                        const res = await fetchWithToken('/api/stream/waiting-list/' + offerId + '/' + teacherId);
+                        const res = await fetchWithAuth('/api/stream/waiting-list/' + offerId + '/' + teacherId);
                         if (!res) return;
                         const students = await res.json();
                         const count = students?.length || 0;
@@ -4564,53 +4623,80 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', [
                     } catch(e) { console.error(e); }
                 }
 
+                // ============================================================
+                // ✅ إضافة طالب واحد
+                // ============================================================
                 async function addStudent(studentId) {
                     if (confirm('اضافة الطالب الى البث؟')) {
-                        const res = await fetchWithToken('/api/stream/add-students/' + offerId, {
-                            method: 'POST',
-                            body: JSON.stringify({ offer_id: offerId, teacher_id: teacherId })
-                        });
-                        if (res && res.ok) {
-                            alert('✅ تم اضافة الطالب');
-                            loadWaitingList();
-                        } else if (res) {
-                            const data = await res.json();
-                            alert('❌ ' + (data.error || 'حدث خطأ'));
+                        try {
+                            const res = await fetchWithAuth('/api/stream/add-students/' + offerId, {
+                                method: 'POST',
+                                body: JSON.stringify({ offer_id: offerId, teacher_id: teacherId })
+                            });
+                            if (res && res.ok) {
+                                alert('✅ تم اضافة الطالب');
+                                loadWaitingList();
+                            } else if (res) {
+                                const data = await res.json();
+                                alert('❌ ' + (data.error || 'حدث خطأ'));
+                            }
+                        } catch(e) {
+                            console.error('خطأ في إضافة الطالب:', e);
+                            alert('❌ حدث خطأ في إضافة الطالب');
                         }
                     }
                 }
 
+                // ============================================================
+                // ✅ إضافة جميع الطلاب
+                // ============================================================
                 async function addAllStudents() {
                     if (confirm('اضافة جميع الطلاب الى البث؟')) {
-                        const res = await fetchWithToken('/api/stream/add-students/' + offerId, {
-                            method: 'POST',
-                            body: JSON.stringify({ offer_id: offerId, teacher_id: teacherId })
-                        });
-                        if (res && res.ok) {
-                            const data = await res.json();
-                            alert('✅ تم اضافة ' + data.students_count + ' طالب');
-                            loadWaitingList();
-                        } else if (res) {
-                            const data = await res.json();
-                            alert('❌ ' + (data.error || 'حدث خطأ'));
+                        try {
+                            const res = await fetchWithAuth('/api/stream/add-students/' + offerId, {
+                                method: 'POST',
+                                body: JSON.stringify({ offer_id: offerId, teacher_id: teacherId })
+                            });
+                            if (res && res.ok) {
+                                const data = await res.json();
+                                alert('✅ تم اضافة ' + data.students_count + ' طالب');
+                                loadWaitingList();
+                            } else if (res) {
+                                const data = await res.json();
+                                alert('❌ ' + (data.error || 'حدث خطأ'));
+                            }
+                        } catch(e) {
+                            console.error('خطأ في إضافة جميع الطلاب:', e);
+                            alert('❌ حدث خطأ في إضافة الطلاب');
                         }
                     }
                 }
 
+                // ============================================================
+                // ✅ مغادرة البث
+                // ============================================================
                 function leaveStream() {
                     if (window.jitsiApi) window.jitsiApi.dispose();
                     if (refreshInterval) clearInterval(refreshInterval);
                     window.location.href = '/teacher-dashboard.html';
                 }
 
+                // ============================================================
+                // ✅ إنهاء البث
+                // ============================================================
                 async function endStream() {
                     if (confirm('انهاء البث؟')) {
-                        const res = await fetchWithToken('/api/stream/end/' + offerId, {
-                            method: 'POST',
-                            body: JSON.stringify({ offer_id: offerId, teacher_id: teacherId })
-                        });
-                        if (res && res.ok) {
-                            alert('✅ تم انهاء البث');
+                        try {
+                            const res = await fetchWithAuth('/api/stream/end/' + offerId, {
+                                method: 'POST',
+                                body: JSON.stringify({ offer_id: offerId, teacher_id: teacherId })
+                            });
+                            if (res && res.ok) {
+                                alert('✅ تم انهاء البث');
+                            }
+                        } catch(e) {
+                            console.error('خطأ في إنهاء البث:', e);
+                            alert('❌ حدث خطأ في إنهاء البث');
                         }
                         if (window.jitsiApi) window.jitsiApi.dispose();
                         if (refreshInterval) clearInterval(refreshInterval);
@@ -4618,6 +4704,9 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', [
                     }
                 }
 
+                // ============================================================
+                // ✅ دالة مساعدة لتنقية النص
+                // ============================================================
                 function escapeHtml(text) {
                     if (!text) return '';
                     const div = document.createElement('div');
@@ -4625,9 +4714,16 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', [
                     return div.innerHTML;
                 }
 
+                // ============================================================
+                // ✅ بدء التشغيل
+                // ============================================================
                 initJitsi();
-                loadWaitingList();
-                refreshInterval = setInterval(loadWaitingList, 5000);
+                
+                // جلب CSRF Token عند البدء
+                getCsrfToken().then(() => {
+                    loadWaitingList();
+                    refreshInterval = setInterval(loadWaitingList, 5000);
+                });
             </script>
             </body>
             </html>
