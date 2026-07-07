@@ -4337,7 +4337,7 @@ app.post('/api/admin/withdraw-requests/:id/reject', [
 });
 
 // ============================================================
-// نظام البث المباشر - ✅ Google Meet (مجاني 100%)
+// نظام البث المباشر - ✅ Google Meet (مجاني 100%) مع إضافة الطلاب
 // ============================================================
 
 // ============================================================
@@ -4366,6 +4366,7 @@ app.post('/api/stream/save-link', [
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
 
+        // تحديث العرض إلى حالة "مباشر"
         await supabase
             .from('offers')
             .update({
@@ -4376,34 +4377,52 @@ app.post('/api/stream/save-link', [
             })
             .eq('id', offer_id);
 
+        // جلب الطلاب المسجلين (ذوي الحجز المدفوع)
         const { data: sessions } = await supabase
             .from('sessions')
             .select('student_id')
             .eq('offer_id', offer_id)
             .eq('payment_status', 'paid');
 
+        // إضافة جميع الطلاب المسجلين تلقائياً إلى active_stream
         if (sessions && sessions.length > 0) {
-            const notifications = sessions.map(s => ({
-                user_id: s.student_id,
-                user_type: 'student',
-                title: '🔴 البث المباشر بدأ',
-                message: `الحصة "${offer.subject_name}" قد بدأت الآن. انضم عبر الرابط: ${stream_url}`,
-                offer_id: offer_id,
-                stream_url: stream_url,
-                is_read: false,
-                created_at: new Date().toISOString()
-            }));
+            for (const session of sessions) {
+                // إضافة الطالب إلى active_stream
+                await insert('active_stream', {
+                    offer_id: parseInt(offer_id),
+                    student_id: session.student_id,
+                    added_at: new Date().toISOString(),
+                    added_by_teacher: false,
+                    auto_added: true
+                });
 
-            await supabase
-                .from('notifications')
-                .insert(notifications);
+                // حذف الطالب من waiting_room
+                await supabase
+                    .from('waiting_room')
+                    .delete()
+                    .eq('offer_id', offer_id)
+                    .eq('student_id', session.student_id);
+
+                // إرسال إشعار للطالب
+                await insert('notifications', {
+                    user_id: session.student_id,
+                    user_type: 'student',
+                    title: '🔴 البث المباشر بدأ',
+                    message: `الحصة "${offer.subject_name}" قد بدأت الآن. انضم عبر الرابط: ${stream_url}`,
+                    offer_id: offer_id,
+                    stream_url: stream_url,
+                    is_read: false,
+                    created_at: new Date().toISOString()
+                });
+            }
         }
 
         res.json({
             success: true,
             message: 'تم بدء البث المباشر بنجاح',
             stream_url: stream_url,
-            platform: platform
+            platform: platform,
+            students_added: sessions?.length || 0
         });
     } catch (error) {
         console.error('❌ خطأ في حفظ رابط البث:', error.message);
@@ -4501,7 +4520,7 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
                     <h4>💡 نصيحة</h4>
                     <p>• استخدم <strong>Google Meet</strong> للحصول على رابط سريع ومجاني<br>
                     • كلتا المنصتين <strong>مجانيتان</strong> ولا تحتاجان إلى دفع أي شيء<br>
-                    • يمكنك إنشاء الرابط مباشرة من هنا دون مغادرة المنصة</p>
+                    • سيتم إضافة جميع الطلاب المسجلين تلقائياً عند بدء البث</p>
                 </div>
 
                 <div class="platforms">
@@ -4558,10 +4577,8 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
 
                 // فتح Google Meet في نافذة جديدة ثم حفظ الرابط
                 function openMeetAndStart() {
-                    // فتح Google Meet في نافذة جديدة
                     const meetWindow = window.open('https://meet.google.com/new', '_blank');
                     
-                    // طلب من الأستاذ إدخال الرابط بعد الإنشاء
                     setTimeout(() => {
                         const url = prompt('📌 الصق رابط Google Meet هنا:', 'https://meet.google.com/');
                         if (url && url.includes('meet.google.com')) {
@@ -4585,7 +4602,6 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
                         return;
                     }
 
-                    // التحقق من صحة الرابط حسب المنصة
                     if (selectedPlatform === 'google-meet' && !url.includes('meet.google.com')) {
                         alert('❌ الرابط غير صحيح. يجب أن يحتوي على meet.google.com');
                         return;
@@ -4601,7 +4617,6 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
                     btn.textContent = '⏳ جاري بدء البث...';
 
                     try {
-                        // حفظ رابط البث
                         const response = await fetch('/api/stream/save-link', {
                             method: 'POST',
                             headers: {
@@ -4618,23 +4633,8 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
                         const data = await response.json();
 
                         if (data.success) {
-                            // إضافة الطلاب إلى البث
-                            const result = await fetch('/api/stream/add-students/' + offerId, {
-                                method: 'POST',
-                                headers: {
-                                    'Authorization': 'Bearer ' + authToken,
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify({
-                                    offer_id: offerId,
-                                    teacher_id: teacherId
-                                })
-                            });
-
-                            const resultData = await result.json();
-                            
                             alert('✅ تم بدء البث المباشر بنجاح!\\n📌 رابط البث: ' + url + '\\n' +
-                                  (resultData.students_count ? '👨‍🎓 تم إشعار ' + resultData.students_count + ' طالب' : ''));
+                                  (data.students_added ? '👨‍🎓 تم إضافة ' + data.students_added + ' طالب تلقائياً' : ''));
                             
                             window.location.href = '/teacher-dashboard.html';
                         } else {
@@ -4657,6 +4657,595 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
         `);
     } catch (error) {
         console.error('❌ خطأ:', error.message);
+        res.redirect('/teacher-dashboard.html');
+    }
+});
+
+// ============================================================
+// صفحة البث المباشر للأستاذ - مع أزرار إضافة الطلاب
+// ============================================================
+app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
+    try {
+        const token = req.query.token;
+        if (!token) {
+            console.log('❌ لا يوجد توكن في طلب صفحة البث');
+            return res.redirect('/teacher-dashboard.html');
+        }
+        
+        const decoded = verifyToken(token);
+        if (!decoded || decoded.role !== 'teacher') {
+            console.log('❌ توكن غير صالح في صفحة البث');
+            return res.redirect('/teacher-dashboard.html');
+        }
+        
+        const { offer_id, teacher_id } = req.params;
+        
+        if (decoded.userId !== parseInt(teacher_id)) {
+            console.log('❌ معرف الأستاذ لا يتطابق مع التوكن');
+            return res.redirect('/teacher-dashboard.html');
+        }
+
+        const offer = await getOne('offers', 'id', offer_id);
+        if (!offer || offer.teacher_id != parseInt(teacher_id)) {
+            console.log('❌ العرض غير موجود أو لا يخص هذا الأستاذ');
+            return res.redirect('/teacher-dashboard.html');
+        }
+
+        res.send(`
+            <!DOCTYPE html>
+            <html lang="ar">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>بث مباشر - الأستاذ</title>
+                <style>
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                    body { font-family: Cairo, sans-serif; background: #0a0a1a; overflow: hidden; }
+                    .header {
+                        background: linear-gradient(135deg, #0f3460, #1a1a2e);
+                        color: white;
+                        padding: 12px 24px;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        z-index: 100;
+                        flex-wrap: wrap;
+                        gap: 8px;
+                    }
+                    .btn {
+                        color: white;
+                        border: none;
+                        padding: 8px 20px;
+                        border-radius: 30px;
+                        cursor: pointer;
+                        transition: all 0.3s;
+                        margin-left: 8px;
+                        font-family: Cairo, sans-serif;
+                        font-weight: 700;
+                        font-size: 0.8rem;
+                    }
+                    .btn:hover { transform: scale(1.05); }
+                    .btn-success { background: #10b981; }
+                    .btn-success:hover { background: #059669; }
+                    .btn-danger { background: #ef4444; }
+                    .btn-danger:hover { background: #dc2626; }
+                    .btn-warning { background: #f59e0b; }
+                    .btn-warning:hover { background: #d97706; }
+                    .btn-primary { background: #0f5cbf; }
+                    .btn-primary:hover { background: #0a4a9a; }
+                    .badge {
+                        background: #f59e0b;
+                        padding: 5px 15px;
+                        border-radius: 30px;
+                        font-size: 0.8rem;
+                        font-weight: 700;
+                    }
+                    .badge-success { background: #10b981; }
+                    #meet-container {
+                        position: fixed;
+                        top: 70px;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background: #0a0a1a;
+                    }
+                    #meet-container iframe {
+                        width: 100%;
+                        height: 100%;
+                        border: none;
+                    }
+                    .waiting-panel {
+                        position: fixed;
+                        left: 20px;
+                        top: 80px;
+                        width: 320px;
+                        background: white;
+                        border-radius: 12px;
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                        z-index: 200;
+                        max-height: 400px;
+                        overflow-y: auto;
+                        direction: rtl;
+                    }
+                    .waiting-header {
+                        background: linear-gradient(135deg, #0f5cbf, #0f3460);
+                        color: white;
+                        padding: 12px 16px;
+                        border-radius: 12px 12px 0 0;
+                        font-weight: 700;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        position: sticky;
+                        top: 0;
+                        z-index: 5;
+                    }
+                    .waiting-list { padding: 8px; }
+                    .student-item {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        padding: 10px 12px;
+                        border-bottom: 1px solid #e2e8f0;
+                        gap: 8px;
+                    }
+                    .student-item .student-info {
+                        flex: 1;
+                        min-width: 0;
+                    }
+                    .student-item .student-name {
+                        font-weight: 700;
+                        font-size: 0.85rem;
+                        color: #1e293b;
+                    }
+                    .student-item .student-email {
+                        font-size: 0.7rem;
+                        color: #94a3b8;
+                    }
+                    .add-btn {
+                        background: #10b981;
+                        color: white;
+                        border: none;
+                        padding: 4px 14px;
+                        border-radius: 20px;
+                        cursor: pointer;
+                        font-size: 0.7rem;
+                        font-weight: 700;
+                        transition: all 0.3s;
+                        white-space: nowrap;
+                        font-family: Cairo, sans-serif;
+                    }
+                    .add-btn:hover { background: #059669; transform: scale(1.05); }
+                    .add-all-btn {
+                        background: #8b5cf6;
+                        color: white;
+                        border: none;
+                        padding: 6px 16px;
+                        border-radius: 20px;
+                        cursor: pointer;
+                        font-size: 0.7rem;
+                        font-weight: 700;
+                        transition: all 0.3s;
+                        font-family: Cairo, sans-serif;
+                        margin-right: 8px;
+                    }
+                    .add-all-btn:hover { background: #7c3aed; transform: scale(1.05); }
+                    .empty-waiting {
+                        text-align: center;
+                        padding: 20px;
+                        color: #94a3b8;
+                        font-size: 0.85rem;
+                    }
+                    .toast-container {
+                        position: fixed;
+                        bottom: 80px;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        z-index: 9999;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 8px;
+                        align-items: center;
+                        width: 90%;
+                        max-width: 400px;
+                    }
+                    .toast {
+                        padding: 12px 20px;
+                        border-radius: 12px;
+                        color: white;
+                        font-weight: 700;
+                        font-size: 0.85rem;
+                        box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+                        animation: slideIn 0.3s ease;
+                        width: 100%;
+                        text-align: center;
+                        font-family: Cairo, sans-serif;
+                    }
+                    .toast.success { background: #10b981; }
+                    .toast.error { background: #ef4444; }
+                    .toast.warning { background: #f59e0b; }
+                    .toast.info { background: #0f5cbf; }
+                    @keyframes slideIn {
+                        from { transform: translateY(20px); opacity: 0; }
+                        to { transform: translateY(0); opacity: 1; }
+                    }
+                    .connection-status {
+                        position: fixed;
+                        bottom: 20px;
+                        right: 20px;
+                        padding: 10px 20px;
+                        border-radius: 30px;
+                        font-size: 0.8rem;
+                        font-weight: 700;
+                        z-index: 300;
+                        backdrop-filter: blur(10px);
+                        font-family: Cairo, sans-serif;
+                        transition: all 0.3s ease;
+                    }
+                    .connection-status.connected {
+                        background: rgba(16, 185, 129, 0.9);
+                        color: white;
+                    }
+                    .connection-status.disconnected {
+                        background: rgba(239, 68, 68, 0.9);
+                        color: white;
+                        animation: blink 1s infinite;
+                    }
+                    @keyframes blink {
+                        0%, 100% { opacity: 1; }
+                        50% { opacity: 0.5; }
+                    }
+                    .students-count-badge {
+                        background: #10b981;
+                        padding: 3px 12px;
+                        border-radius: 20px;
+                        font-size: 0.7rem;
+                        font-weight: 700;
+                        margin-right: 8px;
+                    }
+                    @media(max-width:768px) {
+                        .waiting-panel { left: 10px; right: 10px; width: auto; top: 70px; }
+                        .header { padding: 8px 12px; }
+                        .btn { padding: 4px 12px; font-size: 0.7rem; margin-left: 4px; }
+                        .connection-status { bottom: 10px; right: 10px; font-size: 0.65rem; padding: 6px 12px; }
+                    }
+                </style>
+            </head>
+            <body>
+            <div class="header">
+                <div>
+                    <span class="badge">🎥 انت المضيف</span>
+                    <span id="streamStatus" style="color:#10b981;margin-right:10px;font-weight:700;">🟢 مباشر</span>
+                </div>
+                <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">
+                    <span id="waitingCount" class="badge">0 ينتظرون</span>
+                    <span id="activeCount" class="badge badge-success">0 متصل</span>
+                    <button class="add-all-btn" onclick="addAllStudents()">➕ إضافة الكل</button>
+                    <button class="btn btn-danger" onclick="endStream()">⏹️ انهاء</button>
+                    <button class="btn btn-warning" onclick="leaveStream()">🚪 مغادرة</button>
+                </div>
+            </div>
+            
+            <div id="waitingPanel" class="waiting-panel" style="display:none;">
+                <div class="waiting-header">
+                    <span>📋 الطلاب المنتظرون</span>
+                    <span id="panelCount">0</span>
+                </div>
+                <div id="waitingList" class="waiting-list">
+                    <div class="empty-waiting">لا يوجد طلاب في الانتظار</div>
+                </div>
+            </div>
+            
+            <div id="meet-container">
+                ${offer.stream_url ? `
+                    <iframe src="${offer.stream_url}" allow="camera; microphone; autoplay; display-capture; fullscreen"></iframe>
+                ` : `
+                    <div style="display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;flex-direction:column;gap:20px;">
+                        <div style="font-size:3rem;">🎥</div>
+                        <div style="font-size:1.2rem;font-weight:700;">لم يتم بدء البث بعد</div>
+                        <div style="font-size:0.9rem;">الرجاء حفظ رابط البث أولاً</div>
+                    </div>
+                `}
+            </div>
+            
+            <div class="connection-status connected" id="connectionStatus">
+                <i class="fas fa-wifi"></i> متصل
+            </div>
+            
+            <div class="toast-container" id="toastContainer"></div>
+
+            <script>
+                // ============================================================
+                // ✅ الثوابت والتوكنات
+                // ============================================================
+                const AUTH_TOKEN = '${token}';
+                const offerId = ${parseInt(offer_id)};
+                const teacherId = ${parseInt(teacher_id)};
+                let csrfToken = null;
+                let refreshInterval = null;
+                let isEnding = false;
+
+                // ============================================================
+                // ✅ دالة جلب CSRF Token
+                // ============================================================
+                async function getCsrfToken() {
+                    try {
+                        const response = await fetch('/api/csrf-token', {
+                            credentials: 'include'
+                        });
+                        const data = await response.json();
+                        csrfToken = data.csrfToken;
+                        return csrfToken;
+                    } catch (error) {
+                        console.error('خطأ في جلب CSRF Token:', error);
+                        return null;
+                    }
+                }
+
+                // ============================================================
+                // ✅ دالة للطلبات مع التوكن
+                // ============================================================
+                async function fetchWithAuth(url, options = {}) {
+                    if (!csrfToken) {
+                        await getCsrfToken();
+                    }
+
+                    const response = await fetch(url, {
+                        ...options,
+                        headers: {
+                            'Authorization': 'Bearer ' + AUTH_TOKEN,
+                            'X-CSRF-Token': csrfToken || '',
+                            'Content-Type': 'application/json',
+                            ...options.headers
+                        }
+                    });
+
+                    if (response.status === 403) {
+                        try {
+                            const data = await response.clone().json();
+                            if (data.code === 'CSRF_ERROR' || data.error?.includes('CSRF')) {
+                                await getCsrfToken();
+                                const retryResponse = await fetch(url, {
+                                    ...options,
+                                    headers: {
+                                        'Authorization': 'Bearer ' + AUTH_TOKEN,
+                                        'X-CSRF-Token': csrfToken || '',
+                                        'Content-Type': 'application/json',
+                                        ...options.headers
+                                    }
+                                });
+                                return retryResponse;
+                            }
+                        } catch (e) {}
+                    }
+
+                    if (response.status === 401) {
+                        showToast('⏳ انتهت صلاحية الجلسة، جاري إعادة التوجيه...', 'error');
+                        setTimeout(() => {
+                            window.location.href = '/teacher-dashboard.html';
+                        }, 2000);
+                        return null;
+                    }
+
+                    return response;
+                }
+
+                // ============================================================
+                // ✅ عرض رسائل Toast
+                // ============================================================
+                function showToast(message, type = 'info') {
+                    const container = document.getElementById('toastContainer');
+                    const toast = document.createElement('div');
+                    toast.className = 'toast ' + type;
+                    toast.textContent = message;
+                    container.appendChild(toast);
+
+                    setTimeout(() => {
+                        toast.style.opacity = '0';
+                        toast.style.transform = 'translateY(20px)';
+                        toast.style.transition = 'all 0.3s ease';
+                        setTimeout(() => toast.remove(), 300);
+                    }, 5000);
+                }
+
+                // ============================================================
+                // ✅ تحميل قائمة الانتظار
+                // ============================================================
+                async function loadWaitingList() {
+                    if (isEnding) return;
+                    try {
+                        const res = await fetchWithAuth('/api/stream/waiting-list/' + offerId + '/' + teacherId);
+                        if (!res) return;
+                        const students = await res.json();
+                        const waitingCount = students?.filter(s => !s.is_active).length || 0;
+                        const activeCount = students?.filter(s => s.is_active).length || 0;
+                        
+                        document.getElementById('waitingCount').innerHTML = waitingCount + ' ينتظرون';
+                        document.getElementById('activeCount').innerHTML = activeCount + ' متصل';
+                        
+                        if (waitingCount > 0) {
+                            document.getElementById('waitingPanel').style.display = 'block';
+                            document.getElementById('panelCount').innerText = waitingCount;
+                            
+                            let html = '';
+                            students.forEach(s => {
+                                if (!s.is_active) {
+                                    html += `
+                                        <div class="student-item">
+                                            <div class="student-info">
+                                                <div class="student-name">${escapeHtml(s.full_name || 'طالب')}</div>
+                                                <div class="student-email">${escapeHtml(s.email || '')}</div>
+                                            </div>
+                                            <button class="add-btn" onclick="addStudent(${s.student_id})">➕ إضافة</button>
+                                        </div>
+                                    `;
+                                }
+                            });
+                            document.getElementById('waitingList').innerHTML = html;
+                        } else {
+                            document.getElementById('waitingPanel').style.display = 'none';
+                        }
+                    } catch(e) { 
+                        console.error('خطأ في تحميل قائمة الانتظار:', e); 
+                    }
+                }
+
+                // ============================================================
+                // ✅ إضافة طالب واحد
+                // ============================================================
+                async function addStudent(studentId) {
+                    if (!confirm('⚠️ هل تريد إضافة هذا الطالب إلى البث المباشر؟')) return;
+                    
+                    try {
+                        showToast('⏳ جاري إضافة الطالب...', 'warning');
+                        
+                        const res = await fetchWithAuth('/api/stream/add-student/' + offerId, {
+                            method: 'POST',
+                            body: JSON.stringify({ 
+                                offer_id: offerId, 
+                                student_id: studentId,
+                                teacher_id: teacherId 
+                            })
+                        });
+                        
+                        const data = await res.json();
+                        
+                        if (data.success) {
+                            showToast('✅ تم إضافة الطالب إلى البث', 'success');
+                            loadWaitingList();
+                        } else {
+                            showToast(data.error || '❌ حدث خطأ', 'error');
+                        }
+                    } catch(e) {
+                        console.error('خطأ في إضافة الطالب:', e);
+                        showToast('❌ حدث خطأ في الاتصال', 'error');
+                    }
+                }
+
+                // ============================================================
+                // ✅ إضافة جميع الطلاب المنتظرين
+                // ============================================================
+                async function addAllStudents() {
+                    if (!confirm('⚠️ هل تريد إضافة جميع الطلاب المنتظرين إلى البث المباشر؟')) return;
+                    
+                    try {
+                        showToast('⏳ جاري إضافة جميع الطلاب...', 'warning');
+                        
+                        const res = await fetchWithAuth('/api/stream/add-all-students/' + offerId, {
+                            method: 'POST',
+                            body: JSON.stringify({ 
+                                offer_id: offerId, 
+                                teacher_id: teacherId 
+                            })
+                        });
+                        
+                        const data = await res.json();
+                        
+                        if (data.success) {
+                            showToast(\`✅ تم إضافة \${data.students_count || 0} طالب إلى البث\`, 'success');
+                            loadWaitingList();
+                        } else {
+                            showToast(data.error || '❌ حدث خطأ في إضافة الطلاب', 'error');
+                        }
+                    } catch(e) {
+                        console.error('خطأ في إضافة جميع الطلاب:', e);
+                        showToast('❌ حدث خطأ في الاتصال', 'error');
+                    }
+                }
+
+                // ============================================================
+                // ✅ مغادرة البث
+                // ============================================================
+                function leaveStream() {
+                    if (confirm('⚠️ هل تريد مغادرة البث؟')) {
+                        isEnding = true;
+                        if (refreshInterval) clearInterval(refreshInterval);
+                        window.location.href = '/teacher-dashboard.html';
+                    }
+                }
+
+                // ============================================================
+                // ✅ إنهاء البث
+                // ============================================================
+                async function endStream() {
+                    if (!confirm('⚠️ هل تريد إنهاء البث المباشر؟')) return;
+                    
+                    isEnding = true;
+                    
+                    try {
+                        const res = await fetchWithAuth('/api/stream/end/' + offerId, {
+                            method: 'POST',
+                            body: JSON.stringify({ offer_id: offerId, teacher_id: teacherId })
+                        });
+                        
+                        if (res && res.ok) {
+                            showToast('✅ تم إنهاء البث بنجاح', 'success');
+                        }
+                    } catch(e) {
+                        console.error('خطأ في إنهاء البث:', e);
+                    }
+                    
+                    if (refreshInterval) clearInterval(refreshInterval);
+                    
+                    setTimeout(() => {
+                        window.location.href = '/teacher-dashboard.html';
+                    }, 1500);
+                }
+
+                // ============================================================
+                // ✅ دالة مساعدة لتنقية النص
+                // ============================================================
+                function escapeHtml(text) {
+                    if (!text) return '';
+                    const div = document.createElement('div');
+                    div.textContent = text;
+                    return div.innerHTML;
+                }
+
+                // ============================================================
+                // ✅ بدء التشغيل
+                // ============================================================
+                console.log('🚀 بدء تشغيل صفحة البث...');
+                
+                getCsrfToken().then(() => {
+                    console.log('✅ تم جلب CSRF Token');
+                    loadWaitingList();
+                    
+                    // تحديث قائمة الانتظار كل 5 ثواني
+                    refreshInterval = setInterval(loadWaitingList, 5000);
+                    
+                    // تحديث حالة البث كل 30 ثانية
+                    setInterval(async () => {
+                        if (isEnding) return;
+                        try {
+                            const res = await fetchWithAuth('/api/stream/status/' + offerId);
+                            if (res && res.ok) {
+                                const data = await res.json();
+                                if (data.status === 'completed') {
+                                    showToast('⏹️ انتهى البث المباشر', 'warning');
+                                    isEnding = true;
+                                    setTimeout(() => {
+                                        window.location.href = '/teacher-dashboard.html';
+                                    }, 3000);
+                                }
+                            }
+                        } catch(e) {
+                            console.error('خطأ في التحقق من حالة البث:', e);
+                        }
+                    }, 30000);
+                });
+
+                console.log('✅ تم تهيئة صفحة البث بنجاح');
+            </script>
+            </body>
+            </html>
+        `);
+    } catch (error) {
+        console.error('❌ خطأ في صفحة البث:', error.message);
         res.redirect('/teacher-dashboard.html');
     }
 });
@@ -4824,7 +5413,6 @@ app.get('/api/join-stream/:offer_id/:student_id', async (req, res) => {
                 const iframe = container.querySelector('iframe');
                 if (iframe) {
                     setInterval(() => {
-                        // إعادة تحميل الإطار كل 5 دقائق للحفاظ على الاتصال
                         iframe.src = iframe.src;
                     }, 300000);
                 }
@@ -5690,6 +6278,9 @@ if (require.main === module) {
         console.log('   ✅ فقط الطلاب الذين لديهم حجز مدفوع يمكنهم الدخول');
         console.log('   ✅ الأستاذ يمكنه إضافة الطلاب من قائمة الانتظار');
         console.log('   ✅ إضافة طالب واحد أو جميع الطلاب');
+        console.log('   ✅ يتم إضافة الطلاب تلقائياً عند بدء البث');
+        console.log('   ✅ زر "إضافة الكل" في صفحة البث لإضافة جميع المنتظرين');
+        console.log('   ✅ عرض عدد الطلاب المتصلين والمنتظرين');
         console.log('='.repeat(60));
         console.log(`📅 التاريخ: ${new Date().toLocaleString('ar-EG')}`);
         console.log('='.repeat(60));
