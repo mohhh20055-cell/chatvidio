@@ -4699,7 +4699,7 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                 <title>بث مباشر - الأستاذ</title>
                 <style>
                     * { margin: 0; padding: 0; box-sizing: border-box; }
-                    body { font-family: "Cairo", sans-serif; background: #0a0a1a; overflow: hidden; }
+                    body { font-family: Cairo, sans-serif; background: #0a0a1a; overflow: hidden; }
                     .header {
                         background: linear-gradient(135deg, #0f3460, #1a1a2e);
                         color: white;
