@@ -305,7 +305,7 @@
             margin-top: 8px;
         }
         .offer-card .offer-price.free { background: var(--gold); color: white; }
-        .offer-card .offer-price.paid { background: var(--gradient-secondary); color: white; }
+        .offer-card .offer-price.paid { background: var(--secondary); color: white; }
         .offer-card .offer-status {
             display: inline-block;
             padding: 2px 12px;
@@ -508,7 +508,81 @@
         }
 
         // ================================================================
-        // جلب بيانات الأستاذ
+        // جلب بيانات الأستاذ من عدة مسارات
+        // ================================================================
+        async function fetchTeacherData() {
+            // المسار 1: المسار العام
+            try {
+                const res = await fetch(`/api/public/teacher/${teacherId}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.id) {
+                        console.log('✅ تم جلب البيانات من /api/public/teacher/');
+                        return data;
+                    }
+                }
+            } catch (e) {
+                console.log('❌ فشل المسار العام:', e.message);
+            }
+
+            // المسار 2: قائمة جميع الأساتذة ثم البحث
+            try {
+                const res = await fetch('/api/public/teachers');
+                if (res.ok) {
+                    const teachers = await res.json();
+                    if (Array.isArray(teachers)) {
+                        const found = teachers.find(t => t.id === teacherId);
+                        if (found) {
+                            console.log('✅ تم جلب البيانات من /api/public/teachers');
+                            return found;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.log('❌ فشل مسار القائمة:', e.message);
+            }
+
+            // المسار 3: المسار المحمي (إذا كان المستخدم مسجل دخول)
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                if (token) {
+                    const res = await fetch(`/api/teacher/${teacherId}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data && data.id) {
+                            console.log('✅ تم جلب البيانات من /api/teacher/ (محمي)');
+                            return data;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.log('❌ فشل المسار المحمي:', e.message);
+            }
+
+            // المسار 4: قائمة الأساتذة من /api/teachers
+            try {
+                const res = await fetch('/api/teachers');
+                if (res.ok) {
+                    const teachers = await res.json();
+                    if (Array.isArray(teachers)) {
+                        const found = teachers.find(t => t.id === teacherId);
+                        if (found) {
+                            console.log('✅ تم جلب البيانات من /api/teachers');
+                            return found;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.log('❌ فشل /api/teachers:', e.message);
+            }
+
+            return null;
+        }
+
+        // ================================================================
+        // تحميل الملف الشخصي
         // ================================================================
         async function loadTeacherProfile() {
             const loading = document.getElementById('loadingIndicator');
@@ -522,24 +596,10 @@
 
                 console.log(`📡 جلب بيانات الأستاذ: ${teacherId}`);
                 
-                // جلب بيانات الأستاذ من المسار العام
-                const res = await fetch(`/api/public/teacher/${teacherId}`);
-                console.log('📡 حالة الاستجابة:', res.status);
-                
-                if (!res.ok) {
-                    if (res.status === 404) {
-                        showError('الأستاذ غير موجود', 'لم يتم العثور على الأستاذ المطلوب');
-                    } else {
-                        showError('خطأ في الخادم', `حدث خطأ: ${res.status}`);
-                    }
-                    return;
-                }
-                
-                const teacher = await res.json();
-                console.log('📦 البيانات المستلمة:', teacher);
+                const teacher = await fetchTeacherData();
                 
                 if (!teacher || !teacher.id) {
-                    showError('بيانات غير صالحة', 'البيانات المستلمة غير صالحة');
+                    showError('الأستاذ غير موجود', 'لم يتم العثور على الأستاذ المطلوب. تأكد من صحة الرابط.');
                     return;
                 }
 
@@ -600,6 +660,8 @@
             const bioEl = document.getElementById('teacherBio');
             if (teacher.bio) {
                 bioEl.textContent = teacher.bio;
+                bioEl.style.color = '';
+                bioEl.style.fontStyle = '';
             } else {
                 bioEl.textContent = 'لا توجد نبذة تعريفية';
                 bioEl.style.color = 'var(--gray-400)';
