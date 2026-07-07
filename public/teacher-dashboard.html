@@ -1439,7 +1439,7 @@
 
 <script>
     // ================================================================
-    // ⚠️ تم إصلاح مشكلة التوكن
+    // ✅ تم إصلاح مشكلة التوكن بشكل كامل
     // ================================================================
 
     let userData = null;
@@ -1737,14 +1737,13 @@
     }
 
     // ================================================================
-    // USER DATA - ✅ تم التصحيح
+    // USER DATA
     // ================================================================
 
     async function loadUserData() {
         try {
-            // ✅ استخدام نفس المفتاح المستخدم في تسجيل الدخول
             const storedData = localStorage.getItem('userData');
-            const token = localStorage.getItem('token'); // ✅ تم التصحيح من 'authToken' إلى 'token'
+            const token = localStorage.getItem('token');
             
             if (storedData) {
                 userData = JSON.parse(storedData);
@@ -1824,7 +1823,6 @@
         document.getElementById('navProfileName').textContent = userName.split(' ')[0];
         document.getElementById('navProfileImg').src = userImage;
 
-        // عرض الملف الشخصي مع روابط التواصل الاجتماعي
         document.getElementById('profileInfo').innerHTML = `
             <div class="profile-display">
                 <img src="${userImage}" alt="صورة الملف الشخصي" class="profile-avatar" 
@@ -1857,7 +1855,6 @@
                     </div>
                 </div>
 
-                <!-- ===== روابط التواصل الاجتماعي ===== -->
                 <div class="social-links-section">
                     <div class="social-title">
                         <i class="fas fa-share-alt"></i>
@@ -1866,7 +1863,6 @@
                     ${renderSocialLinks(userData)}
                 </div>
 
-                <!-- ===== زر تعديل الملف الشخصي - يفتح نموذج إضافة الروابط ===== -->
                 <button onclick="showEditProfileModal()" 
                         style="background: var(--gradient-main); color: white; 
                                border: none; padding: 10px 30px; border-radius: 30px; 
@@ -2261,7 +2257,7 @@
     }
 
     // ================================================================
-    // OFFERS
+    // OFFERS - ✅ تم إصلاح مشكلة التوكن في البث المباشر
     // ================================================================
 
     async function loadOffers() {
@@ -2366,15 +2362,29 @@
         loadOffers();
     }
 
+    // ✅ تم إصلاح دالة enterStream - إضافة التوكن إلى الرابط
     async function enterStream(offerId) {
         if (confirm('⚠️ هل تريد الدخول إلى البث كأستاذ؟')) {
-            window.open(`/api/enter-teacher-stream/${offerId}/${teacherId}`, '_blank');
+            const token = localStorage.getItem('token');
+            if (!token) {
+                showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
+                return;
+            }
+            // ✅ إضافة التوكن كـ Query Parameter
+            window.open(`/api/enter-teacher-stream/${offerId}/${teacherId}?token=${encodeURIComponent(token)}`, '_blank');
             setTimeout(() => loadOffers(), 2000);
         }
     }
 
+    // ✅ تم إصلاح دالة joinTeacherStream - إضافة التوكن إلى الرابط
     function joinTeacherStream(offerId) {
-        window.open(`/api/teacher-stream/${offerId}/${teacherId}`, '_blank');
+        const token = localStorage.getItem('token');
+        if (!token) {
+            showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
+            return;
+        }
+        // ✅ إضافة التوكن كـ Query Parameter
+        window.open(`/api/teacher-stream/${offerId}/${teacherId}?token=${encodeURIComponent(token)}`, '_blank');
     }
 
     async function deleteOffer(offerId) {
