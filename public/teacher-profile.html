@@ -497,9 +497,13 @@
             const content = document.getElementById('profileContent');
 
             try {
+                // ✅ محاولة جلب البيانات من المسار العام
                 const res = await fetch(`/api/public/teacher/${teacherId}`);
                 
+                console.log('📡 حالة الاستجابة:', res.status);
+                
                 if (!res.ok) {
+                    console.error('❌ خطأ في الاستجابة:', res.status);
                     if (res.status === 404) {
                         showError('الأستاذ غير موجود', 'لم يتم العثور على الأستاذ المطلوب');
                     } else if (res.status === 403) {
@@ -511,17 +515,49 @@
                 }
 
                 const teacher = await res.json();
+                console.log('📦 بيانات الأستاذ المستلمة:', teacher);
                 
+                // ✅ التحقق من وجود بيانات
+                if (!teacher) {
+                    showError('حدث خطأ', 'البيانات غير صالحة');
+                    return;
+                }
+
+                // ✅ إذا كان هناك حقل error
                 if (teacher.error) {
                     showError('حدث خطأ', teacher.error);
                     return;
                 }
 
-                loading.style.display = 'none';
-                content.style.display = 'block';
-                
-                renderTeacherProfile(teacher);
-                loadTeacherOffers(teacherId);
+                // ✅ إذا كانت البيانات في شكل { success: true, data: { ... } }
+                if (teacher.success && teacher.data) {
+                    loading.style.display = 'none';
+                    content.style.display = 'block';
+                    renderTeacherProfile(teacher.data);
+                    loadTeacherOffers(teacherId);
+                    return;
+                }
+
+                // ✅ إذا كانت البيانات مباشرة (كما هو الحال في السيرفر الحالي)
+                if (teacher.id) {
+                    loading.style.display = 'none';
+                    content.style.display = 'block';
+                    renderTeacherProfile(teacher);
+                    loadTeacherOffers(teacherId);
+                    return;
+                }
+
+                // ✅ إذا كانت البيانات في مصفوفة (حالة نادرة)
+                if (Array.isArray(teacher) && teacher.length > 0) {
+                    loading.style.display = 'none';
+                    content.style.display = 'block';
+                    renderTeacherProfile(teacher[0]);
+                    loadTeacherOffers(teacherId);
+                    return;
+                }
+
+                // ✅ إذا لم تكن البيانات صالحة
+                showError('بيانات غير صالحة', 'لم نتمكن من قراءة بيانات الأستاذ');
 
             } catch (error) {
                 console.error('❌ خطأ في تحميل ملف الأستاذ:', error);
@@ -531,17 +567,23 @@
         }
 
         function renderTeacherProfile(teacher) {
+            console.log('🎨 عرض بيانات الأستاذ:', teacher);
+            
+            // الصورة
             const avatar = document.getElementById('teacherAvatar');
             const avatarUrl = teacher.profile_url || 
-                `https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.full_name)}&background=0f5cbf&color=fff&size=130`;
+                `https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.full_name || 'أستاذ')}&background=0f5cbf&color=fff&size=130`;
             avatar.src = avatarUrl;
 
+            // الاسم
             document.getElementById('teacherName').textContent = teacher.full_name || 'أستاذ غير معروف';
 
+            // التخصص
             const specialization = teacher.specialization || 'تخصص غير محدد';
             document.getElementById('teacherSpecialization').innerHTML = `<i class="fas fa-book"></i> ${specialization}`;
             document.getElementById('teacherSpecializationInfo').textContent = specialization;
 
+            // الحالة
             const statusEl = document.getElementById('teacherStatus');
             if (teacher.status === 'approved') {
                 statusEl.textContent = '✅ معتمد';
@@ -556,13 +598,23 @@
                 statusEl.style.borderColor = 'rgba(239, 68, 68, 0.3)';
             }
 
-            document.getElementById('statOffers').textContent = '0';
+            // البريد الإلكتروني
             document.getElementById('teacherEmail').textContent = teacher.email || 'غير محدد';
+            
+            // رقم الهاتف
             document.getElementById('teacherPhone').textContent = teacher.phone || 'غير محدد';
+            
+            // سنوات الخبرة
             document.getElementById('teacherExperience').textContent = `${teacher.experience || '0'} سنة`;
+            
+            // السيرة الذاتية
             document.getElementById('teacherBio').textContent = teacher.bio || 'لا توجد نبذة تعريفية';
 
+            // روابط التواصل الاجتماعي
             renderSocialLinks(teacher);
+            
+            // إعادة تعيين عدد العروض (سيتم تحديثه بعد تحميل العروض)
+            document.getElementById('statOffers').textContent = '0';
         }
 
         function renderSocialLinks(teacher) {
@@ -615,7 +667,11 @@
                 }
                 
                 const allOffers = await res.json();
+                console.log('📦 جميع العروض:', allOffers);
+                
+                // ✅ تصفية العروض الخاصة بهذا الأستاذ فقط
                 const teacherOffers = allOffers.filter(offer => offer.teacher_id === teacherId);
+                console.log('📦 عروض الأستاذ:', teacherOffers);
                 
                 renderOffers(teacherOffers);
                 document.getElementById('statOffers').textContent = teacherOffers.length || '0';
@@ -725,10 +781,13 @@
         }
 
         function init() {
+            console.log('🚀 بدء تحميل صفحة ملف الأستاذ');
             if (!getTeacherIdFromURL()) {
+                console.error('❌ معرف الأستاذ غير موجود في الرابط');
                 showError('معرف غير صالح', 'لم يتم تحديد معرف الأستاذ في الرابط');
                 return;
             }
+            console.log(`🔍 معرف الأستاذ: ${teacherId}`);
             loadTeacherProfile();
         }
 
