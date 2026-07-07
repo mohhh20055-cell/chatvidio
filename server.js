@@ -4986,7 +4986,8 @@ app.post('/api/teacher/update-profile-with-social', [
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        const { teacher_id, facebook_url, instagram_url, linkedin_url, youtube_url, twitter_url, website_url } = req.body;
+        // ✅ تم إضافة whatsapp_url هنا
+        const { teacher_id, facebook_url, instagram_url, linkedin_url, youtube_url, twitter_url, website_url, whatsapp_url } = req.body;
 
         if (req.user.userId !== parseInt(teacher_id)) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بتحديث هذا الملف' });
@@ -5017,13 +5018,15 @@ app.post('/api/teacher/update-profile-with-social', [
         if (profile_image) { updateData.profile_image = profile_image; }
         if (profile_url) { updateData.profile_url = profile_url; }
 
+        // ✅ تم إضافة whatsapp_url هنا
         const socialFields = {
             facebook_url,
             instagram_url,
             linkedin_url,
             youtube_url,
             twitter_url,
-            website_url
+            website_url,
+            whatsapp_url
         };
 
         for (const [key, value] of Object.entries(socialFields)) {
@@ -5064,7 +5067,6 @@ app.post('/api/teacher/update-profile-with-social', [
         });
     }
 });
-
 // ============================================================
 // مسار مراقبة الأداء
 // ============================================================
