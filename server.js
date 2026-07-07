@@ -4699,7 +4699,7 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                 <title>بث مباشر - الأستاذ</title>
                 <style>
                     * { margin: 0; padding: 0; box-sizing: border-box; }
-                    body { font-family: 'Cairo', sans-serif; background: #0a0a1a; overflow: hidden; }
+                    body { font-family: "Cairo", sans-serif; background: #0a0a1a; overflow: hidden; }
                     .header {
                         background: linear-gradient(135deg, #0f3460, #1a1a2e);
                         color: white;
@@ -4723,7 +4723,7 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                         cursor: pointer;
                         transition: all 0.3s;
                         margin-left: 8px;
-                        font-family: 'Cairo', sans-serif;
+                        font-family: "Cairo", sans-serif;
                         font-weight: 700;
                         font-size: 0.8rem;
                     }
@@ -4816,7 +4816,7 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                         font-weight: 700;
                         transition: all 0.3s;
                         white-space: nowrap;
-                        font-family: 'Cairo', sans-serif;
+                        font-family: "Cairo", sans-serif;
                     }
                     .add-btn:hover { background: #059669; transform: scale(1.05); }
                     .add-all-btn {
@@ -4829,7 +4829,7 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                         font-size: 0.7rem;
                         font-weight: 700;
                         transition: all 0.3s;
-                        font-family: 'Cairo', sans-serif;
+                        font-family: "Cairo", sans-serif;
                         margin-right: 8px;
                     }
                     .add-all-btn:hover { background: #7c3aed; transform: scale(1.05); }
@@ -4862,7 +4862,7 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                         animation: slideIn 0.3s ease;
                         width: 100%;
                         text-align: center;
-                        font-family: 'Cairo', sans-serif;
+                        font-family: "Cairo", sans-serif;
                     }
                     .toast.success { background: #10b981; }
                     .toast.error { background: #ef4444; }
@@ -4882,7 +4882,7 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                         font-weight: 700;
                         z-index: 300;
                         backdrop-filter: blur(10px);
-                        font-family: 'Cairo', sans-serif;
+                        font-family: "Cairo", sans-serif;
                         transition: all 0.3s ease;
                     }
                     .connection-status.connected {
