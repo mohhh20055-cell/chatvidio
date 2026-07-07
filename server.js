@@ -4969,11 +4969,11 @@ app.get('/api/stream/waiting-list/:offer_id/:teacher_id', [
 });
 
 // مسار دخول الطالب إلى البث
+// ============================================================
+// مسار دخول الطالب إلى البث - ✅ معدل لدعم التوكن من Query
+// ============================================================
 app.get('/api/join-stream/:offer_id/:student_id', [
-    authenticate,
-    authorize(['student']),
-    param('offer_id').isInt().withMessage('معرف العرض غير صالح'),
-    param('student_id').isInt().withMessage('معرف الطالب غير صالح')
+    // ❌ تم إزالة authenticate من هنا
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -4983,7 +4983,26 @@ app.get('/api/join-stream/:offer_id/:student_id', [
 
         const { offer_id, student_id } = req.params;
 
-        if (req.user.userId !== parseInt(student_id)) {
+        // ✅ قراءة التوكن من Header أو Query Parameter
+        let token = req.headers.authorization?.substring(7);
+        if (!token && req.query.token) {
+            token = req.query.token;
+        }
+        
+        if (!token) {
+            console.log('❌ لا يوجد توكن في طلب دخول الطالب إلى البث');
+            return res.status(401).send(renderErrorPage('غير مصرح', 'يرجى تسجيل الدخول أولاً'));
+        }
+        
+        const decoded = verifyToken(token);
+        if (!decoded) {
+            console.log('❌ توكن غير صالح في طلب دخول الطالب');
+            return res.status(401).send(renderErrorPage('انتهت الصلاحية', 'انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى'));
+        }
+        
+        // ✅ التحقق من الصلاحيات
+        if (decoded.userId !== parseInt(student_id) || decoded.role !== 'student') {
+            console.log('❌ صلاحيات غير كافية لدخول البث');
             return res.status(403).send(renderErrorPage('غير مصرح', 'غير مصرح لك بالدخول إلى هذا البث'));
         }
 
@@ -5003,30 +5022,64 @@ app.get('/api/join-stream/:offer_id/:student_id', [
             return res.redirect('/student-dashboard.html');
         }
 
+        // ✅ عرض صفحة البث مع التوكن
         res.send(`
             <!DOCTYPE html>
             <html lang="ar">
-            <head><meta charset="UTF-8"><title>حصة مباشرة</title>
-            <script src="https://meet.jit.si/external_api.js"></script>
-            <style>
-                *{margin:0;padding:0;box-sizing:border-box}
-                body{font-family:Cairo,sans-serif;background:#0a0a1a;overflow:hidden}
-                .header{background:linear-gradient(135deg,#0f3460,#1a1a2e);color:white;padding:12px 24px;display:flex;justify-content:space-between;align-items:center;position:fixed;top:0;left:0;right:0;z-index:100}
-                .btn{background:#ef4444;color:white;border:none;padding:8px 20px;border-radius:30px;cursor:pointer;transition:all 0.3s}
-                .btn:hover{background:#dc2626;transform:scale(1.05)}
-                .badge{background:#10b981;padding:5px 15px;border-radius:30px;font-size:0.8rem}
-                #jitsi-container{position:fixed;top:60px;left:0;right:0;bottom:0}
-            </style>
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>حصة مباشرة</title>
+                <script src="https://meet.jit.si/external_api.js"></script>
+                <style>
+                    *{margin:0;padding:0;box-sizing:border-box}
+                    body{font-family:Cairo,sans-serif;background:#0a0a1a;overflow:hidden}
+                    .header{background:linear-gradient(135deg,#0f3460,#1a1a2e);color:white;padding:12px 24px;display:flex;justify-content:space-between;align-items:center;position:fixed;top:0;left:0;right:0;z-index:100}
+                    .btn{background:#ef4444;color:white;border:none;padding:8px 20px;border-radius:30px;cursor:pointer;transition:all 0.3s}
+                    .btn:hover{background:#dc2626;transform:scale(1.05)}
+                    .badge{background:#10b981;padding:5px 15px;border-radius:30px;font-size:0.8rem}
+                    #jitsi-container{position:fixed;top:60px;left:0;right:0;bottom:0}
+                    .info-bar{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.7);color:white;padding:8px 20px;border-radius:30px;font-size:0.8rem;z-index:100;backdrop-filter:blur(10px);}
+                </style>
             </head>
             <body>
             <div class="header">
-                <div><span class="badge">انت طالب</span></div>
-                <button class="btn" onclick="leaveStream()">مغادرة</button>
+                <div><span class="badge">🎓 طالب</span></div>
+                <div>
+                    <span style="font-weight:700; font-size:0.9rem; margin-left:16px;">${sanitizeInput(offer.subject_name)}</span>
+                    <button class="btn" onclick="leaveStream()">مغادرة</button>
+                </div>
             </div>
             <div id="jitsi-container"></div>
+            <div class="info-bar">🟢 البث المباشر جاري</div>
             <script>
+                // ✅ التوكن للصفحة
+                const AUTH_TOKEN = '${token}';
+                const roomName = '${sanitizeInput(offer.room_name)}';
+                const offerId = ${parseInt(offer_id)};
+                const studentId = ${parseInt(student_id)};
+                
+                // ✅ دالة للطلبات مع التوكن
+                async function fetchWithToken(url, options = {}) {
+                    const response = await fetch(url, {
+                        ...options,
+                        headers: {
+                            'Authorization': 'Bearer ' + AUTH_TOKEN,
+                            'Content-Type': 'application/json',
+                            ...options.headers
+                        }
+                    });
+                    if (response.status === 401) {
+                        alert('⏳ انتهت صلاحية الجلسة، جاري إعادة التوجيه...');
+                        window.location.href = '/student-dashboard.html';
+                        return null;
+                    }
+                    return response;
+                }
+
+                // ✅ تهيئة Jitsi
                 const api = new JitsiMeetExternalAPI('meet.jit.si', {
-                    roomName: '${sanitizeInput(offer.room_name)}',
+                    roomName: roomName,
                     width: '100%',
                     height: window.innerHeight - 60,
                     parentNode: document.querySelector('#jitsi-container'),
@@ -5037,16 +5090,35 @@ app.get('/api/join-stream/:offer_id/:student_id', [
                         p2p: { enabled: true }
                     }
                 });
+                window.jitsiApi = api;
+
+                // ✅ مغادرة البث
                 function leaveStream() {
-                    api.dispose();
+                    if (window.jitsiApi) window.jitsiApi.dispose();
                     window.location.href = '/student-dashboard.html';
                 }
+
+                // ✅ تحديث حالة البث كل 30 ثانية
+                setInterval(async () => {
+                    try {
+                        const res = await fetchWithToken('/api/stream/status/' + offerId);
+                        if (res && res.ok) {
+                            const data = await res.json();
+                            if (data.status !== 'live') {
+                                alert('⏹️ انتهى البث المباشر');
+                                leaveStream();
+                            }
+                        }
+                    } catch(e) {
+                        console.error('خطأ في التحقق من حالة البث:', e);
+                    }
+                }, 30000);
             </script>
             </body>
             </html>
         `);
     } catch (error) {
-        console.error('خطأ:', error.message);
+        console.error('❌ خطأ في دخول الطالب إلى البث:', error.message);
         res.redirect('/student-dashboard.html');
     }
 });
