@@ -4414,7 +4414,7 @@ app.get('/api/enter-teacher-stream/:offer_id/:teacher_id', [
 });
 
 // ============================================================
-// صفحة البث المباشر للأستاذ - ✅ معدلة كاملة مع دعم CSRF
+// صفحة البث المباشر للأستاذ - ✅ معدلة كاملة مع دعم إعادة الاتصال
 // ============================================================
 app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
     try {
@@ -4444,7 +4444,7 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
             return res.redirect('/teacher-dashboard.html');
         }
 
-        // عرض صفحة البث مع التوكن ودعم CSRF
+        // عرض صفحة البث مع التوكن ودعم إعادة الاتصال
         res.send(`
             <!DOCTYPE html>
             <html lang="ar">
@@ -4465,6 +4465,8 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                     .btn-success:hover{background:#059669}
                     .btn-warning{background:#f59e0b}
                     .btn-warning:hover{background:#d97706}
+                    .btn-reconnect{background:#8b5cf6}
+                    .btn-reconnect:hover{background:#7c3aed}
                     .badge{background:#f59e0b;padding:5px 15px;border-radius:30px;font-size:0.8rem}
                     #jitsi-container{position:fixed;top:60px;left:0;right:0;bottom:0}
                     .waiting-panel{position:fixed;left:20px;top:80px;width:300px;background:white;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:200;max-height:400px;overflow-y:auto}
@@ -4473,7 +4475,76 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                     .student-item{display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid #e2e8f0}
                     .add-btn{background:#10b981;color:white;border:none;padding:4px 12px;border-radius:20px;cursor:pointer;font-size:0.7rem}
                     .add-btn:hover{background:#059669}
+                    .connection-status {
+                        position: fixed;
+                        bottom: 20px;
+                        right: 20px;
+                        padding: 10px 20px;
+                        border-radius: 30px;
+                        font-size: 0.8rem;
+                        font-weight: 700;
+                        z-index: 300;
+                        backdrop-filter: blur(10px);
+                        font-family: 'Cairo', sans-serif;
+                        transition: all 0.3s ease;
+                    }
+                    .connection-status.connected {
+                        background: rgba(16, 185, 129, 0.9);
+                        color: white;
+                    }
+                    .connection-status.disconnected {
+                        background: rgba(239, 68, 68, 0.9);
+                        color: white;
+                        animation: blink 1s infinite;
+                    }
+                    .connection-status.reconnecting {
+                        background: rgba(245, 158, 11, 0.9);
+                        color: white;
+                        animation: blink 0.5s infinite;
+                    }
+                    @keyframes blink {
+                        0%, 100% { opacity: 1; }
+                        50% { opacity: 0.5; }
+                    }
+                    .toast-container {
+                        position: fixed;
+                        bottom: 80px;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        z-index: 9999;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 8px;
+                        align-items: center;
+                        width: 90%;
+                        max-width: 400px;
+                    }
+                    .toast {
+                        padding: 12px 20px;
+                        border-radius: 12px;
+                        color: white;
+                        font-weight: 700;
+                        font-size: 0.85rem;
+                        box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+                        animation: slideInToast 0.3s ease;
+                        width: 100%;
+                        text-align: center;
+                        font-family: 'Cairo', sans-serif;
+                    }
+                    .toast.success { background: #10b981; }
+                    .toast.error { background: #ef4444; }
+                    .toast.warning { background: #f59e0b; }
+                    .toast.info { background: #0f5cbf; }
+                    @keyframes slideInToast {
+                        from { transform: translateY(20px); opacity: 0; }
+                        to { transform: translateY(0); opacity: 1; }
+                    }
                     @media(max-width:768px){.waiting-panel{left:10px;right:10px;width:auto;top:70px}}
+                    @media(max-width:480px){
+                        .connection-status{bottom:10px;right:10px;font-size:0.65rem;padding:6px 12px;}
+                        .header{padding:8px 12px;flex-wrap:wrap;gap:4px;}
+                        .btn{padding:4px 12px;font-size:0.7rem;margin-left:4px;}
+                    }
                 </style>
             </head>
             <body>
@@ -4491,15 +4562,31 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                 <div id="waitingList" class="waiting-list"></div>
             </div>
             <div id="jitsi-container"></div>
+            
+            <!-- حالة الاتصال -->
+            <div id="connectionStatus" class="connection-status connected">
+                <i class="fas fa-wifi"></i> متصل
+            </div>
+            
+            <!-- Toast Container -->
+            <div class="toast-container" id="toastContainer"></div>
+
             <script>
                 // ============================================================
-                // ✅ التوكنات للطلبات
+                // ✅ التوكنات والثوابت
                 // ============================================================
                 const AUTH_TOKEN = '${token}';
                 const roomName = '${sanitizeInput(offer.room_name)}';
                 const offerId = ${parseInt(offer_id)};
                 const teacherId = ${parseInt(teacher_id)};
                 let csrfToken = null;
+                let isReconnecting = false;
+                let reconnectAttempts = 0;
+                const MAX_RECONNECT_ATTEMPTS = 10;
+                let connectionCheckInterval = null;
+                let refreshInterval = null;
+                let jitsiApi = null;
+                let isEnding = false;
 
                 // ============================================================
                 // ✅ دالة جلب CSRF Token
@@ -4519,10 +4606,9 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                 }
 
                 // ============================================================
-                // ✅ دالة للطلبات مع التوكن و CSRF
+                // ✅ دالة للطلبات مع التوكن
                 // ============================================================
                 async function fetchWithAuth(url, options = {}) {
-                    // إذا لم يكن لدينا CSRF Token، نجلب واحد
                     if (!csrfToken) {
                         await getCsrfToken();
                     }
@@ -4537,14 +4623,11 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                         }
                     });
 
-                    // إذا كان الخطأ بسبب CSRF، نجلب توكن جديد ونعيد المحاولة
                     if (response.status === 403) {
                         try {
                             const data = await response.clone().json();
                             if (data.code === 'CSRF_ERROR' || data.error?.includes('CSRF')) {
-                                console.log('🔄 CSRF Token منتهي، جلب توكن جديد...');
                                 await getCsrfToken();
-                                // إعادة المحاولة مع التوكن الجديد
                                 const retryResponse = await fetch(url, {
                                     ...options,
                                     headers: {
@@ -4556,14 +4639,15 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                                 });
                                 return retryResponse;
                             }
-                        } catch (e) {
-                            console.error('خطأ في معالجة CSRF:', e);
-                        }
+                        } catch (e) {}
                     }
 
                     if (response.status === 401) {
-                        alert('⏳ انتهت صلاحية الجلسة، جاري إعادة التوجيه...');
-                        window.location.href = '/teacher-dashboard.html';
+                        updateConnectionStatus('disconnected', 'انتهت الجلسة');
+                        showToast('⏳ انتهت صلاحية الجلسة، جاري إعادة التوجيه...', 'error');
+                        setTimeout(() => {
+                            window.location.href = '/teacher-dashboard.html';
+                        }, 2000);
                         return null;
                     }
 
@@ -4571,13 +4655,153 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                 }
 
                 // ============================================================
-                // ✅ تهيئة Jitsi
+                // ✅ تحديث حالة الاتصال
                 // ============================================================
-                let refreshInterval = null;
+                function updateConnectionStatus(status, message = '') {
+                    const statusDiv = document.getElementById('connectionStatus');
+                    const iconMap = {
+                        'connected': '<i class="fas fa-wifi"></i>',
+                        'disconnected': '<i class="fas fa-wifi-slash"></i>',
+                        'reconnecting': '<i class="fas fa-sync fa-spin"></i>'
+                    };
+                    
+                    const messageMap = {
+                        'connected': message || 'متصل',
+                        'disconnected': message || 'غير متصل',
+                        'reconnecting': message || 'جاري إعادة الاتصال...'
+                    };
+                    
+                    statusDiv.className = 'connection-status ' + status;
+                    statusDiv.innerHTML = iconMap[status] + ' ' + messageMap[status];
+                }
 
+                // ============================================================
+                // ✅ عرض رسائل Toast
+                // ============================================================
+                function showToast(message, type = 'info') {
+                    const container = document.getElementById('toastContainer');
+                    const toast = document.createElement('div');
+                    toast.className = 'toast ' + type;
+                    toast.textContent = message;
+                    container.appendChild(toast);
+
+                    setTimeout(() => {
+                        toast.style.opacity = '0';
+                        toast.style.transform = 'translateY(20px)';
+                        toast.style.transition = 'all 0.3s ease';
+                        setTimeout(() => toast.remove(), 300);
+                    }, 5000);
+                }
+
+                // ============================================================
+                // ✅ التحقق من حالة الاتصال بشكل دوري
+                // ============================================================
+                async function checkConnection() {
+                    if (isEnding) return;
+                    
+                    try {
+                        const res = await fetchWithAuth('/api/stream/waiting-list/' + offerId + '/' + teacherId);
+                        if (res && res.ok) {
+                            updateConnectionStatus('connected', 'متصل');
+                            reconnectAttempts = 0;
+                            isReconnecting = false;
+                            return true;
+                        } else {
+                            throw new Error('فشل الاتصال');
+                        }
+                    } catch (e) {
+                        console.warn('⚠️ فقدان الاتصال بالخادم:', e.message);
+                        updateConnectionStatus('disconnected', 'فقدان الاتصال');
+                        await attemptReconnect();
+                        return false;
+                    }
+                }
+
+                // ============================================================
+                // ✅ محاولة إعادة الاتصال
+                // ============================================================
+                async function attemptReconnect() {
+                    if (isReconnecting || isEnding) return;
+                    if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+                        updateConnectionStatus('disconnected', 'فشل إعادة الاتصال');
+                        showToast('❌ تعذر إعادة الاتصال بالخادم. يرجى تحديث الصفحة.', 'error');
+                        return;
+                    }
+
+                    isReconnecting = true;
+                    reconnectAttempts++;
+                    updateConnectionStatus('reconnecting', 'محاولة ' + reconnectAttempts + '/' + MAX_RECONNECT_ATTEMPTS);
+                    
+                    const delay = Math.min(2000 * reconnectAttempts, 15000);
+                    console.log('🔄 محاولة إعادة الاتصال ' + reconnectAttempts + '/' + MAX_RECONNECT_ATTEMPTS + ' بعد ' + delay + 'ms');
+                    
+                    setTimeout(async () => {
+                        try {
+                            // تجديد CSRF Token
+                            await getCsrfToken();
+                            
+                            // محاولة استعادة حالة البث
+                            const res = await fetchWithAuth('/api/stream/status/' + offerId);
+                            if (res && res.ok) {
+                                const data = await res.json();
+                                if (data.status === 'live' || data.status === 'teacher_ready') {
+                                    updateConnectionStatus('connected', 'تم إعادة الاتصال');
+                                    isReconnecting = false;
+                                    reconnectAttempts = 0;
+                                    showToast('✅ تم إعادة الاتصال بالبث', 'success');
+                                    loadWaitingList();
+                                    return;
+                                } else if (data.status === 'completed') {
+                                    updateConnectionStatus('disconnected', 'انتهى البث');
+                                    showToast('⏹️ انتهى البث المباشر', 'warning');
+                                    setTimeout(() => {
+                                        window.location.href = '/teacher-dashboard.html';
+                                    }, 3000);
+                                    return;
+                                }
+                            }
+                            
+                            // إعادة تهيئة Jitsi
+                            if (jitsiApi) {
+                                try {
+                                    jitsiApi.dispose();
+                                } catch(e) {}
+                            }
+                            
+                            showToast('🔄 جاري إعادة تهيئة البث...', 'warning');
+                            setTimeout(() => {
+                                initJitsi();
+                                updateConnectionStatus('connected', 'تمت إعادة التهيئة');
+                                isReconnecting = false;
+                                reconnectAttempts = 0;
+                                showToast('✅ تم إعادة تهيئة البث', 'success');
+                            }, 2000);
+                            
+                        } catch (e) {
+                            console.error('❌ فشل إعادة الاتصال:', e);
+                            isReconnecting = false;
+                            // المحاولة مرة أخرى بعد وقت أطول
+                            setTimeout(() => {
+                                if (!isEnding) {
+                                    attemptReconnect();
+                                }
+                            }, 5000);
+                        }
+                    }, delay);
+                }
+
+                // ============================================================
+                // ✅ تهيئة Jitsi مع دعم إعادة الاتصال
+                // ============================================================
                 function initJitsi() {
                     try {
-                        const api = new JitsiMeetExternalAPI('meet.jit.si', {
+                        if (jitsiApi) {
+                            try {
+                                jitsiApi.dispose();
+                            } catch(e) {}
+                        }
+
+                        const config = {
                             roomName: roomName,
                             width: '100%',
                             height: window.innerHeight - 60,
@@ -4586,13 +4810,95 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                             configOverwrite: {
                                 disableSimulcast: false,
                                 enableNoisyMicDetection: false,
-                                p2p: { enabled: true }
+                                p2p: { enabled: true },
+                                startWithVideoMuted: false,
+                                startWithAudioMuted: false,
+                                enableWelcomePage: false,
+                                enableClosePage: false,
+                                connectionTimeout: 30000,
+                                keepAliveInterval: 15000,
+                                // إعدادات إضافية لمنع الانقطاع
+                                disableAudioLevels: false,
+                                disableLocalVideoMute: false,
+                                disableVideoMute: false,
+                                disableRemoteVideoMute: false,
+                                startSilent: false,
+                            },
+                            interfaceConfigOverwrite: {
+                                TOOLBAR_BUTTONS: [
+                                    'microphone', 'camera', 'closedcaptions', 'desktop',
+                                    'fullscreen', 'fodeviceselection', 'hangup',
+                                    'settings', 'raisehand', 'videoquality', 'filmstrip',
+                                    'invite', 'feedback', 'stats', 'shortcuts',
+                                    'tileview', 'videosettings', 'etherpad',
+                                    'sharedvideo', 'security', 'recording', 'livestreaming'
+                                ]
+                            }
+                        };
+
+                        jitsiApi = new JitsiMeetExternalAPI('meet.jit.si', config);
+                        window.jitsiApi = jitsiApi;
+
+                        // ✅ مراقبة حالة الاتصال في Jitsi
+                        jitsiApi.addListener('connectionStatusChanged', (status) => {
+                            console.log('🔵 حالة اتصال Jitsi:', status);
+                            if (status === 'disconnected' && !isEnding) {
+                                updateConnectionStatus('disconnected', 'انقطع اتصال Jitsi');
+                                showToast('⚠️ انقطع الاتصال بالبث، جاري إعادة المحاولة...', 'warning');
+                                setTimeout(() => {
+                                    if (!isEnding) {
+                                        attemptReconnect();
+                                    }
+                                }, 3000);
+                            } else if (status === 'connected') {
+                                updateConnectionStatus('connected', 'متصل بـ Jitsi');
+                                reconnectAttempts = 0;
+                                isReconnecting = false;
                             }
                         });
-                        window.jitsiApi = api;
+
+                        // ✅ مراقبة انقطاع المشاركين
+                        jitsiApi.addListener('participantConnectionStatus', (participant, status) => {
+                            console.log('👤 مشارك ' + participant + ' حالة الاتصال:', status);
+                        });
+
+                        // ✅ عند مغادرة الغرفة
+                        jitsiApi.addListener('videoConferenceLeft', () => {
+                            console.log('🚪 تم مغادرة الغرفة');
+                            if (!isEnding) {
+                                updateConnectionStatus('disconnected', 'غادرت الغرفة');
+                                setTimeout(() => {
+                                    if (!isEnding) {
+                                        attemptReconnect();
+                                    }
+                                }, 3000);
+                            }
+                        });
+
+                        // ✅ عند انتهاء البث من Jitsi
+                        jitsiApi.addListener('readyToClose', () => {
+                            console.log('🔴 جاهز للإغلاق');
+                            if (!isEnding) {
+                                showToast('⚠️ البث على وشك الانقطاع. جاري إعادة المحاولة...', 'warning');
+                                setTimeout(() => {
+                                    if (!isEnding && jitsiApi && !jitsiApi.isConnected()) {
+                                        attemptReconnect();
+                                    }
+                                }, 2000);
+                            }
+                        });
+
+                        console.log('✅ تم تهيئة Jitsi بنجاح');
+                        updateConnectionStatus('connected', 'متصل');
+                        
                     } catch (error) {
-                        console.error('خطأ في Jitsi:', error);
-                        setTimeout(initJitsi, 3000);
+                        console.error('❌ خطأ في تهيئة Jitsi:', error);
+                        updateConnectionStatus('disconnected', 'خطأ في التهيئة');
+                        setTimeout(() => {
+                            if (!isEnding) {
+                                initJitsi();
+                            }
+                        }, 5000);
                     }
                 }
 
@@ -4600,6 +4906,7 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                 // ✅ تحميل قائمة الانتظار
                 // ============================================================
                 async function loadWaitingList() {
+                    if (isEnding) return;
                     try {
                         const res = await fetchWithAuth('/api/stream/waiting-list/' + offerId + '/' + teacherId);
                         if (!res) return;
@@ -4627,23 +4934,22 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                 // ✅ إضافة طالب واحد
                 // ============================================================
                 async function addStudent(studentId) {
-                    if (confirm('اضافة الطالب الى البث؟')) {
-                        try {
-                            const res = await fetchWithAuth('/api/stream/add-students/' + offerId, {
-                                method: 'POST',
-                                body: JSON.stringify({ offer_id: offerId, teacher_id: teacherId })
-                            });
-                            if (res && res.ok) {
-                                alert('✅ تم اضافة الطالب');
-                                loadWaitingList();
-                            } else if (res) {
-                                const data = await res.json();
-                                alert('❌ ' + (data.error || 'حدث خطأ'));
-                            }
-                        } catch(e) {
-                            console.error('خطأ في إضافة الطالب:', e);
-                            alert('❌ حدث خطأ في إضافة الطالب');
+                    if (!confirm('اضافة الطالب الى البث؟')) return;
+                    try {
+                        const res = await fetchWithAuth('/api/stream/add-students/' + offerId, {
+                            method: 'POST',
+                            body: JSON.stringify({ offer_id: offerId, teacher_id: teacherId })
+                        });
+                        if (res && res.ok) {
+                            showToast('✅ تم اضافة الطالب', 'success');
+                            loadWaitingList();
+                        } else if (res) {
+                            const data = await res.json();
+                            showToast(data.error || 'حدث خطأ', 'error');
                         }
+                    } catch(e) {
+                        console.error('خطأ في إضافة الطالب:', e);
+                        showToast('حدث خطأ', 'error');
                     }
                 }
 
@@ -4651,24 +4957,23 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                 // ✅ إضافة جميع الطلاب
                 // ============================================================
                 async function addAllStudents() {
-                    if (confirm('اضافة جميع الطلاب الى البث؟')) {
-                        try {
-                            const res = await fetchWithAuth('/api/stream/add-students/' + offerId, {
-                                method: 'POST',
-                                body: JSON.stringify({ offer_id: offerId, teacher_id: teacherId })
-                            });
-                            if (res && res.ok) {
-                                const data = await res.json();
-                                alert('✅ تم اضافة ' + data.students_count + ' طالب');
-                                loadWaitingList();
-                            } else if (res) {
-                                const data = await res.json();
-                                alert('❌ ' + (data.error || 'حدث خطأ'));
-                            }
-                        } catch(e) {
-                            console.error('خطأ في إضافة جميع الطلاب:', e);
-                            alert('❌ حدث خطأ في إضافة الطلاب');
+                    if (!confirm('اضافة جميع الطلاب الى البث؟')) return;
+                    try {
+                        const res = await fetchWithAuth('/api/stream/add-students/' + offerId, {
+                            method: 'POST',
+                            body: JSON.stringify({ offer_id: offerId, teacher_id: teacherId })
+                        });
+                        if (res && res.ok) {
+                            const data = await res.json();
+                            showToast('✅ تم اضافة ' + data.students_count + ' طالب', 'success');
+                            loadWaitingList();
+                        } else if (res) {
+                            const data = await res.json();
+                            showToast(data.error || 'حدث خطأ', 'error');
                         }
+                    } catch(e) {
+                        console.error('خطأ في إضافة جميع الطلاب:', e);
+                        showToast('حدث خطأ', 'error');
                     }
                 }
 
@@ -4676,32 +4981,42 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                 // ✅ مغادرة البث
                 // ============================================================
                 function leaveStream() {
-                    if (window.jitsiApi) window.jitsiApi.dispose();
-                    if (refreshInterval) clearInterval(refreshInterval);
-                    window.location.href = '/teacher-dashboard.html';
+                    if (confirm('هل تريد مغادرة البث؟')) {
+                        isEnding = true;
+                        if (jitsiApi) {
+                            try { jitsiApi.dispose(); } catch(e) {}
+                        }
+                        if (refreshInterval) clearInterval(refreshInterval);
+                        if (connectionCheckInterval) clearInterval(connectionCheckInterval);
+                        window.location.href = '/teacher-dashboard.html';
+                    }
                 }
 
                 // ============================================================
                 // ✅ إنهاء البث
                 // ============================================================
                 async function endStream() {
-                    if (confirm('انهاء البث؟')) {
-                        try {
-                            const res = await fetchWithAuth('/api/stream/end/' + offerId, {
-                                method: 'POST',
-                                body: JSON.stringify({ offer_id: offerId, teacher_id: teacherId })
-                            });
-                            if (res && res.ok) {
-                                alert('✅ تم انهاء البث');
-                            }
-                        } catch(e) {
-                            console.error('خطأ في إنهاء البث:', e);
-                            alert('❌ حدث خطأ في إنهاء البث');
+                    if (!confirm('انهاء البث؟')) return;
+                    isEnding = true;
+                    try {
+                        const res = await fetchWithAuth('/api/stream/end/' + offerId, {
+                            method: 'POST',
+                            body: JSON.stringify({ offer_id: offerId, teacher_id: teacherId })
+                        });
+                        if (res && res.ok) {
+                            showToast('✅ تم انهاء البث', 'success');
                         }
-                        if (window.jitsiApi) window.jitsiApi.dispose();
-                        if (refreshInterval) clearInterval(refreshInterval);
-                        window.location.href = '/teacher-dashboard.html';
+                    } catch(e) {
+                        console.error('خطأ في إنهاء البث:', e);
                     }
+                    if (jitsiApi) {
+                        try { jitsiApi.dispose(); } catch(e) {}
+                    }
+                    if (refreshInterval) clearInterval(refreshInterval);
+                    if (connectionCheckInterval) clearInterval(connectionCheckInterval);
+                    setTimeout(() => {
+                        window.location.href = '/teacher-dashboard.html';
+                    }, 1000);
                 }
 
                 // ============================================================
@@ -4717,13 +5032,46 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                 // ============================================================
                 // ✅ بدء التشغيل
                 // ============================================================
-                initJitsi();
+                console.log('🚀 بدء تشغيل صفحة البث...');
                 
-                // جلب CSRF Token عند البدء
+                // جلب CSRF Token
                 getCsrfToken().then(() => {
+                    console.log('✅ تم جلب CSRF Token');
+                    initJitsi();
                     loadWaitingList();
+                    
+                    // تحديث قائمة الانتظار كل 5 ثواني
                     refreshInterval = setInterval(loadWaitingList, 5000);
+                    
+                    // التحقق من الاتصال كل 10 ثواني (أكثر تكراراً)
+                    connectionCheckInterval = setInterval(() => {
+                        if (!isEnding) {
+                            checkConnection();
+                        }
+                    }, 10000);
+                    
+                    // تحديث حالة البث كل 30 ثانية
+                    setInterval(async () => {
+                        if (isEnding) return;
+                        try {
+                            const res = await fetchWithAuth('/api/stream/status/' + offerId);
+                            if (res && res.ok) {
+                                const data = await res.json();
+                                if (data.status === 'completed') {
+                                    showToast('⏹️ انتهى البث المباشر', 'warning');
+                                    isEnding = true;
+                                    setTimeout(() => {
+                                        window.location.href = '/teacher-dashboard.html';
+                                    }, 3000);
+                                }
+                            }
+                        } catch(e) {
+                            console.error('خطأ في التحقق من حالة البث:', e);
+                        }
+                    }, 30000);
                 });
+
+                console.log('✅ تم تهيئة صفحة البث بنجاح');
             </script>
             </body>
             </html>
@@ -4733,39 +5081,6 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
         res.redirect('/teacher-dashboard.html');
     }
 });
-
-// مسار تحديث حالة الأستاذ في البث
-app.post('/api/stream/enter-teacher/:offer_id', [
-    authenticate,
-    authorize(['teacher']),
-    param('offer_id').isInt().withMessage('معرف العرض غير صالح'),
-    body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const { offer_id, teacher_id } = req.body;
-
-        if (req.user.userId !== teacher_id) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
-        }
-
-        const offer = await getOne('offers', 'id', offer_id);
-
-        if (!offer || offer.teacher_id != teacher_id) {
-            return res.status(403).json({ success: false });
-        }
-
-        await update('offers', offer_id, { status: 'teacher_ready' });
-        res.json({ success: true, room_name: offer.room_name });
-    } catch (error) {
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
-    }
-});
-
 // مسار إضافة الطلاب إلى البث
 app.post('/api/stream/add-students/:offer_id', [
     authenticate,
