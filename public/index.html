@@ -829,7 +829,7 @@
             margin-top: 8px;
         }
 
-        /* ===== SEARCH & FILTER - جديد ===== */
+        /* ===== SEARCH & FILTER - بدون فلتر العمر ===== */
         .search-filter-container {
             background: white;
             border-radius: var(--radius-md);
@@ -2086,8 +2086,8 @@
                     </div>
                     <div class="stat-card">
                         <span class="icon"><i class="fas fa-book"></i></span>
-                        <div class="number" id="offerCount">0</div>
-                        <div class="label">درس متاح</div>
+                        <div class="number" id="totalOffersCount">0</div>
+                        <div class="label">عدد الدروس</div>
                     </div>
                     <div class="stat-card">
                         <span class="icon"><i class="fas fa-video"></i></span>
@@ -2223,13 +2223,6 @@
                         <option value="2-5">2 - 5 سنوات</option>
                         <option value="5-10">5 - 10 سنوات</option>
                         <option value="10+">أكثر من 10 سنوات</option>
-                    </select>
-                    <select id="filterAge" onchange="filterTeachers()">
-                        <option value="all">كل الأعمار</option>
-                        <option value="20-25">20 - 25 سنة</option>
-                        <option value="26-30">26 - 30 سنة</option>
-                        <option value="31-40">31 - 40 سنة</option>
-                        <option value="40+">أكثر من 40 سنة</option>
                     </select>
                     <button class="clear-filters-btn" onclick="clearFilters()">
                         <i class="fas fa-undo"></i> مسح
@@ -2562,7 +2555,7 @@
 
     <script>
         // ============================================================
-        // الكود الكامل مع البحث والفلترة
+        // الكود الكامل مع التعديلات المطلوبة
         // ============================================================
 
         // ===== reCAPTCHA STATE =====
@@ -2891,17 +2884,25 @@
         }
 
         // ============================================================
-        // STATS
+        // STATS - مع إجمالي عدد الدروس
         // ============================================================
         async function loadStats() {
             try {
+                // جلب الإحصائيات العامة
                 var res = await fetch('/api/public/stats');
                 if (!res.ok) throw new Error('HTTP error! status: ' + res.status);
                 var stats = await res.json();
+                
+                // جلب إجمالي عدد الدروس (جميع الدروس التي تم إنشاؤها)
+                var totalOffersRes = await fetch('/api/public/total-offers');
+                var totalOffersData = await totalOffersRes.json();
+                var totalOffers = totalOffersData.total || 0;
+                
                 document.getElementById('teacherCount').innerText = stats.teachers || 0;
-                document.getElementById('offerCount').innerText = stats.offers || 0;
+                document.getElementById('totalOffersCount').innerText = totalOffers;
                 document.getElementById('liveCountStat').innerText = stats.live || 0;
                 document.getElementById('studentCount').innerText = stats.students || 0;
+                
                 var liveBadge = document.getElementById('liveCount');
                 if (stats.live > 0) {
                     liveBadge.style.display = 'inline-block';
@@ -3157,7 +3158,7 @@
         }
 
         // ============================================================
-        // TEACHERS - مع البحث والفلترة
+        // TEACHERS - مع البحث والفلترة (بدون فلتر العمر)
         // ============================================================
         async function loadPublicTeachers() {
             var container = document.getElementById('teachersList');
@@ -3194,15 +3195,12 @@
             var html = '';
             teachers.forEach(function(t) {
                 var imageUrl = t.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(t.full_name) + '&background=0f5cbf&color=fff&size=90';
-                // محاكاة العمر (سنستخدم خبرة + 22 كتقدير)
-                var age = 22 + (parseInt(t.experience) || 0) + Math.floor(Math.random() * 5);
                 
                 html += '<div class="teacher-card" onclick="viewTeacherProfile(' + t.id + ')">' +
                     '<img src="' + imageUrl + '" class="teacher-image" onerror="this.src=\'https://ui-avatars.com/api/?name=' + encodeURIComponent(t.full_name) + '&background=0f5cbf&color=fff&size=90\'">' +
                     '<h3>' + escapeHtml(t.full_name) + '</h3>' +
                     '<p class="specialization"><i class="fas fa-book"></i> ' + escapeHtml(t.specialization || 'تخصص عام') + '</p>' +
                     '<div class="teacher-experience"><i class="fas fa-briefcase"></i> ' + (t.experience || '0') + ' سنة خبرة</div>' +
-                    '<div class="teacher-experience"><i class="fas fa-calendar-alt"></i> ' + age + ' سنة</div>' +
                     '<div class="teacher-bio">' + (t.bio ? escapeHtml(t.bio) : 'لا توجد نبذة') + '</div>' +
                     '<button class="view-profile-btn" onclick="event.stopPropagation(); viewTeacherProfile(' + t.id + ')">' +
                         '<i class="fas fa-eye"></i> زيارة صفحة الأستاذ' +
@@ -3212,11 +3210,10 @@
             container.innerHTML = html;
         }
 
-        // ===== فلترة الأساتذة =====
+        // ===== فلترة الأساتذة (بدون فلتر العمر) =====
         function filterTeachers() {
             var searchTerm = document.getElementById('searchTeacher').value.toLowerCase().trim();
             var experienceFilter = document.getElementById('filterExperience').value;
-            var ageFilter = document.getElementById('filterAge').value;
             
             filteredTeachers = allTeachers.filter(function(t) {
                 // فلترة البحث
@@ -3239,19 +3236,7 @@
                     }
                 }
                 
-                // فلترة العمر (محاكاة)
-                var matchesAge = true;
-                var age = 22 + exp + Math.floor(Math.random() * 5);
-                if (ageFilter !== 'all') {
-                    switch(ageFilter) {
-                        case '20-25': matchesAge = age >= 20 && age <= 25; break;
-                        case '26-30': matchesAge = age >= 26 && age <= 30; break;
-                        case '31-40': matchesAge = age >= 31 && age <= 40; break;
-                        case '40+': matchesAge = age > 40; break;
-                    }
-                }
-                
-                return matchesSearch && matchesExperience && matchesAge;
+                return matchesSearch && matchesExperience;
             });
             
             renderTeachers(filteredTeachers);
@@ -3271,7 +3256,6 @@
         function clearFilters() {
             document.getElementById('searchTeacher').value = '';
             document.getElementById('filterExperience').value = 'all';
-            document.getElementById('filterAge').value = 'all';
             filterTeachers();
         }
 
@@ -3364,7 +3348,7 @@
         }
 
         // ============================================================
-        // VIEW TEACHER PROFILE
+        // VIEW TEACHER PROFILE - بدون عمر
         // ============================================================
         async function viewTeacherProfile(teacherId) {
             document.getElementById('homeSection').style.display = 'none';
@@ -3512,7 +3496,7 @@
                     `;
                 }
                 
-                // ===== الصفحة الكاملة =====
+                // ===== الصفحة الكاملة (بدون عمر) =====
                 var html = `
                     <button class="profile-back-btn" onclick="showTeachers()">
                         <i class="fas fa-arrow-right"></i> العودة إلى قائمة الأساتذة
