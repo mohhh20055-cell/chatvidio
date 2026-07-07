@@ -399,7 +399,16 @@ app.use((req, res, next) => {
         '/api/test-cors',
         '/api/ping',
         '/api/verify-token',
-        '/api/refresh-token'
+        '/api/refresh-token',
+        '/api/ice-servers',
+        '/api/room',
+        '/api/rooms',
+        '/api/room/create',
+        '/api/room/join',
+        '/api/room/start',
+        '/api/room/end',
+        '/api/room/leave',
+        '/api/info'
     ];
     
     const publicMethods = ['GET', 'HEAD', 'OPTIONS'];
@@ -5896,6 +5905,361 @@ app.post('/api/notifications/read/:notification_id', [
 });
 
 // ============================================================
+// مسارات WebRTC الجديدة - نظام البث المباشر عبر المتصفحات
+// ============================================================
+
+/**
+ * إنشاء غرفة WebRTC جديدة
+ * POST /api/room/create
+ */
+app.post('/api/room/create', async (req, res) => {
+    try {
+        const { teacher_id, subject_name, teacher_name } = req.body;
+
+        if (!teacher_id || !subject_name) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'معرف الأستاذ واسم المادة مطلوبان' 
+            });
+        }
+
+        const roomId = uuidv4().substring(0, 8);
+        const roomName = `room_${roomId}`;
+
+        const room = await insert('webrtc_rooms', {
+            room_id: roomId,
+            room_name: roomName,
+            teacher_id: teacher_id,
+            subject_name: subject_name.trim(),
+            teacher_name: teacher_name || 'أستاذ',
+            status: 'waiting',
+            created_at: new Date().toISOString()
+        });
+
+        console.log(`✅ تم إنشاء غرفة: ${roomName} للمعلم ${teacher_name || teacher_id}`);
+
+        res.json({
+            success: true,
+            room_id: roomId,
+            room_name: roomName,
+            room: room
+        });
+    } catch (error) {
+        console.error('❌ خطأ في إنشاء الغرفة:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+/**
+ * الانضمام إلى غرفة WebRTC
+ * POST /api/room/join
+ */
+app.post('/api/room/join', async (req, res) => {
+    try {
+        const { room_id, student_id, student_name } = req.body;
+
+        if (!room_id || !student_id) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'معرف الغرفة ومعرف الطالب مطلوبان' 
+            });
+        }
+
+        const room = await getOne('webrtc_rooms', 'room_id', room_id);
+
+        if (!room) {
+            return res.status(404).json({ 
+                success: false, 
+                error: 'الغرفة غير موجودة' 
+            });
+        }
+
+        if (room.status === 'ended') {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'انتهت الجلسة' 
+            });
+        }
+
+        // تسجيل الطالب في الغرفة
+        await insert('webrtc_participants', {
+            room_id: room_id,
+            student_id: student_id,
+            student_name: student_name || 'طالب',
+            joined_at: new Date().toISOString(),
+            is_active: true
+        });
+
+        console.log(`✅ انضم الطالب ${student_name || student_id} إلى الغرفة ${room_id}`);
+
+        res.json({
+            success: true,
+            room: {
+                room_id: room.room_id,
+                room_name: room.room_name,
+                teacher_id: room.teacher_id,
+                teacher_name: room.teacher_name,
+                subject_name: room.subject_name,
+                status: room.status
+            }
+        });
+    } catch (error) {
+        console.error('❌ خطأ في الانضمام للغرفة:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+/**
+ * بدء البث (تغيير حالة الغرفة إلى live)
+ * POST /api/room/start/:room_id
+ */
+app.post('/api/room/start/:room_id', async (req, res) => {
+    try {
+        const { room_id } = req.params;
+        const { teacher_id } = req.body;
+
+        const room = await getOne('webrtc_rooms', 'room_id', room_id);
+
+        if (!room) {
+            return res.status(404).json({ 
+                success: false, 
+                error: 'الغرفة غير موجودة' 
+            });
+        }
+
+        if (room.teacher_id !== teacher_id) {
+            return res.status(403).json({ 
+                success: false, 
+                error: 'غير مصرح لك ببدء هذا البث' 
+            });
+        }
+
+        await update('webrtc_rooms', room.id, { 
+            status: 'live',
+            started_at: new Date().toISOString()
+        });
+
+        console.log(`✅ بدأ البث في الغرفة ${room_id}`);
+
+        res.json({
+            success: true,
+            status: 'live'
+        });
+    } catch (error) {
+        console.error('❌ خطأ في بدء البث:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+/**
+ * إنهاء البث
+ * POST /api/room/end/:room_id
+ */
+app.post('/api/room/end/:room_id', async (req, res) => {
+    try {
+        const { room_id } = req.params;
+        const { teacher_id } = req.body;
+
+        const room = await getOne('webrtc_rooms', 'room_id', room_id);
+
+        if (!room) {
+            return res.status(404).json({ 
+                success: false, 
+                error: 'الغرفة غير موجودة' 
+            });
+        }
+
+        if (room.teacher_id !== teacher_id) {
+            return res.status(403).json({ 
+                success: false, 
+                error: 'غير مصرح لك بإنهاء هذا البث' 
+            });
+        }
+
+        await update('webrtc_rooms', room.id, { 
+            status: 'ended',
+            ended_at: new Date().toISOString()
+        });
+
+        // تعطيل جميع المشاركين
+        await supabase
+            .from('webrtc_participants')
+            .update({ is_active: false })
+            .eq('room_id', room_id);
+
+        console.log(`✅ انتهى البث في الغرفة ${room_id}`);
+
+        res.json({
+            success: true,
+            status: 'ended'
+        });
+    } catch (error) {
+        console.error('❌ خطأ في إنهاء البث:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+/**
+ * الحصول على معلومات الغرفة
+ * GET /api/room/:room_id
+ */
+app.get('/api/room/:room_id', async (req, res) => {
+    try {
+        const { room_id } = req.params;
+
+        const room = await getOne('webrtc_rooms', 'room_id', room_id);
+
+        if (!room) {
+            return res.status(404).json({ 
+                success: false, 
+                error: 'الغرفة غير موجودة' 
+            });
+        }
+
+        // جلب المشاركين النشطين
+        const { data: participants } = await supabase
+            .from('webrtc_participants')
+            .select('student_id, student_name, joined_at')
+            .eq('room_id', room_id)
+            .eq('is_active', true);
+
+        res.json({
+            success: true,
+            room: {
+                room_id: room.room_id,
+                room_name: room.room_name,
+                teacher_id: room.teacher_id,
+                teacher_name: room.teacher_name,
+                subject_name: room.subject_name,
+                status: room.status,
+                created_at: room.created_at,
+                started_at: room.started_at,
+                ended_at: room.ended_at
+            },
+            participants: participants || []
+        });
+    } catch (error) {
+        console.error('❌ خطأ في جلب معلومات الغرفة:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+/**
+ * الحصول على قائمة الغرف النشطة
+ * GET /api/rooms/active
+ */
+app.get('/api/rooms/active', async (req, res) => {
+    try {
+        const { data } = await supabase
+            .from('webrtc_rooms')
+            .select('*')
+            .in('status', ['waiting', 'live'])
+            .order('created_at', { ascending: false });
+
+        res.json({
+            success: true,
+            rooms: data || []
+        });
+    } catch (error) {
+        console.error('❌ خطأ في جلب الغرف النشطة:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+/**
+ * مغادرة الطالب للغرفة
+ * POST /api/room/leave
+ */
+app.post('/api/room/leave', async (req, res) => {
+    try {
+        const { room_id, student_id } = req.body;
+
+        if (!room_id || !student_id) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'معرف الغرفة ومعرف الطالب مطلوبان' 
+            });
+        }
+
+        await supabase
+            .from('webrtc_participants')
+            .update({ is_active: false })
+            .eq('room_id', room_id)
+            .eq('student_id', student_id);
+
+        console.log(`✅ غادر الطالب ${student_id} الغرفة ${room_id}`);
+
+        res.json({
+            success: true,
+            message: 'تم مغادرة الغرفة بنجاح'
+        });
+    } catch (error) {
+        console.error('❌ خطأ في مغادرة الغرفة:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// مسار خوادم ICE (STUN/TURN)
+// ============================================================
+app.get('/api/ice-servers', (req, res) => {
+    // خوادم STUN مجانية من Google
+    const iceServers = [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+        { urls: 'stun:stun3.l.google.com:19302' },
+        { urls: 'stun:stun4.l.google.com:19302' },
+        { urls: 'stun:stun.ekiga.net' },
+        { urls: 'stun:stun.ideasip.com' },
+        { urls: 'stun:stun.voip.australia.edu.au' }
+    ];
+
+    res.json({
+        success: true,
+        iceServers: iceServers
+    });
+});
+
+// ============================================================
+// مسار معلومات الخادم
+// ============================================================
+app.get('/api/info', (req, res) => {
+    res.json({
+        name: 'منصة التعليم - WebRTC Signaling Server',
+        version: '2.0.0',
+        description: 'خادم إشارات WebRTC مجاني بالكامل مع Supabase',
+        features: [
+            'إنشاء غرف البث المباشر',
+            'الانضمام للغرف',
+            'إشارات WebRTC عبر Supabase',
+            'خوادم STUN مجانية من Google',
+            'دعم Vercel',
+            'نظام إحالة متكامل',
+            'صناديق هدايا للطلاب',
+            'نظام حجز الحصص',
+            'إشعارات فورية',
+            'إدارة المستخدمين والحظر'
+        ],
+        endpoints: {
+            'POST /api/room/create': 'إنشاء غرفة جديدة',
+            'POST /api/room/join': 'الانضمام إلى غرفة',
+            'POST /api/room/start/:room_id': 'بدء البث',
+            'POST /api/room/end/:room_id': 'إنهاء البث',
+            'GET /api/room/:room_id': 'معلومات الغرفة',
+            'GET /api/rooms/active': 'قائمة الغرف النشطة',
+            'POST /api/room/leave': 'مغادرة الغرفة',
+            'GET /api/ice-servers': 'خوادم ICE (STUN)',
+            'POST /api/student/register': 'تسجيل طالب',
+            'POST /api/teacher/register': 'تسجيل أستاذ',
+            'GET /api/teachers': 'قائمة الأساتذة',
+            'POST /api/login': 'تسجيل الدخول',
+            'GET /api/ping': 'فحص صحة الخادم'
+        }
+    });
+});
+
+// ============================================================
 // تشغيل الخادم
 // ============================================================
 
@@ -5904,36 +6268,25 @@ module.exports = app;
 if (require.main === module) {
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, '0.0.0.0', () => {
-        console.log(`🚀 الخادم يعمل على http://localhost:${PORT}`);
-        console.log('🔒 الأمان:');
-        console.log('   ✅ Helmet مع CSP محسن');
-        console.log('   ✅ JWT للمصادقة مع دعم Query Parameter');
-        console.log('   ✅ CSRF Protection');
-        console.log('   ✅ Rate Limiting متقدم');
-        console.log('   ✅ تنقية جميع المدخلات (XSS)');
-        console.log('   ✅ تشفير عناوين IP');
-        console.log('   ✅ التحقق من صحة الملفات');
-        console.log('   ✅ Webhook للدفع الآمن');
-        console.log('   ✅ CORS مع Wildcard لـ Vercel');
-        console.log('   ✅ reCAPTCHA v2 من Google');
-        console.log('📧 نظام تأكيد البريد الإلكتروني مفعل');
-        console.log('🔗 نظام الإحالة مفعل');
-        console.log('🎁 صناديق الهدايا للطلاب مفعلة');
-        console.log('💰 مكافأة الإحالة للأستاذ: 100 دج فور قبوله من الإدارة');
-        console.log('🎁 مكافأة الإحالة للطالب: فرصة صندوق هدايا عند حجز المحال درساً مدفوعاً');
-        console.log('🔒 نظام الحظر (IP Ban) مع تشفير IP');
-        console.log('👥 إدارة المستخدمين (حذف + حظر)');
-        console.log('💳 نظام الدفع عبر Chargily مع Webhook');
-        console.log('🔄 نظام التوجيه (redirectTo) للمدير');
-        console.log('📢 إشعارات عند حجز الحصص للطالب والأستاذ');
-        console.log('📊 إشعار للأستاذ بعدد الطلاب المسجلين في الحصة');
-        console.log('🔧 تم إصلاح مشكلة المصادقة في البث المباشر (دعم التوكن من Query)');
-        console.log('🔧 تم تحسين إعدادات Jitsi لمنع الانقطاع:');
-        console.log('   ✅ زيادة مهلة الاتصال إلى 60 ثانية');
-        console.log('   ✅ تقليل فترة الـ Keep-Alive إلى 5 ثواني');
-        console.log('   ✅ تحسين نظام إعادة الاتصال');
-        console.log('   ✅ إضافة مسارات Ping و Refresh Token');
-        console.log('   ✅ إضافة مراقبة حالة الاتصال بشكل مستمر');
+        console.log('='.repeat(60));
+        console.log('🚀 منصة التعليم - خادم WebRTC المتكامل');
+        console.log('='.repeat(60));
+        console.log(`📡 الخادم يعمل على http://localhost:${PORT}`);
+        console.log('='.repeat(60));
+        console.log('🔧 الميزات:');
+        console.log('   ✅ إنشاء غرف بث مباشر عبر WebRTC');
+        console.log('   ✅ خوادم STUN مجانية من Google');
+        console.log('   ✅ قاعدة بيانات Supabase للتخزين');
+        console.log('   ✅ جاهز للنشر على Vercel');
+        console.log('   ✅ لا حاجة لخوادم وسيطة');
+        console.log('   ✅ مجاني تماماً للأبد');
+        console.log('   ✅ نظام إحالة متكامل');
+        console.log('   ✅ صناديق هدايا للطلاب');
+        console.log('   ✅ نظام حجز الحصص');
+        console.log('   ✅ إشعارات فورية');
+        console.log('   ✅ إدارة المستخدمين والحظر');
+        console.log('   ✅ نظام البث المباشر مع Jitsi');
+        console.log('   ✅ نظام دفع عبر Chargily');
         console.log('='.repeat(60));
         console.log(`📅 التاريخ: ${new Date().toLocaleString('ar-EG')}`);
         console.log('='.repeat(60));
