@@ -1,7 +1,7 @@
-{
+ {
   "name": "education-platform",
   "version": "4.0.0",
-  "description": "منصة تعليمية عالية الأداء مع أعلى معايير الأمان - نسخة محسنة مع JWT وCSRF وWebhook وWebRTC",
+  "description": "منصة تعليمية عالية الأداء مع أعلى معايير الأمان - نسخة محسنة مع JWT وCSRF وWebhook",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -25,6 +25,7 @@
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.2.0",
+    "node-cache": "^5.1.2",
     "path": "^0.12.7",
     "resend": "^3.0.0",
     "uuid": "^9.0.1",
@@ -52,10 +53,7 @@
     "chargily",
     "payment",
     "referral",
-    "live-streaming",
-    "webrtc",
-    "vercel",
-    "nextjs"
+    "live-streaming"
   ],
   "author": "ZoomDz",
   "license": "MIT",
