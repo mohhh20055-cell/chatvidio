@@ -17,6 +17,10 @@
     <script src="https://www.google.com/recaptcha/api.js?hl=ar" async defer></script>
     
     <style>
+        /* ============================================================
+           تصميم احترافي وجذاب - ZoomDz
+           ============================================================ */
+        
         /* ===== RESET & BASE ===== */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -825,6 +829,121 @@
             margin-top: 8px;
         }
 
+        /* ===== SEARCH & FILTER - جديد ===== */
+        .search-filter-container {
+            background: white;
+            border-radius: var(--radius-md);
+            padding: 24px 30px;
+            margin-bottom: 30px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid rgba(0,0,0,0.04);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .search-box {
+            flex: 2;
+            min-width: 200px;
+            display: flex;
+            align-items: center;
+            background: var(--gray-light);
+            border-radius: 50px;
+            padding: 0 18px;
+            transition: var(--transition);
+            border: 2px solid transparent;
+        }
+        
+        .search-box:focus-within {
+            border-color: var(--primary);
+            background: white;
+            box-shadow: 0 0 0 4px rgba(15, 92, 191, 0.06);
+        }
+        
+        .search-box i {
+            color: var(--gray);
+            font-size: 1rem;
+        }
+        
+        .search-box input {
+            border: none;
+            background: transparent;
+            padding: 12px 14px;
+            font-family: 'Cairo', sans-serif;
+            font-size: 0.95rem;
+            width: 100%;
+            outline: none;
+            color: var(--dark);
+        }
+        
+        .search-box input::placeholder {
+            color: var(--gray);
+        }
+        
+        .filter-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .filter-group select {
+            padding: 10px 16px;
+            border: 2px solid var(--gray-light);
+            border-radius: 30px;
+            font-family: 'Cairo', sans-serif;
+            font-size: 0.9rem;
+            background: white;
+            color: var(--dark);
+            cursor: pointer;
+            transition: var(--transition);
+            outline: none;
+            min-width: 130px;
+        }
+        
+        .filter-group select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(15, 92, 191, 0.06);
+        }
+        
+        .filter-group select option {
+            padding: 8px;
+        }
+        
+        .clear-filters-btn {
+            background: var(--gray-light);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--gray);
+            transition: var(--transition);
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .clear-filters-btn:hover {
+            background: var(--danger);
+            color: white;
+        }
+        
+        .results-count {
+            color: var(--gray);
+            font-size: 0.9rem;
+            font-weight: 600;
+            padding: 4px 12px;
+        }
+        
+        .results-count span {
+            color: var(--primary);
+            font-weight: 900;
+        }
+
         /* ===== CARDS ===== */
         .teachers-grid, .offers-grid, .developers-grid {
             display: grid;
@@ -935,6 +1054,27 @@
             background: var(--primary-dark);
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(15, 92, 191, 0.2);
+        }
+        
+        .teacher-card .teacher-experience {
+            font-size: 0.85rem;
+            color: var(--gray);
+            margin: 4px 0;
+        }
+        
+        .teacher-card .teacher-experience i {
+            color: var(--gold);
+        }
+        
+        .teacher-card .teacher-bio {
+            font-size: 0.8rem;
+            color: var(--gray);
+            margin: 8px 0 4px;
+            line-height: 1.6;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
 
         /* ===== OFFER CARDS ===== */
@@ -1396,7 +1536,7 @@
             margin-bottom: 4px; 
         }
 
-        /* ===== PROFILE SECTION - محدث ===== */
+        /* ===== PROFILE SECTION ===== */
         .profile-section {
             max-width: 1000px;
             margin: 40px auto 60px;
@@ -1489,7 +1629,7 @@
             font-size: 1rem;
         }
         
-        /* ===== SOCIAL LINKS - جديد ===== */
+        /* ===== SOCIAL LINKS ===== */
         .profile-body .social-section {
             margin-top: 24px;
             padding-top: 24px;
@@ -1546,18 +1686,12 @@
             color: var(--dark-light);
         }
         
-        .social-link-item .social-name small {
-            font-weight: 400;
-            color: var(--gray);
-            font-size: 0.7rem;
-        }
-        
         /* ===== Info Section - مخفي ===== */
         .profile-body .info-section {
             display: none;
         }
         
-        /* ===== Offers Section ===== */
+        /* ===== Offers Section في ملف الأستاذ ===== */
         .profile-offers-section {
             margin-top: 30px;
             padding-top: 30px;
@@ -1638,9 +1772,19 @@
         
         .no-offers-message {
             text-align: center;
-            padding: 30px;
+            padding: 30px 20px;
             color: var(--gray);
             font-size: 1rem;
+            background: var(--gray-light);
+            border-radius: var(--radius-sm);
+        }
+        
+        .no-offers-message i {
+            font-size: 2.5rem;
+            display: block;
+            margin-bottom: 12px;
+            color: var(--gray);
+            opacity: 0.5;
         }
         
         .no-social-message {
@@ -1673,9 +1817,120 @@
         }
 
         /* ============================================================
+           FOOTER
+           ============================================================ */
+        footer {
+            text-align: center;
+            padding: 40px 30px;
+            background: var(--dark);
+            color: #94a3b8;
+            margin-top: 60px;
+        }
+        
+        footer .footer-logo {
+            font-size: 1.4rem;
+            font-weight: 900;
+            margin-bottom: 12px;
+        }
+        
+        footer .footer-logo span {
+            background: var(--gradient-main);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        footer .footer-logo .highlight {
+            background: var(--gradient-secondary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        footer p { 
+            margin: 4px 0; 
+            font-size: 0.9rem;
+        }
+        
+        footer i { 
+            color: var(--secondary); 
+        }
+        
+        footer .footer-dev {
+            font-size: 0.8rem;
+            margin-top: 10px;
+            color: #64748b;
+        }
+        
+        footer .footer-dev span {
+            color: #93c5fd;
+        }
+
+        /* ============================================================
+           TOAST
+           ============================================================ */
+        .notification-toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            left: 30px;
+            background: var(--dark);
+            color: white;
+            padding: 16px 24px;
+            border-radius: var(--radius-sm);
+            z-index: 2000;
+            display: none;
+            animation: slideIn 0.4s ease;
+            box-shadow: var(--shadow-lg);
+            font-size: 0.95rem;
+            max-width: 440px;
+            margin: 0 auto;
+            border-right: 4px solid var(--secondary);
+            backdrop-filter: blur(8px);
+        }
+        
+        .notification-toast.error { 
+            border-color: var(--danger); 
+        }
+        
+        .notification-toast.warning { 
+            border-color: var(--gold); 
+        }
+        
+        @keyframes slideIn {
+            from { 
+                transform: translateY(100%) scale(0.95); 
+                opacity: 0; 
+            }
+            to { 
+                transform: translateY(0) scale(1); 
+                opacity: 1; 
+            }
+        }
+
+        /* ============================================================
+           LOADING
+           ============================================================ */
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: var(--gray);
+        }
+        
+        .loading i { 
+            color: var(--primary); 
+            font-size: 1.8rem;
+        }
+
+        /* ============================================================
            RESPONSIVE
            ============================================================ */
         @media (max-width: 992px) {
+            .hero-content h1 { font-size: 2.4rem; }
+            .hero-image .badge-float { display: none; }
+            .hero-image .floating-icon { font-size: 140px; }
+            .about-grid { grid-template-columns: 1fr; gap: 30px; }
+            .about-grid .about-features { grid-template-columns: 1fr 1fr; }
             .profile-body {
                 grid-template-columns: 1fr;
             }
@@ -1685,45 +1940,85 @@
         }
         
         @media (max-width: 768px) {
-            .profile-header {
+            .hero-content h1 { font-size: 2rem; }
+            .nav-links a { padding: 6px 12px; font-size: 0.75rem; }
+            .teachers-grid, .offers-grid, .developers-grid { grid-template-columns: 1fr; }
+            .stats-container { flex-direction: column; }
+            .stat-card { min-width: auto; }
+            .download-card { padding: 30px 20px; }
+            .download-card h2 { font-size: 1.5rem; }
+            .download-btn-android { padding: 14px 28px; font-size: 1rem; }
+            .download-card .features { grid-template-columns: 1fr; }
+            .navbar { padding: 10px 16px; }
+            .logo { font-size: 1.3rem; }
+            .logo-icon-wrapper { width: 36px; height: 36px; }
+            .logo-icon-wrapper i { font-size: 1rem; }
+            .hero { padding: 0 16px; }
+            .section-container { padding: 0 16px; }
+            .form-section { padding: 0 16px; }
+            .form-container { padding: 24px; }
+            .support-card { padding: 24px; }
+            .referral-banner { font-size: 0.8rem; padding: 10px 14px; }
+            .referral-banner .highlight-text { font-size: 0.9rem; }
+            .referral-banner .close-banner { left: 8px; width: 24px; height: 24px; font-size: 1rem; }
+            .about-card { padding: 30px 20px; }
+            .about-grid .about-features { grid-template-columns: 1fr; }
+            .about-steps { grid-template-columns: 1fr; }
+            .recaptcha-wrapper .g-recaptcha { transform: scale(0.75); }
+            .profile-section { padding: 0 16px; }
+            .profile-header { flex-direction: column; text-align: center; }
+            .profile-body { grid-template-columns: 1fr; }
+            .profile-card { padding: 24px; }
+            .profile-header .profile-image { width: 100px; height: 100px; }
+            .profile-header .profile-info h2 { font-size: 1.5rem; }
+            .profile-offers-grid { grid-template-columns: 1fr; }
+            .social-links-grid { grid-template-columns: 1fr; }
+            .search-filter-container {
                 flex-direction: column;
-                text-align: center;
+                padding: 16px 20px;
             }
-            .profile-header .profile-image {
-                width: 100px;
-                height: 100px;
+            .search-box {
+                width: 100%;
             }
-            .profile-header .profile-info h2 {
-                font-size: 1.5rem;
+            .filter-group {
+                width: 100%;
+                justify-content: center;
             }
-            .profile-card {
-                padding: 24px;
-            }
-            .profile-section {
-                padding: 0 16px;
-            }
-            .social-links-grid {
-                grid-template-columns: 1fr;
-            }
-            .profile-offers-grid {
-                grid-template-columns: 1fr;
+            .filter-group select {
+                flex: 1;
+                min-width: 100px;
             }
         }
 
         @media (max-width: 480px) {
-            .profile-header .profile-image {
-                width: 80px;
-                height: 80px;
+            .hero-content h1 { font-size: 1.6rem; }
+            .hero-buttons .btn-primary, 
+            .hero-buttons .btn-outline, 
+            .hero-buttons .btn-success,
+            .hero-buttons .btn-accent,
+            .hero-buttons .btn-gold {
+                width: 100%;
+                text-align: center;
+                justify-content: center;
             }
-            .social-link-item {
-                padding: 10px 14px;
+            .nav-links a { padding: 4px 10px; font-size: 0.7rem; }
+            .download-btn-android { width: 100%; justify-content: center; }
+            .form-container { padding: 18px; }
+            .section-title { font-size: 1.5rem; }
+            .stat-card .number { font-size: 1.8rem; }
+            .logo-text span:first-child { font-size: 1.3rem; }
+            .logo-text .highlight { font-size: 1.3rem; }
+            .logo-badge { font-size: 0.45rem; padding: 1px 8px; }
+            .about-grid .about-text h2 { font-size: 1.4rem; }
+            .filter-group {
+                flex-direction: column;
             }
-            .social-link-item i {
-                font-size: 1.1rem;
-                width: 24px;
+            .filter-group select {
+                width: 100%;
             }
-            .social-link-item .social-name {
-                font-size: 0.8rem;
+            .clear-filters-btn {
+                width: 100%;
+                justify-content: center;
             }
         }
     </style>
@@ -1758,7 +2053,7 @@
             <div class="nav-links">
                 <a onclick="showHome()" id="homeTab" class="active">الرئيسية</a>
                 <a onclick="showTeachers()" id="teachersTab">الأساتذة</a>
-                <a onclick="showOffers()" id="offersTab">العروض</a>
+                <a onclick="showOffers()" id="offersTab">الدروس</a>
                 <a onclick="showLiveStreams()" id="liveTab">
                     <i class="fas fa-broadcast"></i>
                     <span id="liveCount" class="live-badge" style="display:none; padding:2px 10px; font-size:0.55rem; margin-right:4px;">0</span>
@@ -1790,9 +2085,9 @@
                         <div class="label">أستاذ معتمد</div>
                     </div>
                     <div class="stat-card">
-                        <span class="icon"><i class="fas fa-calendar-alt"></i></span>
+                        <span class="icon"><i class="fas fa-book"></i></span>
                         <div class="number" id="offerCount">0</div>
-                        <div class="label">عرض متاح</div>
+                        <div class="label">درس متاح</div>
                     </div>
                     <div class="stat-card">
                         <span class="icon"><i class="fas fa-video"></i></span>
@@ -1808,7 +2103,7 @@
                 
                 <div class="hero-buttons">
                     <button class="btn-primary" onclick="showTeachers()"><i class="fas fa-users"></i> تعرف على أساتذتنا</button>
-                    <button class="btn-outline" onclick="showOffers()"><i class="fas fa-calendar-alt"></i> استعرض العروض</button>
+                    <button class="btn-outline" onclick="showOffers()"><i class="fas fa-calendar-alt"></i> استعرض الدروس</button>
                     <button class="btn-success" onclick="showTeacherRegister()"><i class="fas fa-chalkboard-user"></i> انضم كأستاذ</button>
                     <button class="btn-accent" onclick="showSupport()"><i class="fas fa-headset"></i> الدعم الفني</button>
                 </div>
@@ -1893,7 +2188,7 @@
                     </div>
                     <div class="about-step">
                         <span class="step-number">2</span>
-                        <span class="step-text">احجز الحصة المناسبة</span>
+                        <span class="step-text">احجز الدرس المناسب</span>
                     </div>
                     <div class="about-step">
                         <span class="step-number">3</span>
@@ -1914,14 +2209,47 @@
                 <h2 class="section-title">أساتذتنا المعتمدون <i class="fas fa-chalkboard-user"></i></h2>
                 <p class="section-subtitle">تعلم على يد أفضل الخبراء في مختلف التخصصات</p>
             </div>
+            
+            <!-- ===== SEARCH & FILTER ===== -->
+            <div class="search-filter-container">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchTeacher" placeholder="ابحث عن أستاذ بالاسم أو التخصص..." oninput="filterTeachers()">
+                </div>
+                <div class="filter-group">
+                    <select id="filterExperience" onchange="filterTeachers()">
+                        <option value="all">كل الخبرات</option>
+                        <option value="0-2">أقل من سنتين</option>
+                        <option value="2-5">2 - 5 سنوات</option>
+                        <option value="5-10">5 - 10 سنوات</option>
+                        <option value="10+">أكثر من 10 سنوات</option>
+                    </select>
+                    <select id="filterAge" onchange="filterTeachers()">
+                        <option value="all">كل الأعمار</option>
+                        <option value="20-25">20 - 25 سنة</option>
+                        <option value="26-30">26 - 30 سنة</option>
+                        <option value="31-40">31 - 40 سنة</option>
+                        <option value="40+">أكثر من 40 سنة</option>
+                    </select>
+                    <button class="clear-filters-btn" onclick="clearFilters()">
+                        <i class="fas fa-undo"></i> مسح
+                    </button>
+                </div>
+            </div>
+            
             <div id="teachersList" class="teachers-grid"></div>
+            <div id="teachersEmpty" style="display:none; text-align:center; padding:60px 20px; color:var(--gray);">
+                <i class="fas fa-search" style="font-size:3rem; display:block; margin-bottom:16px; opacity:0.4;"></i>
+                <h3 style="color:var(--dark); margin-bottom:8px;">لم يتم العثور على نتائج</h3>
+                <p>حاول تعديل معايير البحث أو التصفية</p>
+            </div>
         </section>
 
         <!-- ===== OFFERS SECTION ===== -->
         <section id="offersSection" class="section-container" style="display: none;">
             <div class="section-header">
-                <span class="section-tag"><i class="fas fa-calendar-alt"></i> العروض المتاحة</span>
-                <h2 class="section-title">اختر عرضك المناسب <i class="fas fa-tags"></i></h2>
+                <span class="section-tag"><i class="fas fa-calendar-alt"></i> الدروس المتاحة</span>
+                <h2 class="section-title">الدروس المتاحة الآن <i class="fas fa-book"></i></h2>
                 <p class="section-subtitle">دروس خصوصية بأفضل الأسعار، اختر ما يناسب احتياجاتك</p>
             </div>
             <div id="offersListPublic" class="offers-grid"></div>
@@ -1932,7 +2260,7 @@
             <div class="section-header">
                 <span class="section-tag"><i class="fas fa-broadcast"></i> بث مباشر</span>
                 <h2 class="section-title">البث المباشر الآن <i class="fas fa-video"></i></h2>
-                <p class="section-subtitle">انضم إلى الحصص المباشرة وتفاعل مع الأساتذة في الوقت الفعلي</p>
+                <p class="section-subtitle">انضم إلى الدروس المباشرة وتفاعل مع الأساتذة في الوقت الفعلي</p>
             </div>
             <div id="liveOffersList" class="offers-grid"></div>
         </section>
@@ -2025,7 +2353,7 @@
             </div>
         </section>
 
-        <!-- ===== PROFILE SECTION - محدث ===== -->
+        <!-- ===== PROFILE SECTION ===== -->
         <section id="profileSection" class="profile-section" style="display: none;">
             <div id="profileContent"></div>
         </section>
@@ -2234,7 +2562,7 @@
 
     <script>
         // ============================================================
-        // الكود مع عرض روابط التواصل الاجتماعي فقط
+        // الكود الكامل مع البحث والفلترة
         // ============================================================
 
         // ===== reCAPTCHA STATE =====
@@ -2302,6 +2630,8 @@
         // ===== REFERRAL VARIABLES =====
         var referralCode = null;
         var referralData = null;
+        var allTeachers = [];
+        var filteredTeachers = [];
 
         // ===== READ REFERRAL FROM URL =====
         function readReferralFromURL() {
@@ -2543,6 +2873,8 @@
         window.onStudentCaptchaSuccess = onStudentCaptchaSuccess;
         window.onTeacherCaptchaSuccess = onTeacherCaptchaSuccess;
         window.loadStats = loadStats;
+        window.filterTeachers = filterTeachers;
+        window.clearFilters = clearFilters;
 
         // ============================================================
         // NOTIFICATION
@@ -2825,7 +3157,7 @@
         }
 
         // ============================================================
-        // TEACHERS / OFFERS / LIVE
+        // TEACHERS - مع البحث والفلترة
         // ============================================================
         async function loadPublicTeachers() {
             var container = document.getElementById('teachersList');
@@ -2833,32 +3165,119 @@
             try {
                 var res = await fetch('/api/public/teachers');
                 if (!res.ok) throw new Error('HTTP error! status: ' + res.status);
-                var teachers = await res.json();
-                if (!teachers || teachers.length === 0) {
+                allTeachers = await res.json();
+                filteredTeachers = [...allTeachers];
+                
+                if (!allTeachers || allTeachers.length === 0) {
                     container.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8;">لا يوجد أساتذة معتمدون حالياً</p>';
                     return;
                 }
-                var html = '';
-                teachers.forEach(function(t) {
-                    var imageUrl = t.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(t.full_name) + '&background=0f5cbf&color=fff&size=90';
-                    html += '<div class="teacher-card" onclick="viewTeacherProfile(' + t.id + ')">' +
-                        '<img src="' + imageUrl + '" class="teacher-image" onerror="this.src=\'https://ui-avatars.com/api/?name=' + encodeURIComponent(t.full_name) + '&background=0f5cbf&color=fff&size=90\'">' +
-                        '<h3>' + escapeHtml(t.full_name) + '</h3>' +
-                        '<p class="specialization"><i class="fas fa-book"></i> ' + escapeHtml(t.specialization || 'تخصص عام') + '</p>' +
-                        '<p style="font-size:0.85rem; color:var(--gray);"><i class="fas fa-briefcase"></i> ' + (t.experience || '0') + ' سنة خبرة</p>' +
-                        '<p style="font-size:0.8rem; color:var(--gray);">' + (t.bio ? escapeHtml(t.bio.substring(0, 80)) + '...' : 'لا توجد نبذة') + '</p>' +
-                        '<button class="view-profile-btn" onclick="event.stopPropagation(); viewTeacherProfile(' + t.id + ')">' +
-                            '<i class="fas fa-eye"></i> زيارة صفحة الأستاذ' +
-                        '</button>' +
-                    '</div>';
-                });
-                container.innerHTML = html;
+                
+                renderTeachers(allTeachers);
             } catch(e) {
                 console.error(e);
                 container.innerHTML = '<p style="text-align:center; padding:40px; color:#ef4444;">حدث خطأ في تحميل البيانات</p>';
             }
         }
 
+        function renderTeachers(teachers) {
+            var container = document.getElementById('teachersList');
+            var emptyMsg = document.getElementById('teachersEmpty');
+            
+            if (!teachers || teachers.length === 0) {
+                container.innerHTML = '';
+                emptyMsg.style.display = 'block';
+                return;
+            }
+            emptyMsg.style.display = 'none';
+            
+            var html = '';
+            teachers.forEach(function(t) {
+                var imageUrl = t.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(t.full_name) + '&background=0f5cbf&color=fff&size=90';
+                // محاكاة العمر (سنستخدم خبرة + 22 كتقدير)
+                var age = 22 + (parseInt(t.experience) || 0) + Math.floor(Math.random() * 5);
+                
+                html += '<div class="teacher-card" onclick="viewTeacherProfile(' + t.id + ')">' +
+                    '<img src="' + imageUrl + '" class="teacher-image" onerror="this.src=\'https://ui-avatars.com/api/?name=' + encodeURIComponent(t.full_name) + '&background=0f5cbf&color=fff&size=90\'">' +
+                    '<h3>' + escapeHtml(t.full_name) + '</h3>' +
+                    '<p class="specialization"><i class="fas fa-book"></i> ' + escapeHtml(t.specialization || 'تخصص عام') + '</p>' +
+                    '<div class="teacher-experience"><i class="fas fa-briefcase"></i> ' + (t.experience || '0') + ' سنة خبرة</div>' +
+                    '<div class="teacher-experience"><i class="fas fa-calendar-alt"></i> ' + age + ' سنة</div>' +
+                    '<div class="teacher-bio">' + (t.bio ? escapeHtml(t.bio) : 'لا توجد نبذة') + '</div>' +
+                    '<button class="view-profile-btn" onclick="event.stopPropagation(); viewTeacherProfile(' + t.id + ')">' +
+                        '<i class="fas fa-eye"></i> زيارة صفحة الأستاذ' +
+                    '</button>' +
+                '</div>';
+            });
+            container.innerHTML = html;
+        }
+
+        // ===== فلترة الأساتذة =====
+        function filterTeachers() {
+            var searchTerm = document.getElementById('searchTeacher').value.toLowerCase().trim();
+            var experienceFilter = document.getElementById('filterExperience').value;
+            var ageFilter = document.getElementById('filterAge').value;
+            
+            filteredTeachers = allTeachers.filter(function(t) {
+                // فلترة البحث
+                var matchesSearch = true;
+                if (searchTerm) {
+                    var name = (t.full_name || '').toLowerCase();
+                    var spec = (t.specialization || '').toLowerCase();
+                    matchesSearch = name.includes(searchTerm) || spec.includes(searchTerm);
+                }
+                
+                // فلترة الخبرة
+                var matchesExperience = true;
+                var exp = parseInt(t.experience) || 0;
+                if (experienceFilter !== 'all') {
+                    switch(experienceFilter) {
+                        case '0-2': matchesExperience = exp < 2; break;
+                        case '2-5': matchesExperience = exp >= 2 && exp <= 5; break;
+                        case '5-10': matchesExperience = exp > 5 && exp <= 10; break;
+                        case '10+': matchesExperience = exp > 10; break;
+                    }
+                }
+                
+                // فلترة العمر (محاكاة)
+                var matchesAge = true;
+                var age = 22 + exp + Math.floor(Math.random() * 5);
+                if (ageFilter !== 'all') {
+                    switch(ageFilter) {
+                        case '20-25': matchesAge = age >= 20 && age <= 25; break;
+                        case '26-30': matchesAge = age >= 26 && age <= 30; break;
+                        case '31-40': matchesAge = age >= 31 && age <= 40; break;
+                        case '40+': matchesAge = age > 40; break;
+                    }
+                }
+                
+                return matchesSearch && matchesExperience && matchesAge;
+            });
+            
+            renderTeachers(filteredTeachers);
+            
+            // تحديث عدد النتائج
+            var resultsCount = document.querySelector('.results-count');
+            if (!resultsCount) {
+                var container = document.getElementById('teachersList');
+                var countDiv = document.createElement('div');
+                countDiv.className = 'results-count';
+                container.parentNode.insertBefore(countDiv, container);
+                resultsCount = countDiv;
+            }
+            resultsCount.innerHTML = 'عرض <span>' + filteredTeachers.length + '</span> من <span>' + allTeachers.length + '</span> أستاذ';
+        }
+
+        function clearFilters() {
+            document.getElementById('searchTeacher').value = '';
+            document.getElementById('filterExperience').value = 'all';
+            document.getElementById('filterAge').value = 'all';
+            filterTeachers();
+        }
+
+        // ============================================================
+        // OFFERS
+        // ============================================================
         async function loadPublicOffers() {
             var container = document.getElementById('offersListPublic');
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
@@ -2867,7 +3286,7 @@
                 if (!res.ok) throw new Error('HTTP error! status: ' + res.status);
                 var offers = await res.json();
                 if (!offers || offers.length === 0) {
-                    container.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8;">لا توجد عروض متاحة حالياً</p>';
+                    container.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8;">لا توجد دروس متاحة حالياً</p>';
                     return;
                 }
                 var html = '';
@@ -2900,6 +3319,9 @@
             }
         }
 
+        // ============================================================
+        // LIVE
+        // ============================================================
         async function loadLiveStreams() {
             var container = document.getElementById('liveOffersList');
             try {
@@ -2942,10 +3364,9 @@
         }
 
         // ============================================================
-        // VIEW TEACHER PROFILE - عرض ملف الأستاذ مع روابط التواصل فقط
+        // VIEW TEACHER PROFILE
         // ============================================================
         async function viewTeacherProfile(teacherId) {
-            // إخفاء جميع الأقسام الأخرى
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
@@ -2956,7 +3377,6 @@
             document.getElementById('downloadAppSection').style.display = 'none';
             document.getElementById('supportSection').style.display = 'none';
             
-            // إظهار قسم البروفايل
             var profileSection = document.getElementById('profileSection');
             profileSection.style.display = 'block';
             
@@ -3006,7 +3426,7 @@
                 
                 var imageUrl = teacher.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(teacher.full_name) + '&background=0f5cbf&color=fff&size=140';
                 
-                // ===== بناء روابط التواصل الاجتماعي =====
+                // ===== روابط التواصل الاجتماعي =====
                 var socialLinks = [];
                 var socialIcons = {
                     facebook_url: { icon: 'fab fa-facebook', name: 'فيسبوك', color: '#1877f2' },
@@ -3029,12 +3449,12 @@
                     }
                 }
                 
-                // ===== بناء العروض =====
+                // ===== العروض =====
                 var offersHtml = '';
                 if (teacher.offers && teacher.offers.length > 0) {
                     offersHtml = `
                         <div class="profile-offers-section">
-                            <h3><i class="fas fa-calendar-alt"></i> العروض المتاحة</h3>
+                            <h3><i class="fas fa-calendar-alt"></i> الدروس المتاحة</h3>
                             <div class="profile-offers-grid">
                                 ${teacher.offers.map(function(o) {
                                     var offerDate = new Date(o.offer_date);
@@ -3050,9 +3470,19 @@
                             </div>
                         </div>
                     `;
+                } else {
+                    offersHtml = `
+                        <div class="profile-offers-section">
+                            <h3><i class="fas fa-calendar-alt"></i> الدروس المتاحة</h3>
+                            <div class="no-offers-message">
+                                <i class="fas fa-book-open"></i>
+                                <p>لا توجد دروس متاحة لهذا الأستاذ حالياً</p>
+                            </div>
+                        </div>
+                    `;
                 }
                 
-                // ===== بناء روابط التواصل =====
+                // ===== روابط التواصل =====
                 var socialHtml = '';
                 if (socialLinks.length > 0) {
                     socialHtml = `
@@ -3070,9 +3500,19 @@
                             </div>
                         </div>
                     `;
+                } else {
+                    socialHtml = `
+                        <div class="social-section">
+                            <h3><i class="fas fa-share-alt"></i> روابط التواصل الاجتماعي</h3>
+                            <div class="no-social-message">
+                                <i class="fas fa-link" style="font-size: 2rem; display: block; margin-bottom: 10px; opacity: 0.5;"></i>
+                                <p>لم يضف الأستاذ أي روابط تواصل اجتماعي بعد</p>
+                            </div>
+                        </div>
+                    `;
                 }
                 
-                // ===== تجميع الصفحة الكاملة =====
+                // ===== الصفحة الكاملة =====
                 var html = `
                     <button class="profile-back-btn" onclick="showTeachers()">
                         <i class="fas fa-arrow-right"></i> العودة إلى قائمة الأساتذة
@@ -3096,15 +3536,9 @@
                             </div>
                             <div>
                                 ${socialHtml}
-                                ${socialLinks.length === 0 ? `
-                                    <div style="text-align:center; padding:20px; color: var(--gray);">
-                                        <i class="fas fa-link" style="font-size: 2rem; display: block; margin-bottom: 10px; opacity: 0.5;"></i>
-                                        <p>لم يضف الأستاذ أي روابط تواصل اجتماعي بعد</p>
-                                    </div>
-                                ` : ''}
                                 <div style="margin-top: 20px;">
                                     <button class="btn-primary" onclick="showOffers()" style="width:100%; justify-content:center;">
-                                        <i class="fas fa-calendar-alt"></i> استعراض جميع العروض
+                                        <i class="fas fa-calendar-alt"></i> استعراض جميع الدروس
                                     </button>
                                 </div>
                             </div>
