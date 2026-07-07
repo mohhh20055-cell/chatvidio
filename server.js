@@ -1019,6 +1019,29 @@ app.get('/api/public/students-count', async (req, res) => {
         res.status(500).json({ count: 0 });
     }
 });
+// ============================================================
+// مسار جلب إجمالي عدد الدروس (جميع الدروس في قاعدة البيانات)
+// ============================================================
+app.get('/api/public/total-offers', async (req, res) => {
+    try {
+        // جلب عدد جميع الصفوف في جدول offers بغض النظر عن الحالة
+        const { count, error } = await supabase
+            .from('offers')
+            .select('*', { count: 'exact', head: true });
+        
+        if (error) {
+            console.error('❌ خطأ في جلب عدد الدروس:', error);
+            return res.status(500).json({ total: 0, error: error.message });
+        }
+        
+        console.log(`📊 إجمالي عدد الدروس في المنصة: ${count || 0}`);
+        res.json({ total: count || 0 });
+    } catch (error) {
+        console.error('❌ خطأ في جلب عدد الدروس:', error.message);
+        res.status(500).json({ total: 0 });
+    }
+});
+
 
 // ============================================================
 // مسارات التحقق من البريد الإلكتروني
