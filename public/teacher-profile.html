@@ -631,7 +631,8 @@
             const content = document.getElementById('profileContent');
 
             try {
-                const res = await fetch(`/api/teacher/${teacherId}`);
+               const res = await fetch(`/api/public/teacher/${teacherId}`);
+
                 
                 if (!res.ok) {
                     if (res.status === 404) {
