@@ -233,12 +233,16 @@ async function verifyRecaptcha(token) {
 // Middleware التحقق من المصادقة
 // ============================================================
 async function authenticate(req, res, next) {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // ✅ دعم التوكن من Header أو Query Parameter
+    let token = req.headers.authorization?.substring(7);
+    if (!token && req.query.token) {
+        token = req.query.token;
+    }
+    
+    if (!token) {
         return res.status(401).json({ success: false, error: 'غير مصرح به، يرجى تسجيل الدخول' });
     }
 
-    const token = authHeader.substring(7);
     const decoded = verifyToken(token);
     
     if (!decoded) {
@@ -246,6 +250,7 @@ async function authenticate(req, res, next) {
     }
 
     req.user = decoded;
+    req.token = token;
     next();
 }
 
@@ -1717,7 +1722,7 @@ app.get('/api/referral/teacher-stats/:teacher_id', [
 });
 
 // ============================================================
-// نظام الحجز - معدل لإضافة مكافأة الطالب المحيل
+// نظام الحجز - معدل لإضافة مكافأة الطالب المحيل وإرسال إشعارات
 // ============================================================
 app.post('/api/booking/create', [
     authenticate,
@@ -1822,7 +1827,6 @@ app.post('/api/booking/create', [
             // ============================================================
             // 🔥 منح مكافأة الطالب المحيل عند حجز درس مدفوع
             // ============================================================
-            // التحقق مما إذا كان هذا الطالب قد تمت إحالته من قبل طالب آخر
             const { data: referralData } = await supabase
                 .from('referrals')
                 .select('*')
@@ -1832,8 +1836,57 @@ app.post('/api/booking/create', [
                 .single();
 
             if (referralData) {
-                // هذا الطالب تمت إحالته من قبل طالب آخر
                 await processStudentReferralRewardOnBooking(student_id, 'student');
+            }
+        }
+
+        // ============================================================
+        // 🔔 إرسال إشعار للطالب بتأكيد الحجز
+        // ============================================================
+        await insert('notifications', {
+            user_id: student_id,
+            user_type: 'student',
+            title: isFree ? '✅ تم حجز الحصة المجانية' : '✅ تم حجز الحصة بنجاح',
+            message: isFree 
+                ? `لقد قمت بحجز الحصة "${offer.subject_name}" بنجاح (حصة مجانية). سيتم إعلامك عند بدء البث.`
+                : `لقد قمت بحجز الحصة "${offer.subject_name}" بنجاح. تم خصم ${offer.price} دج من رصيدك. سيتم إعلامك عند بدء البث.`,
+            offer_id: offer_id,
+            is_read: false,
+            created_at: new Date().toISOString()
+        });
+
+        // ============================================================
+        // 🔔 إرسال إشعار للأستاذ بعدد الطلاب الذين حجزوا الحصة
+        // ============================================================
+        const { count: bookedCount } = await supabase
+            .from('sessions')
+            .select('*', { count: 'exact', head: true })
+            .eq('offer_id', offer_id)
+            .eq('payment_status', 'paid');
+
+        const teacher = await getOne('teachers', 'id', offer.teacher_id);
+        if (teacher) {
+            await insert('notifications', {
+                user_id: offer.teacher_id,
+                user_type: 'teacher',
+                title: `📊 طالب جديد حجز حصتك "${offer.subject_name}"`,
+                message: `قام الطالب ${student.full_name} بحجز حصتك "${offer.subject_name}". إجمالي الطلاب المسجلين الآن: ${bookedCount || 1} طالب.`,
+                offer_id: offer_id,
+                is_read: false,
+                created_at: new Date().toISOString()
+            });
+
+            // ✅ إشعار إضافي للأستاذ بعدد الطلاب الكلي إذا كان أكثر من 1
+            if (bookedCount && bookedCount > 1) {
+                await insert('notifications', {
+                    user_id: offer.teacher_id,
+                    user_type: 'teacher',
+                    title: `📈 ${bookedCount} طالب مسجل في حصتك "${offer.subject_name}"`,
+                    message: `لديك ${bookedCount} طالب مسجل في حصة "${offer.subject_name}". استعد لبدء البث!`,
+                    offer_id: offer_id,
+                    is_read: false,
+                    created_at: new Date().toISOString()
+                });
             }
         }
 
@@ -1841,7 +1894,8 @@ app.post('/api/booking/create', [
             success: true,
             session_id: session.id,
             is_free: isFree,
-            message: isFree ? 'تم الحجز بنجاح (حصة مجانية)' : `تم حجز الحصة بنجاح. تم خصم ${offer.price} دج من رصيدك.`
+            message: isFree ? 'تم الحجز بنجاح (حصة مجانية)' : `تم حجز الحصة بنجاح. تم خصم ${offer.price} دج من رصيدك.`,
+            total_booked: bookedCount || 1
         });
     } catch (error) {
         console.error('خطأ في معالجة الحجز:', error);
@@ -1871,7 +1925,6 @@ app.post('/api/admin/approve-teacher/:id', [
         // ============================================================
         // 🔥 منح مكافأة الإحالة للأستاذ المحيل فور قبول الأستاذ الجديد
         // ============================================================
-        // البحث عن إحالة لهذا الأستاذ
         const { data: referral } = await supabase
             .from('referrals')
             .select('*')
@@ -1881,7 +1934,6 @@ app.post('/api/admin/approve-teacher/:id', [
             .single();
 
         if (referral) {
-            // معالجة مكافأة الإحالة فوراً (ستضيف 100 دج للأستاذ المحيل)
             await processReferralReward(teacherId, 'teacher');
             console.log(`✅ تم منح مكافأة الإحالة للأستاذ المحيل فور قبول الأستاذ ${teacherId}`);
         }
@@ -3903,7 +3955,7 @@ app.post('/api/offer/create', [
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        const { teacher_id, subject_name, duration, offer_date, price, is_free } = req.body;
+        const { teacher_id, subject_name, duration, offer_date, price, is_free, education_level } = req.body;
 
         if (req.user.userId !== teacher_id) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بإنشاء عروض لهذا الحساب' });
@@ -3919,7 +3971,8 @@ app.post('/api/offer/create', [
             price,
             is_free: is_free ? 1 : 0,
             room_name,
-            status: 'upcoming'
+            status: 'upcoming',
+            education_level: education_level || null
         });
 
         res.json({ success: true, room_name });
@@ -4299,8 +4352,293 @@ app.post('/api/admin/withdraw-requests/:id/reject', [
 });
 
 // ============================================================
-// نظام البث المباشر
+// نظام البث المباشر - ✅ تم إصلاح مشكلة المصادقة
 // ============================================================
+
+// مسار دخول الأستاذ إلى البث - ✅ معدل لدعم التوكن من Query
+app.get('/api/enter-teacher-stream/:offer_id/:teacher_id', [
+    // ❌ تم إزالة authenticate من هنا
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).send(renderErrorPage('خطأ في البيانات', 'البيانات المرسلة غير صالحة'));
+        }
+
+        const { offer_id, teacher_id } = req.params;
+
+        // ✅ قراءة التوكن من Header أو Query Parameter
+        let token = req.headers.authorization?.substring(7);
+        if (!token && req.query.token) {
+            token = req.query.token;
+        }
+        
+        if (!token) {
+            console.log('❌ لا يوجد توكن في طلب دخول البث');
+            return res.status(401).send(renderErrorPage('غير مصرح', 'يرجى تسجيل الدخول أولاً'));
+        }
+        
+        const decoded = verifyToken(token);
+        if (!decoded) {
+            console.log('❌ توكن غير صالح في طلب دخول البث');
+            return res.status(401).send(renderErrorPage('انتهت الصلاحية', 'انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى'));
+        }
+        
+        // ✅ التحقق من الصلاحيات
+        if (decoded.userId !== parseInt(teacher_id) || decoded.role !== 'teacher') {
+            console.log('❌ صلاحيات غير كافية لدخول البث');
+            return res.status(403).send(renderErrorPage('غير مصرح', 'غير مصرح لك بالدخول إلى هذا البث'));
+        }
+
+        // تحديث حالة العرض إلى teacher_ready
+        try {
+            await axios.post(`${req.protocol}://${req.get('host')}/api/stream/enter-teacher/${offer_id}`, {
+                offer_id: parseInt(offer_id),
+                teacher_id: parseInt(teacher_id)
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+        } catch (e) {
+            console.log('⚠️ خطأ في تحديث حالة العرض:', e.message);
+        }
+        
+        // ✅ إعادة التوجيه مع التوكن
+        res.redirect(`/api/teacher-stream/${offer_id}/${teacher_id}?token=${encodeURIComponent(token)}`);
+    } catch (error) {
+        console.error('❌ خطأ في دخول البث:', error.message);
+        res.redirect('/teacher-dashboard.html');
+    }
+});
+
+// صفحة البث المباشر للأستاذ - ✅ معدلة لدعم التوكن
+app.get('/api/teacher-stream/:offer_id/:teacher_id', [
+    // ❌ تم إزالة authenticate من هنا
+], async (req, res) => {
+    try {
+        // ✅ قراءة التوكن من Query Parameter
+        const token = req.query.token;
+        if (!token) {
+            console.log('❌ لا يوجد توكن في طلب صفحة البث');
+            return res.redirect('/teacher-dashboard.html');
+        }
+        
+        const decoded = verifyToken(token);
+        if (!decoded || decoded.role !== 'teacher') {
+            console.log('❌ توكن غير صالح في صفحة البث');
+            return res.redirect('/teacher-dashboard.html');
+        }
+        
+        const { offer_id, teacher_id } = req.params;
+        
+        if (decoded.userId !== parseInt(teacher_id)) {
+            console.log('❌ معرف الأستاذ لا يتطابق مع التوكن');
+            return res.redirect('/teacher-dashboard.html');
+        }
+
+        // ✅ التحقق من وجود العرض
+        const offer = await getOne('offers', 'id', offer_id);
+        if (!offer || offer.teacher_id != parseInt(teacher_id)) {
+            console.log('❌ العرض غير موجود أو لا يخص هذا الأستاذ');
+            return res.redirect('/teacher-dashboard.html');
+        }
+
+        // عرض صفحة البث مع التوكن
+        res.send(`
+            <!DOCTYPE html>
+            <html lang="ar">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>بث مباشر - الأستاذ</title>
+                <script src="https://meet.jit.si/external_api.js"></script>
+                <style>
+                    *{margin:0;padding:0;box-sizing:border-box}
+                    body{font-family:Cairo,sans-serif;background:#0a0a1a;overflow:hidden}
+                    .header{background:linear-gradient(135deg,#0f3460,#1a1a2e);color:white;padding:12px 24px;display:flex;justify-content:space-between;align-items:center;position:fixed;top:0;left:0;right:0;z-index:100}
+                    .btn{color:white;border:none;padding:8px 20px;border-radius:30px;cursor:pointer;transition:all 0.3s;margin-left:8px}
+                    .btn:hover{transform:scale(1.05)}
+                    .btn-danger{background:#ef4444}
+                    .btn-danger:hover{background:#dc2626}
+                    .btn-success{background:#10b981}
+                    .btn-success:hover{background:#059669}
+                    .btn-warning{background:#f59e0b}
+                    .btn-warning:hover{background:#d97706}
+                    .badge{background:#f59e0b;padding:5px 15px;border-radius:30px;font-size:0.8rem}
+                    #jitsi-container{position:fixed;top:60px;left:0;right:0;bottom:0}
+                    .waiting-panel{position:fixed;left:20px;top:80px;width:300px;background:white;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:200;max-height:400px;overflow-y:auto}
+                    .waiting-header{background:linear-gradient(135deg,#0f5cbf,#0f3460);color:white;padding:12px;border-radius:12px 12px 0 0;font-weight:700;display:flex;justify-content:space-between}
+                    .waiting-list{padding:8px}
+                    .student-item{display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid #e2e8f0}
+                    .add-btn{background:#10b981;color:white;border:none;padding:4px 12px;border-radius:20px;cursor:pointer;font-size:0.7rem}
+                    .add-btn:hover{background:#059669}
+                    @media(max-width:768px){.waiting-panel{left:10px;right:10px;width:auto;top:70px}}
+                </style>
+            </head>
+            <body>
+            <div class="header">
+                <div><span class="badge">انت المضيف</span></div>
+                <div>
+                    <span id="waitingCount" class="badge">0 ينتظرون</span>
+                    <button class="btn btn-success" onclick="addAllStudents()">اضافة الكل</button>
+                    <button class="btn btn-danger" onclick="endStream()">انهاء</button>
+                    <button class="btn btn-warning" onclick="leaveStream()">مغادرة</button>
+                </div>
+            </div>
+            <div id="waitingPanel" class="waiting-panel" style="display:none">
+                <div class="waiting-header"><span>الطلاب المنتظرون</span><span id="panelCount">0</span></div>
+                <div id="waitingList" class="waiting-list"></div>
+            </div>
+            <div id="jitsi-container"></div>
+            <script>
+                // ✅ التوكن للطلبات
+                const AUTH_TOKEN = '${token}';
+                const roomName = '${sanitizeInput(offer.room_name)}';
+                const offerId = ${parseInt(offer_id)};
+                const teacherId = ${parseInt(teacher_id)};
+
+                // ✅ دالة للطلبات مع التوكن
+                async function fetchWithToken(url, options = {}) {
+                    const response = await fetch(url, {
+                        ...options,
+                        headers: {
+                            'Authorization': 'Bearer ' + AUTH_TOKEN,
+                            'Content-Type': 'application/json',
+                            ...options.headers
+                        }
+                    });
+                    if (response.status === 401) {
+                        alert('⏳ انتهت صلاحية الجلسة، جاري إعادة التوجيه...');
+                        window.location.href = '/teacher-dashboard.html';
+                        return null;
+                    }
+                    return response;
+                }
+
+                let refreshInterval = null;
+
+                function initJitsi() {
+                    try {
+                        const api = new JitsiMeetExternalAPI('meet.jit.si', {
+                            roomName: roomName,
+                            width: '100%',
+                            height: window.innerHeight - 60,
+                            parentNode: document.querySelector('#jitsi-container'),
+                            userInfo: { displayName: 'الاستاذ' },
+                            configOverwrite: {
+                                disableSimulcast: false,
+                                enableNoisyMicDetection: false,
+                                p2p: { enabled: true }
+                            }
+                        });
+                        window.jitsiApi = api;
+                    } catch (error) {
+                        console.error('خطأ في Jitsi:', error);
+                        setTimeout(initJitsi, 3000);
+                    }
+                }
+
+                async function loadWaitingList() {
+                    try {
+                        const res = await fetchWithToken('/api/stream/waiting-list/' + offerId + '/' + teacherId);
+                        if (!res) return;
+                        const students = await res.json();
+                        const count = students?.length || 0;
+                        document.getElementById('waitingCount').innerHTML = count + ' ينتظرون';
+                        if (count > 0) {
+                            document.getElementById('waitingPanel').style.display = 'block';
+                            document.getElementById('panelCount').innerText = count;
+                            let html = '';
+                            students.forEach(s => {
+                                html += '<div class="student-item">' +
+                                    '<div><strong>' + escapeHtml(s.full_name) + '</strong><br><small>' + escapeHtml(s.email) + '</small></div>' +
+                                    '<button class="add-btn" onclick="addStudent(' + s.student_id + ')">اضافة</button>' +
+                                '</div>';
+                            });
+                            document.getElementById('waitingList').innerHTML = html;
+                        } else {
+                            document.getElementById('waitingPanel').style.display = 'none';
+                        }
+                    } catch(e) { console.error(e); }
+                }
+
+                async function addStudent(studentId) {
+                    if (confirm('اضافة الطالب الى البث؟')) {
+                        const res = await fetchWithToken('/api/stream/add-students/' + offerId, {
+                            method: 'POST',
+                            body: JSON.stringify({ offer_id: offerId, teacher_id: teacherId })
+                        });
+                        if (res && res.ok) {
+                            alert('✅ تم اضافة الطالب');
+                            loadWaitingList();
+                        } else if (res) {
+                            const data = await res.json();
+                            alert('❌ ' + (data.error || 'حدث خطأ'));
+                        }
+                    }
+                }
+
+                async function addAllStudents() {
+                    if (confirm('اضافة جميع الطلاب الى البث؟')) {
+                        const res = await fetchWithToken('/api/stream/add-students/' + offerId, {
+                            method: 'POST',
+                            body: JSON.stringify({ offer_id: offerId, teacher_id: teacherId })
+                        });
+                        if (res && res.ok) {
+                            const data = await res.json();
+                            alert('✅ تم اضافة ' + data.students_count + ' طالب');
+                            loadWaitingList();
+                        } else if (res) {
+                            const data = await res.json();
+                            alert('❌ ' + (data.error || 'حدث خطأ'));
+                        }
+                    }
+                }
+
+                function leaveStream() {
+                    if (window.jitsiApi) window.jitsiApi.dispose();
+                    if (refreshInterval) clearInterval(refreshInterval);
+                    window.location.href = '/teacher-dashboard.html';
+                }
+
+                async function endStream() {
+                    if (confirm('انهاء البث؟')) {
+                        const res = await fetchWithToken('/api/stream/end/' + offerId, {
+                            method: 'POST',
+                            body: JSON.stringify({ offer_id: offerId, teacher_id: teacherId })
+                        });
+                        if (res && res.ok) {
+                            alert('✅ تم انهاء البث');
+                        }
+                        if (window.jitsiApi) window.jitsiApi.dispose();
+                        if (refreshInterval) clearInterval(refreshInterval);
+                        window.location.href = '/teacher-dashboard.html';
+                    }
+                }
+
+                function escapeHtml(text) {
+                    if (!text) return '';
+                    const div = document.createElement('div');
+                    div.textContent = text;
+                    return div.innerHTML;
+                }
+
+                initJitsi();
+                loadWaitingList();
+                refreshInterval = setInterval(loadWaitingList, 5000);
+            </script>
+            </body>
+            </html>
+        `);
+    } catch (error) {
+        console.error('❌ خطأ في صفحة البث:', error.message);
+        res.redirect('/teacher-dashboard.html');
+    }
+});
+
+// مسار تحديث حالة الأستاذ في البث
 app.post('/api/stream/enter-teacher/:offer_id', [
     authenticate,
     authorize(['teacher']),
@@ -4332,6 +4670,7 @@ app.post('/api/stream/enter-teacher/:offer_id', [
     }
 });
 
+// مسار إضافة الطلاب إلى البث
 app.post('/api/stream/add-students/:offer_id', [
     authenticate,
     authorize(['teacher']),
@@ -4371,7 +4710,7 @@ app.post('/api/stream/add-students/:offer_id', [
             await insert('notifications', {
                 user_id: student.student_id,
                 user_type: 'student',
-                title: 'البث المباشر بدأ',
+                title: '🔴 البث المباشر بدأ',
                 message: `الحصة "${offer.subject_name}" قد بدأت الآن. انضم إلى البث المباشر.`,
                 offer_id: offer_id,
                 is_read: false,
@@ -4393,6 +4732,7 @@ app.post('/api/stream/add-students/:offer_id', [
     }
 });
 
+// مسار إنهاء البث
 app.post('/api/stream/end/:offer_id', [
     authenticate,
     authorize(['teacher']),
@@ -4415,6 +4755,7 @@ app.post('/api/stream/end/:offer_id', [
     }
 });
 
+// مسار حالة البث
 app.get('/api/stream/status/:offer_id', async (req, res) => {
     try {
         const offer = await getOne('offers', 'id', req.params.offer_id);
@@ -4424,6 +4765,7 @@ app.get('/api/stream/status/:offer_id', async (req, res) => {
     }
 });
 
+// مسار حالة البث للطالب
 app.get('/api/student/stream-status/:offer_id/:student_id', [
     authenticate,
     authorize(['student']),
@@ -4494,6 +4836,7 @@ app.get('/api/student/stream-status/:offer_id/:student_id', [
     }
 });
 
+// مسار قائمة انتظار الطلاب
 app.get('/api/stream/waiting-list/:offer_id/:teacher_id', [
     authenticate,
     authorize(['teacher']),
@@ -4529,282 +4872,7 @@ app.get('/api/stream/waiting-list/:offer_id/:teacher_id', [
     }
 });
 
-app.get('/api/notifications/:user_id/:user_type', [
-    authenticate,
-    param('user_id').isInt().withMessage('معرف المستخدم غير صالح'),
-    param('user_type').isIn(['student', 'teacher']).withMessage('نوع المستخدم غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const { user_id, user_type } = req.params;
-
-        if (req.user.userId !== parseInt(user_id) || req.user.role !== user_type) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه الإشعارات' });
-        }
-
-        const { data } = await supabase
-            .from('notifications')
-            .select('*')
-            .eq('user_id', user_id)
-            .eq('user_type', user_type)
-            .order('created_at', { ascending: false })
-            .limit(30);
-
-        res.json(data || []);
-    } catch (error) {
-        res.status(500).json([]);
-    }
-});
-
-app.post('/api/notifications/read/:notification_id', [
-    authenticate,
-    param('notification_id').isInt().withMessage('معرف الإشعار غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const notification_id = parseInt(req.params.notification_id);
-
-        const { data: notification } = await supabase
-            .from('notifications')
-            .select('user_id, user_type')
-            .eq('id', notification_id)
-            .single();
-
-        if (notification && (notification.user_id !== req.user.userId || notification.user_type !== req.user.role)) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
-        }
-
-        await update('notifications', notification_id, { is_read: true });
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
-    }
-});
-
-// ============================================================
-// صفحات البث
-// ============================================================
-app.get('/api/teacher-stream/:offer_id/:teacher_id', [
-    authenticate,
-    authorize(['teacher']),
-    param('offer_id').isInt().withMessage('معرف العرض غير صالح'),
-    param('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).send(renderErrorPage('خطأ في البيانات', 'البيانات المرسلة غير صالحة'));
-        }
-
-        const { offer_id, teacher_id } = req.params;
-
-        if (req.user.userId !== parseInt(teacher_id)) {
-            return res.redirect('/teacher-dashboard.html');
-        }
-
-        const offer = await getOne('offers', 'id', offer_id);
-        if (!offer || offer.teacher_id != parseInt(teacher_id)) {
-            return res.redirect('/teacher-dashboard.html');
-        }
-
-        res.send(`
-            <!DOCTYPE html>
-            <html lang="ar">
-            <head><meta charset="UTF-8"><title>بث مباشر - الأستاذ</title>
-            <script src="https://meet.jit.si/external_api.js"></script>
-            <style>
-                *{margin:0;padding:0;box-sizing:border-box}
-                body{font-family:Cairo,sans-serif;background:#0a0a1a;overflow:hidden}
-                .header{background:linear-gradient(135deg,#0f3460,#1a1a2e);color:white;padding:12px 24px;display:flex;justify-content:space-between;align-items:center;position:fixed;top:0;left:0;right:0;z-index:100}
-                .btn{color:white;border:none;padding:8px 20px;border-radius:30px;cursor:pointer;transition:all 0.3s;margin-left:8px}
-                .btn:hover{transform:scale(1.05)}
-                .btn-danger{background:#ef4444}
-                .btn-danger:hover{background:#dc2626}
-                .btn-success{background:#10b981}
-                .btn-success:hover{background:#059669}
-                .btn-warning{background:#f59e0b}
-                .btn-warning:hover{background:#d97706}
-                .badge{background:#f59e0b;padding:5px 15px;border-radius:30px;font-size:0.8rem}
-                #jitsi-container{position:fixed;top:60px;left:0;right:0;bottom:0}
-                .waiting-panel{position:fixed;left:20px;top:80px;width:300px;background:white;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:200;max-height:400px;overflow-y:auto}
-                .waiting-header{background:linear-gradient(135deg,#0f5cbf,#0f3460);color:white;padding:12px;border-radius:12px 12px 0 0;font-weight:700;display:flex;justify-content:space-between}
-                .waiting-list{padding:8px}
-                .student-item{display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid #e2e8f0}
-                .add-btn{background:#10b981;color:white;border:none;padding:4px 12px;border-radius:20px;cursor:pointer;font-size:0.7rem}
-                .add-btn:hover{background:#059669}
-                @media(max-width:768px){.waiting-panel{left:10px;right:10px;width:auto;top:70px}}
-            </style>
-            </head>
-            <body>
-            <div class="header">
-                <div><span class="badge">انت المضيف</span></div>
-                <div>
-                    <span id="waitingCount" class="badge">0 ينتظرون</span>
-                    <button class="btn btn-success" onclick="addAllStudents()">اضافة الكل</button>
-                    <button class="btn btn-danger" onclick="endStream()">انهاء</button>
-                    <button class="btn btn-warning" onclick="leaveStream()">مغادرة</button>
-                </div>
-            </div>
-            <div id="waitingPanel" class="waiting-panel" style="display:none">
-                <div class="waiting-header"><span>الطلاب المنتظرون</span><span id="panelCount">0</span></div>
-                <div id="waitingList" class="waiting-list"></div>
-            </div>
-            <div id="jitsi-container"></div>
-            <script>
-                let refreshInterval = null;
-                const roomName = '${sanitizeInput(offer.room_name)}';
-                const offerId = ${parseInt(offer_id)};
-                const teacherId = ${parseInt(teacher_id)};
-
-                function initJitsi() {
-                    try {
-                        const api = new JitsiMeetExternalAPI('meet.jit.si', {
-                            roomName: roomName,
-                            width: '100%',
-                            height: window.innerHeight - 60,
-                            parentNode: document.querySelector('#jitsi-container'),
-                            userInfo: { displayName: 'الاستاذ' },
-                            configOverwrite: {
-                                disableSimulcast: false,
-                                enableNoisyMicDetection: false,
-                                p2p: { enabled: true }
-                            }
-                        });
-                        window.jitsiApi = api;
-                    } catch (error) {
-                        console.error('خطأ في Jitsi:', error);
-                        setTimeout(initJitsi, 3000);
-                    }
-                }
-
-                async function loadWaitingList() {
-                    try {
-                        const res = await fetch('/api/stream/waiting-list/' + offerId + '/' + teacherId);
-                        const students = await res.json();
-                        const count = students?.length || 0;
-                        document.getElementById('waitingCount').innerHTML = count + ' ينتظرون';
-                        if (count > 0) {
-                            document.getElementById('waitingPanel').style.display = 'block';
-                            document.getElementById('panelCount').innerText = count;
-                            let html = '';
-                            students.forEach(s => {
-                                html += '<div class="student-item">' +
-                                    '<div><strong>' + escapeHtml(s.full_name) + '</strong><br><small>' + escapeHtml(s.email) + '</small></div>' +
-                                    '<button class="add-btn" onclick="addStudent(' + s.student_id + ')">اضافة</button>' +
-                                '</div>';
-                            });
-                            document.getElementById('waitingList').innerHTML = html;
-                        } else {
-                            document.getElementById('waitingPanel').style.display = 'none';
-                        }
-                    } catch(e) { console.error(e); }
-                }
-
-                async function addStudent(studentId) {
-                    if (confirm('اضافة الطالب الى البث؟')) {
-                        const res = await fetch('/api/stream/add-students/' + offerId, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ offer_id: offerId, teacher_id: teacherId })
-                        });
-                        const data = await res.json();
-                        if (data.success) {
-                            alert('تم اضافة الطالب');
-                            loadWaitingList();
-                        }
-                    }
-                }
-
-                async function addAllStudents() {
-                    if (confirm('اضافة جميع الطلاب الى البث؟')) {
-                        const res = await fetch('/api/stream/add-students/' + offerId, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ offer_id: offerId, teacher_id: teacherId })
-                        });
-                        const data = await res.json();
-                        if (data.success) {
-                            alert('تم اضافة ' + data.students_count + ' طالب');
-                            loadWaitingList();
-                        }
-                    }
-                }
-
-                function leaveStream() {
-                    if (window.jitsiApi) window.jitsiApi.dispose();
-                    if (refreshInterval) clearInterval(refreshInterval);
-                    window.location.href = '/teacher-dashboard.html';
-                }
-
-                async function endStream() {
-                    if (confirm('انهاء البث؟')) {
-                        await fetch('/api/stream/end/' + offerId, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ offer_id: offerId, teacher_id: teacherId })
-                        });
-                        if (window.jitsiApi) window.jitsiApi.dispose();
-                        if (refreshInterval) clearInterval(refreshInterval);
-                        window.location.href = '/teacher-dashboard.html';
-                    }
-                }
-
-                function escapeHtml(text) {
-                    if (!text) return '';
-                    const div = document.createElement('div');
-                    div.textContent = text;
-                    return div.innerHTML;
-                }
-
-                initJitsi();
-                loadWaitingList();
-                refreshInterval = setInterval(loadWaitingList, 5000);
-            </script>
-            </body>
-            </html>
-        `);
-    } catch (error) {
-        console.error('خطأ:', error.message);
-        res.redirect('/teacher-dashboard.html');
-    }
-});
-
-app.get('/api/enter-teacher-stream/:offer_id/:teacher_id', [
-    authenticate,
-    authorize(['teacher']),
-    param('offer_id').isInt().withMessage('معرف العرض غير صالح'),
-    param('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).send(renderErrorPage('خطأ في البيانات', 'البيانات المرسلة غير صالحة'));
-        }
-
-        const { offer_id, teacher_id } = req.params;
-
-        if (req.user.userId !== parseInt(teacher_id)) {
-            return res.status(403).send(renderErrorPage('غير مصرح', 'غير مصرح لك بالدخول إلى هذا البث'));
-        }
-
-        await axios.post(`${req.protocol}://${req.get('host')}/api/stream/enter-teacher/${offer_id}`, {
-            offer_id: parseInt(offer_id),
-            teacher_id: parseInt(teacher_id)
-        }).catch(e => console.log(e));
-        res.redirect(`/api/teacher-stream/${offer_id}/${teacher_id}`);
-    } catch (error) {
-        res.redirect('/teacher-dashboard.html');
-    }
-});
-
+// مسار دخول الطالب إلى البث
 app.get('/api/join-stream/:offer_id/:student_id', [
     authenticate,
     authorize(['student']),
@@ -5159,6 +5227,69 @@ app.get('/api/admin/performance', [
 });
 
 // ============================================================
+// مسار الإشعارات
+// ============================================================
+app.get('/api/notifications/:user_id/:user_type', [
+    authenticate,
+    param('user_id').isInt().withMessage('معرف المستخدم غير صالح'),
+    param('user_type').isIn(['student', 'teacher']).withMessage('نوع المستخدم غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { user_id, user_type } = req.params;
+
+        if (req.user.userId !== parseInt(user_id) || req.user.role !== user_type) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه الإشعارات' });
+        }
+
+        const { data } = await supabase
+            .from('notifications')
+            .select('*')
+            .eq('user_id', user_id)
+            .eq('user_type', user_type)
+            .order('created_at', { ascending: false })
+            .limit(50);
+
+        res.json(data || []);
+    } catch (error) {
+        res.status(500).json([]);
+    }
+});
+
+app.post('/api/notifications/read/:notification_id', [
+    authenticate,
+    param('notification_id').isInt().withMessage('معرف الإشعار غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const notification_id = parseInt(req.params.notification_id);
+
+        const { data: notification } = await supabase
+            .from('notifications')
+            .select('user_id, user_type')
+            .eq('id', notification_id)
+            .single();
+
+        if (notification && (notification.user_id !== req.user.userId || notification.user_type !== req.user.role)) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        await update('notifications', notification_id, { is_read: true });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
 // تشغيل الخادم
 // ============================================================
 
@@ -5170,7 +5301,7 @@ if (require.main === module) {
         console.log(`🚀 الخادم يعمل على http://localhost:${PORT}`);
         console.log('🔒 الأمان:');
         console.log('   ✅ Helmet مع CSP محسن');
-        console.log('   ✅ JWT للمصادقة');
+        console.log('   ✅ JWT للمصادقة مع دعم Query Parameter');
         console.log('   ✅ CSRF Protection');
         console.log('   ✅ Rate Limiting متقدم');
         console.log('   ✅ تنقية جميع المدخلات (XSS)');
@@ -5188,6 +5319,9 @@ if (require.main === module) {
         console.log('👥 إدارة المستخدمين (حذف + حظر)');
         console.log('💳 نظام الدفع عبر Chargily مع Webhook');
         console.log('🔄 نظام التوجيه (redirectTo) للمدير');
+        console.log('📢 إشعارات عند حجز الحصص للطالب والأستاذ');
+        console.log('📊 إشعار للأستاذ بعدد الطلاب المسجلين في الحصة');
+        console.log('🔧 تم إصلاح مشكلة المصادقة في البث المباشر (دعم التوكن من Query)');
         console.log('='.repeat(60));
         console.log(`📅 التاريخ: ${new Date().toLocaleString('ar-EG')}`);
         console.log('='.repeat(60));
