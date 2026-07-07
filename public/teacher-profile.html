@@ -4,18 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>ZoomDz | ملف الأستاذ</title>
-    
-    <!-- ===== FONTS & ICONS ===== -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    
     <style>
-        /* ============================================================
-           تصميم احترافي - صفحة ملف الأستاذ
-           ============================================================ */
-        
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        
         :root {
             --primary: #0f5cbf;
             --primary-dark: #0b4a9c;
@@ -46,7 +38,6 @@
             --radius-lg: 24px;
             --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        
         body {
             font-family: 'Cairo', sans-serif;
             background: #f0f4f9;
@@ -55,13 +46,6 @@
             padding: 20px;
         }
 
-        /* ===== SCROLLBAR ===== */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: var(--gray-100); border-radius: 10px; }
-        ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--primary-dark); }
-
-        /* ===== BACK BUTTON ===== */
         .back-btn {
             display: inline-flex;
             align-items: center;
@@ -89,7 +73,6 @@
         }
         .back-btn i { font-size: 0.9rem; }
 
-        /* ===== MAIN CONTAINER ===== */
         .profile-container {
             max-width: 1100px;
             margin: 0 auto;
@@ -100,35 +83,12 @@
             border: 1px solid rgba(0,0,0,0.04);
         }
 
-        /* ===== HEADER ===== */
         .profile-header {
             background: var(--gradient-main);
             padding: 40px 40px 30px;
             color: white;
             position: relative;
             overflow: hidden;
-        }
-        .profile-header::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            right: -20%;
-            width: 400px;
-            height: 400px;
-            background: rgba(255,255,255,0.03);
-            border-radius: 50%;
-            pointer-events: none;
-        }
-        .profile-header::after {
-            content: '';
-            position: absolute;
-            bottom: -40%;
-            left: -10%;
-            width: 300px;
-            height: 300px;
-            background: rgba(255,255,255,0.03);
-            border-radius: 50%;
-            pointer-events: none;
         }
         .profile-header-content {
             display: flex;
@@ -177,10 +137,6 @@
             background: rgba(16, 185, 129, 0.25);
             border-color: rgba(16, 185, 129, 0.3);
         }
-        .profile-header-info .status-badge.pending {
-            background: rgba(245, 158, 11, 0.25);
-            border-color: rgba(245, 158, 11, 0.3);
-        }
         .profile-stats {
             display: flex;
             gap: 30px;
@@ -194,20 +150,12 @@
             font-size: 0.85rem;
             opacity: 0.9;
         }
-        .profile-stats .stat i {
-            font-size: 1rem;
-        }
         .profile-stats .stat .number {
             font-weight: 800;
             font-size: 1.1rem;
         }
 
-        /* ===== BODY ===== */
-        .profile-body {
-            padding: 30px 40px;
-        }
-
-        /* ===== BIO ===== */
+        .profile-body { padding: 30px 40px; }
         .bio-section {
             margin-bottom: 30px;
             padding-bottom: 25px;
@@ -229,7 +177,6 @@
             line-height: 1.8;
         }
 
-        /* ===== INFO GRID ===== */
         .info-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -249,7 +196,6 @@
             color: var(--gray-400);
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
         .info-item .value {
             font-size: 0.95rem;
@@ -257,12 +203,7 @@
             color: var(--gray-800);
             margin-top: 2px;
         }
-        .info-item .value i {
-            margin-left: 6px;
-            color: var(--primary);
-        }
 
-        /* ===== SOCIAL LINKS ===== */
         .social-section {
             margin-bottom: 30px;
             padding-bottom: 25px;
@@ -293,16 +234,14 @@
             text-decoration: none;
             font-size: 0.85rem;
             font-weight: 600;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.3s ease;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
         .social-link-item:hover {
             transform: translateY(-3px) scale(1.04);
             box-shadow: 0 6px 20px rgba(0,0,0,0.15);
         }
-        .social-link-item i {
-            font-size: 1rem;
-        }
+        .social-link-item i { font-size: 1rem; }
         .social-link-item.facebook { background: #1877f2; }
         .social-link-item.instagram { background: #e4405f; }
         .social-link-item.linkedin { background: #0a66c2; }
@@ -316,7 +255,6 @@
             padding: 8px 0;
         }
 
-        /* ===== OFFERS ===== */
         .offers-section .offers-title {
             font-weight: 700;
             font-size: 1rem;
@@ -338,21 +276,6 @@
             padding: 18px;
             border: 1px solid var(--gray-200);
             transition: var(--transition);
-            position: relative;
-        }
-        .offer-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: var(--gradient-main);
-            opacity: 0;
-            transition: var(--transition);
-        }
-        .offer-card:hover::before {
-            opacity: 1;
         }
         .offer-card:hover {
             transform: translateY(-4px);
@@ -383,14 +306,8 @@
             font-weight: 700;
             margin-top: 8px;
         }
-        .offer-card .offer-price.free {
-            background: var(--gold);
-            color: white;
-        }
-        .offer-card .offer-price.paid {
-            background: var(--gradient-secondary);
-            color: white;
-        }
+        .offer-card .offer-price.free { background: var(--gold); color: white; }
+        .offer-card .offer-price.paid { background: var(--gradient-secondary); color: white; }
         .offer-card .offer-status {
             display: inline-block;
             padding: 2px 12px;
@@ -406,7 +323,6 @@
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.7; transform: scale(1.02); }
         }
-
         .no-offers {
             color: var(--gray-400);
             font-size: 0.9rem;
@@ -414,7 +330,6 @@
             text-align: center;
         }
 
-        /* ===== LOADING ===== */
         .loading {
             text-align: center;
             padding: 50px;
@@ -427,7 +342,6 @@
             display: block;
         }
 
-        /* ===== ERROR ===== */
         .error-container {
             text-align: center;
             padding: 60px 20px;
@@ -453,47 +367,18 @@
             margin-bottom: 20px;
         }
 
-        /* ============================================================
-           RESPONSIVE
-        ============================================================ */
         @media (max-width: 768px) {
-            .profile-header {
-                padding: 24px 20px 20px;
-            }
-            .profile-header-content {
-                flex-direction: column;
-                text-align: center;
-                gap: 16px;
-            }
-            .profile-avatar {
-                width: 100px;
-                height: 100px;
-            }
-            .profile-header-info .name {
-                font-size: 1.4rem;
-            }
-            .profile-stats {
-                justify-content: center;
-                gap: 16px;
-            }
-            .profile-body {
-                padding: 20px 16px;
-            }
-            .info-grid {
-                grid-template-columns: 1fr;
-            }
-            .offers-grid {
-                grid-template-columns: 1fr;
-            }
-            .social-links-grid {
-                justify-content: center;
-            }
-            .back-btn {
-                width: 100%;
-                justify-content: center;
-            }
+            .profile-header { padding: 24px 20px 20px; }
+            .profile-header-content { flex-direction: column; text-align: center; gap: 16px; }
+            .profile-avatar { width: 100px; height: 100px; }
+            .profile-header-info .name { font-size: 1.4rem; }
+            .profile-stats { justify-content: center; gap: 16px; }
+            .profile-body { padding: 20px 16px; }
+            .info-grid { grid-template-columns: 1fr; }
+            .offers-grid { grid-template-columns: 1fr; }
+            .social-links-grid { justify-content: center; }
+            .back-btn { width: 100%; justify-content: center; }
         }
-
         @media (max-width: 480px) {
             body { padding: 10px; }
             .profile-header-info .name { font-size: 1.2rem; }
@@ -506,8 +391,7 @@
 <body>
 
     <a href="javascript:history.back()" class="back-btn">
-        <i class="fas fa-arrow-right"></i>
-        العودة
+        <i class="fas fa-arrow-right"></i> العودة
     </a>
 
     <div class="profile-container" id="profileContainer">
@@ -545,21 +429,17 @@
 
         <!-- Body -->
         <div class="profile-body" id="profileBody">
-            <!-- Loading -->
             <div class="loading" id="loadingIndicator">
                 <i class="fas fa-spinner fa-spin"></i>
                 جاري تحميل البيانات...
             </div>
 
-            <!-- Content -->
             <div id="profileContent" style="display: none;">
-                <!-- Bio -->
                 <div class="bio-section">
                     <div class="bio-title"><i class="fas fa-align-left"></i> نبذة عن الأستاذ</div>
                     <div class="bio-text" id="teacherBio">لا توجد نبذة تعريفية</div>
                 </div>
 
-                <!-- Info Grid -->
                 <div class="info-grid" id="infoGrid">
                     <div class="info-item">
                         <div class="label">📧 البريد الإلكتروني</div>
@@ -579,7 +459,6 @@
                     </div>
                 </div>
 
-                <!-- Social Links -->
                 <div class="social-section" id="socialSection">
                     <div class="social-title"><i class="fas fa-share-alt"></i> روابط التواصل الاجتماعي</div>
                     <div id="socialLinks">
@@ -590,7 +469,6 @@
                     </div>
                 </div>
 
-                <!-- Offers -->
                 <div class="offers-section">
                     <div class="offers-title"><i class="fas fa-calendar-alt"></i> العروض المتاحة</div>
                     <div id="offersList" class="offers-grid">
@@ -601,18 +479,9 @@
         </div>
     </div>
 
-    <!-- ============================================================
-    SCRIPT
-    ============================================================ -->
     <script>
-        // ============================================================
-        // المتغيرات
-        // ============================================================
         let teacherId = null;
 
-        // ============================================================
-        // الحصول على معرف الأستاذ من الرابط
-        // ============================================================
         function getTeacherIdFromURL() {
             const urlParams = new URLSearchParams(window.location.search);
             const id = urlParams.get('id');
@@ -623,16 +492,12 @@
             return false;
         }
 
-        // ============================================================
-        // تحميل بيانات الأستاذ
-        // ============================================================
         async function loadTeacherProfile() {
             const loading = document.getElementById('loadingIndicator');
             const content = document.getElementById('profileContent');
 
             try {
-               const res = await fetch(`/api/public/teacher/${teacherId}`);
-
+                const res = await fetch(`/api/public/teacher/${teacherId}`);
                 
                 if (!res.ok) {
                     if (res.status === 404) {
@@ -665,25 +530,18 @@
             }
         }
 
-        // ============================================================
-        // عرض ملف الأستاذ
-        // ============================================================
         function renderTeacherProfile(teacher) {
-            // الصورة
             const avatar = document.getElementById('teacherAvatar');
             const avatarUrl = teacher.profile_url || 
                 `https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.full_name)}&background=0f5cbf&color=fff&size=130`;
             avatar.src = avatarUrl;
 
-            // الاسم
             document.getElementById('teacherName').textContent = teacher.full_name || 'أستاذ غير معروف';
 
-            // التخصص
             const specialization = teacher.specialization || 'تخصص غير محدد';
             document.getElementById('teacherSpecialization').innerHTML = `<i class="fas fa-book"></i> ${specialization}`;
             document.getElementById('teacherSpecializationInfo').textContent = specialization;
 
-            // الحالة
             const statusEl = document.getElementById('teacherStatus');
             if (teacher.status === 'approved') {
                 statusEl.textContent = '✅ معتمد';
@@ -698,28 +556,15 @@
                 statusEl.style.borderColor = 'rgba(239, 68, 68, 0.3)';
             }
 
-            // الإحصائيات (سيتم تحديثها بعد تحميل العروض)
             document.getElementById('statOffers').textContent = '0';
-
-            // البريد الإلكتروني
             document.getElementById('teacherEmail').textContent = teacher.email || 'غير محدد';
-
-            // رقم الهاتف
             document.getElementById('teacherPhone').textContent = teacher.phone || 'غير محدد';
-
-            // سنوات الخبرة
             document.getElementById('teacherExperience').textContent = `${teacher.experience || '0'} سنة`;
-
-            // السيرة الذاتية
             document.getElementById('teacherBio').textContent = teacher.bio || 'لا توجد نبذة تعريفية';
 
-            // ===== روابط التواصل الاجتماعي =====
             renderSocialLinks(teacher);
         }
 
-        // ============================================================
-        // عرض روابط التواصل الاجتماعي
-        // ============================================================
         function renderSocialLinks(teacher) {
             const container = document.getElementById('socialLinks');
             
@@ -761,12 +606,8 @@
             container.innerHTML = html;
         }
 
-        // ============================================================
-        // تحميل عروض الأستاذ
-        // ============================================================
         async function loadTeacherOffers(teacherId) {
             try {
-                // جلب العروض العامة (المتاحة للجميع)
                 const res = await fetch('/api/public/offers');
                 if (!res.ok) {
                     console.warn('⚠️ لا يمكن تحميل العروض');
@@ -774,12 +615,9 @@
                 }
                 
                 const allOffers = await res.json();
-                // تصفية العروض الخاصة بهذا الأستاذ فقط
                 const teacherOffers = allOffers.filter(offer => offer.teacher_id === teacherId);
                 
                 renderOffers(teacherOffers);
-                
-                // تحديث عدد العروض في الإحصائيات
                 document.getElementById('statOffers').textContent = teacherOffers.length || '0';
                 
             } catch (error) {
@@ -789,9 +627,6 @@
             }
         }
 
-        // ============================================================
-        // عرض العروض
-        // ============================================================
         function renderOffers(offers) {
             const container = document.getElementById('offersList');
             
@@ -813,7 +648,6 @@
 
             for (const offer of offers) {
                 const offerDate = new Date(offer.offer_date);
-                const isUpcoming = offerDate > now && offer.status === 'upcoming';
                 const isLive = offer.status === 'live';
                 const isCompleted = offer.status === 'completed' || offerDate < now;
 
@@ -860,9 +694,6 @@
             container.innerHTML = html;
         }
 
-        // ============================================================
-        // عرض خطأ
-        // ============================================================
         function showError(title, message) {
             const container = document.getElementById('profileContainer');
             container.innerHTML = `
@@ -886,9 +717,6 @@
             `;
         }
 
-        // ============================================================
-        // أدوات مساعدة
-        // ============================================================
         function escapeHtml(text) {
             if (!text) return '';
             const div = document.createElement('div');
@@ -896,19 +724,14 @@
             return div.innerHTML;
         }
 
-        // ============================================================
-        // تهيئة الصفحة
-        // ============================================================
         function init() {
             if (!getTeacherIdFromURL()) {
                 showError('معرف غير صالح', 'لم يتم تحديد معرف الأستاذ في الرابط');
                 return;
             }
-
             loadTeacherProfile();
         }
 
-        // بدء التشغيل
         document.addEventListener('DOMContentLoaded', init);
     </script>
 
