@@ -396,7 +396,10 @@ app.use((req, res, next) => {
         '/api/live-offers',
         '/api/offers',
         '/api/teachers',
-        '/api/test-cors'
+        '/api/test-cors',
+        '/api/ping',
+        '/api/verify-token',
+        '/api/refresh-token'
     ];
     
     const publicMethods = ['GET', 'HEAD', 'OPTIONS'];
@@ -4815,14 +4818,22 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                                 startWithAudioMuted: false,
                                 enableWelcomePage: false,
                                 enableClosePage: false,
-                                connectionTimeout: 30000,
-                                keepAliveInterval: 15000,
+                                connectionTimeout: 60000,
+                                keepAliveInterval: 5000,
                                 // إعدادات إضافية لمنع الانقطاع
                                 disableAudioLevels: false,
                                 disableLocalVideoMute: false,
-                                disableVideoMute: false,
                                 disableRemoteVideoMute: false,
+                                disableVideoMute: false,
                                 startSilent: false,
+                                channelLastN: 20,
+                                resolution: 720,
+                                constraints: {
+                                    video: {
+                                        height: { ideal: 720, max: 720, min: 180 },
+                                        width: { ideal: 1280, max: 1280, min: 320 }
+                                    }
+                                }
                             },
                             interfaceConfigOverwrite: {
                                 TOOLBAR_BUTTONS: [
@@ -4832,7 +4843,8 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                                     'invite', 'feedback', 'stats', 'shortcuts',
                                     'tileview', 'videosettings', 'etherpad',
                                     'sharedvideo', 'security', 'recording', 'livestreaming'
-                                ]
+                                ],
+                                SETTINGS_SECTIONS: ['devices', 'moderator', 'profile', 'calendar']
                             }
                         };
 
@@ -5081,6 +5093,45 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
         res.redirect('/teacher-dashboard.html');
     }
 });
+
+// ============================================================
+// مسار دخول الأستاذ إلى البث (API)
+// ============================================================
+app.post('/api/stream/enter-teacher/:offer_id', [
+    authenticate,
+    authorize(['teacher']),
+    param('offer_id').isInt().withMessage('معرف العرض غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const offer_id = parseInt(req.params.offer_id);
+        const teacher_id = req.user.userId;
+
+        const offer = await getOne('offers', 'id', offer_id);
+        if (!offer || offer.teacher_id !== teacher_id) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        await update('offers', offer_id, { status: 'teacher_ready' });
+
+        // إضافة المعلم إلى قائمة البث النشط
+        await insert('active_stream', { 
+            offer_id: offer_id, 
+            teacher_id: teacher_id,
+            joined_at: new Date().toISOString()
+        });
+
+        res.json({ success: true, status: 'teacher_ready' });
+    } catch (error) {
+        console.error('خطأ في دخول الأستاذ إلى البث:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
 // مسار إضافة الطلاب إلى البث
 app.post('/api/stream/add-students/:offer_id', [
     authenticate,
@@ -5435,6 +5486,78 @@ app.get('/api/join-stream/:offer_id/:student_id', [
     } catch (error) {
         console.error('❌ خطأ في دخول الطالب إلى البث:', error.message);
         res.redirect('/student-dashboard.html');
+    }
+});
+
+// ============================================================
+// مسارات Ping للحفاظ على الاتصال
+// ============================================================
+
+// مسار Ping للحفاظ على الاتصال
+app.post('/api/ping', [
+    authenticate,
+    body('offer_id').isInt().withMessage('معرف العرض غير صالح'),
+    body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { offer_id, teacher_id } = req.body;
+        
+        // ✅ تحديث آخر ping في قاعدة البيانات
+        await supabase
+            .from('active_stream')
+            .update({ 
+                last_ping: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            })
+            .eq('offer_id', offer_id)
+            .eq('teacher_id', teacher_id);
+        
+        // ✅ التحقق من حالة البث
+        const offer = await getOne('offers', 'id', offer_id);
+        
+        res.json({ 
+            success: true, 
+            status: offer?.status || 'unknown',
+            timestamp: Date.now()
+        });
+    } catch (error) {
+        console.error('❌ خطأ في ping:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// مسار التحقق من صلاحية التوكن
+// ============================================================
+app.get('/api/verify-token', authenticate, (req, res) => {
+    res.json({ 
+        success: true, 
+        valid: true,
+        user: req.user,
+        expiresIn: 24 * 60 * 60 * 1000 // 24 ساعة
+    });
+});
+
+// ============================================================
+// مسار تجديد التوكن
+// ============================================================
+app.post('/api/refresh-token', authenticate, (req, res) => {
+    try {
+        const { userId, role, email } = req.user;
+        const newToken = generateToken(userId, role, email);
+        res.json({ 
+            success: true, 
+            token: newToken,
+            expiresIn: 24 * 60 * 60 * 1000
+        });
+    } catch (error) {
+        console.error('❌ خطأ في تجديد التوكن:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في تجديد الجلسة' });
     }
 });
 
@@ -5805,6 +5928,12 @@ if (require.main === module) {
         console.log('📢 إشعارات عند حجز الحصص للطالب والأستاذ');
         console.log('📊 إشعار للأستاذ بعدد الطلاب المسجلين في الحصة');
         console.log('🔧 تم إصلاح مشكلة المصادقة في البث المباشر (دعم التوكن من Query)');
+        console.log('🔧 تم تحسين إعدادات Jitsi لمنع الانقطاع:');
+        console.log('   ✅ زيادة مهلة الاتصال إلى 60 ثانية');
+        console.log('   ✅ تقليل فترة الـ Keep-Alive إلى 5 ثواني');
+        console.log('   ✅ تحسين نظام إعادة الاتصال');
+        console.log('   ✅ إضافة مسارات Ping و Refresh Token');
+        console.log('   ✅ إضافة مراقبة حالة الاتصال بشكل مستمر');
         console.log('='.repeat(60));
         console.log(`📅 التاريخ: ${new Date().toLocaleString('ar-EG')}`);
         console.log('='.repeat(60));
