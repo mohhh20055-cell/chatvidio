@@ -410,12 +410,9 @@
     </a>
 
     <div class="profile-container" id="profileContainer">
-        <!-- Header -->
         <div class="profile-header" id="profileHeader">
             <div class="profile-header-content">
-                <img id="teacherAvatar" class="profile-avatar" 
-                     src="" 
-                     alt="صورة الأستاذ">
+                <img id="teacherAvatar" class="profile-avatar" src="" alt="صورة الأستاذ">
                 <div class="profile-header-info">
                     <div class="name" id="teacherName"></div>
                     <div class="specialization" id="teacherSpecialization"></div>
@@ -423,7 +420,7 @@
                         <span class="status-badge" id="teacherStatus"></span>
                         <span class="status-badge" id="teacherEmailVerified"></span>
                     </div>
-                    <div class="profile-stats" id="teacherStats">
+                    <div class="profile-stats">
                         <div class="stat">
                             <i class="fas fa-calendar-alt"></i>
                             <span><span class="number" id="statOffers">0</span> عرض</span>
@@ -433,7 +430,6 @@
             </div>
         </div>
 
-        <!-- Body -->
         <div class="profile-body" id="profileBody">
             <div class="loading" id="loadingIndicator">
                 <i class="fas fa-spinner fa-spin"></i>
@@ -441,16 +437,14 @@
             </div>
 
             <div id="profileContent" style="display: none;">
-                <!-- السيرة الذاتية -->
-                <div class="section" id="bioSection">
+                <div class="section">
                     <div class="section-title"><i class="fas fa-align-left"></i> نبذة عن الأستاذ</div>
                     <div class="bio-text" id="teacherBio"></div>
                 </div>
 
-                <!-- المعلومات الأساسية -->
                 <div class="section">
                     <div class="section-title"><i class="fas fa-id-card"></i> المعلومات الأساسية</div>
-                    <div class="info-grid" id="infoGrid">
+                    <div class="info-grid">
                         <div class="info-item">
                             <span class="label">📧 البريد الإلكتروني</span>
                             <span class="value" id="teacherEmail"></span>
@@ -478,13 +472,11 @@
                     </div>
                 </div>
 
-                <!-- روابط التواصل الاجتماعي -->
-                <div class="section" id="socialSection">
+                <div class="section">
                     <div class="section-title"><i class="fas fa-share-alt"></i> روابط التواصل الاجتماعي</div>
                     <div id="socialLinks"></div>
                 </div>
 
-                <!-- العروض -->
                 <div class="section">
                     <div class="section-title"><i class="fas fa-calendar-alt"></i> العروض المتاحة</div>
                     <div id="offersList" class="offers-grid"></div>
@@ -494,394 +486,323 @@
     </div>
 
     <script>
-        let teacherId = null;
-        let teacherData = null;
+        (function() {
+            'use strict';
 
-        function getTeacherIdFromURL() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const id = urlParams.get('id');
-            if (id && !isNaN(id)) {
-                teacherId = parseInt(id);
-                return true;
-            }
-            return false;
-        }
+            let teacherId = null;
 
-        // ================================================================
-        // جلب بيانات الأستاذ من عدة مسارات
-        // ================================================================
-        async function fetchTeacherData() {
-            // المسار 1: المسار العام
-            try {
-                const res = await fetch(`/api/public/teacher/${teacherId}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data && data.id) {
-                        console.log('✅ تم جلب البيانات من /api/public/teacher/');
-                        return data;
-                    }
+            function getTeacherIdFromURL() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const id = urlParams.get('id');
+                if (id && !isNaN(id) && parseInt(id) > 0) {
+                    teacherId = parseInt(id);
+                    return true;
                 }
-            } catch (e) {
-                console.log('❌ فشل المسار العام:', e.message);
+                return false;
             }
 
-            // المسار 2: قائمة جميع الأساتذة ثم البحث
-            try {
-                const res = await fetch('/api/public/teachers');
-                if (res.ok) {
-                    const teachers = await res.json();
-                    if (Array.isArray(teachers)) {
-                        const found = teachers.find(t => t.id === teacherId);
-                        if (found) {
-                            console.log('✅ تم جلب البيانات من /api/public/teachers');
-                            return found;
-                        }
-                    }
-                }
-            } catch (e) {
-                console.log('❌ فشل مسار القائمة:', e.message);
-            }
-
-            // المسار 3: المسار المحمي (إذا كان المستخدم مسجل دخول)
-            try {
-                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-                if (token) {
-                    const res = await fetch(`/api/teacher/${teacherId}`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                    if (res.ok) {
-                        const data = await res.json();
-                        if (data && data.id) {
-                            console.log('✅ تم جلب البيانات من /api/teacher/ (محمي)');
-                            return data;
-                        }
-                    }
-                }
-            } catch (e) {
-                console.log('❌ فشل المسار المحمي:', e.message);
-            }
-
-            // المسار 4: قائمة الأساتذة من /api/teachers
-            try {
-                const res = await fetch('/api/teachers');
-                if (res.ok) {
-                    const teachers = await res.json();
-                    if (Array.isArray(teachers)) {
-                        const found = teachers.find(t => t.id === teacherId);
-                        if (found) {
-                            console.log('✅ تم جلب البيانات من /api/teachers');
-                            return found;
-                        }
-                    }
-                }
-            } catch (e) {
-                console.log('❌ فشل /api/teachers:', e.message);
-            }
-
-            return null;
-        }
-
-        // ================================================================
-        // تحميل الملف الشخصي
-        // ================================================================
-        async function loadTeacherProfile() {
-            const loading = document.getElementById('loadingIndicator');
-            const content = document.getElementById('profileContent');
-
-            try {
-                if (!teacherId) {
-                    showError('معرف غير صالح', 'لم يتم تحديد معرف الأستاذ في الرابط');
-                    return;
-                }
-
-                console.log(`📡 جلب بيانات الأستاذ: ${teacherId}`);
-                
-                const teacher = await fetchTeacherData();
-                
-                if (!teacher || !teacher.id) {
-                    showError('الأستاذ غير موجود', 'لم يتم العثور على الأستاذ المطلوب. تأكد من صحة الرابط.');
-                    return;
-                }
-
-                teacherData = teacher;
-                loading.style.display = 'none';
-                content.style.display = 'block';
-                
-                renderTeacherProfile(teacher);
-                await loadTeacherOffers(teacherId);
-
-            } catch (error) {
-                console.error('❌ خطأ:', error);
-                loading.style.display = 'none';
-                showError('خطأ في الاتصال', 'حدث خطأ في الاتصال بالخادم', { error: error.message });
-            }
-        }
-
-        // ================================================================
-        // عرض بيانات الأستاذ
-        // ================================================================
-        function renderTeacherProfile(teacher) {
-            console.log('🎨 عرض بيانات الأستاذ:', teacher);
-
-            // ===== الصورة الشخصية =====
-            const avatar = document.getElementById('teacherAvatar');
-            if (teacher.profile_url) {
-                avatar.src = teacher.profile_url;
-            } else {
-                avatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.full_name || 'أستاذ')}&background=0f5cbf&color=fff&size=130`;
-            }
-            avatar.alt = teacher.full_name || 'أستاذ';
-
-            // ===== الاسم =====
-            document.getElementById('teacherName').textContent = teacher.full_name || '';
-
-            // ===== التخصص =====
-            const specializationEl = document.getElementById('teacherSpecialization');
-            const specializationInfoEl = document.getElementById('teacherSpecializationInfo');
-            
-            if (teacher.specialization) {
-                specializationEl.innerHTML = `<i class="fas fa-book"></i> ${teacher.specialization}`;
-                specializationInfoEl.textContent = teacher.specialization;
-            } else {
-                specializationEl.innerHTML = '';
-                specializationInfoEl.textContent = 'غير محدد';
-            }
-
-            // ===== البريد الإلكتروني =====
-            document.getElementById('teacherEmail').textContent = teacher.email || 'غير محدد';
-            
-            // ===== رقم الهاتف =====
-            document.getElementById('teacherPhone').textContent = teacher.phone || 'غير محدد';
-            
-            // ===== سنوات الخبرة =====
-            document.getElementById('teacherExperience').textContent = teacher.experience ? `${teacher.experience} سنة` : 'غير محدد';
-            
-            // ===== السيرة الذاتية =====
-            const bioEl = document.getElementById('teacherBio');
-            if (teacher.bio) {
-                bioEl.textContent = teacher.bio;
-                bioEl.style.color = '';
-                bioEl.style.fontStyle = '';
-            } else {
-                bioEl.textContent = 'لا توجد نبذة تعريفية';
-                bioEl.style.color = 'var(--gray-400)';
-                bioEl.style.fontStyle = 'italic';
-            }
-
-            // ===== حالة الموافقة (status) =====
-            const statusEl = document.getElementById('teacherStatus');
-            const statusInfoEl = document.getElementById('teacherStatusInfo');
-            
-            const statusMap = {
-                'approved': { text: '✅ معتمد', cls: 'approved', info: 'معتمد' },
-                'pending': { text: '⏳ قيد المراجعة', cls: 'pending', info: 'قيد المراجعة' },
-                'rejected': { text: '❌ غير معتمد', cls: 'rejected', info: 'غير معتمد' }
-            };
-            
-            const statusKey = teacher.status || 'pending';
-            const statusData = statusMap[statusKey] || statusMap.pending;
-            
-            statusEl.textContent = statusData.text;
-            statusEl.className = `status-badge ${statusData.cls}`;
-            statusInfoEl.textContent = statusData.info;
-            
-            if (teacher.status === 'rejected' && teacher.rejection_reason) {
-                statusInfoEl.textContent += ` (السبب: ${teacher.rejection_reason})`;
-            }
-
-            // ===== التحقق من البريد (email_verified) =====
-            const verifiedEl = document.getElementById('teacherEmailVerified');
-            const verifiedInfoEl = document.getElementById('teacherEmailVerifiedInfo');
-            
-            const isVerified = teacher.email_verified === true;
-            verifiedEl.textContent = isVerified ? '✅ بريد مؤكد' : '❌ بريد غير مؤكد';
-            verifiedEl.className = `status-badge ${isVerified ? 'verified' : 'not-verified'}`;
-            
-            verifiedInfoEl.innerHTML = isVerified 
-                ? '<span class="badge-sm success">✓ مؤكد</span>' 
-                : '<span class="badge-sm danger">✗ غير مؤكد</span>';
-
-            // ===== روابط التواصل الاجتماعي =====
-            renderSocialLinks(teacher);
-        }
-
-        // ================================================================
-        // عرض روابط التواصل الاجتماعي
-        // ================================================================
-        function renderSocialLinks(teacher) {
-            const container = document.getElementById('socialLinks');
-            
-            const socialLinks = [
-                { url: teacher.facebook_url, icon: 'fab fa-facebook-f', label: 'فيسبوك', cls: 'facebook' },
-                { url: teacher.instagram_url, icon: 'fab fa-instagram', label: 'انستغرام', cls: 'instagram' },
-                { url: teacher.linkedin_url, icon: 'fab fa-linkedin-in', label: 'لينكدإن', cls: 'linkedin' },
-                { url: teacher.youtube_url, icon: 'fab fa-youtube', label: 'يوتيوب', cls: 'youtube' },
-                { url: teacher.twitter_url, icon: 'fab fa-x-twitter', label: 'تويتر', cls: 'twitter' },
-                { url: teacher.website_url, icon: 'fas fa-globe', label: 'الموقع الشخصي', cls: 'website' },
-                { url: teacher.whatsapp_url, icon: 'fab fa-whatsapp', label: 'واتساب', cls: 'whatsapp' }
-            ];
-
-            let html = '';
-            let hasLinks = false;
-
-            for (const link of socialLinks) {
-                if (link.url && typeof link.url === 'string' && link.url.trim() !== '' && link.url !== 'null' && link.url !== 'undefined') {
-                    let url = link.url.trim();
-                    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                        url = 'https://' + url;
-                    }
-                    html += `
-                        <a href="${url}" target="_blank" class="social-link-item ${link.cls}" 
-                           title="${link.label}" rel="noopener noreferrer">
-                            <i class="${link.icon}"></i>
-                            <span>${link.label}</span>
+            function showError(title, message) {
+                const container = document.getElementById('profileContainer');
+                container.innerHTML = `
+                    <div class="error-container">
+                        <div class="error-icon"><i class="fas fa-exclamation-circle"></i></div>
+                        <div class="error-title">${title}</div>
+                        <div class="error-message">${message}</div>
+                        <button onclick="location.reload()" class="btn-retry">
+                            <i class="fas fa-redo"></i> إعادة المحاولة
+                        </button>
+                        <br><br>
+                        <a href="javascript:history.back()" style="display:inline-block;padding:10px 30px;background:var(--gray-200);color:var(--gray-700);border-radius:30px;text-decoration:none;font-weight:700;transition:all 0.3s ease;margin-top:8px;">
+                            <i class="fas fa-arrow-right"></i> العودة
                         </a>
-                    `;
-                    hasLinks = true;
-                }
+                    </div>
+                `;
             }
 
-            container.innerHTML = hasLinks ? html : `
-                <div class="no-social-links">
-                    <i class="fas fa-link" style="margin-left:6px;"></i>
-                    لا توجد روابط تواصل اجتماعي مضاف
-                </div>
-            `;
-        }
+            function escapeHtml(text) {
+                if (!text) return '';
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
 
-        // ================================================================
-        // تحميل العروض
-        // ================================================================
-        async function loadTeacherOffers(teacherId) {
-            try {
-                const offersList = document.getElementById('offersList');
-                offersList.innerHTML = '<div class="loading" style="padding:20px;"><i class="fas fa-spinner fa-spin"></i> جاري تحميل العروض...</div>';
+            function renderTeacher(teacher) {
+                console.log('🎨 عرض البيانات:', teacher);
+
+                // الصورة
+                const avatar = document.getElementById('teacherAvatar');
+                if (teacher.profile_url && teacher.profile_url.trim() !== '') {
+                    avatar.src = teacher.profile_url;
+                } else {
+                    avatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.full_name || 'أستاذ')}&background=0f5cbf&color=fff&size=130`;
+                }
+                avatar.alt = teacher.full_name || 'أستاذ';
+
+                // الاسم
+                document.getElementById('teacherName').textContent = teacher.full_name || '';
+
+                // التخصص
+                const spec = teacher.specialization || '';
+                document.getElementById('teacherSpecialization').innerHTML = spec ? `<i class="fas fa-book"></i> ${spec}` : '';
+                document.getElementById('teacherSpecializationInfo').textContent = spec || '';
+
+                // البريد
+                document.getElementById('teacherEmail').textContent = teacher.email || '';
+
+                // الهاتف
+                document.getElementById('teacherPhone').textContent = teacher.phone || '';
+
+                // الخبرة
+                document.getElementById('teacherExperience').textContent = teacher.experience ? `${teacher.experience} سنة` : '';
+
+                // السيرة
+                const bioEl = document.getElementById('teacherBio');
+                if (teacher.bio && teacher.bio.trim() !== '') {
+                    bioEl.textContent = teacher.bio;
+                    bioEl.style.color = '';
+                    bioEl.style.fontStyle = '';
+                } else {
+                    bioEl.textContent = 'لا توجد نبذة تعريفية';
+                    bioEl.style.color = 'var(--gray-400)';
+                    bioEl.style.fontStyle = 'italic';
+                }
+
+                // الحالة
+                const statusMap = {
+                    'approved': { text: '✅ معتمد', cls: 'approved', info: 'معتمد' },
+                    'pending': { text: '⏳ قيد المراجعة', cls: 'pending', info: 'قيد المراجعة' },
+                    'rejected': { text: '❌ غير معتمد', cls: 'rejected', info: 'غير معتمد' }
+                };
+                const statusKey = teacher.status || 'pending';
+                const statusData = statusMap[statusKey] || statusMap.pending;
                 
-                const res = await fetch(`/api/public/offers`);
+                const statusEl = document.getElementById('teacherStatus');
+                statusEl.textContent = statusData.text;
+                statusEl.className = `status-badge ${statusData.cls}`;
                 
-                if (!res.ok) {
-                    offersList.innerHTML = '<div class="no-offers">لا توجد عروض متاحة حالياً</div>';
+                const statusInfoEl = document.getElementById('teacherStatusInfo');
+                statusInfoEl.textContent = statusData.info;
+                if (teacher.status === 'rejected' && teacher.rejection_reason) {
+                    statusInfoEl.textContent += ` (السبب: ${teacher.rejection_reason})`;
+                }
+
+                // التحقق من البريد
+                const isVerified = teacher.email_verified === true;
+                const verifiedEl = document.getElementById('teacherEmailVerified');
+                verifiedEl.textContent = isVerified ? '✅ بريد مؤكد' : '❌ بريد غير مؤكد';
+                verifiedEl.className = `status-badge ${isVerified ? 'verified' : 'not-verified'}`;
+                
+                const verifiedInfoEl = document.getElementById('teacherEmailVerifiedInfo');
+                verifiedInfoEl.innerHTML = isVerified 
+                    ? '<span class="badge-sm success">✓ مؤكد</span>' 
+                    : '<span class="badge-sm danger">✗ غير مؤكد</span>';
+
+                // روابط التواصل
+                renderSocialLinks(teacher);
+            }
+
+            function renderSocialLinks(teacher) {
+                const container = document.getElementById('socialLinks');
+                
+                const links = [
+                    { url: teacher.facebook_url, icon: 'fab fa-facebook-f', label: 'فيسبوك', cls: 'facebook' },
+                    { url: teacher.instagram_url, icon: 'fab fa-instagram', label: 'انستغرام', cls: 'instagram' },
+                    { url: teacher.linkedin_url, icon: 'fab fa-linkedin-in', label: 'لينكدإن', cls: 'linkedin' },
+                    { url: teacher.youtube_url, icon: 'fab fa-youtube', label: 'يوتيوب', cls: 'youtube' },
+                    { url: teacher.twitter_url, icon: 'fab fa-x-twitter', label: 'تويتر', cls: 'twitter' },
+                    { url: teacher.website_url, icon: 'fas fa-globe', label: 'الموقع الشخصي', cls: 'website' },
+                    { url: teacher.whatsapp_url, icon: 'fab fa-whatsapp', label: 'واتساب', cls: 'whatsapp' }
+                ];
+
+                let html = '';
+                let hasLinks = false;
+
+                for (const link of links) {
+                    if (link.url && link.url.trim() !== '' && link.url !== 'null' && link.url !== 'undefined') {
+                        let url = link.url.trim();
+                        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                            url = 'https://' + url;
+                        }
+                        html += `
+                            <a href="${url}" target="_blank" class="social-link-item ${link.cls}" 
+                               title="${link.label}" rel="noopener noreferrer">
+                                <i class="${link.icon}"></i>
+                                <span>${link.label}</span>
+                            </a>
+                        `;
+                        hasLinks = true;
+                    }
+                }
+
+                container.innerHTML = hasLinks ? html : `
+                    <div class="no-social-links">
+                        <i class="fas fa-link" style="margin-left:6px;"></i>
+                        لا توجد روابط تواصل اجتماعي مضاف
+                    </div>
+                `;
+            }
+
+            function renderOffers(offers) {
+                const container = document.getElementById('offersList');
+                
+                if (!offers || offers.length === 0) {
+                    container.innerHTML = '<div class="no-offers">لا توجد عروض متاحة حالياً</div>';
                     return;
                 }
-                
-                const allOffers = await res.json();
-                const teacherOffers = Array.isArray(allOffers) ? 
-                    allOffers.filter(offer => offer.teacher_id === teacherId) : [];
-                
-                renderOffers(teacherOffers);
-                document.getElementById('statOffers').textContent = teacherOffers.length || '0';
-                
-            } catch (error) {
-                console.error('❌ خطأ في تحميل العروض:', error);
-                document.getElementById('offersList').innerHTML = 
-                    '<div class="no-offers">حدث خطأ في تحميل العروض</div>';
-            }
-        }
 
-        // ================================================================
-        // عرض العروض
-        // ================================================================
-        function renderOffers(offers) {
-            const container = document.getElementById('offersList');
-            
-            if (!offers || offers.length === 0) {
-                container.innerHTML = '<div class="no-offers">لا توجد عروض متاحة حالياً</div>';
-                return;
-            }
+                let html = '';
+                const now = new Date();
 
-            let html = '';
-            const now = new Date();
+                for (const offer of offers) {
+                    const offerDate = new Date(offer.offer_date);
+                    const isLive = offer.status === 'live';
+                    const isCompleted = offer.status === 'completed' || offerDate < now;
+                    const isCancelled = offer.status === 'cancelled';
 
-            for (const offer of offers) {
-                const offerDate = new Date(offer.offer_date);
-                const isLive = offer.status === 'live';
-                const isCompleted = offer.status === 'completed' || offerDate < now;
-                const isCancelled = offer.status === 'cancelled';
+                    let statusText = '⏳ قادم';
+                    let statusClass = 'upcoming';
+                    if (isLive) { statusText = '🔴 بث مباشر'; statusClass = 'live'; }
+                    else if (isCompleted) { statusText = '✅ منتهية'; statusClass = 'completed'; }
+                    else if (isCancelled) { statusText = '❌ ملغية'; statusClass = 'cancelled'; }
 
-                let statusText = '⏳ قادم';
-                let statusClass = 'upcoming';
-                if (isLive) { statusText = '🔴 بث مباشر'; statusClass = 'live'; }
-                else if (isCompleted) { statusText = '✅ منتهية'; statusClass = 'completed'; }
-                else if (isCancelled) { statusText = '❌ ملغية'; statusClass = 'cancelled'; }
+                    const isFree = offer.is_free === 1 || offer.is_free === true;
+                    const priceClass = isFree ? 'free' : 'paid';
+                    const priceText = isFree ? '🎁 مجانية' : `💰 ${offer.price} دج`;
 
-                const isFree = offer.is_free === 1 || offer.is_free === true;
-                const priceClass = isFree ? 'free' : 'paid';
-                const priceText = isFree ? '🎁 مجانية' : `💰 ${offer.price} دج`;
-
-                html += `
-                    <div class="offer-card">
-                        <div class="offer-subject">${escapeHtml(offer.subject_name)}</div>
-                        <div class="offer-detail">
-                            <i class="fas fa-calendar-alt"></i>
-                            ${offerDate.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}
+                    html += `
+                        <div class="offer-card">
+                            <div class="offer-subject">${escapeHtml(offer.subject_name)}</div>
+                            <div class="offer-detail">
+                                <i class="fas fa-calendar-alt"></i>
+                                ${offerDate.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}
+                            </div>
+                            <div class="offer-detail">
+                                <i class="fas fa-clock"></i>
+                                ${offer.duration} دقيقة
+                            </div>
+                            <div>
+                                <span class="offer-price ${priceClass}">${priceText}</span>
+                                <span class="offer-status ${statusClass}">${statusText}</span>
+                            </div>
                         </div>
-                        <div class="offer-detail">
-                            <i class="fas fa-clock"></i>
-                            ${offer.duration} دقيقة
-                        </div>
-                        <div>
-                            <span class="offer-price ${priceClass}">${priceText}</span>
-                            <span class="offer-status ${statusClass}">${statusText}</span>
-                        </div>
-                    </div>
-                `;
+                    `;
+                }
+
+                container.innerHTML = html;
             }
 
-            container.innerHTML = html;
-        }
-
-        // ================================================================
-        // دوال مساعدة
-        // ================================================================
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        function showError(title, message, details = null) {
-            const container = document.getElementById('profileContainer');
-            let detailsHtml = '';
-            if (details) {
-                detailsHtml = `
-                    <div class="error-details">
-                        <strong>تفاصيل:</strong><br>
-                        <code>${escapeHtml(JSON.stringify(details, null, 2))}</code>
-                    </div>
-                `;
+            async function loadOffers(teacherId) {
+                try {
+                    const res = await fetch('/api/public/offers');
+                    if (!res.ok) {
+                        document.getElementById('offersList').innerHTML = '<div class="no-offers">لا توجد عروض متاحة حالياً</div>';
+                        return;
+                    }
+                    const allOffers = await res.json();
+                    const teacherOffers = Array.isArray(allOffers) ? allOffers.filter(o => o.teacher_id === teacherId) : [];
+                    renderOffers(teacherOffers);
+                    document.getElementById('statOffers').textContent = teacherOffers.length || '0';
+                } catch (e) {
+                    console.error('خطأ في تحميل العروض:', e);
+                    document.getElementById('offersList').innerHTML = '<div class="no-offers">حدث خطأ في تحميل العروض</div>';
+                }
             }
-            container.innerHTML = `
-                <div class="error-container">
-                    <div class="error-icon"><i class="fas fa-exclamation-circle"></i></div>
-                    <div class="error-title">${escapeHtml(title)}</div>
-                    <div class="error-message">${escapeHtml(message)}</div>
-                    ${detailsHtml}
-                    <button onclick="location.reload()" class="btn-retry">
-                        <i class="fas fa-redo"></i> إعادة المحاولة
-                    </button>
-                    <br><br>
-                    <a href="javascript:history.back()" style="display:inline-block;padding:10px 30px;background:var(--gray-200);color:var(--gray-700);border-radius:30px;text-decoration:none;font-weight:700;transition:all 0.3s ease;margin-top:8px;">
-                        <i class="fas fa-arrow-right"></i> العودة
-                    </a>
-                </div>
-            `;
-        }
 
-        // ================================================================
-        // تهيئة الصفحة
-        // ================================================================
-        function init() {
-            console.log('🚀 بدء تحميل صفحة ملف الأستاذ');
+            async function loadTeacher() {
+                const loading = document.getElementById('loadingIndicator');
+                const content = document.getElementById('profileContent');
+
+                try {
+                    console.log('📡 جلب بيانات الأستاذ:', teacherId);
+
+                    // المحاولة 1: /api/public/teachers (القائمة)
+                    let teacher = null;
+                    let res = await fetch('/api/public/teachers');
+                    if (res.ok) {
+                        const teachers = await res.json();
+                        if (Array.isArray(teachers)) {
+                            teacher = teachers.find(t => t.id === teacherId);
+                            if (teacher) {
+                                console.log('✅ تم جلب البيانات من /api/public/teachers');
+                            }
+                        }
+                    }
+
+                    // المحاولة 2: /api/teachers
+                    if (!teacher) {
+                        res = await fetch('/api/teachers');
+                        if (res.ok) {
+                            const teachers = await res.json();
+                            if (Array.isArray(teachers)) {
+                                teacher = teachers.find(t => t.id === teacherId);
+                                if (teacher) {
+                                    console.log('✅ تم جلب البيانات من /api/teachers');
+                                }
+                            }
+                        }
+                    }
+
+                    // المحاولة 3: /api/public/teacher/:id (إذا كان موجوداً)
+                    if (!teacher) {
+                        try {
+                            res = await fetch(`/api/public/teacher/${teacherId}`);
+                            if (res.ok) {
+                                const data = await res.json();
+                                if (data && data.id) {
+                                    teacher = data;
+                                    console.log('✅ تم جلب البيانات من /api/public/teacher/');
+                                }
+                            }
+                        } catch (e) {}
+                    }
+
+                    // المحاولة 4: /api/teacher/:id (محمي)
+                    if (!teacher) {
+                        try {
+                            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                            if (token) {
+                                res = await fetch(`/api/teacher/${teacherId}`, {
+                                    headers: { 'Authorization': `Bearer ${token}` }
+                                });
+                                if (res.ok) {
+                                    const data = await res.json();
+                                    if (data && data.id) {
+                                        teacher = data;
+                                        console.log('✅ تم جلب البيانات من /api/teacher/ (محمي)');
+                                    }
+                                }
+                            }
+                        } catch (e) {}
+                    }
+
+                    if (!teacher || !teacher.id) {
+                        showError('الأستاذ غير موجود', 'لم يتم العثور على الأستاذ المطلوب. تأكد من صحة الرابط.');
+                        return;
+                    }
+
+                    loading.style.display = 'none';
+                    content.style.display = 'block';
+                    
+                    renderTeacher(teacher);
+                    await loadOffers(teacherId);
+
+                } catch (error) {
+                    console.error('❌ خطأ:', error);
+                    loading.style.display = 'none';
+                    showError('خطأ في الاتصال', 'حدث خطأ في الاتصال بالخادم');
+                }
+            }
+
+            // بدء التشغيل
             if (!getTeacherIdFromURL()) {
                 showError('معرف غير صالح', 'لم يتم تحديد معرف الأستاذ في الرابط');
                 return;
             }
-            console.log(`🔍 معرف الأستاذ: ${teacherId}`);
-            loadTeacherProfile();
-        }
 
-        document.addEventListener('DOMContentLoaded', init);
+            console.log('🔍 معرف الأستاذ:', teacherId);
+            loadTeacher();
+
+        })();
     </script>
 
 </body>
