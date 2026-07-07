@@ -1446,7 +1446,6 @@
     }
 
     async function fetchWithAuth(url, options = {}) {
-        // إزالة Content-Type إذا كان body من نوع FormData
         const isFormData = options.body instanceof FormData;
         const headers = {
             ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
@@ -1460,7 +1459,6 @@
             headers: headers
         });
 
-        // إذا كان 401 -> انتهت الجلسة
         if (response.status === 401) {
             showToast('⏳ انتهت صلاحية الجلسة، جاري إعادة التوجيه...', 'error');
             localStorage.clear();
@@ -1470,7 +1468,6 @@
             throw new Error('انتهت صلاحية الجلسة');
         }
 
-        // إذا كان 403 -> حساب محظور أو CSRF
         if (response.status === 403) {
             try {
                 const data = await response.json();
@@ -1483,9 +1480,7 @@
                     throw new Error('حساب محظور');
                 }
                 if (data.error && data.error.includes('CSRF')) {
-                    // محاولة تجديد CSRF Token
                     await getCsrfToken();
-                    // إعادة المحاولة مرة واحدة
                     const retryResponse = await fetch(url, {
                         ...options,
                         headers: {
