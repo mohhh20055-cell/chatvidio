@@ -2311,6 +2311,14 @@
                 levelDisplay = `<div style="font-size:0.75rem; color:#8b5cf6; margin-top:4px;"><i class="fas fa-graduation-cap"></i> المستوى: ${levelName}</div>`;
             }
 
+            // ✅ تحديث الأزرار لدعم البث عبر Google Meet مع التوكن
+            let streamButton = '';
+            if (!isExpired && offer.status === 'upcoming') {
+                streamButton = `<button class="start-stream-btn" onclick="enterStream(${offer.id})"><i class="fas fa-play"></i> بدء البث</button>`;
+            } else if (!isExpired && (offer.status === 'teacher_ready' || offer.status === 'live')) {
+                streamButton = `<button class="start-stream-btn" onclick="joinTeacherStream(${offer.id})"><i class="fas fa-video"></i> دخول البث</button>`;
+            }
+
             html += `<div class="offer-card ${isExpired ? 'expired' : ''}">
                 ${isExpired ? '<span class="expired-label">منتهية</span>' : ''}
                 <div class="offer-title">${escapeHtml(offer.subject_name)}</div>
@@ -2319,8 +2327,7 @@
                 <div style="font-size:0.85rem; color:var(--gray-600);">${priceDisplay}</div>
                 ${levelDisplay}
                 <span class="status-badge ${statusClass}">${statusText}</span>
-                ${!isExpired && offer.status === 'upcoming' ? `<button class="start-stream-btn" onclick="enterStream(${offer.id})"><i class="fas fa-play"></i> بدء البث</button>` : ''}
-                ${!isExpired && (offer.status === 'teacher_ready' || offer.status === 'live') ? `<button class="start-stream-btn" onclick="joinTeacherStream(${offer.id})"><i class="fas fa-video"></i> دخول البث</button>` : ''}
+                ${streamButton}
                 ${offer.status === 'upcoming' || isExpired ? `<button class="delete-btn" onclick="deleteOffer(${offer.id})"><i class="fas fa-trash"></i> حذف</button>` : ''}
             </div>`;
         }
@@ -2362,28 +2369,28 @@
         loadOffers();
     }
 
-    // ✅ تم إصلاح دالة enterStream - إضافة التوكن إلى الرابط
+    // ✅ تم إصلاح دالة enterStream - إضافة التوكن إلى الرابط مع دعم Google Meet
     async function enterStream(offerId) {
-        if (confirm('⚠️ هل تريد الدخول إلى البث كأستاذ؟')) {
+        if (confirm('⚠️ هل تريد بدء البث المباشر؟ سيتم توجيهك إلى صفحة اختيار منصة البث (Google Meet / Microsoft Teams)')) {
             const token = localStorage.getItem('token');
             if (!token) {
                 showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
                 return;
             }
-            // ✅ إضافة التوكن كـ Query Parameter
-            window.open(`/api/enter-teacher-stream/${offerId}/${teacherId}?token=${encodeURIComponent(token)}`, '_blank');
+            // ✅ الانتقال إلى صفحة بدء البث مع التوكن
+            window.open(`/api/teacher-start-stream/${offerId}/${teacherId}?token=${encodeURIComponent(token)}`, '_blank');
             setTimeout(() => loadOffers(), 2000);
         }
     }
 
-    // ✅ تم إصلاح دالة joinTeacherStream - إضافة التوكن إلى الرابط
+    // ✅ تم إصلاح دالة joinTeacherStream - دعم Google Meet مع التوكن
     function joinTeacherStream(offerId) {
         const token = localStorage.getItem('token');
         if (!token) {
             showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
             return;
         }
-        // ✅ إضافة التوكن كـ Query Parameter
+        // ✅ التوجيه إلى صفحة البث المباشر (تعمل الآن مع Google Meet)
         window.open(`/api/teacher-stream/${offerId}/${teacherId}?token=${encodeURIComponent(token)}`, '_blank');
     }
 
