@@ -1662,25 +1662,27 @@
         showToast('تم تحديد جميع الإشعارات كمقروءة', 'success');
     }
 
-    async function joinFromNotification(offerId) {
-        try {
-            const res = await fetchWithAuth(`/api/student/stream-status/${offerId}/${studentId}`);
-            const data = await res.json();
-            if (data.can_join) {
-                window.open(`/api/join-stream/${offerId}/${studentId}`, '_blank');
-            } else if (data.is_waiting) {
-                showToast('⏳ جاري التحضير للبث، انتظر قليلاً...', 'warning');
-            } else {
-                showToast('البث غير متاح حالياً', 'warning');
-                showSection('bookings');
-            }
-        } catch(e) {
-            if (e.message !== 'انتهت صلاحية الجلسة') {
-                showToast('حدث خطأ', 'error');
-            }
+   async function joinFromNotification(offerId) {
+    try {
+        const res = await fetchWithAuth(`/api/student/stream-status/${offerId}/${studentId}`);
+        const data = await res.json();
+        if (data.can_join) {
+            const token = localStorage.getItem('token');
+            // ✅ إضافة التوكن كـ Query Parameter
+            window.open(`/api/join-stream/${offerId}/${studentId}?token=${encodeURIComponent(token)}`, '_blank');
+        } else if (data.is_waiting) {
+            showToast('⏳ جاري التحضير للبث، انتظر قليلاً...', 'warning');
+        } else {
+            showToast('البث غير متاح حالياً', 'warning');
+            showSection('bookings');
         }
-        document.getElementById('notifDropdown').classList.remove('open');
+    } catch(e) {
+        if (e.message !== 'انتهت صلاحية الجلسة') {
+            showToast('حدث خطأ', 'error');
+        }
     }
+    document.getElementById('notifDropdown').classList.remove('open');
+}
 
     // ================================================================
     // PROFILE DROPDOWN
@@ -2202,10 +2204,15 @@
         container.innerHTML = html;
     }
 
-    function joinLiveStream(offerId) {
-        window.open(`/api/join-stream/${offerId}/${studentId}`, '_blank');
+   function joinLiveStream(offerId) {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
+        return;
     }
-
+    // ✅ إضافة التوكن كـ Query Parameter
+    window.open(`/api/join-stream/${offerId}/${studentId}?token=${encodeURIComponent(token)}`, '_blank');
+}
     // ================================================================
     // REFERRAL SYSTEM
     // ================================================================
