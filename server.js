@@ -5146,7 +5146,7 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                         const data = await res.json();
                         
                         if (data.success) {
-                            showToast(`✅ تم إضافة ${data.students_count || 0} طالب إلى البث`, 'success');
+                            showToast('✅ تم إضافة ' + (data.students_count || 0) + ' طالب إلى البث', 'success');
                             loadWaitingList();
                         } else {
                             showToast(data.error || '❌ حدث خطأ في إضافة الطلاب', 'error');
