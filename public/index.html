@@ -1432,6 +1432,258 @@
         }
 
         /* ============================================================
+           PROFILE SECTION - صفحة ملف الأستاذ
+           ============================================================ */
+        .profile-section {
+            max-width: 1000px;
+            margin: 40px auto 60px;
+            padding: 0 30px;
+        }
+        
+        .profile-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 40px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid rgba(0,0,0,0.04);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .profile-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: var(--gradient-main);
+        }
+        
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid var(--gray-light);
+        }
+        
+        .profile-header .profile-image {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 5px solid white;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .profile-header .profile-info h2 {
+            font-size: 2rem;
+            color: var(--dark);
+            margin-bottom: 6px;
+        }
+        
+        .profile-header .profile-info .specialization {
+            color: var(--primary);
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .profile-header .profile-info .experience {
+            color: var(--gray);
+            font-size: 0.95rem;
+        }
+        
+        .profile-header .profile-info .experience i {
+            color: var(--gold);
+        }
+        
+        .profile-body {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+        }
+        
+        .profile-body .bio-section h3 {
+            color: var(--dark);
+            font-size: 1.2rem;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .profile-body .bio-section h3 i {
+            color: var(--primary);
+        }
+        
+        .profile-body .bio-section p {
+            color: var(--gray);
+            line-height: 1.9;
+            font-size: 1rem;
+        }
+        
+        .profile-body .info-section h3 {
+            color: var(--dark);
+            font-size: 1.2rem;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .profile-body .info-section h3 i {
+            color: var(--primary);
+        }
+        
+        .profile-body .info-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--gray-light);
+        }
+        
+        .profile-body .info-item i {
+            width: 24px;
+            color: var(--primary);
+            font-size: 1rem;
+        }
+        
+        .profile-body .info-item span {
+            color: var(--dark-light);
+            font-size: 0.95rem;
+        }
+        
+        .profile-body .info-item .value {
+            color: var(--dark);
+            font-weight: 600;
+        }
+        
+        .profile-back-btn {
+            background: var(--gray-light);
+            color: var(--dark-light);
+            border: none;
+            padding: 10px 24px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: var(--transition);
+            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .profile-back-btn:hover {
+            background: var(--primary);
+            color: white;
+            transform: translateX(-4px);
+        }
+        
+        .profile-offers-section {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px solid var(--gray-light);
+        }
+        
+        .profile-offers-section h3 {
+            color: var(--dark);
+            font-size: 1.2rem;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .profile-offers-section h3 i {
+            color: var(--primary);
+        }
+        
+        .profile-offers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 16px;
+        }
+        
+        .profile-offer-item {
+            background: var(--gray-light);
+            border-radius: var(--radius-sm);
+            padding: 16px 20px;
+            border: 1px solid rgba(0,0,0,0.04);
+            transition: var(--transition);
+        }
+        
+        .profile-offer-item:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-sm);
+            border-color: var(--primary-light);
+        }
+        
+        .profile-offer-item .subject {
+            font-weight: 700;
+            color: var(--dark);
+            font-size: 1rem;
+        }
+        
+        .profile-offer-item .details {
+            color: var(--gray);
+            font-size: 0.85rem;
+            margin-top: 4px;
+        }
+        
+        .profile-offer-item .details i {
+            color: var(--primary);
+            width: 18px;
+        }
+        
+        .profile-offer-item .price-tag-small {
+            display: inline-block;
+            background: var(--gradient-secondary);
+            color: white;
+            padding: 2px 14px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.75rem;
+            margin-top: 6px;
+        }
+        
+        .profile-offer-item .free-tag-small {
+            display: inline-block;
+            background: var(--gold);
+            color: white;
+            padding: 2px 14px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.75rem;
+            margin-top: 6px;
+        }
+        
+        @media (max-width: 768px) {
+            .profile-header {
+                flex-direction: column;
+                text-align: center;
+            }
+            .profile-body {
+                grid-template-columns: 1fr;
+            }
+            .profile-card {
+                padding: 24px;
+            }
+            .profile-header .profile-image {
+                width: 100px;
+                height: 100px;
+            }
+            .profile-header .profile-info h2 {
+                font-size: 1.5rem;
+            }
+        }
+
+        /* ============================================================
            FOOTER - تذييل أنيق
            ============================================================ */
         footer {
@@ -1576,6 +1828,8 @@
             .recaptcha-wrapper .g-recaptcha {
                 transform: scale(0.75);
             }
+            .profile-section { padding: 0 16px; }
+            .profile-header .profile-image { width: 100px; height: 100px; }
         }
 
         @media (max-width: 480px) {
@@ -1598,6 +1852,7 @@
             .logo-text .highlight { font-size: 1.3rem; }
             .logo-badge { font-size: 0.45rem; padding: 1px 8px; }
             .about-grid .about-text h2 { font-size: 1.4rem; }
+            .profile-offers-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -1918,6 +2173,15 @@
                         <i class="fas fa-database"></i> Database: زينب
                     </span>
                 </div>
+            </div>
+        </section>
+
+        <!-- ============================================================
+        PROFILE SECTION - صفحة ملف الأستاذ (في نفس الصفحة)
+        ============================================================ -->
+        <section id="profileSection" class="profile-section" style="display: none;">
+            <div id="profileContent">
+                <!-- سيتم ملء المحتوى بواسطة JavaScript -->
             </div>
         </section>
 
@@ -2268,6 +2532,7 @@
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
+            document.getElementById('profileSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('downloadAppSection').style.display = 'none';
             document.getElementById('supportSection').style.display = 'none';
@@ -2282,6 +2547,7 @@
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
+            document.getElementById('profileSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('downloadAppSection').style.display = 'none';
             document.getElementById('supportSection').style.display = 'none';
@@ -2296,6 +2562,7 @@
             document.getElementById('offersSection').style.display = 'block';
             document.getElementById('liveSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
+            document.getElementById('profileSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('downloadAppSection').style.display = 'none';
             document.getElementById('supportSection').style.display = 'none';
@@ -2310,6 +2577,7 @@
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'block';
             document.getElementById('developersSection').style.display = 'none';
+            document.getElementById('profileSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('downloadAppSection').style.display = 'none';
             document.getElementById('supportSection').style.display = 'none';
@@ -2324,6 +2592,7 @@
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'block';
+            document.getElementById('profileSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('downloadAppSection').style.display = 'none';
             document.getElementById('supportSection').style.display = 'none';
@@ -2337,12 +2606,12 @@
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
+            document.getElementById('profileSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'block';
             document.getElementById('downloadAppSection').style.display = 'none';
             document.getElementById('supportSection').style.display = 'none';
             setActiveTab('loginTabNav');
             switchTab('login');
-            // reset recaptcha state
             recaptchaState.login = false;
             recaptchaState.student = false;
             recaptchaState.teacher = false;
@@ -2355,6 +2624,7 @@
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
+            document.getElementById('profileSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('downloadAppSection').style.display = 'block';
             document.getElementById('supportSection').style.display = 'none';
@@ -2368,6 +2638,7 @@
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
+            document.getElementById('profileSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('downloadAppSection').style.display = 'none';
             document.getElementById('supportSection').style.display = 'block';
@@ -2381,6 +2652,7 @@
             document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
+            document.getElementById('profileSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'block';
             document.getElementById('downloadAppSection').style.display = 'none';
             document.getElementById('supportSection').style.display = 'none';
@@ -2552,7 +2824,6 @@
                 return; 
             }
             
-            // ✅ التحقق من reCAPTCHA
             var recaptchaToken = grecaptcha.getResponse();
             if (!recaptchaToken) {
                 document.getElementById('loginRecaptchaError').classList.add('show');
@@ -2611,7 +2882,6 @@
                 return;
             }
             
-            // ✅ التحقق من reCAPTCHA
             var recaptchaToken = grecaptcha.getResponse();
             if (!recaptchaToken) {
                 document.getElementById('studentRecaptchaError').classList.add('show');
@@ -2693,7 +2963,6 @@
                 formData.append('ref', refCode);
             }
             
-            // ✅ التحقق من reCAPTCHA
             var recaptchaToken = grecaptcha.getResponse();
             if (!recaptchaToken) {
                 document.getElementById('teacherRecaptchaError').classList.add('show');
@@ -2844,8 +3113,117 @@
             }
         }
 
-        function viewTeacherProfile(teacherId) {
-            window.open('/teacher-profile.html?id=' + teacherId, '_blank');
+        // ============================================================
+        // VIEW TEACHER PROFILE - عرض ملف الأستاذ في نفس الصفحة
+        // ============================================================
+        async function viewTeacherProfile(teacherId) {
+            // إخفاء جميع الأقسام الأخرى
+            document.getElementById('homeSection').style.display = 'none';
+            document.getElementById('aboutSection').style.display = 'none';
+            document.getElementById('teachersSection').style.display = 'none';
+            document.getElementById('offersSection').style.display = 'none';
+            document.getElementById('liveSection').style.display = 'none';
+            document.getElementById('developersSection').style.display = 'none';
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('downloadAppSection').style.display = 'none';
+            document.getElementById('supportSection').style.display = 'none';
+            
+            // إظهار قسم البروفايل
+            var profileSection = document.getElementById('profileSection');
+            profileSection.style.display = 'block';
+            
+            var container = document.getElementById('profileContent');
+            container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري تحميل الملف...</div>';
+            
+            try {
+                var res = await fetch('/api/public/teacher/' + teacherId);
+                if (!res.ok) throw new Error('HTTP error! status: ' + res.status);
+                var teacher = await res.json();
+                
+                if (!teacher || !teacher.id) {
+                    container.innerHTML = '<div style="text-align:center; padding:40px; color:#ef4444;">لم يتم العثور على الأستاذ</div>';
+                    return;
+                }
+                
+                var imageUrl = teacher.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(teacher.full_name) + '&background=0f5cbf&color=fff&size=140';
+                
+                var html = `
+                    <button class="profile-back-btn" onclick="showTeachers()">
+                        <i class="fas fa-arrow-right"></i> العودة إلى قائمة الأساتذة
+                    </button>
+                    <div class="profile-card">
+                        <div class="profile-header">
+                            <img src="${imageUrl}" class="profile-image" 
+                                 onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.full_name)}&background=0f5cbf&color=fff&size=140'"
+                                 alt="${escapeHtml(teacher.full_name)}">
+                            <div class="profile-info">
+                                <h2>${escapeHtml(teacher.full_name)}</h2>
+                                <div class="specialization"><i class="fas fa-book"></i> ${escapeHtml(teacher.specialization || 'تخصص عام')}</div>
+                                <div class="experience"><i class="fas fa-briefcase"></i> ${teacher.experience || '0'} سنة خبرة</div>
+                                <div style="margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap;">
+                                    ${teacher.verified ? '<span style="background: var(--secondary); color: white; padding: 4px 16px; border-radius: 20px; font-size: 0.75rem; font-weight: 700;"><i class="fas fa-check-circle"></i> موثق</span>' : ''}
+                                    ${teacher.is_active ? '<span style="background: var(--primary); color: white; padding: 4px 16px; border-radius: 20px; font-size: 0.75rem; font-weight: 700;"><i class="fas fa-user-check"></i> نشط</span>' : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="profile-body">
+                            <div class="bio-section">
+                                <h3><i class="fas fa-align-right"></i> نبذة عن الأستاذ</h3>
+                                <p>${teacher.bio ? escapeHtml(teacher.bio) : 'لا توجد نبذة متاحة حالياً.'}</p>
+                                
+                                ${teacher.offers && teacher.offers.length > 0 ? `
+                                    <div class="profile-offers-section">
+                                        <h3><i class="fas fa-calendar-alt"></i> العروض المتاحة</h3>
+                                        <div class="profile-offers-grid">
+                                            ${teacher.offers.map(function(o) {
+                                                var offerDate = new Date(o.offer_date);
+                                                return `
+                                                    <div class="profile-offer-item">
+                                                        <div class="subject">${escapeHtml(o.subject_name)}</div>
+                                                        <div class="details"><i class="fas fa-calendar-alt"></i> ${offerDate.toLocaleString('ar')}</div>
+                                                        <div class="details"><i class="fas fa-clock"></i> ${o.duration} دقيقة</div>
+                                                        ${o.is_free ? '<span class="free-tag-small"><i class="fas fa-gift"></i> مجانية</span>' : '<span class="price-tag-small"><i class="fas fa-money-bill"></i> ' + o.price + ' دج</span>'}
+                                                    </div>
+                                                `;
+                                            }).join('')}
+                                        </div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            <div class="info-section">
+                                <h3><i class="fas fa-info-circle"></i> معلومات إضافية</h3>
+                                <div class="info-item">
+                                    <i class="fas fa-user"></i>
+                                    <span>الحالة: <span class="value">${teacher.is_active ? 'نشط' : 'غير نشط'}</span></span>
+                                </div>
+                                <div class="info-item">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>التوثيق: <span class="value">${teacher.verified ? '✅ موثق' : '⏳ قيد المراجعة'}</span></span>
+                                </div>
+                                <div class="info-item">
+                                    <i class="fas fa-calendar-plus"></i>
+                                    <span>تاريخ الانضمام: <span class="value">${teacher.created_at ? new Date(teacher.created_at).toLocaleDateString('ar') : 'غير معروف'}</span></span>
+                                </div>
+                                <div style="margin-top: 20px;">
+                                    <button class="btn-primary" onclick="showOffers()" style="width:100%; justify-content:center;">
+                                        <i class="fas fa-calendar-alt"></i> استعراض جميع العروض
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                container.innerHTML = html;
+                
+                // تحديث عنوان الصفحة
+                document.title = `${teacher.full_name} | ZoomDz`;
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                
+            } catch(e) {
+                console.error('❌ خطأ في جلب بيانات الأستاذ:', e);
+                container.innerHTML = '<div style="text-align:center; padding:40px; color:#ef4444;">حدث خطأ في تحميل بيانات الأستاذ</div>';
+            }
         }
 
         function escapeHtml(text) {
@@ -2905,7 +3283,6 @@
             showHome();
             loadStats();
             
-            // تحديث الإحصائيات والبث المباشر كل 30 ثانية
             setInterval(loadLiveStreams, 30000);
             setInterval(loadStats, 60000);
             
