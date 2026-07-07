@@ -4823,7 +4823,7 @@ app.get('/api/public/teacher/:teacher_id', async (req, res) => {
             .from('teachers')
             .select('id, full_name, email, phone, specialization, bio, experience, profile_url, status, facebook_url, instagram_url, linkedin_url, youtube_url, twitter_url, website_url, whatsapp_url')
             .eq('id', teacher_id)
-            .eq('status', 'approved')
+            //.eq('status', 'approved')
             .single();
 
         if (error) {
