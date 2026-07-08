@@ -6,7 +6,6 @@ const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
 
-// استيراد الدوال المساعدة
 const { insert } = require('../utils/helpers');
 
 // ============================================================
