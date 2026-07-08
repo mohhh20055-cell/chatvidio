@@ -4,12 +4,11 @@
 
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
-const path = require('path');
 const { body, validationResult, param } = require('express-validator');
-const { v4: uuidv4 } = require('uuid');
 
 // استيراد الدوال المساعدة من الملف الرئيسي
+const server = require('../server');
+
 const { 
     authenticate, 
     authorize, 
@@ -22,7 +21,7 @@ const {
     validateUploadedFiles,
     upload,
     sanitizeInput
-} = require('../server');
+} = server;
 
 // ============================================================
 // جلب بيانات أستاذ
