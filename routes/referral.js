@@ -6,7 +6,10 @@ const express = require('express');
 const router = express.Router();
 const { body, validationResult, param } = require('express-validator');
 
-// استيراد الدوال المساعدة
+// استيراد الدوال المساعدة من الملف الرئيسي
+const server = require('../server');
+
+// استخراج الدوال من server
 const { 
     authenticate, 
     getOne, 
@@ -16,7 +19,7 @@ const {
     generateReferralCode,
     PLATFORM_DOMAIN,
     processStudentReferralRewardOnBooking
-} = require('../server');
+} = server;
 
 // ============================================================
 // إنشاء رمز إحالة
