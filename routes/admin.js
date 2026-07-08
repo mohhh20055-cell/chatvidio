@@ -7,7 +7,7 @@ const router = express.Router();
 const { body, param, validationResult } = require('express-validator');
 const bcrypt = require('bcryptjs');
 
-// استيراد الدوال المساعدة
+// ✅ تأكد من المسار الصحيح للاستيراد
 const { supabase } = require('../config/database');
 const { authenticate, authorize, checkBanned } = require('../middleware/auth');
 const { getOne, insert, update, remove } = require('../utils/helpers');
@@ -87,7 +87,6 @@ router.post('/approve-teacher/:id', [
 
         await update('teachers', teacherId, { status: 'approved' });
 
-        // معالجة مكافأة الإحالة
         const { data: referral } = await supabase
             .from('referrals')
             .select('*')
