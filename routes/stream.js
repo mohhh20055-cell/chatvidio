@@ -6,7 +6,6 @@ const express = require('express');
 const router = express.Router();
 const { body, param, validationResult } = require('express-validator');
 
-// استيراد الدوال المساعدة
 const { supabase } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { getOne, insert, update } = require('../utils/helpers');
@@ -45,7 +44,6 @@ router.post('/save-link', authenticate, authorize(['teacher']), [
             })
             .eq('id', offer_id);
 
-        // إرسال إشعارات للطلاب المسجلين
         const { data: sessions } = await supabase
             .from('sessions')
             .select('student_id')
@@ -152,13 +150,11 @@ router.post('/add-student/:offer_id', authenticate, authorize(['teacher']), [
             return res.status(403).json({ success: false, error: 'غير مصرح' });
         }
 
-        // التحقق من أن الطالب لديه حجز مدفوع
         const session = await getOne('sessions', 'offer_id', offer_id);
         if (!session || session.student_id !== student_id || session.payment_status !== 'paid') {
             return res.status(403).json({ success: false, error: 'الطالب ليس لديه حجز مدفوع في هذه الحصة' });
         }
 
-        // إضافة الطالب إلى active_stream
         await insert('active_stream', {
             offer_id: parseInt(offer_id),
             student_id: parseInt(student_id),
@@ -166,14 +162,12 @@ router.post('/add-student/:offer_id', authenticate, authorize(['teacher']), [
             added_by_teacher: true
         });
 
-        // حذف الطالب من waiting_room
         await supabase
             .from('waiting_room')
             .delete()
             .eq('offer_id', offer_id)
             .eq('student_id', student_id);
 
-        // إشعار للطالب
         await insert('notifications', {
             user_id: student_id,
             user_type: 'student',
@@ -372,6 +366,7 @@ router.post('/end/:offer_id', authenticate, authorize(['teacher']), [
         await supabase.from('waiting_room').delete().eq('offer_id', offer_id);
         res.json({ success: true });
     } catch (error) {
+        console.error('خطأ في إنهاء البث:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
@@ -388,6 +383,7 @@ router.get('/status/:offer_id', async (req, res) => {
             platform: offer?.stream_platform || null
         });
     } catch (error) {
+        console.error('خطأ في جلب حالة البث:', error.message);
         res.status(500).json({ status: 'not_found' });
     }
 });
