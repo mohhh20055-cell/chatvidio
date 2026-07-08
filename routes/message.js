@@ -6,10 +6,22 @@ const express = require('express');
 const router = express.Router();
 const { body, param, validationResult } = require('express-validator');
 
-// استيراد الدوال المساعدة
 const { supabase } = require('../config/database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, checkBanned } = require('../middleware/auth');
 const { getOne, insert } = require('../utils/helpers');
+
+// ✅ تعريف authorize محلياً
+function authorize(roles = []) {
+    return (req, res, next) => {
+        if (!req.user) {
+            return res.status(401).json({ success: false, error: 'غير مصرح به' });
+        }
+        if (roles.length > 0 && !roles.includes(req.user.role)) {
+            return res.status(403).json({ success: false, error: 'صلاحيات غير كافية' });
+        }
+        next();
+    };
+}
 
 // ============================================================
 // إرسال رسالة
@@ -54,7 +66,7 @@ router.post('/send', authenticate, [
 
         res.json({ success: true, message: newMessage });
     } catch (error) {
-        console.error('خطأ:', error.message);
+        console.error('خطأ في إرسال رسالة:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
@@ -116,7 +128,7 @@ router.get('/conversations/:user_id/:user_type', authenticate, [
 
         res.json(Object.values(conversations));
     } catch (error) {
-        console.error('خطأ:', error.message);
+        console.error('خطأ في جلب المحادثات:', error.message);
         res.status(500).json([]);
     }
 });
@@ -156,7 +168,7 @@ router.get('/:user_id/:user_type/:other_id/:other_type', authenticate, [
 
         res.json(data || []);
     } catch (error) {
-        console.error('خطأ:', error.message);
+        console.error('خطأ في جلب المحادثة:', error.message);
         res.status(500).json([]);
     }
 });
