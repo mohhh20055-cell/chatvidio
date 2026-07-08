@@ -297,8 +297,6 @@ async function sendVerificationEmail(toEmail, toName, verificationUrl) {
         const sanitizedName = sanitizeInput(toName);
         const sanitizedUrl = sanitizeInput(verificationUrl);
 
-        console.log('محاولة إرسال بريد تأكيد إلى:', sanitizedEmail);
-
         const { data, error } = await resend.emails.send({
             from: 'منصة التعليم <onboarding@resend.dev>',
             to: [sanitizedEmail],
@@ -328,7 +326,6 @@ async function sendVerificationEmail(toEmail, toName, verificationUrl) {
             return false;
         }
 
-        console.log('تم إرسال بريد التأكيد بنجاح');
         return true;
     } catch (error) {
         console.error('خطأ في إرسال البريد:', error.message);
@@ -341,8 +338,6 @@ async function sendResetEmail(toEmail, toName, resetUrl) {
         const sanitizedEmail = sanitizeInput(toEmail);
         const sanitizedName = sanitizeInput(toName);
         const sanitizedUrl = sanitizeInput(resetUrl);
-
-        console.log('محاولة إرسال بريد إلى:', sanitizedEmail);
 
         const { data, error } = await resend.emails.send({
             from: 'منصة التعليم <onboarding@resend.dev>',
@@ -371,7 +366,6 @@ async function sendResetEmail(toEmail, toName, resetUrl) {
             return false;
         }
 
-        console.log('تم إرسال البريد بنجاح');
         return true;
     } catch (error) {
         console.error('خطأ في إرسال البريد:', error.message);
@@ -384,6 +378,8 @@ async function sendResetEmail(toEmail, toName, resetUrl) {
 // ============================================================
 const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
+const axios = require('axios');
+const https = require('https');
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
 const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf'];
@@ -540,7 +536,6 @@ async function verifyRecaptcha(token) {
     }
 
     try {
-        const axios = require('axios');
         const response = await axios.post(
             'https://www.google.com/recaptcha/api/siteverify',
             null,
@@ -773,8 +768,6 @@ async function createChargilyCheckout(amount, studentName, studentEmail, student
             }
         };
 
-        console.log('📦 إنشاء دفع للمبلغ:', finalAmount, 'DZD');
-
         const authMethods = [
             { 'Authorization': `Bearer ${CHARGILY_API_KEY}` },
             { 'X-Authorization': CHARGILY_API_KEY },
@@ -796,7 +789,6 @@ async function createChargilyCheckout(amount, studentName, studentEmail, student
                 });
 
                 if (response?.data?.checkout_url) {
-                    console.log('✅ تم إنشاء رابط الدفع بنجاح');
                     return {
                         success: true,
                         checkout_url: response.data.checkout_url,
@@ -806,7 +798,6 @@ async function createChargilyCheckout(amount, studentName, studentEmail, student
                 }
             } catch (error) {
                 lastError = error;
-                console.log(`❌ محاولة ${i + 1} فشلت`);
                 if (i < authMethods.length - 1) {
                     await new Promise(resolve => setTimeout(resolve, 1000));
                 }
@@ -815,7 +806,6 @@ async function createChargilyCheckout(amount, studentName, studentEmail, student
 
         throw new Error(lastError?.response?.data?.message || lastError?.message || 'فشلت جميع محاولات الدفع');
     } catch (error) {
-        console.error('❌ خطأ Chargily:', error.response?.data || error.message);
         return {
             success: false,
             error: error.response?.data?.message || error.message || 'حدث خطأ في عملية الدفع'
