@@ -1,31 +1,24 @@
 // ============================================================
-// مسارات نظام الإحالة
+// مسارات الإحالة - Referral Routes
 // ============================================================
 
 const express = require('express');
 const router = express.Router();
-const { body, validationResult, param } = require('express-validator');
+const { body, param, validationResult } = require('express-validator');
 
-// استيراد الدوال المساعدة من الملف الرئيسي
-const server = require('../server');
+// استيراد الدوال المساعدة
+const { supabase } = require('../config/database');
+const { authenticate } = require('../middleware/auth');
+const { getOne, insert, update } = require('../utils/helpers');
+const { generateReferralCode } = require('../utils/helpers');
+const { processReferralReward, processStudentReferralRewardOnBooking } = require('../utils/referral');
 
-// استخراج الدوال من server
-const { 
-    authenticate, 
-    getOne, 
-    insert, 
-    update, 
-    supabase,
-    generateReferralCode,
-    PLATFORM_DOMAIN,
-    processStudentReferralRewardOnBooking
-} = server;
+const PLATFORM_DOMAIN = process.env.PLATFORM_DOMAIN || 'https://chatvidio.vercel.app';
 
 // ============================================================
 // إنشاء رمز إحالة
 // ============================================================
-router.post('/referral/create', [
-    authenticate,
+router.post('/create', authenticate, [
     body('user_id').isInt().withMessage('معرف المستخدم غير صالح'),
     body('role').isIn(['student', 'teacher']).withMessage('دور غير صالح')
 ], async (req, res) => {
@@ -89,8 +82,7 @@ router.post('/referral/create', [
 // ============================================================
 // جلب معلومات الإحالة
 // ============================================================
-router.get('/referral/info/:user_id/:role', [
-    authenticate,
+router.get('/info/:user_id/:role', authenticate, [
     param('user_id').isInt().withMessage('معرف المستخدم غير صالح'),
     param('role').isIn(['student', 'teacher']).withMessage('دور غير صالح')
 ], async (req, res) => {
@@ -161,7 +153,7 @@ router.get('/referral/info/:user_id/:role', [
 // ============================================================
 // معالجة الإحالة
 // ============================================================
-router.post('/referral/process', [
+router.post('/process', [
     body('ref_code').notEmpty().withMessage('رمز الإحالة مطلوب'),
     body('new_user_id').isInt().withMessage('معرف المستخدم الجديد غير صالح'),
     body('new_user_role').isIn(['student', 'teacher']).withMessage('دور المستخدم الجديد غير صالح')
@@ -242,8 +234,7 @@ router.post('/referral/process', [
 // ============================================================
 // فتح صندوق الهدايا
 // ============================================================
-router.post('/referral/open-gift-box', [
-    authenticate,
+router.post('/open-gift-box', authenticate, [
     body('student_id').isInt().withMessage('معرف الطالب غير صالح')
 ], async (req, res) => {
     try {
@@ -329,10 +320,9 @@ router.post('/referral/open-gift-box', [
 });
 
 // ============================================================
-// جلب حالة صندوق الهدايا
+// حالة صندوق الهدايا
 // ============================================================
-router.get('/referral/gift-box-status/:student_id', [
-    authenticate,
+router.get('/gift-box-status/:student_id', authenticate, [
     param('student_id').isInt().withMessage('معرف الطالب غير صالح')
 ], async (req, res) => {
     try {
@@ -374,10 +364,9 @@ router.get('/referral/gift-box-status/:student_id', [
 });
 
 // ============================================================
-// جلب إحصائيات الإحالة للأستاذ
+// إحصائيات الإحالة للأستاذ
 // ============================================================
-router.get('/referral/teacher-stats/:teacher_id', [
-    authenticate,
+router.get('/teacher-stats/:teacher_id', authenticate, [
     param('teacher_id').isInt().withMessage('معرف المعلم غير صالح')
 ], async (req, res) => {
     try {
