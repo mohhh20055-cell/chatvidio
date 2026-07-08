@@ -23,8 +23,6 @@ const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'zoomdz_secret_key_2024_for_testing_only';
 const JWT_EXPIRY = '24h';
 const SALT_ROUNDS = 12;
-const MAX_LOGIN_ATTEMPTS = 5;
-const LOCKOUT_TIME = 15 * 60 * 1000;
 const PLATFORM_DOMAIN = process.env.PLATFORM_DOMAIN || 'https://chatvidio.vercel.app';
 
 // قراءة المتغيرات البيئية
@@ -124,6 +122,10 @@ function generateReferralCode(name, id) {
     const suffix = id.toString(36).toUpperCase();
     return `${prefix}${suffix}`;
 }
+
+// ============================================================
+// دوال قاعدة البيانات
+// ============================================================
 
 async function getOne(table, column, value) {
     try {
@@ -408,7 +410,8 @@ const csrfExcludedPaths = [
     '/api/student/stream-status',
     '/api/join-stream',
     '/api/teacher-start-stream',
-    '/api/teacher-stream'
+    '/api/teacher-stream',
+    '/api/chargily-webhook'
 ];
 
 app.use((req, res, next) => {
@@ -641,13 +644,13 @@ app.use((err, req, res, next) => {
 // تشغيل الخادم
 // ============================================================
 
+module.exports = app;
+
 if (require.main === module) {
     app.listen(PORT, '0.0.0.0', () => {
         console.log(`🚀 الخادم يعمل على http://localhost:${PORT}`);
-        console.log('='.repeat(60));
+        console.log('=' .repeat(60));
         console.log('📅 التاريخ:', new Date().toLocaleString('ar-EG'));
-        console.log('='.repeat(60));
+        console.log('=' .repeat(60));
     });
 }
-
-module.exports = app;
