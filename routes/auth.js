@@ -1,5 +1,5 @@
 // ============================================================
-// مسارات المصادقة - Auth Routes
+// مسارات المصادقة - Auth Routes (معدل بالكامل)
 // ============================================================
 
 const express = require('express');
@@ -9,7 +9,6 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const multer = require('multer');
 const path = require('path');
-const { v4: uuidv4 } = require('uuid');
 
 const { supabase } = require('../config/database');
 const { authenticate, authorize, checkBanned } = require('../middleware/auth');
@@ -90,33 +89,42 @@ async function ensureStudentRoomPasswordsTable() {
             .select('id')
             .limit(1);
         
-        if (checkError && checkError.message.includes('relation "student_room_passwords" does not exist')) {
-            console.log('⚠️ جدول student_room_passwords غير موجود، جاري إنشاؤه...');
+        if (checkError && checkError.message && checkError.message.includes('relation "student_room_passwords" does not exist')) {
+            console.log('⚠️ جدول student_room_passwords غير موجود، سيتم إنشاؤه تلقائياً...');
             
-            // إنشاء الجدول باستخدام SQL مباشر
-            const createTableSQL = `
-                CREATE TABLE IF NOT EXISTS student_room_passwords (
-                    id BIGSERIAL PRIMARY KEY,
-                    offer_id INTEGER NOT NULL REFERENCES offers(id) ON DELETE CASCADE,
-                    student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-                    password TEXT NOT NULL,
-                    used BOOLEAN DEFAULT FALSE,
-                    used_at TIMESTAMP,
-                    created_at TIMESTAMP DEFAULT NOW(),
-                    UNIQUE(offer_id, student_id)
-                );
+            // ✅ محاولة إنشاء الجدول عبر Supabase (إذا كانت الصلاحيات متاحة)
+            try {
+                // استخدام raw SQL عبر rpc إذا كان متاحاً
+                const createTableSQL = `
+                    CREATE TABLE IF NOT EXISTS student_room_passwords (
+                        id BIGSERIAL PRIMARY KEY,
+                        offer_id INTEGER NOT NULL,
+                        student_id INTEGER NOT NULL,
+                        password TEXT NOT NULL,
+                        used BOOLEAN DEFAULT FALSE,
+                        used_at TIMESTAMP,
+                        created_at TIMESTAMP DEFAULT NOW(),
+                        UNIQUE(offer_id, student_id)
+                    );
+                `;
                 
-                CREATE INDEX IF NOT EXISTS idx_student_room_passwords_offer ON student_room_passwords(offer_id);
-                CREATE INDEX IF NOT EXISTS idx_student_room_passwords_student ON student_room_passwords(student_id);
-                CREATE INDEX IF NOT EXISTS idx_student_room_passwords_password ON student_room_passwords(password);
-            `;
-            
-            // تنفيذ SQL عبر Supabase (إذا كان لديك صلاحيات)
-            // ملاحظة: قد تحتاج إلى تنفيذ هذا يدوياً في Supabase SQL Editor
-            console.log('⚠️ يرجى تنفيذ SQL التالي في Supabase SQL Editor:');
-            console.log(createTableSQL);
-            
-            return false;
+                // محاولة تنفيذ SQL عبر الاستعلام المباشر
+                const { error: createError } = await supabase.rpc('exec_sql', { sql: createTableSQL });
+                
+                if (createError) {
+                    console.error('❌ فشل إنشاء الجدول تلقائياً:', createError.message);
+                    console.log('⚠️ يرجى إنشاء الجدول يدوياً في Supabase SQL Editor باستخدام:');
+                    console.log(createTableSQL);
+                    return false;
+                }
+                
+                console.log('✅ تم إنشاء جدول student_room_passwords بنجاح');
+                return true;
+            } catch (rpcError) {
+                console.error('❌ فشل إنشاء الجدول عبر RPC:', rpcError.message);
+                console.log('⚠️ يرجى إنشاء الجدول يدوياً في Supabase SQL Editor');
+                return false;
+            }
         }
         
         console.log('✅ جدول student_room_passwords موجود');
@@ -169,7 +177,7 @@ router.post('/teacher/register', checkBanned, upload.fields([
         let diploma_image = null;
         let id_image = null;
 
-        if (req.files?.['profile_image']?.[0]) {
+        if (req.files && req.files['profile_image'] && req.files['profile_image'][0]) {
             const uploaded = await uploadToSupabase(req.files['profile_image'][0], 'teachers');
             if (uploaded) {
                 profile_image = uploaded.filename;
@@ -177,12 +185,12 @@ router.post('/teacher/register', checkBanned, upload.fields([
             }
         }
 
-        if (req.files?.['diploma_image']?.[0]) {
+        if (req.files && req.files['diploma_image'] && req.files['diploma_image'][0]) {
             const uploaded = await uploadToSupabase(req.files['diploma_image'][0], 'diplomas');
             if (uploaded) diploma_image = uploaded.filename;
         }
 
-        if (req.files?.['id_image']?.[0]) {
+        if (req.files && req.files['id_image'] && req.files['id_image'][0]) {
             const uploaded = await uploadToSupabase(req.files['id_image'][0], 'ids');
             if (uploaded) id_image = uploaded.filename;
         }
@@ -360,6 +368,7 @@ router.post('/login', checkBanned, authLimiter, [
 
         const { email, password, role } = req.body;
 
+        // ✅ تسجيل دخول المدير
         if (role === 'admin') {
             if (email !== ADMIN_EMAIL) {
                 return res.status(401).json({ success: false, error: 'بيانات الدخول غير صحيحة' });
@@ -385,6 +394,7 @@ router.post('/login', checkBanned, authLimiter, [
             });
         }
 
+        // ✅ تتبع محاولات تسجيل الدخول الفاشلة
         const attempt = trackLoginAttempt(email);
         if (attempt.locked) {
             return res.status(429).json({
@@ -393,10 +403,14 @@ router.post('/login', checkBanned, authLimiter, [
             });
         }
 
-        let user = await getOne('teachers', 'email', email);
+        // ✅ البحث عن المستخدم
+        let user = null;
         let userRole = 'teacher';
 
-        if (!user) {
+        if (role === 'teacher') {
+            user = await getOne('teachers', 'email', email);
+            userRole = 'teacher';
+        } else if (role === 'student') {
             user = await getOne('students', 'email', email);
             userRole = 'student';
         }
@@ -406,6 +420,7 @@ router.post('/login', checkBanned, authLimiter, [
             return res.status(404).json({ success: false, error: 'البريد الإلكتروني غير موجود' });
         }
 
+        // ✅ التحقق من الحظر
         if (user.is_banned === true) {
             return res.status(403).json({
                 success: false,
@@ -415,6 +430,7 @@ router.post('/login', checkBanned, authLimiter, [
             });
         }
 
+        // ✅ التحقق من كلمة المرور
         const validPassword = bcrypt.compareSync(password, user.password);
         if (!validPassword) {
             trackLoginAttempt(email);
@@ -423,13 +439,7 @@ router.post('/login', checkBanned, authLimiter, [
 
         resetLoginAttempts(email);
 
-        if (role !== userRole) {
-            return res.status(400).json({
-                success: false,
-                error: `هذا الحساب مسجل كـ ${userRole === 'teacher' ? 'أستاذ' : 'طالب'}`
-            });
-        }
-
+        // ✅ التحقق من تأكيد البريد الإلكتروني
         if (!user.email_verified) {
             return res.status(403).json({
                 success: false,
@@ -440,6 +450,7 @@ router.post('/login', checkBanned, authLimiter, [
             });
         }
 
+        // ✅ التحقق من حالة الأستاذ (معتمد أو قيد المراجعة)
         if (userRole === 'teacher' && user.status !== 'approved') {
             return res.status(403).json({ 
                 success: false, 
@@ -448,6 +459,7 @@ router.post('/login', checkBanned, authLimiter, [
             });
         }
 
+        // ✅ تسجيل محاولة الدخول (IP)
         let ip = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'];
         if (ip && typeof ip === 'string' && ip.includes(',')) {
             ip = ip.split(',')[0].trim();
@@ -457,16 +469,21 @@ router.post('/login', checkBanned, authLimiter, [
         }
 
         if (ip) {
-            const encryptedIP = encrypt(ip);
-            await insert('login_logs', {
-                user_id: user.id,
-                user_role: userRole,
-                ip_address_encrypted: encryptedIP,
-                ip_address_masked: maskIP(ip),
-                created_at: new Date().toISOString()
-            });
+            try {
+                const encryptedIP = encrypt(ip);
+                await insert('login_logs', {
+                    user_id: user.id,
+                    user_role: userRole,
+                    ip_address_encrypted: encryptedIP,
+                    ip_address_masked: maskIP(ip),
+                    created_at: new Date().toISOString()
+                });
+            } catch (logError) {
+                console.error('خطأ في تسجيل سجل الدخول:', logError.message);
+            }
         }
 
+        // ✅ إنشاء التوكن
         const token = generateToken(user.id, userRole, email);
         const redirectPath = userRole === 'teacher' ? '/teacher-dashboard.html' : '/student-dashboard.html';
         
