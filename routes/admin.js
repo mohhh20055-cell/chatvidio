@@ -342,4 +342,352 @@ router.post('/unban-user', [
         const tableName = role === 'student' ? 'students' : 'teachers';
         
         const { data: banRecord } = await supabase
-            .
+            .from('banned_users')
+            .select('*')
+            .eq('user_id', user_id)
+            .eq('user_role', role)
+            .single();
+        
+        if (!banRecord) {
+            return res.status(404).json({ success: false, error: 'المستخدم غير محظور' });
+        }
+        
+        await supabase
+            .from('banned_users')
+            .delete()
+            .eq('id', banRecord.id);
+        
+        await supabase
+            .from(tableName)
+            .update({ is_banned: false, ban_reason: null })
+            .eq('id', user_id);
+        
+        res.json({ success: true, message: 'تم إلغاء حظر المستخدم بنجاح' });
+    } catch (error) {
+        console.error('خطأ في إلغاء الحظر:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// جلب المستخدمين المحظورين
+// ============================================================
+router.get('/banned-users', authenticate, authorize(['admin']), async (req, res) => {
+    try {
+        const { data } = await supabase
+            .from('banned_users')
+            .select('*')
+            .order('banned_at', { ascending: false });
+        res.json(data || []);
+    } catch (error) {
+        console.error('خطأ في جلب المحظورين:', error.message);
+        res.status(500).json([]);
+    }
+});
+
+// ============================================================
+// طلبات السحب
+// ============================================================
+router.get('/withdraw-requests', authenticate, authorize(['admin']), async (req, res) => {
+    try {
+        const { data } = await supabase
+            .from('withdraw_requests')
+            .select('*, teachers:teacher_id (full_name, email, phone)')
+            .eq('status', 'pending')
+            .order('created_at', { ascending: true });
+        res.json(data || []);
+    } catch (error) {
+        console.error('خطأ في جلب طلبات السحب:', error.message);
+        res.status(500).json([]);
+    }
+});
+
+// ============================================================
+// قبول طلب سحب
+// ============================================================
+router.post('/withdraw-requests/:id/approve', [
+    authenticate,
+    authorize(['admin']),
+    param('id').isInt().withMessage('معرف الطلب غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { id } = req.params;
+
+        const request = await getOne('withdraw_requests', 'id', id);
+        if (!request) return res.status(404).json({ success: false, error: 'الطلب غير موجود' });
+
+        await update('withdraw_requests', id, {
+            status: 'completed',
+            processed_at: new Date().toISOString()
+        });
+
+        const teacher = await getOne('teachers', 'id', request.teacher_id);
+        await update('teachers', request.teacher_id, {
+            total_withdrawn: (teacher.total_withdrawn || 0) + request.amount,
+            pending_withdraw: (teacher.pending_withdraw || 0) - request.amount
+        });
+
+        await insert('notifications', {
+            user_id: request.teacher_id,
+            user_type: 'teacher',
+            title: 'تمت معالجة طلب السحب',
+            message: `تم تحويل مبلغ ${request.amount} دج إلى حسابك ${request.ccp_account}`,
+            is_read: false,
+            created_at: new Date().toISOString()
+        });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('خطأ في قبول طلب سحب:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// رفض طلب سحب
+// ============================================================
+router.post('/withdraw-requests/:id/reject', [
+    authenticate,
+    authorize(['admin']),
+    param('id').isInt().withMessage('معرف الطلب غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { id } = req.params;
+        const { reason } = req.body;
+
+        const request = await getOne('withdraw_requests', 'id', id);
+        if (!request) return res.status(404).json({ success: false, error: 'الطلب غير موجود' });
+
+        await update('withdraw_requests', id, {
+            status: 'rejected',
+            rejection_reason: reason || 'لم يتم تحديد سبب',
+            processed_at: new Date().toISOString()
+        });
+
+        const teacher = await getOne('teachers', 'id', request.teacher_id);
+        await update('teachers', request.teacher_id, {
+            balance: (teacher.balance || 0) + request.amount,
+            pending_withdraw: (teacher.pending_withdraw || 0) - request.amount
+        });
+
+        await insert('notifications', {
+            user_id: request.teacher_id,
+            user_type: 'teacher',
+            title: 'تم رفض طلب السحب',
+            message: `تم رفض طلب سحب مبلغ ${request.amount} دج. السبب: ${reason || 'لم يتم تحديد سبب'}`,
+            is_read: false,
+            created_at: new Date().toISOString()
+        });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('خطأ في رفض طلب سحب:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// إرسال إشعار لجميع الطلاب
+// ============================================================
+router.post('/send-notification-to-all-students', [
+    authenticate,
+    authorize(['admin']),
+    body('title').notEmpty().withMessage('العنوان مطلوب').isLength({ max: 100 }),
+    body('message').notEmpty().withMessage('المحتوى مطلوب').isLength({ max: 500 })
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { title, message } = req.body;
+
+        const { data: students } = await supabase
+            .from('students')
+            .select('id')
+            .eq('email_verified', true);
+
+        if (!students || students.length === 0) {
+            return res.status(404).json({ success: false, error: 'لا يوجد طلاب مسجلين' });
+        }
+
+        const notifications = students.map(s => ({
+            user_id: s.id,
+            user_type: 'student',
+            title: title.trim(),
+            message: message.trim(),
+            is_read: false,
+            created_at: new Date().toISOString()
+        }));
+
+        const { error } = await supabase
+            .from('notifications')
+            .insert(notifications);
+
+        if (error) {
+            console.error('خطأ في إرسال الإشعارات:', error);
+            return res.status(500).json({ success: false, error: error.message });
+        }
+
+        await supabase
+            .from('admin_notifications')
+            .insert({
+                title: title.trim(),
+                message: message.trim(),
+                sent_to_all: true,
+                students_count: students.length,
+                created_at: new Date().toISOString()
+            });
+
+        res.json({
+            success: true,
+            students_count: students.length,
+            message: `تم إرسال الإشعار إلى ${students.length} طالب`
+        });
+    } catch (error) {
+        console.error('خطأ في إرسال الإشعار:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// جلب الإشعارات المرسلة
+// ============================================================
+router.get('/sent-notifications', authenticate, authorize(['admin']), async (req, res) => {
+    try {
+        const { data } = await supabase
+            .from('admin_notifications')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        res.json(data || []);
+    } catch (error) {
+        console.error('خطأ في جلب الإشعارات المرسلة:', error.message);
+        res.status(500).json([]);
+    }
+});
+
+// ============================================================
+// حذف إشعار
+// ============================================================
+router.delete('/delete-notification/:id', [
+    authenticate,
+    authorize(['admin']),
+    param('id').isInt().withMessage('معرف الإشعار غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        await supabase
+            .from('admin_notifications')
+            .delete()
+            .eq('id', req.params.id);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('خطأ في حذف الإشعار:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// مراقبة الأداء
+// ============================================================
+router.get('/performance', authenticate, authorize(['admin']), async (req, res) => {
+    try {
+        const { data: connections } = await supabase
+            .from('active_stream')
+            .select('count', { count: 'exact' });
+
+        const { data: sessions } = await supabase
+            .from('sessions')
+            .select('count', { count: 'exact' });
+
+        const memoryUsage = process.memoryUsage();
+        const uptime = process.uptime();
+
+        res.json({
+            status: 'healthy',
+            uptime: Math.floor(uptime),
+            memory: {
+                heapUsed: Math.round(memoryUsage.heapUsed / 1024 / 1024),
+                heapTotal: Math.round(memoryUsage.heapTotal / 1024 / 1024),
+                rss: Math.round(memoryUsage.rss / 1024 / 1024)
+            },
+            active_streams: connections?.count || 0,
+            total_sessions: sessions?.count || 0
+        });
+    } catch (error) {
+        console.error('خطأ في مراقبة الأداء:', error.message);
+        res.status(500).json({ status: 'error', error: error.message });
+    }
+});
+
+// ============================================================
+// رسائل الدعم
+// ============================================================
+router.get('/support-messages', authenticate, authorize(['admin']), async (req, res) => {
+    try {
+        const { data } = await supabase
+            .from('support_messages')
+            .select('*')
+            .order('created_at', { ascending: false });
+        res.json(data || []);
+    } catch (error) {
+        console.error('خطأ في جلب رسائل الدعم:', error.message);
+        res.status(500).json([]);
+    }
+});
+
+router.put('/support-messages/:id/read', [
+    authenticate,
+    authorize(['admin']),
+    param('id').isInt().withMessage('معرف الرسالة غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        await update('support_messages', req.params.id, { status: 'read' });
+        res.json({ success: true });
+    } catch (error) {
+        console.error('خطأ في تحديث رسالة الدعم:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+router.delete('/support-messages/:id', [
+    authenticate,
+    authorize(['admin']),
+    param('id').isInt().withMessage('معرف الرسالة غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        await remove('support_messages', 'id', req.params.id);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('خطأ في حذف رسالة الدعم:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+module.exports = router;
