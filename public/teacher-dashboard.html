@@ -2372,15 +2372,16 @@
         }
     }
 
-    // ✅ تم إصلاح دالة joinTeacherStream - دعم Google Meet مع التوكن
-    function joinTeacherStream(offerId) {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
-            return;
-        }
-        window.open(`/api/join-stream/${offerId}/${teacherId}?token=${encodeURIComponent(token)}`, '_blank');
+// ✅ التصحيح - استخدم هذا الرابط للمعلمين
+function joinTeacherStream(offerId) {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
+        return;
     }
+    // استخدم رابط المعلم بدلاً من رابط الطالب
+    window.open(`/api/teacher-stream/${offerId}/${teacherId}?token=${encodeURIComponent(token)}`, '_blank');
+}
 
     async function deleteOffer(offerId) {
         if (confirm('⚠️ هل أنت متأكد من حذف هذا العرض؟')) {
