@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes, viewport-fit=cover">
-    <title>ZoomDz | لوحة الأستاذ</title>
+    <title>ZoomDz | لوحة الأستاذ - Jitsi Meet</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
@@ -32,6 +32,7 @@
             --gradient-secondary: linear-gradient(135deg, #10b981 0%, #059669 100%);
             --gradient-gold: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
             --gradient-danger: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            --gradient-jitsi: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
             --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
             --shadow-md: 0 4px 20px rgba(0,0,0,0.08);
             --shadow-lg: 0 8px 40px rgba(0,0,0,0.12);
@@ -53,6 +54,23 @@
         ::-webkit-scrollbar-track { background: var(--gray-100); border-radius: 10px; }
         ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--primary-dark); }
+
+        /* ================================================================
+           JITSI MEET BADGE
+        ================================================================ */
+        .jitsi-badge {
+            display: inline-block;
+            background: var(--gradient-jitsi);
+            color: white;
+            padding: 4px 16px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 2px 8px rgba(26, 115, 232, 0.3);
+        }
+        .jitsi-badge i { margin-left: 6px; }
 
         /* ================================================================
            NAVBAR
@@ -520,11 +538,11 @@
             transition: var(--transition);
         }
         .start-stream-btn {
-            background: var(--gradient-secondary);
+            background: var(--gradient-jitsi);
             color: white;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+            box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
         }
-        .start-stream-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3); }
+        .start-stream-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(26, 115, 232, 0.4); }
         .delete-btn {
             background: var(--gradient-danger);
             color: white;
@@ -561,6 +579,22 @@
             box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
         }
         .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(239, 68, 68, 0.3); }
+        .btn-jitsi {
+            background: var(--gradient-jitsi);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.8rem;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+        }
+        .btn-jitsi:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(26, 115, 232, 0.4); }
 
         .section-actions {
             display: flex;
@@ -1439,7 +1473,7 @@
 
 <script>
     // ================================================================
-    // ✅ تم إصلاح مشكلة التوكن بشكل كامل
+    // ✅ تم إصلاح مشكلة التوكن بشكل كامل - Jitsi Meet فقط
     // ================================================================
 
     let userData = null;
@@ -1458,13 +1492,13 @@
         : 'https://chatvidio.onrender.com';
 
     console.log('🌐 API Base URL:', API_BASE_URL);
+    console.log('🎥 نظام البث: Jitsi Meet (مجاني 100%)');
 
     // ================================================================
     // دوال المصادقة والأمان
     // ================================================================
 
     async function fetchWithAuth(url, options = {}) {
-        // ✅ إضافة API_BASE_URL إذا كان الرابط نسبياً
         const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
         
         const isFormData = options.body instanceof FormData;
@@ -1826,6 +1860,7 @@
 
         document.getElementById('profileInfo').innerHTML = `
             <div class="profile-display">
+                <div class="jitsi-badge"><i class="fas fa-video"></i> Jitsi Meet - مجاني 100%</div>
                 <img src="${userImage}" alt="صورة الملف الشخصي" class="profile-avatar" 
                      onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=0f5cbf&color=fff&size=120'">
                 <div class="profile-name">${escapeHtml(userData.full_name)}</div>
@@ -1879,6 +1914,9 @@
 
                 <p style="color: var(--gray-400); margin-top: 16px; font-size: 0.7rem;">
                     <i class="fas fa-lock"></i> لا يمكن تعديل المعلومات الشخصية (الاسم، التخصص، الخبرة) إلا عبر الإدارة
+                </p>
+                <p style="color: var(--gray-400); margin-top: 8px; font-size: 0.7rem;">
+                    <i class="fas fa-video"></i> نظام البث: Jitsi Meet (مجاني 100%)
                 </p>
             </div>
         `;
@@ -2264,7 +2302,7 @@
     }
 
     // ================================================================
-    // OFFERS
+    // OFFERS - Jitsi Meet فقط
     // ================================================================
 
     async function loadOffers() {
@@ -2318,16 +2356,17 @@
                 levelDisplay = `<div style="font-size:0.75rem; color:#8b5cf6; margin-top:4px;"><i class="fas fa-graduation-cap"></i> المستوى: ${levelName}</div>`;
             }
 
-            // ✅ أزرار البث المباشر مع التوكن
+            // ✅ أزرار البث المباشر مع Jitsi Meet فقط
             let streamButton = '';
             if (!isExpired && offer.status === 'upcoming') {
-                streamButton = `<button class="start-stream-btn" onclick="enterStream(${offer.id})"><i class="fas fa-play"></i> بدء البث</button>`;
+                streamButton = `<button class="start-stream-btn" onclick="enterStream(${offer.id})"><i class="fas fa-play"></i> بدء البث (Jitsi)</button>`;
             } else if (!isExpired && (offer.status === 'teacher_ready' || offer.status === 'live')) {
-                streamButton = `<button class="start-stream-btn" onclick="joinTeacherStream(${offer.id})"><i class="fas fa-video"></i> دخول البث</button>`;
+                streamButton = `<button class="start-stream-btn" onclick="joinTeacherStream(${offer.id})"><i class="fas fa-video"></i> دخول البث (Jitsi)</button>`;
             }
 
             html += `<div class="offer-card ${isExpired ? 'expired' : ''}">
                 ${isExpired ? '<span class="expired-label">منتهية</span>' : ''}
+                <div class="jitsi-badge"><i class="fas fa-video"></i> Jitsi Meet</div>
                 <div class="offer-title">${escapeHtml(offer.subject_name)}</div>
                 <div style="font-size:0.85rem; color:var(--gray-600);"><i class="fas fa-calendar-alt" style="color:var(--primary);"></i> ${offerDate.toLocaleString('ar')}</div>
                 <div style="font-size:0.85rem; color:var(--gray-600);"><i class="fas fa-clock" style="color:var(--primary);"></i> ${offer.duration} دقيقة</div>
@@ -2375,9 +2414,9 @@
         loadOffers();
     }
 
-    // ✅ تم إصلاح دالة enterStream - إضافة التوكن إلى الرابط
+    // ✅ بدء البث عبر Jitsi Meet فقط
     async function enterStream(offerId) {
-        if (confirm('⚠️ هل تريد بدء البث المباشر؟ سيتم توجيهك إلى صفحة اختيار منصة البث (Jitsi Meet)')) {
+        if (confirm('⚠️ هل تريد بدء البث المباشر عبر Jitsi Meet؟ (مجاني 100%)')) {
             const token = localStorage.getItem('token');
             if (!token) {
                 showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
@@ -2389,7 +2428,7 @@
         }
     }
 
-    // ✅ تم إصلاح دالة joinTeacherStream - استخدام رابط المعلم الصحيح مع API_BASE_URL
+    // ✅ دخول البث عبر Jitsi Meet فقط
     function joinTeacherStream(offerId) {
         const token = localStorage.getItem('token');
         if (!token) {
