@@ -298,7 +298,7 @@ app.use(express.static('public', {
 }));
 
 // ============================================================
-// Middleware المصادقة
+// Middleware المصادقة (معرفة محلياً)
 // ============================================================
 
 async function authenticate(req, res, next) {
@@ -322,6 +322,7 @@ async function authenticate(req, res, next) {
     next();
 }
 
+// ✅ تعريف authorize محلياً في server.js (متاح لجميع الملفات)
 function authorize(roles = []) {
     return (req, res, next) => {
         if (!req.user) {
@@ -333,10 +334,6 @@ function authorize(roles = []) {
         next();
     };
 }
-
-// ============================================================
-// Middleware التحقق من الحظر
-// ============================================================
 
 async function checkBanned(req, res, next) {
     let ip = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'];
