@@ -1452,11 +1452,21 @@
     let authToken = null;
     let csrfToken = null;
 
+    // ✅ تحديد رابط API الأساسي
+    const API_BASE_URL = window.location.hostname === 'localhost' 
+        ? 'http://localhost:3000' 
+        : 'https://chatvidio.onrender.com';
+
+    console.log('🌐 API Base URL:', API_BASE_URL);
+
     // ================================================================
     // دوال المصادقة والأمان
     // ================================================================
 
     async function fetchWithAuth(url, options = {}) {
+        // ✅ إضافة API_BASE_URL إذا كان الرابط نسبياً
+        const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
+        
         const isFormData = options.body instanceof FormData;
         const headers = {
             'Authorization': `Bearer ${authToken}`,
@@ -1465,7 +1475,7 @@
             ...options.headers
         };
         
-        const response = await fetch(url, {
+        const response = await fetch(fullUrl, {
             ...options,
             headers: headers
         });
@@ -1492,7 +1502,7 @@
                 }
                 if (data.error && data.error.includes('CSRF')) {
                     await getCsrfToken();
-                    const retryResponse = await fetch(url, {
+                    const retryResponse = await fetch(fullUrl, {
                         ...options,
                         headers: {
                             ...headers,
@@ -1515,7 +1525,7 @@
 
     async function getCsrfToken() {
         try {
-            const response = await fetch('/api/csrf-token', {
+            const response = await fetch(`${API_BASE_URL}/api/csrf-token`, {
                 credentials: 'include'
             });
             const data = await response.json();
@@ -2047,17 +2057,20 @@
     }
 
     // ================================================================
-    // TEACHERS
+    // TEACHERS - ✅ تم إصلاح عرض الأساتذة
     // ================================================================
 
     async function loadTeachers() {
         const container = document.getElementById('teachersList');
         container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
         try {
-            const res = await fetch('/api/teachers');
+            const res = await fetch(`${API_BASE_URL}/api/teachers`);
+            if (!res.ok) {
+                throw new Error(`HTTP error! status: ${res.status}`);
+            }
             const teachers = await res.json();
-            if (teachers.length === 0) {
-                container.innerHTML = '<p style="text-align:center; padding:25px; color:var(--gray-400);">لا يوجد أساتذة حالياً</p>';
+            if (!teachers || teachers.length === 0) {
+                container.innerHTML = '<p style="text-align:center; padding:25px; color:var(--gray-400);">لا يوجد أساتذة معتمدون حالياً</p>';
                 return;
             }
             let html = '';
@@ -2070,6 +2083,7 @@
                         <div class="teacher-name">${escapeHtml(teacher.full_name)}</div>
                         <div class="teacher-specialty"><i class="fas fa-book"></i> ${teacher.specialization || 'تخصص عام'}</div>
                         <div class="teacher-specialty"><i class="fas fa-briefcase"></i> ${teacher.experience || '0'} سنة خبرة</div>
+                        ${teacher.bio ? `<div style="font-size:0.75rem; color:var(--gray-500); margin-top:6px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${escapeHtml(teacher.bio)}</div>` : ''}
                         <button class="message-btn" onclick="startChatWithTeacher(${teacher.id}, '${escapeHtml(teacher.full_name)}', '${teacherImage}')">
                             <i class="fas fa-envelope"></i> مراسلة
                         </button>
@@ -2079,7 +2093,8 @@
             container.innerHTML = html;
         } catch(e) { 
             console.error('خطأ في تحميل الأساتذة:', e);
-            showToast('حدث خطأ', 'error'); 
+            showToast('حدث خطأ في تحميل الأساتذة', 'error');
+            container.innerHTML = '<p style="text-align:center; padding:25px; color:var(--gray-400);">حدث خطأ في تحميل الأساتذة</p>';
         }
     }
 
@@ -2367,21 +2382,23 @@
                 showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
                 return;
             }
-            window.open(`/api/teacher-start-stream/${offerId}/${teacherId}?token=${encodeURIComponent(token)}`, '_blank');
+            const streamUrl = `${API_BASE_URL}/api/teacher-start-stream/${offerId}/${teacherId}?token=${encodeURIComponent(token)}`;
+            window.open(streamUrl, '_blank');
             setTimeout(() => loadOffers(), 2000);
         }
     }
 
-// ✅ التصحيح - استخدم هذا الرابط للمعلمين
-function joinTeacherStream(offerId) {
-    const token = localStorage.getItem('token');
-    if (!token) {
-        showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
-        return;
+    // ✅ تم إصلاح دالة joinTeacherStream - استخدام رابط المعلم الصحيح مع API_BASE_URL
+    function joinTeacherStream(offerId) {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
+            return;
+        }
+        // ✅ استخدم رابط المعلم الصحيح مع API_BASE_URL
+        const streamUrl = `${API_BASE_URL}/api/teacher-stream/${offerId}/${teacherId}?token=${encodeURIComponent(token)}`;
+        window.open(streamUrl, '_blank');
     }
-    // استخدم رابط المعلم بدلاً من رابط الطالب
-    window.open(`/api/teacher-stream/${offerId}/${teacherId}?token=${encodeURIComponent(token)}`, '_blank');
-}
 
     async function deleteOffer(offerId) {
         if (confirm('⚠️ هل أنت متأكد من حذف هذا العرض؟')) {
