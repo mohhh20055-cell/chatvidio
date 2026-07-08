@@ -7,12 +7,25 @@ const router = express.Router();
 const { body, param, validationResult } = require('express-validator');
 const bcrypt = require('bcryptjs');
 
-// ✅ تأكد من المسار الصحيح للاستيراد
+// استيراد الدوال
 const { supabase } = require('../config/database');
-const { authenticate, authorize, checkBanned } = require('../middleware/auth');
+const { authenticate, checkBanned } = require('../middleware/auth');
 const { getOne, insert, update, remove } = require('../utils/helpers');
 const { encrypt, maskIP } = require('../utils/encryption');
 const { processReferralReward } = require('../utils/referral');
+
+// ✅ تعريف authorize محلياً (حل سريع)
+function authorize(roles = []) {
+    return (req, res, next) => {
+        if (!req.user) {
+            return res.status(401).json({ success: false, error: 'غير مصرح به' });
+        }
+        if (roles.length > 0 && !roles.includes(req.user.role)) {
+            return res.status(403).json({ success: false, error: 'صلاحيات غير كافية' });
+        }
+        next();
+    };
+}
 
 // الثوابت
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@platform.com';
