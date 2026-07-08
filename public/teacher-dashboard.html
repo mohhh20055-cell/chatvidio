@@ -1343,7 +1343,6 @@
         
         <hr class="social-divider">
         
-        <!-- روابط التواصل الاجتماعي -->
         <div style="margin: 16px 0;">
             <div class="social-label"><i class="fas fa-share-alt"></i> روابط التواصل الاجتماعي</div>
             <p style="font-size: 0.75rem; color: var(--gray-400); margin-bottom: 12px;">أضف روابط صفحاتك على منصات التواصل الاجتماعي لتظهر للطلاب</p>
@@ -1439,7 +1438,7 @@
 
 <script>
     // ================================================================
-    // ✅ تم إصلاح مشكلة التوكن و CSRF بشكل كامل
+    // ✅ لوحة الأستاذ - نسخة معدلة بالكامل مع دعم البث المباشر
     // ================================================================
 
     let userData = null;
@@ -1453,18 +1452,9 @@
     let csrfToken = null;
 
     // ================================================================
-    // دوال المصادقة والأمان - ✅ تم إضافة CSRF Token
+    // دوال المصادقة والأمان
     // ================================================================
 
-    function getAuthHeaders() {
-        return {
-            'Authorization': `Bearer ${authToken}`,
-            'X-CSRF-Token': csrfToken || '',
-            'Content-Type': 'application/json'
-        };
-    }
-
-    // ✅ دالة لجلب CSRF Token من الخادم
     async function fetchCsrfToken() {
         try {
             const response = await fetch('/api/get-csrf-token', {
@@ -1518,7 +1508,6 @@
                     throw new Error('حساب محظور');
                 }
                 if (data.error && data.error.includes('CSRF')) {
-                    // ✅ تجديد CSRF Token وإعادة المحاولة
                     await fetchCsrfToken();
                     const retryResponse = await fetch(url, {
                         ...options,
@@ -1542,7 +1531,7 @@
     }
 
     // ================================================================
-    // NOTIFICATIONS SYSTEM
+    // NOTIFICATIONS
     // ================================================================
 
     async function loadNotifications() {
@@ -1683,7 +1672,7 @@
     }
 
     // ================================================================
-    // TOAST NOTIFICATIONS
+    // TOAST
     // ================================================================
 
     function showToast(message, type = 'success') {
@@ -1743,7 +1732,7 @@
     }
 
     // ================================================================
-    // USER DATA - ✅ مع CSRF Token
+    // USER DATA
     // ================================================================
 
     async function loadUserData() {
@@ -1766,7 +1755,6 @@
                 return;
             }
 
-            // ✅ جلب CSRF Token
             await fetchCsrfToken();
 
             const res = await fetchWithAuth(`/api/teacher/${teacherId}`);
@@ -2263,7 +2251,7 @@
     }
 
     // ================================================================
-    // OFFERS - ✅ مع CSRF Token
+    // OFFERS - ✅ مع دعم البث المباشر
     // ================================================================
 
     async function loadOffers() {
@@ -2339,6 +2327,30 @@
         container.innerHTML = html;
     }
 
+    // ✅ دالة بدء البث - معدلة مع دعم CSRF
+    async function enterStream(offerId) {
+        if (confirm('⚠️ هل تريد بدء البث المباشر؟ سيتم توجيهك إلى صفحة اختيار منصة البث (Google Meet / Microsoft Teams)')) {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
+                return;
+            }
+            await fetchCsrfToken();
+            window.open(`/api/teacher-start-stream/${offerId}/${teacherId}?token=${encodeURIComponent(token)}`, '_blank');
+            setTimeout(() => loadOffers(), 2000);
+        }
+    }
+
+    // ✅ دالة دخول البث - معدلة
+    function joinTeacherStream(offerId) {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
+            return;
+        }
+        window.open(`/api/teacher-stream/${offerId}/${teacherId}?token=${encodeURIComponent(token)}`, '_blank');
+    }
+
     async function deleteExpiredOffers() {
         const res = await fetchWithAuth(`/api/teacher/offers/${teacherId}`);
         const offers = await res.json();
@@ -2372,31 +2384,6 @@
 
         showToast(`✅ تم حذف ${deletedCount} عرض منتهٍ`, 'success');
         loadOffers();
-    }
-
-    // ✅ تم إصلاح دالة enterStream - مع CSRF Token
-    async function enterStream(offerId) {
-        if (confirm('⚠️ هل تريد بدء البث المباشر؟ سيتم توجيهك إلى صفحة اختيار منصة البث (Google Meet / Microsoft Teams)')) {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
-                return;
-            }
-            // ✅ جلب CSRF Token قبل فتح الصفحة
-            await fetchCsrfToken();
-            window.open(`/api/teacher-start-stream/${offerId}/${teacherId}?token=${encodeURIComponent(token)}`, '_blank');
-            setTimeout(() => loadOffers(), 2000);
-        }
-    }
-
-    // ✅ تم إصلاح دالة joinTeacherStream - مع CSRF Token
-    function joinTeacherStream(offerId) {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
-            return;
-        }
-        window.open(`/api/teacher-stream/${offerId}/${teacherId}?token=${encodeURIComponent(token)}`, '_blank');
     }
 
     async function deleteOffer(offerId) {
@@ -2646,7 +2633,7 @@
     }
 
     // ================================================================
-    // CLOSE DROPDOWNS ON CLICK OUTSIDE
+    // CLOSE DROPDOWNS
     // ================================================================
 
     document.addEventListener('click', function(e) {
@@ -2664,7 +2651,7 @@
     });
 
     // ================================================================
-    // INIT - ✅ مع CSRF Token
+    // INIT
     // ================================================================
 
     loadUserData().then(() => {
@@ -2691,7 +2678,6 @@
         }
     }, 15000);
 
-    // ✅ تجديد CSRF Token كل ساعة
     setInterval(() => {
         if (authToken) {
             fetchCsrfToken();
