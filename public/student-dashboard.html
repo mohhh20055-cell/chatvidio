@@ -1650,15 +1650,15 @@
         showToast('تم تحديد جميع الإشعارات كمقروءة', 'success');
     }
 
-    // ✅ تم إصلاح دالة joinFromNotification - إضافة التوكن في Query Parameter
+    // ✅ تم إصلاح دالة joinFromNotification - فتح رابط البث مباشرة
     async function joinFromNotification(offerId) {
         try {
             const res = await fetchWithAuth(`/api/student/stream-status/${offerId}/${studentId}`);
             const data = await res.json();
-            if (data.can_join) {
+            if (data.can_join && data.stream_url) {
                 const token = localStorage.getItem('token');
-                const streamUrl = `${API_BASE_URL}/api/join-stream/${offerId}/${studentId}?token=${encodeURIComponent(token)}`;
-                window.open(streamUrl, '_blank');
+                // ✅ فتح الرابط مباشرة (تم إضافة التوكن في الـ API)
+                window.open(data.stream_url, '_blank');
             } else if (data.is_waiting) {
                 showToast('⏳ جاري التحضير للبث، انتظر قليلاً...', 'warning');
             } else {
@@ -2093,15 +2093,29 @@
         container.innerHTML = html;
     }
 
-    // ✅ تم إصلاح دالة joinLiveStream - إضافة التوكن في Query Parameter
+    // ✅ تم إصلاح دالة joinLiveStream - فتح رابط البث مباشرة
     function joinLiveStream(offerId) {
         const token = localStorage.getItem('token');
         if (!token) {
             showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
             return;
         }
-        const streamUrl = `${API_BASE_URL}/api/join-stream/${offerId}/${studentId}?token=${encodeURIComponent(token)}`;
-        window.open(streamUrl, '_blank');
+        // ✅ جلب حالة البث والحصول على الرابط مباشرة
+        fetchWithAuth(`/api/student/stream-status/${offerId}/${studentId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.can_join && data.stream_url) {
+                    // ✅ فتح الرابط مباشرة (تم إضافة التوكن في الـ API)
+                    window.open(data.stream_url, '_blank');
+                } else if (data.is_waiting) {
+                    showToast('⏳ جاري التحضير للبث، انتظر قليلاً...', 'warning');
+                } else {
+                    showToast('البث غير متاح حالياً', 'warning');
+                }
+            })
+            .catch(() => {
+                showToast('حدث خطأ', 'error');
+            });
     }
 
     // ================================================================
