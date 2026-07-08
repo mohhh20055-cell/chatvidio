@@ -6,7 +6,10 @@ const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
 
-// استيراد الدوال المساعدة
+// استيراد الدوال المساعدة من الملف الرئيسي
+const server = require('../server');
+
+// استخراج الدوال من server
 const { 
     authenticate, 
     authorize, 
@@ -15,7 +18,7 @@ const {
     update, 
     supabase,
     processStudentReferralRewardOnBooking
-} = require('../server');
+} = server;
 
 // ============================================================
 // إنشاء حجز جديد
