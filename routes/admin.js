@@ -1,34 +1,44 @@
 // ============================================================
-// مسارات الإدارة
+// مسارات الإدارة - Admin Routes
 // ============================================================
 
 const express = require('express');
 const router = express.Router();
-const { body, validationResult, param } = require('express-validator');
+const { body, param, validationResult } = require('express-validator');
+const bcrypt = require('bcryptjs');
 
-// استيراد الدوال المساعدة من الملف الرئيسي
-const server = require('../server');
+// استيراد الدوال المساعدة
+const { supabase } = require('../config/database');
+const { authenticate, authorize, checkBanned } = require('../middleware/auth');
+const { getOne, insert, update, remove } = require('../utils/helpers');
+const { encrypt, maskIP } = require('../utils/encryption');
+const { processReferralReward } = require('../utils/referral');
 
-// استخراج الدوال من server
-const { 
-    authenticate, 
-    authorize, 
-    getOne, 
-    insert, 
-    update, 
-    remove,
-    supabase,
-    processReferralReward,
-    encrypt
-} = server;
+// الثوابت
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@platform.com';
+const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || bcrypt.hashSync('admin123', 12);
+const SALT_ROUNDS = 12;
 
 // ============================================================
-// جلب الأساتذة المعلقين
+// جلب جميع الطلاب
 // ============================================================
-router.get('/admin/pending-teachers', [
-    authenticate,
-    authorize(['admin'])
-], async (req, res) => {
+router.get('/students', authenticate, authorize(['admin']), async (req, res) => {
+    try {
+        const { data } = await supabase
+            .from('students')
+            .select('*')
+            .order('created_at', { ascending: false });
+        res.json(data || []);
+    } catch (error) {
+        console.error('خطأ:', error.message);
+        res.status(500).json([]);
+    }
+});
+
+// ============================================================
+// جلب جميع الأساتذة المعلقين
+// ============================================================
+router.get('/pending-teachers', authenticate, authorize(['admin']), async (req, res) => {
     try {
         const { data } = await supabase
             .from('teachers')
@@ -43,12 +53,9 @@ router.get('/admin/pending-teachers', [
 });
 
 // ============================================================
-// جلب الأساتذة المعتمدين
+// جلب جميع الأساتذة المقبولين
 // ============================================================
-router.get('/admin/approved-teachers', [
-    authenticate,
-    authorize(['admin'])
-], async (req, res) => {
+router.get('/approved-teachers', authenticate, authorize(['admin']), async (req, res) => {
     try {
         const { data } = await supabase
             .from('teachers')
@@ -65,7 +72,7 @@ router.get('/admin/approved-teachers', [
 // ============================================================
 // قبول الأستاذ
 // ============================================================
-router.post('/admin/approve-teacher/:id', [
+router.post('/approve-teacher/:id', [
     authenticate,
     authorize(['admin']),
     param('id').isInt().withMessage('معرف الأستاذ غير صالح')
@@ -80,6 +87,7 @@ router.post('/admin/approve-teacher/:id', [
 
         await update('teachers', teacherId, { status: 'approved' });
 
+        // معالجة مكافأة الإحالة
         const { data: referral } = await supabase
             .from('referrals')
             .select('*')
@@ -103,7 +111,7 @@ router.post('/admin/approve-teacher/:id', [
 // ============================================================
 // رفض الأستاذ
 // ============================================================
-router.post('/admin/reject-teacher/:id', [
+router.post('/reject-teacher/:id', [
     authenticate,
     authorize(['admin']),
     param('id').isInt().withMessage('معرف الأستاذ غير صالح')
@@ -128,7 +136,7 @@ router.post('/admin/reject-teacher/:id', [
 // ============================================================
 // حذف الأستاذ
 // ============================================================
-router.delete('/admin/delete-teacher/:id', [
+router.delete('/delete-teacher/:id', [
     authenticate,
     authorize(['admin']),
     param('id').isInt().withMessage('معرف الأستاذ غير صالح')
@@ -162,28 +170,9 @@ router.delete('/admin/delete-teacher/:id', [
 });
 
 // ============================================================
-// جلب جميع الطلاب
+// حذف المستخدم (طالب أو أستاذ)
 // ============================================================
-router.get('/admin/students', [
-    authenticate,
-    authorize(['admin'])
-], async (req, res) => {
-    try {
-        const { data } = await supabase
-            .from('students')
-            .select('*')
-            .order('created_at', { ascending: false });
-        res.json(data || []);
-    } catch (error) {
-        console.error('خطأ:', error.message);
-        res.status(500).json([]);
-    }
-});
-
-// ============================================================
-// حذف مستخدم
-// ============================================================
-router.post('/admin/delete-user', [
+router.post('/delete-user', [
     authenticate,
     authorize(['admin']),
     body('user_id').isInt().withMessage('معرف المستخدم مطلوب'),
@@ -252,9 +241,9 @@ router.post('/admin/delete-user', [
 });
 
 // ============================================================
-// حظر مستخدم
+// حظر المستخدم
 // ============================================================
-router.post('/admin/ban-user', [
+router.post('/ban-user', [
     authenticate,
     authorize(['admin']),
     body('user_id').isInt().withMessage('معرف المستخدم مطلوب'),
@@ -323,9 +312,9 @@ router.post('/admin/ban-user', [
 });
 
 // ============================================================
-// إلغاء حظر مستخدم
+// إلغاء حظر المستخدم
 // ============================================================
-router.post('/admin/unban-user', [
+router.post('/unban-user', [
     authenticate,
     authorize(['admin']),
     body('user_id').isInt().withMessage('معرف المستخدم مطلوب'),
@@ -371,10 +360,7 @@ router.post('/admin/unban-user', [
 // ============================================================
 // جلب المستخدمين المحظورين
 // ============================================================
-router.get('/admin/banned-users', [
-    authenticate,
-    authorize(['admin'])
-], async (req, res) => {
+router.get('/banned-users', authenticate, authorize(['admin']), async (req, res) => {
     try {
         const { data } = await supabase
             .from('banned_users')
@@ -388,12 +374,9 @@ router.get('/admin/banned-users', [
 });
 
 // ============================================================
-// جلب طلبات السحب
+// طلبات السحب
 // ============================================================
-router.get('/admin/withdraw-requests', [
-    authenticate,
-    authorize(['admin'])
-], async (req, res) => {
+router.get('/withdraw-requests', authenticate, authorize(['admin']), async (req, res) => {
     try {
         const { data } = await supabase
             .from('withdraw_requests')
@@ -409,7 +392,7 @@ router.get('/admin/withdraw-requests', [
 // ============================================================
 // قبول طلب سحب
 // ============================================================
-router.post('/admin/withdraw-requests/:id/approve', [
+router.post('/withdraw-requests/:id/approve', [
     authenticate,
     authorize(['admin']),
     param('id').isInt().withMessage('معرف الطلب غير صالح')
@@ -454,7 +437,7 @@ router.post('/admin/withdraw-requests/:id/approve', [
 // ============================================================
 // رفض طلب سحب
 // ============================================================
-router.post('/admin/withdraw-requests/:id/reject', [
+router.post('/withdraw-requests/:id/reject', [
     authenticate,
     authorize(['admin']),
     param('id').isInt().withMessage('معرف الطلب غير صالح')
@@ -501,7 +484,7 @@ router.post('/admin/withdraw-requests/:id/reject', [
 // ============================================================
 // إرسال إشعار لجميع الطلاب
 // ============================================================
-router.post('/admin/send-notification-to-all-students', [
+router.post('/send-notification-to-all-students', [
     authenticate,
     authorize(['admin']),
     body('title').notEmpty().withMessage('العنوان مطلوب').isLength({ max: 100 }),
@@ -566,10 +549,7 @@ router.post('/admin/send-notification-to-all-students', [
 // ============================================================
 // جلب الإشعارات المرسلة
 // ============================================================
-router.get('/admin/sent-notifications', [
-    authenticate,
-    authorize(['admin'])
-], async (req, res) => {
+router.get('/sent-notifications', authenticate, authorize(['admin']), async (req, res) => {
     try {
         const { data } = await supabase
             .from('admin_notifications')
@@ -586,7 +566,7 @@ router.get('/admin/sent-notifications', [
 // ============================================================
 // حذف إشعار
 // ============================================================
-router.delete('/admin/delete-notification/:id', [
+router.delete('/delete-notification/:id', [
     authenticate,
     authorize(['admin']),
     param('id').isInt().withMessage('معرف الإشعار غير صالح')
@@ -610,10 +590,7 @@ router.delete('/admin/delete-notification/:id', [
 // ============================================================
 // مراقبة الأداء
 // ============================================================
-router.get('/admin/performance', [
-    authenticate,
-    authorize(['admin'])
-], async (req, res) => {
+router.get('/performance', authenticate, authorize(['admin']), async (req, res) => {
     try {
         const { data: connections } = await supabase
             .from('active_stream')
@@ -639,6 +616,58 @@ router.get('/admin/performance', [
         });
     } catch (error) {
         res.status(500).json({ status: 'error', error: error.message });
+    }
+});
+
+// ============================================================
+// رسائل الدعم
+// ============================================================
+router.get('/support-messages', authenticate, authorize(['admin']), async (req, res) => {
+    try {
+        const { data } = await supabase
+            .from('support_messages')
+            .select('*')
+            .order('created_at', { ascending: false });
+        res.json(data || []);
+    } catch (error) {
+        console.error('خطأ:', error.message);
+        res.status(500).json([]);
+    }
+});
+
+router.put('/support-messages/:id/read', [
+    authenticate,
+    authorize(['admin']),
+    param('id').isInt().withMessage('معرف الرسالة غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        await update('support_messages', req.params.id, { status: 'read' });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+router.delete('/support-messages/:id', [
+    authenticate,
+    authorize(['admin']),
+    param('id').isInt().withMessage('معرف الرسالة غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        await remove('support_messages', 'id', req.params.id);
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
 
