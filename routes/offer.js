@@ -1,33 +1,20 @@
 // ============================================================
-// مسارات العروض
+// مسارات العروض - Offer Routes
 // ============================================================
 
 const express = require('express');
 const router = express.Router();
-const { body, validationResult, param } = require('express-validator');
+const { body, param, validationResult } = require('express-validator');
 const crypto = require('crypto');
 
-// استيراد الدوال المساعدة من الملف الرئيسي
-const server = require('../server');
-
-// استخراج الدوال من server
-const { 
-    authenticate, 
-    authorize, 
-    getOne, 
-    insert, 
-    update, 
-    remove,
-    supabase,
-    sanitizeInput
-} = server;
+const { supabase } = require('../config/database');
+const { authenticate, authorize } = require('../middleware/auth');
+const { getOne, insert, update, remove } = require('../utils/helpers');
 
 // ============================================================
 // إنشاء عرض جديد
 // ============================================================
-router.post('/offer/create', [
-    authenticate,
-    authorize(['teacher']),
+router.post('/offer/create', authenticate, authorize(['teacher']), [
     body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح'),
     body('subject_name').notEmpty().withMessage('اسم المادة مطلوب').isLength({ max: 100 }),
     body('duration').isInt({ min: 1, max: 360 }).withMessage('المدة غير صالحة (1-360 دقيقة)'),
@@ -53,8 +40,8 @@ router.post('/offer/create', [
             subject_name: subject_name.trim(),
             duration,
             offer_date,
-            price,
-            is_free: is_free ? 1 : 0,
+            price: price || 0,
+            is_free: is_free ? true : false,
             room_name,
             status: 'upcoming',
             education_level: education_level || null
@@ -62,13 +49,13 @@ router.post('/offer/create', [
 
         res.json({ success: true, room_name });
     } catch (error) {
-        console.error('خطأ:', error.message);
+        console.error('خطأ في إنشاء العرض:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
 
 // ============================================================
-// جلب جميع العروض المتاحة
+// جلب جميع العروض القادمة
 // ============================================================
 router.get('/offers', async (req, res) => {
     try {
@@ -90,26 +77,7 @@ router.get('/offers', async (req, res) => {
 
         res.json(formatted);
     } catch (error) {
-        console.error('خطأ:', error.message);
-        res.status(500).json([]);
-    }
-});
-
-// ============================================================
-// جلب العروض العامة
-// ============================================================
-router.get('/public/offers', async (req, res) => {
-    try {
-        const { data } = await supabase
-            .from('offers')
-            .select('*, teachers:teacher_id (id, full_name, specialization, profile_url)')
-            .eq('status', 'upcoming')
-            .gt('offer_date', new Date().toISOString())
-            .order('offer_date', { ascending: true })
-            .limit(50);
-        res.json(data || []);
-    } catch (error) {
-        console.error('خطأ:', error.message);
+        console.error('خطأ في جلب العروض:', error.message);
         res.status(500).json([]);
     }
 });
@@ -127,38 +95,7 @@ router.get('/live-offers', async (req, res) => {
             .limit(20);
         res.json(data || []);
     } catch (error) {
-        console.error('خطأ:', error.message);
-        res.status(500).json([]);
-    }
-});
-
-// ============================================================
-// جلب عروض أستاذ معين
-// ============================================================
-router.get('/teacher/offers/:teacher_id', [
-    authenticate,
-    authorize(['teacher']),
-    param('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const teacher_id = parseInt(req.params.teacher_id);
-
-        if (req.user.userId !== teacher_id) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه العروض' });
-        }
-
-        const { data } = await supabase
-            .from('offers')
-            .select('*')
-            .eq('teacher_id', teacher_id)
-            .order('offer_date', { ascending: false });
-        res.json(data || []);
-    } catch (error) {
+        console.error('خطأ في جلب العروض المباشرة:', error.message);
         res.status(500).json([]);
     }
 });
@@ -166,9 +103,7 @@ router.get('/teacher/offers/:teacher_id', [
 // ============================================================
 // حذف عرض
 // ============================================================
-router.delete('/offer/delete/:offer_id', [
-    authenticate,
-    authorize(['teacher']),
+router.delete('/offer/delete/:offer_id', authenticate, authorize(['teacher']), [
     param('offer_id').isInt().withMessage('معرف العرض غير صالح'),
     body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
 ], async (req, res) => {
@@ -198,12 +133,13 @@ router.delete('/offer/delete/:offer_id', [
 
         res.json({ success: true });
     } catch (error) {
+        console.error('خطأ في حذف العرض:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
 
 // ============================================================
-// عدد الطلاب في قائمة الانتظار
+// عدد المنتظرين في العرض
 // ============================================================
 router.get('/waiting-count/:offer_id', async (req, res) => {
     try {
@@ -213,58 +149,8 @@ router.get('/waiting-count/:offer_id', async (req, res) => {
             .eq('offer_id', req.params.offer_id);
         res.json({ count: count || 0 });
     } catch (error) {
+        console.error('خطأ في جلب عدد المنتظرين:', error.message);
         res.json({ count: 0 });
-    }
-});
-
-// ============================================================
-// إحصائيات العروض العامة
-// ============================================================
-router.get('/public/stats', async (req, res) => {
-    try {
-        const [
-            { count: teachersCount },
-            { count: offersCount },
-            { count: liveCount },
-            { count: studentsCount }
-        ] = await Promise.all([
-            supabase.from('teachers').select('*', { count: 'exact', head: true }).eq('status', 'approved').eq('email_verified', true),
-            supabase.from('offers').select('*', { count: 'exact', head: true })
-                .eq('status', 'upcoming')
-                .gt('offer_date', new Date().toISOString()),
-            supabase.from('offers').select('*', { count: 'exact', head: true }).eq('status', 'live'),
-            supabase.from('students').select('*', { count: 'exact', head: true }).eq('email_verified', true)
-        ]);
-
-        res.json({
-            teachers: teachersCount || 0,
-            offers: offersCount || 0,
-            live: liveCount || 0,
-            students: studentsCount || 0
-        });
-    } catch (error) {
-        console.error('خطأ:', error.message);
-        res.status(500).json({ teachers: 0, offers: 0, live: 0, students: 0 });
-    }
-});
-
-// ============================================================
-// إجمالي عدد العروض
-// ============================================================
-router.get('/public/total-offers', async (req, res) => {
-    try {
-        const { count, error } = await supabase
-            .from('offers')
-            .select('*', { count: 'exact', head: true });
-        
-        if (error) {
-            return res.status(500).json({ total: 0, error: error.message });
-        }
-        
-        res.json({ total: count || 0 });
-    } catch (error) {
-        console.error('❌ خطأ في جلب عدد الدروس:', error.message);
-        res.status(500).json({ total: 0 });
     }
 });
 
