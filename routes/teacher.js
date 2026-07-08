@@ -9,7 +9,6 @@ const multer = require('multer');
 const path = require('path');
 
 const { supabase } = require('../config/database');
-// ✅ استيراد authorize من middleware مباشرة (بدون تعريف محلي)
 const { authenticate, authorize, checkBanned } = require('../middleware/auth');
 const { getOne, insert, update, remove } = require('../utils/helpers');
 const { uploadToSupabase, validateUploadedFiles } = require('../utils/upload');
@@ -58,7 +57,6 @@ router.get('/:teacher_id', authenticate, [
             return res.status(404).json({ success: false, error: 'أستاذ غير موجود' });
         }
         
-        // ✅ إزالة كلمة المرور من البيانات المرسلة
         delete teacher.password;
         
         res.json(teacher);
@@ -153,7 +151,6 @@ router.post('/update-profile-with-social', authenticate, authorize(['teacher']),
             return res.status(404).json({ success: false, error: 'الأستاذ غير موجود' });
         }
 
-        // ✅ التحقق من وجود ملف الصورة
         if (req.files && req.files['profile_image'] && req.files['profile_image'][0]) {
             const file = req.files['profile_image'][0];
             const uploaded = await uploadToSupabase(file, 'teachers', oldTeacher?.profile_image);
@@ -170,7 +167,6 @@ router.post('/update-profile-with-social', authenticate, authorize(['teacher']),
         if (profile_image) { updateData.profile_image = profile_image; }
         if (profile_url) { updateData.profile_url = profile_url; }
 
-        // ✅ معالجة الروابط الاجتماعية
         const socialFields = {
             facebook_url,
             instagram_url,
@@ -236,22 +232,39 @@ router.get('/balance/:teacher_id', authenticate, authorize(['teacher']), [
             return res.status(404).json({ success: false, error: 'أستاذ غير موجود' });
         }
 
-        // ✅ إصلاح: جلب الجلسات المدفوعة المرتبطة بعروض الأستاذ
-        const { data: paidSessions, error: sessionsError } = await supabase
-            .from('sessions')
-            .select(`
-                *,
-                offers:offer_id (
-                    subject_name,
-                    teacher_id
-                )
-            `)
-            .eq('payment_status', 'paid')
-            .eq('offers.teacher_id', teacher_id)
-            .order('created_at', { ascending: false });
+        // ✅ جلب العروض الخاصة بالأستاذ أولاً
+        const { data: offers, error: offersError } = await supabase
+            .from('offers')
+            .select('id')
+            .eq('teacher_id', teacher_id);
 
-        if (sessionsError) {
-            console.error('خطأ في جلب الجلسات:', sessionsError.message);
+        if (offersError) {
+            console.error('خطأ في جلب عروض الأستاذ:', offersError.message);
+        }
+
+        const offerIds = (offers || []).map(o => o.id);
+
+        // ✅ جلب الجلسات المدفوعة لهذه العروض
+        let paidSessions = [];
+        if (offerIds.length > 0) {
+            const { data: sessions, error: sessionsError } = await supabase
+                .from('sessions')
+                .select(`
+                    *,
+                    offers:offer_id (
+                        subject_name,
+                        teacher_id
+                    )
+                `)
+                .in('offer_id', offerIds)
+                .eq('payment_status', 'paid')
+                .order('created_at', { ascending: false });
+
+            if (sessionsError) {
+                console.error('خطأ في جلب الجلسات:', sessionsError.message);
+            } else {
+                paidSessions = sessions || [];
+            }
         }
 
         res.json({
@@ -259,7 +272,7 @@ router.get('/balance/:teacher_id', authenticate, authorize(['teacher']), [
             total_earned: teacher.total_earned || 0,
             pending_withdraw: teacher.pending_withdraw || 0,
             total_withdrawn: teacher.total_withdrawn || 0,
-            sessions: paidSessions || []
+            sessions: paidSessions
         });
     } catch (error) {
         console.error('خطأ في جلب الرصيد:', error.message);
@@ -299,7 +312,6 @@ router.post('/withdraw-request', authenticate, authorize(['teacher']), [
             });
         }
 
-        // ✅ التحقق من وجود طلب سحب معلق
         const { data: pendingRequest } = await supabase
             .from('withdraw_requests')
             .select('id')
@@ -328,7 +340,6 @@ router.post('/withdraw-request', authenticate, authorize(['teacher']), [
             updated_at: new Date().toISOString()
         });
 
-        // ✅ إرسال إشعار للمدرس
         await insert('notifications', {
             user_id: teacher_id,
             user_type: 'teacher',
@@ -383,7 +394,7 @@ router.get('/withdraw-requests/:teacher_id', authenticate, authorize(['teacher']
 });
 
 // ============================================================
-// ✅ جلب عروض الأستاذ (معدل - مع كلمات المرور)
+// ✅ جلب عروض الأستاذ (معدل - بدون علاقات معقدة مع jitsi_rooms)
 // ============================================================
 router.get('/offers/:teacher_id', authenticate, authorize(['teacher']), [
     param('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
@@ -400,18 +411,44 @@ router.get('/offers/:teacher_id', authenticate, authorize(['teacher']), [
             return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه العروض' });
         }
 
-        // ✅ جلب العروض مع كلمات المرور من جدول jitsi_rooms
-        const { data, error } = await supabase
+        // ✅ جلب العروض أولاً
+        const { data: offers, error: offersError } = await supabase
             .from('offers')
-            .select('*, jitsi_rooms!left(offer_id) (password, room_name, room_url)')
+            .select('*')
             .eq('teacher_id', teacher_id)
             .order('offer_date', { ascending: false });
 
-        if (error) throw error;
+        if (offersError) {
+            console.error('خطأ في جلب العروض:', offersError.message);
+            return res.status(500).json([]);
+        }
 
-        // ✅ تنسيق البيانات مع كلمات المرور
-        const formatted = (data || []).map(offer => {
-            const jitsiData = offer.jitsi_rooms || {};
+        if (!offers || offers.length === 0) {
+            return res.json([]);
+        }
+
+        // ✅ جلب كلمات المرور من جدول jitsi_rooms لكل عرض
+        const offerIds = offers.map(o => o.id);
+        const { data: jitsiRooms, error: jitsiError } = await supabase
+            .from('jitsi_rooms')
+            .select('offer_id, password, room_name, room_url')
+            .in('offer_id', offerIds);
+
+        if (jitsiError) {
+            console.error('خطأ في جلب بيانات Jitsi:', jitsiError.message);
+        }
+
+        // ✅ إنشاء خريطة للوصول السريع
+        const jitsiMap = {};
+        if (jitsiRooms) {
+            for (const room of jitsiRooms) {
+                jitsiMap[room.offer_id] = room;
+            }
+        }
+
+        // ✅ تنسيق البيانات
+        const formatted = offers.map(offer => {
+            const jitsiData = jitsiMap[offer.id] || {};
             
             return {
                 id: offer.id,
@@ -432,7 +469,7 @@ router.get('/offers/:teacher_id', authenticate, authorize(['teacher']), [
             };
         });
 
-        res.json(formatted || []);
+        res.json(formatted);
     } catch (error) {
         console.error('خطأ في جلب عروض الأستاذ:', error.message);
         res.status(500).json([]);
@@ -463,18 +500,26 @@ router.get('/offer/:offer_id', authenticate, authorize(['teacher']), [
         }
 
         // ✅ جلب كلمة المرور من جدول jitsi_rooms
-        const { data: jitsiRoom } = await supabase
+        const { data: jitsiRoom, error: jitsiError } = await supabase
             .from('jitsi_rooms')
             .select('password, room_name, room_url')
             .eq('offer_id', offer_id)
-            .single();
+            .maybeSingle();
+
+        if (jitsiError) {
+            console.error('خطأ في جلب بيانات Jitsi:', jitsiError.message);
+        }
 
         // ✅ جلب عدد الطلاب المسجلين
-        const { count: studentsCount } = await supabase
+        const { count: studentsCount, error: countError } = await supabase
             .from('sessions')
             .select('*', { count: 'exact', head: true })
             .eq('offer_id', offer_id)
             .eq('payment_status', 'paid');
+
+        if (countError) {
+            console.error('خطأ في جلب عدد الطلاب:', countError.message);
+        }
 
         res.json({
             ...offer,
@@ -521,20 +566,28 @@ router.put('/offer/update-password/:offer_id', authenticate, authorize(['teacher
         });
 
         // ✅ تحديث كلمة المرور في جدول jitsi_rooms إذا كانت موجودة
-        const { data: jitsiRoom } = await supabase
+        const { data: jitsiRoom, error: jitsiError } = await supabase
             .from('jitsi_rooms')
             .select('id')
             .eq('offer_id', offer_id)
-            .single();
+            .maybeSingle();
+
+        if (jitsiError) {
+            console.error('خطأ في البحث عن غرفة Jitsi:', jitsiError.message);
+        }
 
         if (jitsiRoom) {
-            await supabase
+            const { error: updateError } = await supabase
                 .from('jitsi_rooms')
                 .update({ 
                     password: password,
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', jitsiRoom.id);
+
+            if (updateError) {
+                console.error('خطأ في تحديث كلمة مرور Jitsi:', updateError.message);
+            }
         }
 
         res.json({
@@ -560,38 +613,75 @@ router.get('/stats/:teacher_id', authenticate, authorize(['teacher']), async (re
         }
 
         // ✅ عدد العروض
-        const { count: totalOffers } = await supabase
+        const { count: totalOffers, error: offersError } = await supabase
             .from('offers')
             .select('*', { count: 'exact', head: true })
             .eq('teacher_id', teacher_id);
 
+        if (offersError) {
+            console.error('خطأ في جلب عدد العروض:', offersError.message);
+        }
+
         // ✅ عدد العروض النشطة
-        const { count: activeOffers } = await supabase
+        const { count: activeOffers, error: activeError } = await supabase
             .from('offers')
             .select('*', { count: 'exact', head: true })
             .eq('teacher_id', teacher_id)
             .eq('status', 'live');
 
-        // ✅ عدد الطلاب المسجلين
-        const { count: totalStudents } = await supabase
-            .from('sessions')
-            .select('*', { count: 'exact', head: true })
-            .eq('teacher_id', teacher_id)
-            .eq('payment_status', 'paid');
+        if (activeError) {
+            console.error('خطأ في جلب عدد العروض النشطة:', activeError.message);
+        }
 
-        // ✅ عدد الحصص المكتملة
-        const { count: completedSessions } = await supabase
-            .from('sessions')
-            .select('*', { count: 'exact', head: true })
-            .eq('teacher_id', teacher_id)
-            .eq('payment_status', 'paid')
-            .eq('completed', true);
+        // ✅ جلب العروض أولاً لحساب الطلاب
+        const { data: offers, error: offersDataError } = await supabase
+            .from('offers')
+            .select('id')
+            .eq('teacher_id', teacher_id);
+
+        if (offersDataError) {
+            console.error('خطأ في جلب عروض الأستاذ للإحصائيات:', offersDataError.message);
+        }
+
+        let totalStudents = 0;
+        let completedSessions = 0;
+
+        if (offers && offers.length > 0) {
+            const offerIds = offers.map(o => o.id);
+
+            // ✅ عدد الطلاب المسجلين
+            const { count: studentsCount, error: studentsError } = await supabase
+                .from('sessions')
+                .select('*', { count: 'exact', head: true })
+                .in('offer_id', offerIds)
+                .eq('payment_status', 'paid');
+
+            if (studentsError) {
+                console.error('خطأ في جلب عدد الطلاب:', studentsError.message);
+            } else {
+                totalStudents = studentsCount || 0;
+            }
+
+            // ✅ عدد الحصص المكتملة
+            const { count: completedCount, error: completedError } = await supabase
+                .from('sessions')
+                .select('*', { count: 'exact', head: true })
+                .in('offer_id', offerIds)
+                .eq('payment_status', 'paid')
+                .eq('completed', true);
+
+            if (completedError) {
+                console.error('خطأ في جلب عدد الحصص المكتملة:', completedError.message);
+            } else {
+                completedSessions = completedCount || 0;
+            }
+        }
 
         res.json({
             total_offers: totalOffers || 0,
             active_offers: activeOffers || 0,
-            total_students: totalStudents || 0,
-            completed_sessions: completedSessions || 0
+            total_students: totalStudents,
+            completed_sessions: completedSessions
         });
     } catch (error) {
         console.error('خطأ في جلب إحصائيات الأستاذ:', error.message);
