@@ -7,6 +7,9 @@ const router = express.Router();
 const { body, validationResult, param } = require('express-validator');
 
 // استيراد الدوال المساعدة من الملف الرئيسي
+const server = require('../server');
+
+// استخراج الدوال من server
 const { 
     authenticate, 
     authorize, 
@@ -17,7 +20,7 @@ const {
     supabase,
     processReferralReward,
     encrypt
-} = require('../server');
+} = server;
 
 // ============================================================
 // جلب الأساتذة المعلقين
