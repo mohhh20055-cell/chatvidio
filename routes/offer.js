@@ -1,5 +1,5 @@
 // ============================================================
-// مسارات العروض - Offer Routes (معدل بالكامل)
+// مسارات العروض - Offer Routes (معدل بالكامل - بدون علاقات معقدة)
 // ============================================================
 
 const express = require('express');
@@ -8,7 +8,6 @@ const { body, param, validationResult } = require('express-validator');
 const crypto = require('crypto');
 
 const { supabase } = require('../config/database');
-// ✅ استيراد authorize من middleware مباشرة (بدون تعريف محلي)
 const { authenticate, authorize, checkBanned } = require('../middleware/auth');
 const { getOne, insert, update, remove } = require('../utils/helpers');
 
@@ -30,27 +29,22 @@ router.post('/offer/create', authenticate, authorize(['teacher']), [
 
         const { teacher_id, subject_name, duration, offer_date, price, is_free, education_level } = req.body;
 
-        // ✅ التحقق من الصلاحية
         if (req.user.userId !== teacher_id) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بإنشاء عروض لهذا الحساب' });
         }
 
-        // ✅ التحقق من وجود الأستاذ
         const teacher = await getOne('teachers', 'id', teacher_id);
         if (!teacher) {
             return res.status(404).json({ success: false, error: 'الأستاذ غير موجود' });
         }
 
-        // ✅ التحقق من أن الأستاذ معتمد
         if (teacher.status !== 'approved') {
             return res.status(403).json({ success: false, error: 'حسابك غير معتمد بعد، يرجى الانتظار حتى مراجعة الإدارة' });
         }
 
-        // ✅ إنشاء اسم الغرفة وكلمة المرور الافتراضية
         const room_name = `stream_${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;
         const defaultPassword = crypto.randomBytes(4).toString('hex').toUpperCase();
 
-        // ✅ إنشاء العرض
         const newOffer = await insert('offers', {
             teacher_id,
             subject_name: subject_name.trim(),
@@ -62,7 +56,8 @@ router.post('/offer/create', authenticate, authorize(['teacher']), [
             room_password: defaultPassword,
             status: 'upcoming',
             education_level: education_level || null,
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
         });
 
         // ✅ إنشاء غرفة Jitsi في قاعدة البيانات
@@ -74,11 +69,11 @@ router.post('/offer/create', authenticate, authorize(['teacher']), [
                     room_name: room_name,
                     password: defaultPassword,
                     room_url: `https://meet.jit.si/${room_name}`,
-                    created_at: new Date().toISOString()
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
                 });
         } catch (jitsiError) {
             console.error('خطأ في إنشاء غرفة Jitsi:', jitsiError.message);
-            // لا نوقف العملية إذا فشل إنشاء الغرفة
         }
 
         res.json({ 
@@ -106,40 +101,85 @@ router.post('/offer/create', authenticate, authorize(['teacher']), [
 });
 
 // ============================================================
-// ✅ جلب جميع العروض القادمة (معدل - مع كلمة المرور)
+// ✅ جلب جميع العروض القادمة (معدل - بدون علاقات معقدة)
 // ============================================================
 router.get('/offers', async (req, res) => {
     try {
         const now = new Date().toISOString();
         
-        const { data, error } = await supabase
+        const { data: offers, error } = await supabase
             .from('offers')
-            .select('*, teachers:teacher_id (id, full_name, specialization, profile_image, profile_url)')
+            .select('*')
             .eq('status', 'upcoming')
             .gt('offer_date', now)
             .order('offer_date', { ascending: true });
 
         if (error) throw error;
 
-        // ✅ تنسيق البيانات مع إضافة معلومات المعلم
-        const formatted = (data || []).map(o => ({
-            id: o.id,
-            teacher_id: o.teacher_id,
-            subject_name: o.subject_name,
-            duration: o.duration,
-            offer_date: o.offer_date,
-            price: o.price,
-            is_free: o.is_free,
-            status: o.status,
-            education_level: o.education_level,
-            room_password: o.room_password || null,
-            room_name: o.room_name || null,
-            created_at: o.created_at,
-            teacher_name: o.teachers?.full_name || 'غير معروف',
-            teacher_specialization: o.teachers?.specialization || '',
-            teacher_profile_image: o.teachers?.profile_image || null,
-            teacher_profile_url: o.teachers?.profile_url || null
-        }));
+        if (!offers || offers.length === 0) {
+            return res.json([]);
+        }
+
+        // ✅ جلب معلومات المعلمين
+        const teacherIds = [...new Set(offers.map(o => o.teacher_id))];
+        const { data: teachers, error: teachersError } = await supabase
+            .from('teachers')
+            .select('id, full_name, specialization, profile_image, profile_url')
+            .in('id', teacherIds);
+
+        if (teachersError) {
+            console.error('خطأ في جلب بيانات المعلمين:', teachersError.message);
+        }
+
+        const teachersMap = {};
+        if (teachers) {
+            for (const teacher of teachers) {
+                teachersMap[teacher.id] = teacher;
+            }
+        }
+
+        // ✅ جلب كلمات المرور من جدول jitsi_rooms
+        const offerIds = offers.map(o => o.id);
+        const { data: jitsiRooms, error: jitsiError } = await supabase
+            .from('jitsi_rooms')
+            .select('offer_id, password, room_name, room_url')
+            .in('offer_id', offerIds);
+
+        if (jitsiError) {
+            console.error('خطأ في جلب بيانات Jitsi:', jitsiError.message);
+        }
+
+        const jitsiMap = {};
+        if (jitsiRooms) {
+            for (const room of jitsiRooms) {
+                jitsiMap[room.offer_id] = room;
+            }
+        }
+
+        // ✅ تنسيق البيانات
+        const formatted = offers.map(offer => {
+            const jitsiData = jitsiMap[offer.id] || {};
+            const teacher = teachersMap[offer.teacher_id] || {};
+            
+            return {
+                id: offer.id,
+                teacher_id: offer.teacher_id,
+                subject_name: offer.subject_name,
+                duration: offer.duration,
+                offer_date: offer.offer_date,
+                price: offer.price,
+                is_free: offer.is_free,
+                status: offer.status,
+                education_level: offer.education_level,
+                room_password: jitsiData.password || offer.room_password || null,
+                room_name: jitsiData.room_name || offer.room_name || null,
+                created_at: offer.created_at,
+                teacher_name: teacher.full_name || 'غير معروف',
+                teacher_specialization: teacher.specialization || '',
+                teacher_profile_image: teacher.profile_image || null,
+                teacher_profile_url: teacher.profile_url || null
+            };
+        });
 
         res.json(formatted);
     } catch (error) {
@@ -149,54 +189,82 @@ router.get('/offers', async (req, res) => {
 });
 
 // ============================================================
-// ✅ جلب العروض المباشرة (معدل - مع كلمة المرور)
+// ✅ جلب العروض المباشرة (معدل - بدون علاقات معقدة)
 // ============================================================
 router.get('/live-offers', async (req, res) => {
     try {
-        const { data, error } = await supabase
+        const { data: offers, error } = await supabase
             .from('offers')
-            .select('*, teachers:teacher_id (id, full_name, specialization, profile_url)')
+            .select('*')
             .in('status', ['live', 'teacher_ready'])
             .order('offer_date', { ascending: false })
             .limit(50);
 
         if (error) throw error;
 
-        // ✅ جلب كلمات المرور من جدول jitsi_rooms
-        const offerIds = (data || []).map(o => o.id);
-        let jitsiRooms = {};
-        if (offerIds.length > 0) {
-            const { data: jitsiData } = await supabase
-                .from('jitsi_rooms')
-                .select('offer_id, password, room_name, room_url')
-                .in('offer_id', offerIds);
-            
-            jitsiRooms = (jitsiData || []).reduce((acc, room) => {
-                acc[room.offer_id] = room;
-                return acc;
-            }, {});
+        if (!offers || offers.length === 0) {
+            return res.json([]);
         }
 
-        const formatted = (data || []).map(o => {
-            const jitsi = jitsiRooms[o.id] || {};
+        // ✅ جلب معلومات المعلمين
+        const teacherIds = [...new Set(offers.map(o => o.teacher_id))];
+        const { data: teachers, error: teachersError } = await supabase
+            .from('teachers')
+            .select('id, full_name, specialization, profile_url')
+            .in('id', teacherIds);
+
+        if (teachersError) {
+            console.error('خطأ في جلب بيانات المعلمين:', teachersError.message);
+        }
+
+        const teachersMap = {};
+        if (teachers) {
+            for (const teacher of teachers) {
+                teachersMap[teacher.id] = teacher;
+            }
+        }
+
+        // ✅ جلب كلمات المرور من جدول jitsi_rooms
+        const offerIds = offers.map(o => o.id);
+        const { data: jitsiRooms, error: jitsiError } = await supabase
+            .from('jitsi_rooms')
+            .select('offer_id, password, room_name, room_url')
+            .in('offer_id', offerIds);
+
+        if (jitsiError) {
+            console.error('خطأ في جلب بيانات Jitsi:', jitsiError.message);
+        }
+
+        const jitsiMap = {};
+        if (jitsiRooms) {
+            for (const room of jitsiRooms) {
+                jitsiMap[room.offer_id] = room;
+            }
+        }
+
+        // ✅ تنسيق البيانات
+        const formatted = offers.map(offer => {
+            const jitsiData = jitsiMap[offer.id] || {};
+            const teacher = teachersMap[offer.teacher_id] || {};
+            
             return {
-                id: o.id,
-                teacher_id: o.teacher_id,
-                subject_name: o.subject_name,
-                duration: o.duration,
-                offer_date: o.offer_date,
-                price: o.price,
-                is_free: o.is_free,
-                status: o.status,
-                education_level: o.education_level,
-                stream_url: o.stream_url || jitsi.room_url || null,
-                stream_platform: o.stream_platform || 'jitsi',
-                room_password: o.room_password || jitsi.password || null,
-                room_name: o.room_name || jitsi.room_name || null,
-                created_at: o.created_at,
-                teacher_name: o.teachers?.full_name || 'غير معروف',
-                teacher_specialization: o.teachers?.specialization || '',
-                teacher_profile_url: o.teachers?.profile_url || null
+                id: offer.id,
+                teacher_id: offer.teacher_id,
+                subject_name: offer.subject_name,
+                duration: offer.duration,
+                offer_date: offer.offer_date,
+                price: offer.price,
+                is_free: offer.is_free,
+                status: offer.status,
+                education_level: offer.education_level,
+                stream_url: offer.stream_url || jitsiData.room_url || null,
+                stream_platform: offer.stream_platform || 'jitsi',
+                room_password: jitsiData.password || offer.room_password || null,
+                room_name: jitsiData.room_name || offer.room_name || null,
+                created_at: offer.created_at,
+                teacher_name: teacher.full_name || 'غير معروف',
+                teacher_specialization: teacher.specialization || '',
+                teacher_profile_url: teacher.profile_url || null
             };
         });
 
@@ -208,7 +276,7 @@ router.get('/live-offers', async (req, res) => {
 });
 
 // ============================================================
-// ✅ جلب عرض محدد (معدل - مع كلمة المرور)
+// ✅ جلب عرض محدد (معدل - بدون علاقات معقدة)
 // ============================================================
 router.get('/offer/:offer_id', async (req, res) => {
     try {
@@ -216,7 +284,7 @@ router.get('/offer/:offer_id', async (req, res) => {
         
         const { data: offer, error } = await supabase
             .from('offers')
-            .select('*, teachers:teacher_id (id, full_name, specialization, profile_image, profile_url)')
+            .select('*')
             .eq('id', offer_id)
             .single();
 
@@ -224,26 +292,49 @@ router.get('/offer/:offer_id', async (req, res) => {
             return res.status(404).json({ success: false, error: 'العرض غير موجود' });
         }
 
-        // ✅ جلب كلمة المرور من جدول jitsi_rooms إذا كانت موجودة
-        const { data: jitsiRoom } = await supabase
+        // ✅ جلب معلومات المعلم
+        const { data: teacher, error: teacherError } = await supabase
+            .from('teachers')
+            .select('id, full_name, specialization, profile_image, profile_url')
+            .eq('id', offer.teacher_id)
+            .single();
+
+        if (teacherError) {
+            console.error('خطأ في جلب بيانات المعلم:', teacherError.message);
+        }
+
+        // ✅ جلب كلمة المرور من جدول jitsi_rooms
+        const { data: jitsiRoom, error: jitsiError } = await supabase
             .from('jitsi_rooms')
             .select('password, room_name, room_url')
             .eq('offer_id', offer_id)
-            .single();
+            .maybeSingle();
+
+        if (jitsiError) {
+            console.error('خطأ في جلب بيانات Jitsi:', jitsiError.message);
+        }
 
         // ✅ جلب عدد الطلاب المسجلين
-        const { count: studentsCount } = await supabase
+        const { count: studentsCount, error: countError } = await supabase
             .from('sessions')
             .select('*', { count: 'exact', head: true })
             .eq('offer_id', offer_id)
             .eq('payment_status', 'paid');
 
+        if (countError) {
+            console.error('خطأ في جلب عدد الطلاب:', countError.message);
+        }
+
         // ✅ جلب قائمة الطلاب المسجلين
-        const { data: students } = await supabase
+        const { data: students, error: studentsError } = await supabase
             .from('sessions')
             .select('student_id, students:student_id (id, full_name, email, profile_url)')
             .eq('offer_id', offer_id)
             .eq('payment_status', 'paid');
+
+        if (studentsError) {
+            console.error('خطأ في جلب قائمة الطلاب:', studentsError.message);
+        }
 
         res.json({
             id: offer.id,
@@ -260,10 +351,10 @@ router.get('/offer/:offer_id', async (req, res) => {
             room_password: jitsiRoom?.password || offer.room_password || null,
             room_name: jitsiRoom?.room_name || offer.room_name || null,
             created_at: offer.created_at,
-            teacher_name: offer.teachers?.full_name || 'غير معروف',
-            teacher_specialization: offer.teachers?.specialization || '',
-            teacher_profile_image: offer.teachers?.profile_image || null,
-            teacher_profile_url: offer.teachers?.profile_url || null,
+            teacher_name: teacher?.full_name || 'غير معروف',
+            teacher_specialization: teacher?.specialization || '',
+            teacher_profile_image: teacher?.profile_image || null,
+            teacher_profile_url: teacher?.profile_url || null,
             students_count: studentsCount || 0,
             students: students || []
         });
@@ -290,12 +381,10 @@ router.put('/offer/update-password/:offer_id', authenticate, authorize(['teacher
         const offer_id = parseInt(req.params.offer_id);
         const { teacher_id, password } = req.body;
 
-        // ✅ التحقق من الصلاحية
         if (req.user.userId !== teacher_id) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
 
-        // ✅ التحقق من وجود العرض
         const offer = await getOne('offers', 'id', offer_id);
         if (!offer) {
             return res.status(404).json({ success: false, error: 'العرض غير موجود' });
@@ -306,24 +395,35 @@ router.put('/offer/update-password/:offer_id', authenticate, authorize(['teacher
         }
 
         // ✅ تحديث كلمة المرور في جدول offers
-        await update('offers', offer_id, { room_password: password });
+        await update('offers', offer_id, { 
+            room_password: password,
+            updated_at: new Date().toISOString()
+        });
 
         // ✅ تحديث كلمة المرور في جدول jitsi_rooms إذا كانت موجودة
-        const { data: jitsiRoom } = await supabase
+        const { data: jitsiRoom, error: jitsiError } = await supabase
             .from('jitsi_rooms')
             .select('id')
             .eq('offer_id', offer_id)
-            .single();
+            .maybeSingle();
 
-        if (jitsiRoom) {
-            await supabase
-                .from('jitsi_rooms')
-                .update({ password: password })
-                .eq('id', jitsiRoom.id);
+        if (jitsiError) {
+            console.error('خطأ في البحث عن غرفة Jitsi:', jitsiError.message);
         }
 
-        // ✅ تحديث كلمات المرور الفردية للطلاب (إذا أردت)
-        // يمكن إعادة تعيين كلمات المرور الفردية أو تركها كما هي
+        if (jitsiRoom) {
+            const { error: updateError } = await supabase
+                .from('jitsi_rooms')
+                .update({ 
+                    password: password,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', jitsiRoom.id);
+
+            if (updateError) {
+                console.error('خطأ في تحديث كلمة مرور Jitsi:', updateError.message);
+            }
+        }
 
         res.json({ 
             success: true, 
@@ -352,12 +452,10 @@ router.delete('/offer/delete/:offer_id', authenticate, authorize(['teacher']), [
         const offer_id = parseInt(req.params.offer_id);
         const { teacher_id } = req.body;
 
-        // ✅ التحقق من الصلاحية
         if (req.user.userId !== teacher_id) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بحذف هذا العرض' });
         }
 
-        // ✅ التحقق من وجود العرض
         const offer = await getOne('offers', 'id', offer_id);
         if (!offer) {
             return res.status(404).json({ success: false, error: 'العرض غير موجود' });
@@ -367,7 +465,6 @@ router.delete('/offer/delete/:offer_id', authenticate, authorize(['teacher']), [
             return res.status(403).json({ success: false, error: 'غير مصرح لك بحذف هذا العرض' });
         }
 
-        // ✅ التحقق من أن العرض ليس قيد البث
         if (offer.status === 'live' || offer.status === 'teacher_ready') {
             return res.status(400).json({ 
                 success: false, 
@@ -386,20 +483,28 @@ router.delete('/offer/delete/:offer_id', authenticate, authorize(['teacher']), [
 
         for (const table of tables) {
             try {
-                await supabase
+                const { error: deleteError } = await supabase
                     .from(table)
                     .delete()
                     .eq('offer_id', offer_id);
+
+                if (deleteError) {
+                    console.error(`خطأ في حذف البيانات من ${table}:`, deleteError.message);
+                }
             } catch (deleteError) {
                 console.error(`خطأ في حذف البيانات من ${table}:`, deleteError.message);
             }
         }
 
         // ✅ حذف العرض نفسه
-        await supabase
+        const { error: offerDeleteError } = await supabase
             .from('offers')
             .delete()
             .eq('id', offer_id);
+
+        if (offerDeleteError) {
+            throw offerDeleteError;
+        }
 
         res.json({ 
             success: true, 
@@ -433,7 +538,7 @@ router.get('/waiting-count/:offer_id', async (req, res) => {
 });
 
 // ============================================================
-// ✅ جلب عروض الأستاذ (للوحة التحكم)
+// ✅ جلب عروض الأستاذ (للوحة التحكم - معدل بدون علاقات)
 // ============================================================
 router.get('/teacher/offers/:teacher_id', authenticate, authorize(['teacher']), async (req, res) => {
     try {
@@ -443,24 +548,57 @@ router.get('/teacher/offers/:teacher_id', authenticate, authorize(['teacher']), 
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
 
-        const { data, error } = await supabase
+        // ✅ جلب العروض أولاً
+        const { data: offers, error: offersError } = await supabase
             .from('offers')
-            .select('*, jitsi_rooms!left(offer_id) (password, room_name, room_url)')
+            .select('*')
             .eq('teacher_id', teacher_id)
             .order('offer_date', { ascending: false });
 
-        if (error) throw error;
+        if (offersError) throw offersError;
+
+        if (!offers || offers.length === 0) {
+            return res.json([]);
+        }
+
+        // ✅ جلب كلمات المرور من جدول jitsi_rooms
+        const offerIds = offers.map(o => o.id);
+        const { data: jitsiRooms, error: jitsiError } = await supabase
+            .from('jitsi_rooms')
+            .select('offer_id, password, room_name, room_url')
+            .in('offer_id', offerIds);
+
+        if (jitsiError) {
+            console.error('خطأ في جلب بيانات Jitsi:', jitsiError.message);
+        }
+
+        const jitsiMap = {};
+        if (jitsiRooms) {
+            for (const room of jitsiRooms) {
+                jitsiMap[room.offer_id] = room;
+            }
+        }
 
         // ✅ تنسيق البيانات مع كلمات المرور
-        const formatted = (data || []).map(offer => {
-            const jitsiData = offer.jitsi_rooms || {};
+        const formatted = offers.map(offer => {
+            const jitsiData = jitsiMap[offer.id] || {};
             return {
-                ...offer,
-                jitsi_rooms: undefined,
+                id: offer.id,
+                teacher_id: offer.teacher_id,
+                subject_name: offer.subject_name,
+                duration: offer.duration,
+                offer_date: offer.offer_date,
+                price: offer.price,
+                is_free: offer.is_free,
+                status: offer.status,
+                education_level: offer.education_level,
+                room_name: offer.room_name || jitsiData.room_name || null,
                 room_password: jitsiData.password || offer.room_password || null,
-                jitsi_room_name: jitsiData.room_name || null,
                 jitsi_room_url: jitsiData.room_url || null,
-                stream_url: offer.stream_url || jitsiData.room_url || null
+                stream_url: offer.stream_url || jitsiData.room_url || null,
+                stream_platform: offer.stream_platform || 'jitsi',
+                created_at: offer.created_at,
+                updated_at: offer.updated_at
             };
         });
 
