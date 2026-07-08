@@ -4479,6 +4479,19 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
                     .tip p { color: #94a3b8; font-size: 0.9rem; line-height: 1.6; }
                     .hidden { display: none; }
                     .students-count { background: #0f5cbf; padding: 3px 12px; border-radius: 20px; font-size: 0.8rem; }
+                    .waiting-list { margin-top: 20px; border-top: 1px solid #333; padding-top: 20px; }
+                    .waiting-list h3 { color: #94a3b8; margin-bottom: 10px; }
+                    .waiting-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #16213e; border-radius: 8px; margin-bottom: 5px; }
+                    .waiting-item .name { color: white; }
+                    .waiting-item .status-badge { font-size: 0.7rem; padding: 2px 10px; border-radius: 20px; }
+                    .status-badge.waiting { background: #f59e0b; color: #1a1a2e; }
+                    .status-badge.active { background: #10b981; color: white; }
+                    .add-btn { background: #0f5cbf; color: white; border: none; padding: 4px 12px; border-radius: 20px; cursor: pointer; font-size: 0.7rem; }
+                    .add-btn:hover { background: #0a4a9a; }
+                    .add-all-btn { background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 12px; cursor: pointer; font-weight: 600; width: 100%; margin-top: 10px; }
+                    .add-all-btn:hover { background: #059669; }
+                    .btn-success { background: #10b981 !important; }
+                    .btn-success:hover { background: #059669 !important; box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4) !important; }
                     @media(max-width:600px) {
                         .container { padding: 20px; }
                         .platforms { grid-template-columns: 1fr; }
@@ -4528,6 +4541,12 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
                 <button class="btn-start" onclick="openMeetAndStart()">🆕 إنشاء رابط جديد وبدء البث</button>
                 <button class="btn-start" id="startBtn" onclick="startStream()" style="margin-top:10px;">📋 استخدام رابط موجود وبدء البث</button>
                 <button class="btn-back" onclick="window.location.href='/teacher-dashboard.html'">← العودة للوحة التحكم</button>
+
+                <div class="waiting-list" id="waitingList">
+                    <h3>📋 قائمة الانتظار</h3>
+                    <div id="studentsList">جاري التحميل...</div>
+                    <button class="add-all-btn btn-success" onclick="addAllStudents()" id="addAllBtn">➕ إضافة جميع الطلاب إلى البث</button>
+                </div>
             </div>
 
             <script>
@@ -4585,7 +4604,6 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
                         return;
                     }
 
-                    // التحقق من صحة الرابط حسب المنصة
                     if (selectedPlatform === 'google-meet' && !url.includes('meet.google.com')) {
                         alert('❌ الرابط غير صحيح. يجب أن يحتوي على meet.google.com');
                         return;
@@ -4601,7 +4619,6 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
                     btn.textContent = '⏳ جاري بدء البث...';
 
                     try {
-                        // حفظ رابط البث
                         const response = await fetch('/api/stream/save-link', {
                             method: 'POST',
                             headers: {
@@ -4618,7 +4635,6 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
                         const data = await response.json();
 
                         if (data.success) {
-                            // إضافة الطلاب إلى البث
                             const result = await fetch('/api/stream/add-students/' + offerId, {
                                 method: 'POST',
                                 headers: {
@@ -4649,6 +4665,108 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
                         btn.textContent = '📋 استخدام رابط موجود وبدء البث';
                     }
                 }
+
+                // جلب قائمة الانتظار
+                async function loadWaitingList() {
+                    try {
+                        const response = await fetch('/api/stream/waiting-list/' + offerId + '/' + teacherId, {
+                            headers: { 'Authorization': 'Bearer ' + authToken }
+                        });
+                        const students = await response.json();
+                        const container = document.getElementById('studentsList');
+                        
+                        if (students.length === 0) {
+                            container.innerHTML = '<p style="color:#64748b;">لا يوجد طلاب في قائمة الانتظار</p>';
+                            document.getElementById('addAllBtn').style.display = 'none';
+                            return;
+                        }
+
+                        let html = '';
+                        students.forEach(s => {
+                            const statusClass = s.is_active ? 'active' : 'waiting';
+                            const statusText = s.is_active ? '✅ في البث' : '⏳ في الانتظار';
+                            html += \`
+                                <div class="waiting-item">
+                                    <span class="name">\${s.full_name || 'طالب'}</span>
+                                    <span class="status-badge \${statusClass}">\${statusText}</span>
+                                    \${!s.is_active ? \`<button class="add-btn" onclick="addStudent(\${s.student_id})">إضافة</button>\` : ''}
+                                </div>
+                            \`;
+                        });
+                        container.innerHTML = html;
+                        document.getElementById('addAllBtn').style.display = 'block';
+                    } catch (error) {
+                        console.error('خطأ في جلب قائمة الانتظار:', error);
+                        document.getElementById('studentsList').innerHTML = '<p style="color:#ef4444;">حدث خطأ في جلب القائمة</p>';
+                    }
+                }
+
+                // إضافة طالب واحد
+                async function addStudent(studentId) {
+                    try {
+                        const response = await fetch('/api/stream/add-student/' + offerId, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': 'Bearer ' + authToken,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                offer_id: offerId,
+                                student_id: studentId,
+                                teacher_id: teacherId
+                            })
+                        });
+                        const data = await response.json();
+                        if (data.success) {
+                            alert('✅ تم إضافة الطالب إلى البث');
+                            loadWaitingList();
+                        } else {
+                            alert('❌ ' + (data.error || 'حدث خطأ'));
+                        }
+                    } catch (error) {
+                        console.error('خطأ:', error);
+                        alert('❌ حدث خطأ في الاتصال بالخادم');
+                    }
+                }
+
+                // إضافة جميع الطلاب
+                async function addAllStudents() {
+                    if (!confirm('⚠️ هل تريد إضافة جميع الطلاب في قائمة الانتظار إلى البث المباشر؟')) return;
+
+                    const btn = document.getElementById('addAllBtn');
+                    btn.disabled = true;
+                    btn.textContent = '⏳ جاري الإضافة...';
+
+                    try {
+                        const response = await fetch('/api/stream/add-all-students/' + offerId, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': 'Bearer ' + authToken,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                offer_id: offerId,
+                                teacher_id: teacherId
+                            })
+                        });
+                        const data = await response.json();
+                        if (data.success) {
+                            alert('✅ تم إضافة ' + data.students_count + ' طالب إلى البث');
+                            loadWaitingList();
+                        } else {
+                            alert('❌ ' + (data.error || 'حدث خطأ'));
+                        }
+                    } catch (error) {
+                        console.error('خطأ:', error);
+                        alert('❌ حدث خطأ في الاتصال بالخادم');
+                    }
+                    btn.disabled = false;
+                    btn.textContent = '➕ إضافة جميع الطلاب إلى البث';
+                }
+
+                // تحميل القائمة كل 10 ثوانٍ
+                loadWaitingList();
+                setInterval(loadWaitingList, 10000);
 
                 selectPlatform('google-meet');
             </script>
@@ -4775,12 +4893,10 @@ app.get('/api/join-stream/:offer_id/:student_id', async (req, res) => {
             <div class="info-bar">🟢 البث المباشر جاري</div>
 
             <script>
-                // ✅ التوكن للصفحة
                 const AUTH_TOKEN = '${token}';
                 const offerId = ${parseInt(offer_id)};
                 const studentId = ${parseInt(student_id)};
                 
-                // ✅ دالة للطلبات مع التوكن
                 async function fetchWithToken(url, options = {}) {
                     const response = await fetch(url, {
                         ...options,
@@ -4798,12 +4914,10 @@ app.get('/api/join-stream/:offer_id/:student_id', async (req, res) => {
                     return response;
                 }
 
-                // ✅ مغادرة البث
                 function leaveStream() {
                     window.location.href = '/student-dashboard.html';
                 }
 
-                // ✅ تحديث حالة البث كل 30 ثانية
                 setInterval(async () => {
                     try {
                         const res = await fetchWithToken('/api/stream/status/' + offerId);
@@ -4819,12 +4933,10 @@ app.get('/api/join-stream/:offer_id/:student_id', async (req, res) => {
                     }
                 }, 30000);
 
-                // ✅ إعادة تحميل الإطار إذا كان هناك رابط
                 const container = document.getElementById('videoContainer');
                 const iframe = container.querySelector('iframe');
                 if (iframe) {
                     setInterval(() => {
-                        // إعادة تحميل الإطار كل 5 دقائق للحفاظ على الاتصال
                         iframe.src = iframe.src;
                     }, 300000);
                 }
