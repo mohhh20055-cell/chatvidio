@@ -1,5 +1,5 @@
 // ============================================================
-// خادم منصة التعليم - الملف الرئيسي
+// خادم منصة التعليم - الملف الرئيسي (معدل بالكامل)
 // ============================================================
 
 require('dotenv').config();
@@ -738,8 +738,6 @@ function generateJitsiJoinPage(offer) {
         }
         
         function joinJitsi() {
-            // ✅ فتح Jitsi في نافذة جديدة (بدون iframe)
-            // ✅ هذا يعمل بدون أي حد زمني (مجاني 100%)
             const newWindow = window.open(roomUrl, '_blank');
             
             if (newWindow) {
@@ -845,6 +843,242 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
 });
 
 // ============================================================
+// ✅ مسار دخول الأستاذ للبث المباشر (تم إضافته حديثاً)
+// ============================================================
+app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
+    try {
+        const token = req.query.token;
+        if (!token) {
+            return res.status(401).send(`
+                <!DOCTYPE html>
+                <html dir="rtl" lang="ar">
+                <head><meta charset="UTF-8"><title>خطأ</title></head>
+                <body style="font-family:Cairo;text-align:center;padding:50px;">
+                    <h1 style="color:#ef4444;">❌ يرجى تسجيل الدخول أولاً</h1>
+                    <a href="/teacher-dashboard.html" style="color:#0f5cbf;font-weight:700;">العودة للوحة التحكم</a>
+                </body></html>
+            `);
+        }
+        
+        const decoded = verifyToken(token);
+        if (!decoded || decoded.role !== 'teacher') {
+            return res.status(403).send(`
+                <!DOCTYPE html>
+                <html dir="rtl" lang="ar">
+                <head><meta charset="UTF-8"><title>خطأ</title></head>
+                <body style="font-family:Cairo;text-align:center;padding:50px;">
+                    <h1 style="color:#ef4444;">❌ غير مصرح لك</h1>
+                    <a href="/teacher-dashboard.html" style="color:#0f5cbf;font-weight:700;">العودة للوحة التحكم</a>
+                </body></html>
+            `);
+        }
+
+        const { offer_id, teacher_id } = req.params;
+        if (decoded.userId !== parseInt(teacher_id)) {
+            return res.status(403).send(`
+                <!DOCTYPE html>
+                <html dir="rtl" lang="ar">
+                <head><meta charset="UTF-8"><title>خطأ</title></head>
+                <body style="font-family:Cairo;text-align:center;padding:50px;">
+                    <h1 style="color:#ef4444;">❌ لا يمكنك الدخول إلى هذا البث</h1>
+                    <a href="/teacher-dashboard.html" style="color:#0f5cbf;font-weight:700;">العودة للوحة التحكم</a>
+                </body></html>
+            `);
+        }
+
+        // ✅ جلب العرض للتأكد من وجوده
+        const offer = await getOne('offers', 'id', offer_id);
+        if (!offer) {
+            return res.status(404).send(`
+                <!DOCTYPE html>
+                <html dir="rtl" lang="ar">
+                <head><meta charset="UTF-8"><title>خطأ</title></head>
+                <body style="font-family:Cairo;text-align:center;padding:50px;">
+                    <h1 style="color:#ef4444;">❌ العرض غير موجود</h1>
+                    <a href="/teacher-dashboard.html" style="color:#0f5cbf;font-weight:700;">العودة للوحة التحكم</a>
+                </body></html>
+            `);
+        }
+
+        // ✅ التحقق من حالة البث
+        if (offer.status !== 'live' && offer.status !== 'teacher_ready') {
+            return res.status(400).send(`
+                <!DOCTYPE html>
+                <html dir="rtl" lang="ar">
+                <head><meta charset="UTF-8"><title>خطأ</title></head>
+                <body style="font-family:Cairo;text-align:center;padding:50px;">
+                    <h1 style="color:#f59e0b;">⏳ البث غير نشط حالياً</h1>
+                    <p style="color:#94a3b8;">يرجى بدء البث أولاً من لوحة التحكم</p>
+                    <a href="/teacher-dashboard.html" style="color:#0f5cbf;font-weight:700;">العودة للوحة التحكم</a>
+                </body></html>
+            `);
+        }
+
+        // ✅ جلب كلمة المرور من العرض أو من جدول jitsi_rooms
+        let roomPassword = offer.room_password || null;
+        
+        // إذا لم تكن كلمة المرور موجودة في العرض، جرب جلبها من جدول jitsi_rooms
+        if (!roomPassword) {
+            const { data: jitsiRoom } = await supabase
+                .from('jitsi_rooms')
+                .select('password, room_url')
+                .eq('offer_id', offer_id)
+                .single();
+            
+            if (jitsiRoom) {
+                roomPassword = jitsiRoom.password;
+                // ✅ إذا كان هناك رابط في jitsi_rooms، استخدمه
+                if (jitsiRoom.room_url) {
+                    offer.stream_url = jitsiRoom.room_url;
+                }
+            }
+        }
+
+        // ✅ عرض صفحة الأستاذ للبث مع Jitsi
+        res.send(generateTeacherStreamPage(offer, teacher_id, token, roomPassword));
+        
+    } catch (error) {
+        console.error('❌ خطأ في دخول الأستاذ للبث:', error.message);
+        res.status(500).send(`
+            <!DOCTYPE html>
+            <html dir="rtl" lang="ar">
+            <head><meta charset="UTF-8"><title>خطأ</title></head>
+            <body style="font-family:Cairo;text-align:center;padding:50px;">
+                <h1 style="color:#ef4444;">❌ حدث خطأ</h1>
+                <p style="color:#64748b;">${escapeHtml(error.message)}</p>
+                <a href="/teacher-dashboard.html" style="color:#0f5cbf;font-weight:700;">العودة للوحة التحكم</a>
+            </body></html>
+        `);
+    }
+});
+
+// ============================================================
+// ✅ صفحة الأستاذ للبث المباشر (مع Jitsi)
+// ============================================================
+
+function generateTeacherStreamPage(offer, teacherId, token, roomPassword) {
+    const offerId = offer.id;
+    const subjectName = offer.subject_name || 'غير محدد';
+    const roomUrl = offer.stream_url || `https://meet.jit.si/zoomdz_${offerId}`;
+    const password = roomPassword || 'بدون كلمة مرور';
+    
+    return `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>البث المباشر - الأستاذ</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Cairo', Arial, sans-serif; background: #0a0a1a; color: white; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .container { max-width: 650px; width: 90%; background: #1a1a2e; border-radius: 24px; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+        h1 { color: #0f5cbf; text-align: center; margin-bottom: 10px; font-size: 1.8rem; }
+        .subtitle { text-align: center; color: #94a3b8; margin-bottom: 25px; }
+        .info-box { background: #0f3460; border-radius: 12px; padding: 15px 20px; margin-bottom: 25px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+        .info-box span { color: #94a3b8; }
+        .info-box strong { color: white; }
+        .password-box { background: #0f3460; padding: 20px; border-radius: 12px; margin: 20px 0; border: 2px dashed rgba(96, 165, 250, 0.3); }
+        .password-box span { color: #60a5fa; font-size: 1.8rem; font-weight: 900; letter-spacing: 6px; font-family: 'Courier New', monospace; }
+        .password-label { color: #94a3b8; font-size: 0.8rem; margin-bottom: 8px; }
+        .btn { background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; padding: 16px 30px; border-radius: 12px; font-size: 1.1rem; font-weight: 700; cursor: pointer; width: 100%; transition: all 0.3s; margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .btn:hover { transform: scale(1.02); box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4); }
+        .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .btn-danger:hover { box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4); }
+        .btn-back { background: transparent; color: #94a3b8; border: 1px solid #333; padding: 12px 24px; border-radius: 12px; cursor: pointer; transition: all 0.3s; margin-top: 10px; width: 100%; }
+        .btn-back:hover { background: #1a1a2e; }
+        .tip { background: #0f3460; border-radius: 12px; padding: 15px 20px; margin: 15px 0; border-right: 4px solid #f59e0b; }
+        .tip h4 { color: #f59e0b; margin-bottom: 5px; }
+        .tip p { color: #94a3b8; font-size: 0.9rem; line-height: 1.6; }
+        .copy-btn { background: transparent; border: 1px solid #333; color: #94a3b8; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.8rem; transition: all 0.3s; margin-top: 8px; }
+        .copy-btn:hover { background: #1a1a2e; border-color: #0f5cbf; color: white; }
+        .status-badge { display: inline-block; padding: 4px 16px; border-radius: 20px; font-weight: 700; font-size: 0.8rem; }
+        .status-live { background: #ef4444; color: white; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.02); } }
+        @media(max-width:600px) { .container { padding: 20px; } .info-box { flex-direction: column; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🎥 البث المباشر</h1>
+    <p class="subtitle">كأستاذ - Jitsi Meet (مجاني 100%)</p>
+
+    <div class="info-box">
+        <div><span>📚 المادة:</span> <strong>${escapeHtml(subjectName)}</strong></div>
+        <div><span>📊 الحالة:</span> <strong><span class="status-badge status-live">🔴 بث مباشر</span></strong></div>
+    </div>
+
+    <div class="password-box">
+        <div class="password-label">🔑 كلمة مرور البث</div>
+        <span id="roomPassword">${password}</span>
+        <br>
+        <button class="copy-btn" onclick="copyPassword()">
+            <i class="fas fa-copy"></i> نسخ كلمة المرور
+        </button>
+    </div>
+
+    <button class="btn" onclick="joinJitsi()">
+        <i class="fas fa-video"></i> فتح البث المباشر
+    </button>
+
+    <button class="btn btn-danger" onclick="endStream()">
+        <i class="fas fa-stop"></i> إنهاء البث
+    </button>
+
+    <button class="btn-back" onclick="window.location.href='/teacher-dashboard.html'">← العودة للوحة التحكم</button>
+
+    <div class="tip">
+        <h4>💡 نصائح للبث المباشر</h4>
+        <p>• تأكد من عمل الكاميرا والميكروفون<br>
+        • شارك كلمة المرور فقط مع الطلاب المسجلين<br>
+        • يمكنك مشاركة الشاشة لعرض المحتوى التعليمي<br>
+        • اضغط على "إنهاء البث" عند الانتهاء</p>
+    </div>
+</div>
+
+<script>
+    const roomUrl = '${roomUrl}';
+    const password = '${password}';
+    const offerId = ${parseInt(offerId)};
+    const teacherId = ${parseInt(teacherId)};
+    const authToken = '${token}';
+
+    function copyPassword() {
+        navigator.clipboard.writeText(password).then(() => {
+            const btn = document.querySelector('.copy-btn');
+            btn.innerHTML = '✅ تم النسخ';
+            setTimeout(() => {
+                btn.innerHTML = '<i class="fas fa-copy"></i> نسخ كلمة المرور';
+            }, 2000);
+        });
+    }
+
+    function joinJitsi() {
+        const newWindow = window.open(roomUrl, '_blank');
+        
+        if (newWindow) {
+            setTimeout(() => {
+                alert('🔑 كلمة المرور: ' + password + '\\n\\nأدخلها عند الطلب في صفحة Jitsi');
+            }, 1500);
+        } else {
+            alert('⚠️ يرجى السماح بفتح النوافذ المنبثقة');
+        }
+    }
+
+    function endStream() {
+        if (confirm('⚠️ هل أنت متأكد من إنهاء البث المباشر؟')) {
+            // ✅ إعادة توجيه إلى لوحة التحكم
+            window.location.href = '/teacher-dashboard.html';
+        }
+    }
+</script>
+</body>
+</html>`;
+}
+
+// ============================================================
 // ✅ صفحة بدء البث للأستاذ (مع Jitsi)
 // ============================================================
 
@@ -919,19 +1153,16 @@ function generateTeacherStartPage(offer, teacherId, token, studentsCount) {
         • <strong>سريع</strong> ولا يحتاج إلى تثبيت</p>
     </div>
 
-    <!-- ✅ زر بدء البث -->
     <button class="btn-start btn-success" id="startStreamBtn" onclick="startJitsiStream()">
         <i class="fas fa-play"></i> بدء البث المباشر
     </button>
 
-    <!-- ✅ زر إضافة جميع الطلاب -->
     <button class="btn-start" id="addAllBtn" onclick="addAllStudents()" disabled>
         <i class="fas fa-users"></i> إضافة جميع الطلاب إلى البث
     </button>
 
     <button class="btn-back" onclick="window.location.href='/teacher-dashboard.html'">← العودة للوحة التحكم</button>
 
-    <!-- ✅ رسالة نجاح -->
     <div class="success-box" id="successBox">
         <h4><i class="fas fa-check-circle"></i> تم بدء البث المباشر بنجاح!</h4>
         <p>رابط البث المحفوظ:</p>
@@ -941,7 +1172,6 @@ function generateTeacherStartPage(offer, teacherId, token, studentsCount) {
     </div>
 </div>
 
-<!-- ✅ Toast Notifications -->
 <div class="toast" id="toast"></div>
 
 <script>
@@ -951,7 +1181,6 @@ function generateTeacherStartPage(offer, teacherId, token, studentsCount) {
     let csrfToken = '';
     let isStreamActive = false;
 
-    // ✅ تعريف API_BASE_URL
     const API_BASE_URL = window.location.hostname === 'localhost' 
         ? 'http://localhost:3000' 
         : window.location.origin;
@@ -1007,7 +1236,7 @@ function generateTeacherStartPage(offer, teacherId, token, studentsCount) {
                 document.getElementById('successBox').style.display = 'block';
                 document.getElementById('savedLinkDisplay').textContent = data.room_url;
                 document.getElementById('passwordDisplay').textContent = data.password;
-                document.getElementById('statusDisplay').innerHTML = '<span class="stream-status active">🟢 بث مباشر</span>';
+                document.getElementById('statusDisplay').innerHTML = '<span class="status-badge status-live">🟢 بث مباشر</span>';
                 document.getElementById('addAllBtn').disabled = false;
                 
                 showToast('✅ تم بدء البث بنجاح!', 'success');
@@ -1065,7 +1294,6 @@ function generateTeacherStartPage(offer, teacherId, token, studentsCount) {
         }
     }
 
-    // ✅ تهيئة الصفحة
     async function init() {
         await getCsrfToken();
         console.log('✅ تم تهيئة صفحة بدء البث');
