@@ -1,31 +1,21 @@
 // ============================================================
-// مسارات الحجوزات
+// مسارات الحجز - Booking Routes
 // ============================================================
 
 const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
 
-// استيراد الدوال المساعدة من الملف الرئيسي
-const server = require('../server');
-
-// استخراج الدوال من server
-const { 
-    authenticate, 
-    authorize, 
-    getOne, 
-    insert, 
-    update, 
-    supabase,
-    processStudentReferralRewardOnBooking
-} = server;
+// استيراد الدوال المساعدة
+const { supabase } = require('../config/database');
+const { authenticate, authorize } = require('../middleware/auth');
+const { getOne, insert, update } = require('../utils/helpers');
+const { processStudentReferralRewardOnBooking } = require('../utils/referral');
 
 // ============================================================
 // إنشاء حجز جديد
 // ============================================================
-router.post('/booking/create', [
-    authenticate,
-    authorize(['student']),
+router.post('/create', authenticate, authorize(['student']), [
     body('offer_id').isInt().withMessage('معرف العرض غير صالح'),
     body('student_id').isInt().withMessage('معرف الطالب غير صالح')
 ], async (req, res) => {
@@ -114,6 +104,7 @@ router.post('/booking/create', [
 
             await insert('waiting_room', { offer_id, student_id });
 
+            // إضافة أرباح الأستاذ
             const teacher = await getOne('teachers', 'id', offer.teacher_id);
             const commission = offer.price * 0.1;
             const teacherEarned = offer.price - commission;
@@ -123,6 +114,7 @@ router.post('/booking/create', [
             });
             await update('sessions', session.id, { teacher_earned: teacherEarned });
 
+            // معالجة مكافأة الإحالة للطالب
             const { data: referralData } = await supabase
                 .from('referrals')
                 .select('*')
@@ -136,6 +128,7 @@ router.post('/booking/create', [
             }
         }
 
+        // إشعار للطالب
         await insert('notifications', {
             user_id: student_id,
             user_type: 'student',
@@ -148,12 +141,14 @@ router.post('/booking/create', [
             created_at: new Date().toISOString()
         });
 
+        // عدد الطلاب المسجلين
         const { count: bookedCount } = await supabase
             .from('sessions')
             .select('*', { count: 'exact', head: true })
             .eq('offer_id', offer_id)
             .eq('payment_status', 'paid');
 
+        // إشعار للأستاذ
         const teacher = await getOne('teachers', 'id', offer.teacher_id);
         if (teacher) {
             await insert('notifications', {
