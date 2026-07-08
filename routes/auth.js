@@ -80,6 +80,54 @@ function resetLoginAttempts(email) {
 }
 
 // ============================================================
+// ✅ دالة للتحقق من وجود جدول student_room_passwords وإنشائه إذا لم يكن موجوداً
+// ============================================================
+async function ensureStudentRoomPasswordsTable() {
+    try {
+        // التحقق من وجود الجدول
+        const { error: checkError } = await supabase
+            .from('student_room_passwords')
+            .select('id')
+            .limit(1);
+        
+        if (checkError && checkError.message.includes('relation "student_room_passwords" does not exist')) {
+            console.log('⚠️ جدول student_room_passwords غير موجود، جاري إنشاؤه...');
+            
+            // إنشاء الجدول باستخدام SQL مباشر
+            const createTableSQL = `
+                CREATE TABLE IF NOT EXISTS student_room_passwords (
+                    id BIGSERIAL PRIMARY KEY,
+                    offer_id INTEGER NOT NULL REFERENCES offers(id) ON DELETE CASCADE,
+                    student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+                    password TEXT NOT NULL,
+                    used BOOLEAN DEFAULT FALSE,
+                    used_at TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    UNIQUE(offer_id, student_id)
+                );
+                
+                CREATE INDEX IF NOT EXISTS idx_student_room_passwords_offer ON student_room_passwords(offer_id);
+                CREATE INDEX IF NOT EXISTS idx_student_room_passwords_student ON student_room_passwords(student_id);
+                CREATE INDEX IF NOT EXISTS idx_student_room_passwords_password ON student_room_passwords(password);
+            `;
+            
+            // تنفيذ SQL عبر Supabase (إذا كان لديك صلاحيات)
+            // ملاحظة: قد تحتاج إلى تنفيذ هذا يدوياً في Supabase SQL Editor
+            console.log('⚠️ يرجى تنفيذ SQL التالي في Supabase SQL Editor:');
+            console.log(createTableSQL);
+            
+            return false;
+        }
+        
+        console.log('✅ جدول student_room_passwords موجود');
+        return true;
+    } catch (error) {
+        console.error('❌ خطأ في التحقق من جدول student_room_passwords:', error.message);
+        return false;
+    }
+}
+
+// ============================================================
 // تسجيل أستاذ جديد
 // ============================================================
 router.post('/teacher/register', checkBanned, upload.fields([
@@ -187,6 +235,9 @@ router.post('/teacher/register', checkBanned, upload.fields([
         
         const emailSent = await sendVerificationEmail(email, full_name, verificationUrl);
 
+        // ✅ التحقق من وجود جدول student_room_passwords
+        await ensureStudentRoomPasswordsTable();
+
         const token = generateToken(newTeacher.id, 'teacher', email);
 
         res.json({ 
@@ -272,6 +323,9 @@ router.post('/student/register', checkBanned, [
         const verificationUrl = `${baseUrl}/api/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}&role=student`;
         
         const emailSent = await sendVerificationEmail(email, full_name, verificationUrl);
+
+        // ✅ التحقق من وجود جدول student_room_passwords
+        await ensureStudentRoomPasswordsTable();
 
         const token = generateToken(newStudent.id, 'student', email);
 
