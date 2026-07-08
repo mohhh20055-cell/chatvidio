@@ -8,33 +8,28 @@ const { body, param, validationResult } = require('express-validator');
 const multer = require('multer');
 const path = require('path');
 
-// استيراد الدوال المساعدة
 const { supabase } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { getOne, insert, update } = require('../utils/helpers');
-const { uploadToSupabase, validateUploadedFiles, ALLOWED_MIME_TYPES, ALLOWED_EXTENSIONS, MAX_FILE_SIZE } = require('../utils/upload');
+const { uploadToSupabase, validateUploadedFiles } = require('../utils/upload');
 
-// ============================================================
-// إعداد Multer
-// ============================================================
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
 const storage = multer.memoryStorage();
 
 const upload = multer({
     storage: storage,
-    limits: {
-        fileSize: MAX_FILE_SIZE,
-        files: 5
-    },
+    limits: { fileSize: MAX_FILE_SIZE, files: 5 },
     fileFilter: (req, file, cb) => {
         if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
             return cb(new Error('نوع الملف غير مدعوم'), false);
         }
-
         const ext = path.extname(file.originalname).toLowerCase();
         if (!ALLOWED_EXTENSIONS.includes(ext)) {
             return cb(new Error('امتداد الملف غير مدعوم'), false);
         }
-
         cb(null, true);
     }
 });
@@ -64,6 +59,7 @@ router.get('/:student_id', authenticate, [
         
         res.json(student);
     } catch (error) {
+        console.error('خطأ في جلب بيانات الطالب:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
@@ -115,6 +111,7 @@ router.post('/update-profile', authenticate, authorize(['student']), upload.sing
 
         res.json({ success: true, message: 'تم تحديث الملف الشخصي', user: data[0] });
     } catch (error) {
+        console.error('خطأ في تحديث ملف الطالب:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
@@ -192,7 +189,6 @@ router.get('/stream-status/:offer_id/:student_id', authenticate, authorize(['stu
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
 
-        // التحقق من أن الطالب لديه حجز مدفوع
         const session = await getOne('sessions', 'offer_id', offer_id);
         if (!session || session.student_id !== parseInt(student_id) || session.payment_status !== 'paid') {
             return res.json({ can_join: false, error: 'لا يوجد حجز مدفوع' });
@@ -202,7 +198,6 @@ router.get('/stream-status/:offer_id/:student_id', authenticate, authorize(['stu
         if (!offer) return res.json({ can_join: false, status: 'not_found' });
 
         if (offer.status === 'live') {
-            // التحقق من أن الطالب مضاف إلى active_stream
             const { data: active } = await supabase
                 .from('active_stream')
                 .select('*')
@@ -221,7 +216,6 @@ router.get('/stream-status/:offer_id/:student_id', authenticate, authorize(['stu
             }
             return res.json({ can_join: false, status: 'not_active' });
         } else if (offer.status === 'teacher_ready') {
-            // الطالب في حالة الانتظار
             const { data: existingWaiting } = await supabase
                 .from('waiting_room')
                 .select('*')
@@ -239,7 +233,7 @@ router.get('/stream-status/:offer_id/:student_id', authenticate, authorize(['stu
 
         return res.json({ can_join: false, status: 'unknown' });
     } catch (error) {
-        console.error('خطأ:', error.message);
+        console.error('خطأ في جلب حالة البث:', error.message);
         res.status(500).json({ can_join: false, status: 'error' });
     }
 });
@@ -277,7 +271,7 @@ router.get('/wallet/:student_id', authenticate, authorize(['student']), [
             transactions: transactions || []
         });
     } catch (error) {
-        console.error('خطأ:', error.message);
+        console.error('خطأ في جلب المحفظة:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
