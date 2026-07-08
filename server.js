@@ -1,5 +1,5 @@
 // ============================================================
-// خادم منصة التعليم - الملف الرئيسي (معدل بالكامل)
+// خادم منصة التعليم - الملف الرئيسي (معدل بالكامل - Jitsi Meet فقط)
 // ============================================================
 
 require('dotenv').config();
@@ -223,18 +223,18 @@ app.set('trust proxy', true);
 // Compression
 app.use(compression());
 
-// Helmet
+// Helmet - تم إزالة Google Meet من CSP
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdnjs.cloudflare.com", "https://vercel.live", "https://*.vercel.app", "https://www.google.com", "https://www.gstatic.com"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdnjs.cloudflare.com", "https://vercel.live", "https://*.vercel.app"],
             scriptSrcAttr: ["'unsafe-inline'"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
-            imgSrc: ["'self'", "data:", "https://ui-avatars.com", "https://api.qrserver.com", "https://*.supabase.co", "https://www.google.com"],
-            connectSrc: ["'self'", "https://*.supabase.co", "https://pay.chargily.net", "https://*.vercel.app", "https://www.google.com"],
-            frameSrc: ["'self'", "https://meet.google.com", "https://www.google.com"]
+            imgSrc: ["'self'", "data:", "https://ui-avatars.com", "https://api.qrserver.com", "https://*.supabase.co"],
+            connectSrc: ["'self'", "https://*.supabase.co", "https://pay.chargily.net", "https://*.vercel.app"],
+            frameSrc: ["'self'", "https://meet.jit.si"]
         }
     },
     hsts: {
@@ -490,7 +490,7 @@ app.get('/api/get-csrf-token', authenticate, (req, res) => {
 });
 
 // ============================================================
-// ✅ نظام البث المباشر باستخدام Jitsi Meet (مجاني 100%)
+// ✅ نظام البث المباشر باستخدام Jitsi Meet فقط (مجاني 100%)
 // ============================================================
 
 // ============================================================
@@ -513,7 +513,7 @@ app.post('/api/start-jitsi-stream', authenticate, authorize(['teacher']), [
             return res.status(404).json({ success: false, error: 'العرض غير موجود' });
         }
         
-        // ✅ إنشاء غرفة Jitsi (بدون خادم خاص)
+        // ✅ إنشاء غرفة Jitsi
         const roomName = `zoomdz_${offer_id}_${Date.now()}`;
         const password = crypto.randomBytes(6).toString('hex').toUpperCase();
         const roomUrl = `https://meet.jit.si/${roomName}`;
@@ -569,7 +569,7 @@ app.post('/api/start-jitsi-stream', authenticate, authorize(['teacher']), [
             room_url: roomUrl,
             password: password,
             room_name: roomName,
-            message: 'تم بدء البث بنجاح (مجاني 100%)'
+            message: 'تم بدء البث بنجاح عبر Jitsi Meet (مجاني 100%)'
         });
     } catch (error) {
         console.error('❌ خطأ في بدء البث:', error.message);
@@ -602,7 +602,7 @@ app.post('/api/verify-jitsi-password', async (req, res) => {
 });
 
 // ============================================================
-// ✅ صفحة دخول الطالب للبث (Jitsi - رابط مباشر)
+// ✅ صفحة دخول الطالب للبث (Jitsi Meet فقط)
 // ============================================================
 
 app.get('/api/join-jitsi/:offer_id', authenticate, async (req, res) => {
@@ -661,7 +661,7 @@ app.get('/api/join-jitsi/:offer_id', authenticate, async (req, res) => {
 });
 
 // ============================================================
-// ✅ دالة توليد صفحة دخول Jitsi (بدون iframe)
+// ✅ دالة توليد صفحة دخول Jitsi للطالب
 // ============================================================
 
 function generateJitsiJoinPage(offer) {
@@ -675,7 +675,7 @@ function generateJitsiJoinPage(offer) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>دخول البث المباشر</title>
+    <title>دخول البث المباشر - Jitsi Meet</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800;900&display=swap" rel="stylesheet">
     <style>
@@ -694,10 +694,12 @@ function generateJitsiJoinPage(offer) {
         .copy-btn { background: transparent; border: 1px solid #333; color: #94a3b8; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.8rem; transition: all 0.3s; margin-top: 8px; }
         .copy-btn:hover { background: #1a1a2e; border-color: #0f5cbf; color: white; }
         .warning { color: #f59e0b; font-size: 0.75rem; margin-top: 10px; }
+        .jitsi-badge { display: inline-block; background: #0f3460; padding: 4px 16px; border-radius: 20px; font-size: 0.7rem; color: #60a5fa; margin-bottom: 10px; border: 1px solid #0f5cbf; }
     </style>
 </head>
 <body>
     <div class="container">
+        <div class="jitsi-badge"><i class="fas fa-video"></i> Jitsi Meet</div>
         <h1>🎥 ${escapeHtml(subjectName)}</h1>
         <p class="subtitle">🔐 أدخل كلمة المرور للدخول إلى البث المباشر</p>
         
@@ -711,12 +713,13 @@ function generateJitsiJoinPage(offer) {
         </div>
         
         <button class="btn" onclick="joinJitsi()">
-            <i class="fas fa-video"></i> فتح البث المباشر
+            <i class="fas fa-video"></i> فتح البث المباشر (Jitsi Meet)
         </button>
         
         <p class="info">
             <i class="fas fa-info-circle"></i> سيتم فتح Jitsi Meet في نافذة جديدة<br>
-            ⚠️ أدخل كلمة المرور أعلاه عند الطلب
+            ⚠️ أدخل كلمة المرور أعلاه عند الطلب<br>
+            ✅ مجاني 100% ولا يحتاج إلى تثبيت
         </p>
         <p class="warning">
             ⚠️ لا تشارك كلمة المرور مع أي شخص خارج الحصة
@@ -742,7 +745,7 @@ function generateJitsiJoinPage(offer) {
             
             if (newWindow) {
                 setTimeout(() => {
-                    alert('🔑 كلمة المرور: ' + password + '\\n\\nأدخلها عند الطلب في صفحة Jitsi');
+                    alert('🔑 كلمة المرور: ' + password + '\\n\\nأدخلها عند الطلب في صفحة Jitsi Meet');
                 }, 2000);
             } else {
                 alert('⚠️ يرجى السماح بفتح النوافذ المنبثقة');
@@ -760,7 +763,7 @@ function escapeHtml(text) {
 }
 
 // ============================================================
-// ✅ مسار بدء البث للأستاذ (النسخة القديمة - للتوافق)
+// ✅ مسار بدء البث للأستاذ
 // ============================================================
 
 app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
@@ -843,7 +846,7 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
 });
 
 // ============================================================
-// ✅ مسار دخول الأستاذ للبث المباشر (تم إضافته حديثاً)
+// ✅ مسار دخول الأستاذ للبث المباشر (Jitsi Meet فقط)
 // ============================================================
 app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
     try {
@@ -927,7 +930,6 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
             
             if (jitsiRoom) {
                 roomPassword = jitsiRoom.password;
-                // ✅ إذا كان هناك رابط في jitsi_rooms، استخدمه
                 if (jitsiRoom.room_url) {
                     offer.stream_url = jitsiRoom.room_url;
                 }
@@ -953,7 +955,7 @@ app.get('/api/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
 });
 
 // ============================================================
-// ✅ صفحة الأستاذ للبث المباشر (مع Jitsi)
+// ✅ صفحة الأستاذ للبث المباشر (Jitsi Meet فقط)
 // ============================================================
 
 function generateTeacherStreamPage(offer, teacherId, token, roomPassword) {
@@ -968,7 +970,7 @@ function generateTeacherStreamPage(offer, teacherId, token, roomPassword) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>البث المباشر - الأستاذ</title>
+    <title>البث المباشر - Jitsi Meet</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
@@ -996,14 +998,16 @@ function generateTeacherStreamPage(offer, teacherId, token, roomPassword) {
         .copy-btn:hover { background: #1a1a2e; border-color: #0f5cbf; color: white; }
         .status-badge { display: inline-block; padding: 4px 16px; border-radius: 20px; font-weight: 700; font-size: 0.8rem; }
         .status-live { background: #ef4444; color: white; animation: pulse 1.5s infinite; }
+        .jitsi-badge { display: inline-block; background: #0f3460; padding: 4px 16px; border-radius: 20px; font-size: 0.7rem; color: #60a5fa; margin-bottom: 10px; border: 1px solid #0f5cbf; }
         @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.02); } }
         @media(max-width:600px) { .container { padding: 20px; } .info-box { flex-direction: column; } }
     </style>
 </head>
 <body>
 <div class="container">
+    <div class="jitsi-badge"><i class="fas fa-video"></i> Jitsi Meet</div>
     <h1>🎥 البث المباشر</h1>
-    <p class="subtitle">كأستاذ - Jitsi Meet (مجاني 100%)</p>
+    <p class="subtitle">كأستاذ - مجاني 100%</p>
 
     <div class="info-box">
         <div><span>📚 المادة:</span> <strong>${escapeHtml(subjectName)}</strong></div>
@@ -1020,7 +1024,7 @@ function generateTeacherStreamPage(offer, teacherId, token, roomPassword) {
     </div>
 
     <button class="btn" onclick="joinJitsi()">
-        <i class="fas fa-video"></i> فتح البث المباشر
+        <i class="fas fa-video"></i> فتح البث المباشر (Jitsi Meet)
     </button>
 
     <button class="btn btn-danger" onclick="endStream()">
@@ -1030,11 +1034,12 @@ function generateTeacherStreamPage(offer, teacherId, token, roomPassword) {
     <button class="btn-back" onclick="window.location.href='/teacher-dashboard.html'">← العودة للوحة التحكم</button>
 
     <div class="tip">
-        <h4>💡 نصائح للبث المباشر</h4>
+        <h4>💡 نصائح للبث المباشر عبر Jitsi Meet</h4>
         <p>• تأكد من عمل الكاميرا والميكروفون<br>
         • شارك كلمة المرور فقط مع الطلاب المسجلين<br>
         • يمكنك مشاركة الشاشة لعرض المحتوى التعليمي<br>
-        • اضغط على "إنهاء البث" عند الانتهاء</p>
+        • اضغط على "إنهاء البث" عند الانتهاء<br>
+        • ✅ مجاني 100% ولا يحتاج إلى تثبيت</p>
     </div>
 </div>
 
@@ -1060,7 +1065,7 @@ function generateTeacherStreamPage(offer, teacherId, token, roomPassword) {
         
         if (newWindow) {
             setTimeout(() => {
-                alert('🔑 كلمة المرور: ' + password + '\\n\\nأدخلها عند الطلب في صفحة Jitsi');
+                alert('🔑 كلمة المرور: ' + password + '\\n\\nأدخلها عند الطلب في صفحة Jitsi Meet');
             }, 1500);
         } else {
             alert('⚠️ يرجى السماح بفتح النوافذ المنبثقة');
@@ -1069,7 +1074,6 @@ function generateTeacherStreamPage(offer, teacherId, token, roomPassword) {
 
     function endStream() {
         if (confirm('⚠️ هل أنت متأكد من إنهاء البث المباشر؟')) {
-            // ✅ إعادة توجيه إلى لوحة التحكم
             window.location.href = '/teacher-dashboard.html';
         }
     }
@@ -1079,7 +1083,7 @@ function generateTeacherStreamPage(offer, teacherId, token, roomPassword) {
 }
 
 // ============================================================
-// ✅ صفحة بدء البث للأستاذ (مع Jitsi)
+// ✅ صفحة بدء البث للأستاذ (Jitsi Meet فقط)
 // ============================================================
 
 function generateTeacherStartPage(offer, teacherId, token, studentsCount) {
@@ -1092,7 +1096,7 @@ function generateTeacherStartPage(offer, teacherId, token, studentsCount) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>بدء البث المباشر</title>
+    <title>بدء البث المباشر - Jitsi Meet</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
@@ -1104,12 +1108,6 @@ function generateTeacherStartPage(offer, teacherId, token, studentsCount) {
         .info-box { background: #0f3460; border-radius: 12px; padding: 15px 20px; margin-bottom: 25px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
         .info-box span { color: #94a3b8; }
         .info-box strong { color: white; }
-        .input-group { margin: 20px 0; }
-        .input-group label { display: block; margin-bottom: 8px; color: #94a3b8; font-weight: 700; font-size: 0.95rem; }
-        .input-group label i { color: #0f5cbf; margin-left: 6px; }
-        .input-group input, .input-group select { width: 100%; padding: 14px 18px; border-radius: 12px; border: 1px solid #333; background: #0a0a1a; color: white; font-size: 1rem; transition: border 0.3s; font-family: 'Cairo', sans-serif; }
-        .input-group input:focus, .input-group select:focus { outline: none; border-color: #0f5cbf; }
-        .input-group .hint { font-size: 0.8rem; color: #64748b; margin-top: 5px; }
         .btn-start { width: 100%; padding: 16px; background: linear-gradient(135deg, #0f5cbf, #0a4a9a); color: white; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: all 0.3s; margin-top: 10px; }
         .btn-start:hover { transform: scale(1.02); box-shadow: 0 8px 25px rgba(15, 92, 191, 0.4); }
         .btn-start:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -1127,6 +1125,10 @@ function generateTeacherStartPage(offer, teacherId, token, studentsCount) {
         .toast { position: fixed; bottom: 30px; right: 30px; left: 30px; background: #1a1a2e; color: white; padding: 16px 24px; border-radius: 12px; z-index: 2000; display: none; animation: slideIn 0.4s ease; box-shadow: 0 10px 40px rgba(0,0,0,0.5); font-size: 0.95rem; max-width: 440px; margin: 0 auto; border-right: 4px solid #10b981; }
         .toast.error { border-color: #ef4444; }
         .toast.warning { border-color: #f59e0b; }
+        .jitsi-badge { display: inline-block; background: #0f3460; padding: 4px 16px; border-radius: 20px; font-size: 0.7rem; color: #60a5fa; margin-bottom: 10px; border: 1px solid #0f5cbf; }
+        .status-badge { display: inline-block; padding: 4px 16px; border-radius: 20px; font-weight: 700; font-size: 0.8rem; }
+        .status-live { background: #ef4444; color: white; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.02); } }
         @keyframes slideIn { from { transform: translateY(100%) scale(0.95); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
         @media(max-width:600px) {
             .container { padding: 20px; }
@@ -1136,25 +1138,26 @@ function generateTeacherStartPage(offer, teacherId, token, studentsCount) {
 </head>
 <body>
 <div class="container">
+    <div class="jitsi-badge"><i class="fas fa-video"></i> Jitsi Meet</div>
     <h1>🎥 بدء البث المباشر</h1>
-    <p class="subtitle">باستخدام Jitsi Meet (مجاني 100%)</p>
+    <p class="subtitle">مجاني 100% - لا يحتاج إلى تثبيت</p>
 
     <div class="info-box">
         <div><span>📚 المادة:</span> <strong>${escapeHtml(subjectName)}</strong></div>
         <div><span>👨‍🎓 الطلاب المسجلين:</span> <strong id="studentsCountDisplay">${studentsCount}</strong></div>
-        <div><span>📊 الحالة:</span> <strong id="statusDisplay"><span class="stream-status inactive">⏳ غير مفعل</span></strong></div>
+        <div><span>📊 الحالة:</span> <strong id="statusDisplay"><span class="status-badge" style="background:#64748b;">⏳ غير مفعل</span></strong></div>
     </div>
 
     <div class="tip">
         <h4>💡 ما هو Jitsi Meet؟</h4>
-        <p>Jitsi Meet هو بديل مجاني 100% لـ Google Meet<br>
-        • <strong>مجاني تماماً</strong> بدون أي حد زمني<br>
+        <p>• <strong>بديل مجاني 100%</strong> لبرامج البث المباشر<br>
+        • <strong>مجاني تماماً</strong> بدون أي حد زمني أو إعلانات<br>
         • <strong>آمن</strong> مع كلمة مرور للغرفة<br>
-        • <strong>سريع</strong> ولا يحتاج إلى تثبيت</p>
+        • <strong>سريع</strong> ولا يحتاج إلى تثبيت أو حساب</p>
     </div>
 
     <button class="btn-start btn-success" id="startStreamBtn" onclick="startJitsiStream()">
-        <i class="fas fa-play"></i> بدء البث المباشر
+        <i class="fas fa-play"></i> بدء البث المباشر (Jitsi Meet)
     </button>
 
     <button class="btn-start" id="addAllBtn" onclick="addAllStudents()" disabled>
@@ -1169,6 +1172,7 @@ function generateTeacherStartPage(offer, teacherId, token, studentsCount) {
         <div class="link-display" id="savedLinkDisplay"></div>
         <p style="margin-top: 8px; font-size: 0.8rem;">🟢 تم إرسال إشعارات للطلاب المسجلين</p>
         <p style="margin-top: 8px; font-size: 0.8rem; color: #f59e0b;">🔑 كلمة المرور: <strong id="passwordDisplay"></strong></p>
+        <p style="margin-top: 8px; font-size: 0.7rem; color: #60a5fa;">✅ Jitsi Meet - مجاني 100%</p>
     </div>
 </div>
 
@@ -1239,7 +1243,7 @@ function generateTeacherStartPage(offer, teacherId, token, studentsCount) {
                 document.getElementById('statusDisplay').innerHTML = '<span class="status-badge status-live">🟢 بث مباشر</span>';
                 document.getElementById('addAllBtn').disabled = false;
                 
-                showToast('✅ تم بدء البث بنجاح!', 'success');
+                showToast('✅ تم بدء البث عبر Jitsi Meet بنجاح!', 'success');
             } else {
                 showToast('❌ ' + (data.error || 'حدث خطأ'), 'error');
             }
@@ -1248,7 +1252,7 @@ function generateTeacherStartPage(offer, teacherId, token, studentsCount) {
             showToast('❌ حدث خطأ في الاتصال بالخادم', 'error');
         } finally {
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-play"></i> بدء البث المباشر';
+            btn.innerHTML = '<i class="fas fa-play"></i> بدء البث المباشر (Jitsi Meet)';
         }
     }
 
@@ -1296,7 +1300,7 @@ function generateTeacherStartPage(offer, teacherId, token, studentsCount) {
 
     async function init() {
         await getCsrfToken();
-        console.log('✅ تم تهيئة صفحة بدء البث');
+        console.log('✅ تم تهيئة صفحة بدء البث مع Jitsi Meet');
     }
 
     init();
@@ -1479,6 +1483,7 @@ if (require.main === module) {
         console.log(`🚀 الخادم يعمل على http://localhost:${PORT}`);
         console.log('=' .repeat(60));
         console.log('📅 التاريخ:', new Date().toLocaleString('ar-EG'));
+        console.log('✅ نظام البث: Jitsi Meet (مجاني 100%)');
         console.log('=' .repeat(60));
     });
 }
