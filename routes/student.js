@@ -9,9 +9,22 @@ const multer = require('multer');
 const path = require('path');
 
 const { supabase } = require('../config/database');
-const { authenticate, authorize } = require('../middleware/auth');
+const { authenticate, checkBanned } = require('../middleware/auth');
 const { getOne, insert, update } = require('../utils/helpers');
 const { uploadToSupabase, validateUploadedFiles } = require('../utils/upload');
+
+// ✅ تعريف authorize محلياً
+function authorize(roles = []) {
+    return (req, res, next) => {
+        if (!req.user) {
+            return res.status(401).json({ success: false, error: 'غير مصرح به' });
+        }
+        if (roles.length > 0 && !roles.includes(req.user.role)) {
+            return res.status(403).json({ success: false, error: 'صلاحيات غير كافية' });
+        }
+        next();
+    };
+}
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
@@ -215,65 +228,3 @@ router.get('/stream-status/:offer_id/:student_id', authenticate, authorize(['stu
                 return res.json({ can_join: true, stream_url: offer.stream_url, status: 'live' });
             }
             return res.json({ can_join: false, status: 'not_active' });
-        } else if (offer.status === 'teacher_ready') {
-            const { data: existingWaiting } = await supabase
-                .from('waiting_room')
-                .select('*')
-                .eq('offer_id', offer_id)
-                .eq('student_id', student_id)
-                .maybeSingle();
-
-            if (!existingWaiting) {
-                await insert('waiting_room', { offer_id: offer_id, student_id: student_id });
-            }
-            return res.json({ can_join: false, is_waiting: true, status: 'waiting' });
-        } else if (offer.status === 'upcoming') {
-            return res.json({ can_join: false, is_upcoming: true, status: 'upcoming', offer_date: offer.offer_date });
-        }
-
-        return res.json({ can_join: false, status: 'unknown' });
-    } catch (error) {
-        console.error('خطأ في جلب حالة البث:', error.message);
-        res.status(500).json({ can_join: false, status: 'error' });
-    }
-});
-
-// ============================================================
-// جلب المحفظة
-// ============================================================
-router.get('/wallet/:student_id', authenticate, authorize(['student']), [
-    param('student_id').isInt().withMessage('معرف الطالب غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const student_id = parseInt(req.params.student_id);
-
-        if (req.user.userId !== student_id) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه المعلومات' });
-        }
-
-        const student = await getOne('students', 'id', student_id);
-        if (!student) return res.status(404).json({ success: false, error: 'طالب غير موجود' });
-
-        const { data: transactions } = await supabase
-            .from('wallet_transactions')
-            .select('*')
-            .eq('student_id', student_id)
-            .order('created_at', { ascending: false })
-            .limit(50);
-
-        res.json({
-            balance: student.wallet_balance || 0,
-            transactions: transactions || []
-        });
-    } catch (error) {
-        console.error('خطأ في جلب المحفظة:', error.message);
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
-    }
-});
-
-module.exports = router;
