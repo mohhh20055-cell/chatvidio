@@ -58,9 +58,6 @@
         ::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--gray-400); }
 
-        /* ================================================================
-           NAVBAR
-        ================================================================ */
         .navbar {
             position: fixed;
             top: 0;
@@ -428,9 +425,6 @@
         .profile-dropdown .dropdown-item.danger { color: var(--danger); }
         .profile-dropdown .dropdown-item.danger i { color: var(--danger); }
 
-        /* ================================================================
-           MAIN CONTENT
-        ================================================================ */
         .main-wrapper {
             max-width: 1400px;
             margin: 0 auto;
@@ -871,9 +865,6 @@
         }
         .card-title i { color: var(--primary); }
 
-        /* ================================================================
-           MODALS
-        ================================================================ */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -988,9 +979,6 @@
         .gift-result .result-amount.green { color: var(--secondary); }
         .gift-result .result-amount.gray { color: var(--gray-400); }
 
-        /* ================================================================
-           TOAST
-        ================================================================ */
         .toast-container {
             position: fixed;
             bottom: 24px;
@@ -1029,9 +1017,6 @@
         .loading { text-align: center; padding: 40px; color: var(--gray-400); font-weight: 600; }
         .loading i { color: var(--primary); margin-left: 8px; }
 
-        /* ================================================================
-           RESPONSIVE
-        ================================================================ */
         @media (max-width: 767px) {
             body { padding-top: 70px; }
             .navbar { height: 64px; padding: 0 12px; }
@@ -1105,9 +1090,6 @@
 </head>
 <body>
 
-<!-- ================================================================
-     NAVBAR
-================================================================ -->
 <nav class="navbar">
     <div class="navbar-inner">
         <a class="nav-logo" onclick="showSection('offers')">
@@ -1190,11 +1172,7 @@
     </div>
 </nav>
 
-<!-- ================================================================
-     MAIN CONTENT
-================================================================ -->
 <div class="main-wrapper">
-    <!-- LEFT SIDEBAR -->
     <div class="left-sidebar">
         <div class="profile-card">
             <img id="sidebarAvatar" class="profile-avatar" src="https://ui-avatars.com/api/?name=طالب&background=0f5cbf&color=fff&size=80" alt="صورة الملف الشخصي">
@@ -1232,33 +1210,27 @@
         </div>
     </div>
 
-    <!-- CONTENT -->
     <div class="content-area">
-        <!-- OFFERS SECTION -->
         <div id="offersSection">
             <div class="section-title"><i class="fas fa-calendar-alt"></i> العروض المتوفرة</div>
             <div id="offersList" class="offers-grid"></div>
         </div>
 
-        <!-- TEACHERS SECTION -->
         <div id="teachersSection" style="display: none;">
             <div class="section-title"><i class="fas fa-chalkboard-user"></i> الأساتذة</div>
             <div id="teachersList" class="teachers-grid"></div>
         </div>
 
-        <!-- BOOKINGS SECTION -->
         <div id="bookingsSection" style="display: none;">
             <div class="section-title"><i class="fas fa-bookmark"></i> حجوزاتي</div>
             <div id="bookingsList"></div>
         </div>
 
-        <!-- TRANSACTIONS SECTION -->
         <div id="transactionsSection" style="display: none;">
             <div class="section-title"><i class="fas fa-history"></i> سجل المعاملات</div>
             <div id="transactionsList"></div>
         </div>
 
-        <!-- REFERRAL SECTION -->
         <div id="referralSection" style="display: none;">
             <div class="section-title"><i class="fas fa-link" style="color:var(--gold);"></i> نظام الإحالة</div>
             
@@ -1282,7 +1254,6 @@
                 </div>
             </div>
 
-            <!-- Gift Box -->
             <div class="gift-box-card">
                 <span class="gift-icon">🎁</span>
                 <div class="chances-display" id="giftChancesDisplay">0</div>
@@ -1295,7 +1266,6 @@
                 </p>
             </div>
 
-            <!-- Reward History -->
             <div style="margin-top:24px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                     <h4 style="font-size:1rem; font-weight:800;"><i class="fas fa-history" style="color:var(--gold);"></i> سجل المكافآت</h4>
@@ -1305,7 +1275,6 @@
         </div>
     </div>
 
-    <!-- RIGHT SIDEBAR -->
     <div class="right-sidebar">
         <div class="right-card">
             <div class="card-title"><i class="fas fa-gift" style="color:var(--gold);"></i> عروض مجانية</div>
@@ -1324,17 +1293,10 @@
     </div>
 </div>
 
-<!-- ================================================================
-     TOAST CONTAINER
-================================================================ -->
 <div class="toast-container" id="toastContainer"></div>
 
-<!-- ================================================================
-     MODALS
-================================================================ -->
 <div class="modal-overlay" id="modalOverlay"></div>
 
-<!-- EDIT PROFILE MODAL -->
 <div id="editProfileModal" class="modal">
     <div class="modal-header">
         <h3><i class="fas fa-user-edit"></i> تعديل الملف الشخصي</h3>
@@ -1351,7 +1313,6 @@
     </div>
 </div>
 
-<!-- DEPOSIT MODAL -->
 <div id="depositModal" class="modal">
     <div class="modal-header">
         <h3><i class="fas fa-plus-circle"></i> شحن الرصيد</h3>
@@ -1367,7 +1328,6 @@
     </div>
 </div>
 
-<!-- TEACHER PROFILE MODAL -->
 <div id="teacherProfileModal" class="modal">
     <div class="modal-header">
         <h3 id="teacherModalName"><i class="fas fa-chalkboard-user"></i> ملف الأستاذ</h3>
@@ -1379,7 +1339,6 @@
     </div>
 </div>
 
-<!-- GIFT RESULT MODAL -->
 <div id="giftResultModal" class="modal">
     <div class="modal-header">
         <h3><i class="fas fa-gift" style="color:var(--gold);"></i> صندوق الهدايا</h3>
@@ -1399,7 +1358,7 @@
 
 <script>
     // ================================================================
-    // ✅ تم إصلاح مشكلة التوكن و CSRF بشكل كامل
+    // ✅ لوحة الطالب - نسخة معدلة بالكامل مع دعم البث المباشر
     // ================================================================
 
     let userData = null;
@@ -1412,18 +1371,9 @@
     let csrfToken = null;
 
     // ================================================================
-    // دوال المصادقة والأمان - ✅ مع CSRF Token
+    // دوال المصادقة والأمان
     // ================================================================
 
-    function getAuthHeaders() {
-        return {
-            'Authorization': `Bearer ${authToken}`,
-            'X-CSRF-Token': csrfToken || '',
-            'Content-Type': 'application/json'
-        };
-    }
-
-    // ✅ دالة لجلب CSRF Token من الخادم
     async function fetchCsrfToken() {
         try {
             const response = await fetch('/api/get-csrf-token', {
@@ -1477,7 +1427,6 @@
                     throw new Error('حساب محظور');
                 }
                 if (data.error && data.error.includes('CSRF')) {
-                    // ✅ تجديد CSRF Token وإعادة المحاولة
                     await fetchCsrfToken();
                     const retryResponse = await fetch(url, {
                         ...options,
@@ -1501,7 +1450,7 @@
     }
 
     // ================================================================
-    // NOTIFICATIONS SYSTEM
+    // NOTIFICATIONS
     // ================================================================
 
     async function loadNotifications() {
@@ -1597,6 +1546,70 @@
         }
     }
 
+    // ✅ الدالة الرئيسية لدخول البث من الإشعار - معدلة
+    async function joinFromNotification(offerId) {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
+                return;
+            }
+
+            showToast('⏳ جاري التحقق من البث...', 'info');
+
+            const res = await fetchWithAuth(`/api/student/stream-status/${offerId}/${studentId}`);
+            const data = await res.json();
+            
+            console.log('📡 حالة البث:', data);
+
+            if (data.can_join && data.status === 'live') {
+                window.open(`/api/join-stream/${offerId}/${studentId}?token=${encodeURIComponent(token)}`, '_blank');
+                showToast('✅ جاري فتح البث المباشر...', 'success');
+            } else if (data.is_waiting) {
+                showToast('⏳ جاري التحضير للبث، انتظر قليلاً...', 'warning');
+            } else if (data.is_upcoming) {
+                showToast(`⏳ البث سيبدأ في ${new Date(data.offer_date).toLocaleString('ar')}`, 'info');
+            } else if (data.status === 'completed') {
+                showToast('⏹️ انتهى البث المباشر', 'warning');
+                showSection('bookings');
+            } else if (data.status === 'live' && !data.can_join) {
+                showToast('⏳ جاري إضافتك إلى البث...', 'info');
+                
+                try {
+                    const addRes = await fetchWithAuth(`/api/stream/add-student-to-stream/${offerId}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            offer_id: parseInt(offerId),
+                            student_id: parseInt(studentId)
+                        })
+                    });
+                    const addData = await addRes.json();
+                    if (addData.success) {
+                        showToast('✅ تمت إضافتك إلى البث، جاري التوجيه...', 'success');
+                        setTimeout(() => {
+                            window.open(`/api/join-stream/${offerId}/${studentId}?token=${encodeURIComponent(token)}`, '_blank');
+                        }, 1500);
+                    } else {
+                        showToast('❌ ' + (addData.error || 'حدث خطأ'), 'error');
+                    }
+                } catch(e) {
+                    console.error('خطأ في الإضافة:', e);
+                    showToast('❌ حدث خطأ في الإضافة', 'error');
+                }
+            } else {
+                showToast('❌ البث غير متاح حالياً', 'warning');
+                showSection('bookings');
+            }
+        } catch(e) {
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                console.error('خطأ في joinFromNotification:', e);
+                showToast('❌ حدث خطأ', 'error');
+            }
+        }
+        document.getElementById('notifDropdown').classList.remove('open');
+    }
+
     async function markNotificationRead(notifId, offerId) {
         try {
             const res = await fetchWithAuth(`/api/notifications/read/${notifId}`, {
@@ -1641,72 +1654,6 @@
         showToast('تم تحديد جميع الإشعارات كمقروءة', 'success');
     }
 
- async function joinFromNotification(offerId) {
-    try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
-            return;
-        }
-
-        // ✅ أولاً: التحقق من حالة البث
-        const res = await fetchWithAuth(`/api/student/stream-status/${offerId}/${studentId}`);
-        const data = await res.json();
-        
-        console.log('📡 حالة البث:', data); // للتتبع
-
-        // ✅ إذا كان البث مباشراً والطالب لديه صلاحية الدخول
-        if (data.can_join && data.status === 'live') {
-            window.open(`/api/join-stream/${offerId}/${studentId}?token=${encodeURIComponent(token)}`, '_blank');
-        } 
-        // ✅ إذا كان الطالب في قائمة الانتظار
-        else if (data.is_waiting) {
-            showToast('⏳ جاري التحضير للبث، انتظر قليلاً...', 'warning');
-        } 
-        // ✅ إذا كان البث قادم
-        else if (data.is_upcoming) {
-            showToast(`⏳ البث سيبدأ في ${new Date(data.offer_date).toLocaleString('ar')}`, 'info');
-        } 
-        // ✅ إذا كان البث مباشر ولكن الطالب غير مضاف -> محاولة إضافته
-        else if (data.status === 'live' && !data.can_join) {
-            showToast('⏳ جاري إضافتك إلى البث...', 'info');
-            
-            // محاولة إضافة الطالب إلى active_stream
-            try {
-                const addRes = await fetchWithAuth(`/api/stream/add-student-to-stream/${offerId}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        offer_id: offerId,
-                        student_id: studentId
-                    })
-                });
-                const addData = await addRes.json();
-                if (addData.success) {
-                    showToast('✅ تمت إضافتك إلى البث، جاري التوجيه...', 'success');
-                    setTimeout(() => {
-                        window.open(`/api/join-stream/${offerId}/${studentId}?token=${encodeURIComponent(token)}`, '_blank');
-                    }, 1500);
-                } else {
-                    showToast('❌ ' + (addData.error || 'حدث خطأ'), 'error');
-                }
-            } catch(e) {
-                showToast('❌ حدث خطأ في الإضافة', 'error');
-            }
-        } 
-        else {
-            showToast('البث غير متاح حالياً', 'warning');
-            showSection('bookings');
-        }
-    } catch(e) {
-        if (e.message !== 'انتهت صلاحية الجلسة') {
-            console.error('خطأ:', e);
-            showToast('حدث خطأ', 'error');
-        }
-    }
-    document.getElementById('notifDropdown').classList.remove('open');
-}
-
     // ================================================================
     // PROFILE DROPDOWN
     // ================================================================
@@ -1723,7 +1670,7 @@
     }
 
     // ================================================================
-    // TOAST NOTIFICATIONS
+    // TOAST
     // ================================================================
 
     function showToast(message, type = 'success') {
@@ -1771,7 +1718,7 @@
     }
 
     // ================================================================
-    // USER DATA - ✅ مع CSRF Token
+    // USER DATA
     // ================================================================
 
     async function loadUserData() {
@@ -1794,7 +1741,7 @@
                 return;
             }
 
-            // ✅ جلب CSRF Token            await fetchCsrfToken();
+            await fetchCsrfToken();
 
             const res = await fetchWithAuth(`/api/student/${studentId}`);
             const data = await res.json();
@@ -2045,7 +1992,7 @@
     }
 
     // ================================================================
-    // BOOKINGS
+    // BOOKINGS - ✅ معدل مع دعم البث المباشر
     // ================================================================
 
     async function loadMyBookings() {
@@ -2114,7 +2061,7 @@
         container.innerHTML = html;
     }
 
-    // ✅ تم إصلاح دالة joinLiveStream - إضافة التوكن
+    // ✅ دالة الانضمام إلى البث المباشر - معدلة
     function joinLiveStream(offerId) {
         const token = localStorage.getItem('token');
         if (!token) {
@@ -2572,7 +2519,7 @@
     }
 
     // ================================================================
-    // CLOSE DROPDOWNS ON CLICK OUTSIDE
+    // CLOSE DROPDOWNS
     // ================================================================
 
     document.addEventListener('click', function(e) {
@@ -2590,7 +2537,7 @@
     });
 
     // ================================================================
-    // INIT - ✅ مع CSRF Token
+    // INIT
     // ================================================================
 
     loadUserData().then(() => {
@@ -2611,7 +2558,6 @@
         if (studentId) loadReferralData();
     }, 120000);
 
-    // ✅ تجديد CSRF Token كل ساعة
     setInterval(() => {
         if (authToken) {
             fetchCsrfToken();
