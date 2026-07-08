@@ -8,11 +8,16 @@ const { body, param, validationResult } = require('express-validator');
 const multer = require('multer');
 const path = require('path');
 
-// استيراد الدوال المساعدة
+// ✅ تأكد من استيراد كل الدوال بشكل صحيح
 const { supabase } = require('../config/database');
 const { authenticate, authorize, checkBanned } = require('../middleware/auth');
 const { getOne, insert, update, remove } = require('../utils/helpers');
-const { uploadToSupabase, validateUploadedFiles, ALLOWED_MIME_TYPES, ALLOWED_EXTENSIONS, MAX_FILE_SIZE } = require('../utils/upload');
+const { uploadToSupabase, validateUploadedFiles } = require('../utils/upload');
+
+// ✅ ثوابت Multer
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf'];
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 // ============================================================
 // إعداد Multer
@@ -40,7 +45,7 @@ const upload = multer({
 });
 
 // ============================================================
-// جلب بيانات الأستاذ
+// ✅ جلب بيانات الأستاذ
 // ============================================================
 router.get('/:teacher_id', authenticate, [
     param('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
@@ -64,12 +69,13 @@ router.get('/:teacher_id', authenticate, [
         
         res.json(teacher);
     } catch (error) {
+        console.error('خطأ في جلب بيانات الأستاذ:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
 
 // ============================================================
-// تحديث صورة الأستاذ الشخصية
+// ✅ تحديث صورة الأستاذ الشخصية
 // ============================================================
 router.post('/update-profile', authenticate, authorize(['teacher']), upload.single('profile_image'), validateUploadedFiles, [
     body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
@@ -109,12 +115,13 @@ router.post('/update-profile', authenticate, authorize(['teacher']), upload.sing
 
         res.json({ success: true, message: 'تم تحديث الصورة الشخصية', user: data[0] });
     } catch (error) {
+        console.error('خطأ في تحديث الصورة:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
 
 // ============================================================
-// تحديث الملف الشخصي مع الروابط الاجتماعية
+// ✅ تحديث الملف الشخصي مع الروابط الاجتماعية
 // ============================================================
 router.post('/update-profile-with-social', authenticate, authorize(['teacher']), upload.fields([
     { name: 'profile_image', maxCount: 1 }
@@ -195,7 +202,7 @@ router.post('/update-profile-with-social', authenticate, authorize(['teacher']),
 });
 
 // ============================================================
-// جلب الرصيد والأرباح
+// ✅ جلب الرصيد والأرباح
 // ============================================================
 router.get('/balance/:teacher_id', authenticate, authorize(['teacher']), [
     param('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
@@ -228,12 +235,13 @@ router.get('/balance/:teacher_id', authenticate, authorize(['teacher']), [
             sessions: paidSessions || []
         });
     } catch (error) {
+        console.error('خطأ في جلب الرصيد:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
 
 // ============================================================
-// طلب سحب
+// ✅ طلب سحب
 // ============================================================
 router.post('/withdraw-request', authenticate, authorize(['teacher']), [
     body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح'),
@@ -274,12 +282,13 @@ router.post('/withdraw-request', authenticate, authorize(['teacher']), [
 
         res.json({ success: true, request: withdrawRequest });
     } catch (error) {
+        console.error('خطأ في طلب السحب:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
 
 // ============================================================
-// جلب طلبات السحب
+// ✅ جلب طلبات السحب
 // ============================================================
 router.get('/withdraw-requests/:teacher_id', authenticate, authorize(['teacher']), [
     param('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
@@ -303,12 +312,13 @@ router.get('/withdraw-requests/:teacher_id', authenticate, authorize(['teacher']
             .order('created_at', { ascending: false });
         res.json(data || []);
     } catch (error) {
+        console.error('خطأ في جلب طلبات السحب:', error.message);
         res.status(500).json([]);
     }
 });
 
 // ============================================================
-// جلب عروض الأستاذ
+// ✅ جلب عروض الأستاذ
 // ============================================================
 router.get('/offers/:teacher_id', authenticate, authorize(['teacher']), [
     param('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
@@ -332,8 +342,10 @@ router.get('/offers/:teacher_id', authenticate, authorize(['teacher']), [
             .order('offer_date', { ascending: false });
         res.json(data || []);
     } catch (error) {
+        console.error('خطأ في جلب عروض الأستاذ:', error.message);
         res.status(500).json([]);
     }
 });
 
+// ✅ تصدير router
 module.exports = router;
