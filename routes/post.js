@@ -8,33 +8,41 @@ const { body, param, validationResult } = require('express-validator');
 const multer = require('multer');
 const path = require('path');
 
-// استيراد الدوال المساعدة
 const { supabase } = require('../config/database');
-const { authenticate, authorize } = require('../middleware/auth');
+const { authenticate, checkBanned } = require('../middleware/auth');
 const { getOne, insert, update, remove } = require('../utils/helpers');
-const { uploadToSupabase, validateUploadedFiles, ALLOWED_MIME_TYPES, ALLOWED_EXTENSIONS, MAX_FILE_SIZE } = require('../utils/upload');
+const { uploadToSupabase, validateUploadedFiles } = require('../utils/upload');
 
-// ============================================================
-// إعداد Multer
-// ============================================================
+// ✅ تعريف authorize محلياً
+function authorize(roles = []) {
+    return (req, res, next) => {
+        if (!req.user) {
+            return res.status(401).json({ success: false, error: 'غير مصرح به' });
+        }
+        if (roles.length > 0 && !roles.includes(req.user.role)) {
+            return res.status(403).json({ success: false, error: 'صلاحيات غير كافية' });
+        }
+        next();
+    };
+}
+
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf'];
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
 const storage = multer.memoryStorage();
 
 const upload = multer({
     storage: storage,
-    limits: {
-        fileSize: MAX_FILE_SIZE,
-        files: 5
-    },
+    limits: { fileSize: MAX_FILE_SIZE, files: 5 },
     fileFilter: (req, file, cb) => {
         if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
             return cb(new Error('نوع الملف غير مدعوم'), false);
         }
-
         const ext = path.extname(file.originalname).toLowerCase();
         if (!ALLOWED_EXTENSIONS.includes(ext)) {
             return cb(new Error('امتداد الملف غير مدعوم'), false);
         }
-
         cb(null, true);
     }
 });
@@ -86,7 +94,7 @@ router.post('/create', authenticate, authorize(['teacher']), upload.fields([
 
         res.json({ success: true, message: 'تم نشر الدرس بنجاح' });
     } catch (error) {
-        console.error('خطأ:', error.message);
+        console.error('خطأ في إنشاء المنشور:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
@@ -118,7 +126,7 @@ router.get('/:teacher_id', async (req, res) => {
 
         res.json(postsWithCounts);
     } catch (error) {
-        console.error('خطأ:', error.message);
+        console.error('خطأ في جلب منشورات الأستاذ:', error.message);
         res.status(500).json([]);
     }
 });
@@ -149,7 +157,7 @@ router.get('/post/:post_id', async (req, res) => {
             comments: comments || []
         });
     } catch (error) {
-        console.error('خطأ:', error.message);
+        console.error('خطأ في جلب المنشور:', error.message);
         res.status(500).json({ error: 'حدث خطأ في الخادم' });
     }
 });
@@ -183,6 +191,7 @@ router.post('/like', authenticate, authorize(['student']), [
         await update('posts', post_id, { likes: count });
         res.json({ success: true, liked: true });
     } catch (error) {
+        console.error('خطأ في الإعجاب:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
@@ -202,151 +211,4 @@ router.post('/unlike', authenticate, authorize(['student']), [
 
         const { post_id, student_id } = req.body;
 
-        if (req.user.userId !== student_id) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
-        }
-
-        await supabase.from('post_likes').delete().eq('post_id', post_id).eq('student_id', student_id);
-
-        const { count } = await supabase
-            .from('post_likes')
-            .select('*', { count: 'exact', head: true })
-            .eq('post_id', post_id);
-
-        await update('posts', post_id, { likes: count });
-        res.json({ success: true, liked: false });
-    } catch (error) {
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
-    }
-});
-
-// ============================================================
-// التحقق من الإعجاب
-// ============================================================
-router.get('/check-like/:post_id/:student_id', authenticate, authorize(['student']), async (req, res) => {
-    try {
-        const { post_id, student_id } = req.params;
-
-        if (req.user.userId !== parseInt(student_id)) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
-        }
-
-        const { data } = await supabase
-            .from('post_likes')
-            .select('*')
-            .eq('post_id', post_id)
-            .eq('student_id', student_id)
-            .single();
-        res.json({ liked: !!data });
-    } catch (error) {
-        res.json({ liked: false });
-    }
-});
-
-// ============================================================
-// إضافة تعليق
-// ============================================================
-router.post('/comment', authenticate, authorize(['student']), [
-    body('post_id').isInt().withMessage('معرف المنشور غير صالح'),
-    body('student_id').isInt().withMessage('معرف الطالب غير صالح'),
-    body('comment').notEmpty().withMessage('التعليق مطلوب').isLength({ max: 1000 })
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const { post_id, student_id, comment } = req.body;
-
-        if (req.user.userId !== student_id) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
-        }
-
-        await insert('post_comments', {
-            post_id,
-            student_id,
-            comment: comment.trim(),
-            created_at: new Date().toISOString()
-        });
-
-        const { count } = await supabase
-            .from('post_comments')
-            .select('*', { count: 'exact', head: true })
-            .eq('post_id', post_id);
-
-        await update('posts', post_id, { comments_count: count });
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
-    }
-});
-
-// ============================================================
-// حذف تعليق
-// ============================================================
-router.delete('/comment/:comment_id', authenticate, authorize(['teacher']), [
-    param('comment_id').isInt().withMessage('معرف التعليق غير صالح'),
-    body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح'),
-    body('post_id').isInt().withMessage('معرف المنشور غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const { comment_id } = req.params;
-        const { teacher_id, post_id } = req.body;
-
-        if (req.user.userId !== parseInt(teacher_id)) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
-        }
-
-        const post = await getOne('posts', 'id', post_id);
-        if (!post || post.teacher_id != teacher_id) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
-        }
-
-        await remove('post_comments', 'id', comment_id);
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
-    }
-});
-
-// ============================================================
-// حذف منشور
-// ============================================================
-router.delete('/:post_id', authenticate, authorize(['teacher']), [
-    param('post_id').isInt().withMessage('معرف المنشور غير صالح'),
-    body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const { post_id } = req.params;
-        const { teacher_id } = req.body;
-
-        if (req.user.userId !== parseInt(teacher_id)) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
-        }
-
-        const post = await getOne('posts', 'id', post_id);
-        if (!post || post.teacher_id != teacher_id) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
-        }
-
-        await supabase.from('post_likes').delete().eq('post_id', post_id);
-        await supabase.from('post_comments').delete().eq('post_id', post_id);
-        await remove('posts', 'id', post_id);
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
-    }
-});
-
-module.exports = router;
+        if (req.user.userId !== student
