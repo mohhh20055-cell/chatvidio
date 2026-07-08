@@ -8,44 +8,47 @@ const { body, param, validationResult } = require('express-validator');
 const multer = require('multer');
 const path = require('path');
 
-// ✅ تأكد من استيراد كل الدوال بشكل صحيح
 const { supabase } = require('../config/database');
-const { authenticate, authorize, checkBanned } = require('../middleware/auth');
+const { authenticate, checkBanned } = require('../middleware/auth');
 const { getOne, insert, update, remove } = require('../utils/helpers');
 const { uploadToSupabase, validateUploadedFiles } = require('../utils/upload');
 
-// ✅ ثوابت Multer
-const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
-const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf'];
+// ✅ تعريف authorize محلياً
+function authorize(roles = []) {
+    return (req, res, next) => {
+        if (!req.user) {
+            return res.status(401).json({ success: false, error: 'غير مصرح به' });
+        }
+        if (roles.length > 0 && !roles.includes(req.user.role)) {
+            return res.status(403).json({ success: false, error: 'صلاحيات غير كافية' });
+        }
+        next();
+    };
+}
+
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
-// ============================================================
-// إعداد Multer
-// ============================================================
 const storage = multer.memoryStorage();
 
 const upload = multer({
     storage: storage,
-    limits: {
-        fileSize: MAX_FILE_SIZE,
-        files: 5
-    },
+    limits: { fileSize: MAX_FILE_SIZE, files: 5 },
     fileFilter: (req, file, cb) => {
         if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
             return cb(new Error('نوع الملف غير مدعوم'), false);
         }
-
         const ext = path.extname(file.originalname).toLowerCase();
         if (!ALLOWED_EXTENSIONS.includes(ext)) {
             return cb(new Error('امتداد الملف غير مدعوم'), false);
         }
-
         cb(null, true);
     }
 });
 
 // ============================================================
-// ✅ جلب بيانات الأستاذ
+// جلب بيانات الأستاذ
 // ============================================================
 router.get('/:teacher_id', authenticate, [
     param('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
@@ -75,7 +78,7 @@ router.get('/:teacher_id', authenticate, [
 });
 
 // ============================================================
-// ✅ تحديث صورة الأستاذ الشخصية
+// تحديث صورة الأستاذ
 // ============================================================
 router.post('/update-profile', authenticate, authorize(['teacher']), upload.single('profile_image'), validateUploadedFiles, [
     body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
@@ -121,7 +124,7 @@ router.post('/update-profile', authenticate, authorize(['teacher']), upload.sing
 });
 
 // ============================================================
-// ✅ تحديث الملف الشخصي مع الروابط الاجتماعية
+// تحديث الملف الشخصي مع الروابط الاجتماعية
 // ============================================================
 router.post('/update-profile-with-social', authenticate, authorize(['teacher']), upload.fields([
     { name: 'profile_image', maxCount: 1 }
@@ -202,7 +205,7 @@ router.post('/update-profile-with-social', authenticate, authorize(['teacher']),
 });
 
 // ============================================================
-// ✅ جلب الرصيد والأرباح
+// جلب الرصيد والأرباح
 // ============================================================
 router.get('/balance/:teacher_id', authenticate, authorize(['teacher']), [
     param('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
@@ -241,7 +244,7 @@ router.get('/balance/:teacher_id', authenticate, authorize(['teacher']), [
 });
 
 // ============================================================
-// ✅ طلب سحب
+// طلب سحب
 // ============================================================
 router.post('/withdraw-request', authenticate, authorize(['teacher']), [
     body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح'),
@@ -288,7 +291,7 @@ router.post('/withdraw-request', authenticate, authorize(['teacher']), [
 });
 
 // ============================================================
-// ✅ جلب طلبات السحب
+// جلب طلبات السحب
 // ============================================================
 router.get('/withdraw-requests/:teacher_id', authenticate, authorize(['teacher']), [
     param('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
@@ -318,7 +321,7 @@ router.get('/withdraw-requests/:teacher_id', authenticate, authorize(['teacher']
 });
 
 // ============================================================
-// ✅ جلب عروض الأستاذ
+// جلب عروض الأستاذ
 // ============================================================
 router.get('/offers/:teacher_id', authenticate, authorize(['teacher']), [
     param('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
@@ -347,5 +350,4 @@ router.get('/offers/:teacher_id', authenticate, authorize(['teacher']), [
     }
 });
 
-// ✅ تصدير router
 module.exports = router;
