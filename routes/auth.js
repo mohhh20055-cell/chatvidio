@@ -1,57 +1,107 @@
 // ============================================================
-// مسارات المصادقة والتسجيل
+// مسارات المصادقة - Auth Routes
 // ============================================================
 
 const express = require('express');
 const router = express.Router();
+const { body, validationResult } = require('express-validator');
 const bcrypt = require('bcryptjs');
-const { body, validationResult, query } = require('express-validator');
 const crypto = require('crypto');
+const multer = require('multer');
+const path = require('path');
+const { v4: uuidv4 } = require('uuid');
 
-// استيراد الدوال المساعدة من الملف الرئيسي
-const server = require('../server');
+// استيراد الدوال المساعدة
+const { supabase } = require('../config/database');
+const { authenticate, authorize, checkBanned } = require('../middleware/auth');
+const { authLimiter } = require('../middleware/rateLimit');
+const { getOne, insert, update, generateVerificationToken, generateReferralCode, sanitizeObject } = require('../utils/helpers');
+const { encrypt, maskIP } = require('../utils/encryption');
+const { generateToken, verifyToken } = require('../utils/jwt');
+const { sendVerificationEmail, sendResetEmail } = require('../utils/email');
+const { uploadToSupabase, validateUploadedFiles, ALLOWED_MIME_TYPES, ALLOWED_EXTENSIONS, MAX_FILE_SIZE } = require('../utils/upload');
+const { verifyRecaptcha } = require('../utils/validation');
+const { processReferralOnRegister } = require('../utils/referral');
 
-// استخراج الدوال من server
-const { 
-    authenticate, 
-    getOne, 
-    insert, 
-    update,
-    supabase,
-    generateToken,
-    generateVerificationToken,
-    generateReferralCode,
-    checkBanned,
-    trackLoginAttempt,
-    resetLoginAttempts,
-    MAX_LOGIN_ATTEMPTS,
-    LOCKOUT_TIME,
-    ADMIN_EMAIL,
-    ADMIN_PASSWORD_HASH,
-    SALT_ROUNDS,
-    verifyRecaptcha,
-    sendVerificationEmail,
-    sendResetEmail,
-    processReferralOnRegister,
-    processReferralReward,
-    renderSuccessPage,
-    renderErrorPage,
-    sanitizeInput,
-    encrypt,
-    maskIP
-} = server;
+// الثوابت
+const SALT_ROUNDS = 12;
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_TIME = 15 * 60 * 1000;
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@platform.com';
+const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || bcrypt.hashSync('admin123', 12);
+const PLATFORM_DOMAIN = process.env.PLATFORM_DOMAIN || 'https://chatvidio.vercel.app';
+
+// ============================================================
+// نظام تتبع محاولات تسجيل الدخول الفاشلة
+// ============================================================
+const loginAttempts = new Map();
+
+function trackLoginAttempt(email) {
+    const now = Date.now();
+    if (!loginAttempts.has(email)) {
+        loginAttempts.set(email, { count: 1, firstAttempt: now, lastAttempt: now });
+        return { count: 1, locked: false };
+    }
+
+    const record = loginAttempts.get(email);
+    
+    if (now - record.firstAttempt > LOCKOUT_TIME) {
+        loginAttempts.set(email, { count: 1, firstAttempt: now, lastAttempt: now });
+        return { count: 1, locked: false };
+    }
+
+    record.count++;
+    record.lastAttempt = now;
+    loginAttempts.set(email, record);
+
+    const locked = record.count >= MAX_LOGIN_ATTEMPTS;
+    return { count: record.count, locked };
+}
+
+function resetLoginAttempts(email) {
+    loginAttempts.delete(email);
+}
+
+// ============================================================
+// إعداد Multer
+// ============================================================
+const storage = multer.memoryStorage();
+
+const upload = multer({
+    storage: storage,
+    limits: {
+        fileSize: MAX_FILE_SIZE,
+        files: 5
+    },
+    fileFilter: (req, file, cb) => {
+        if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+            return cb(new Error('نوع الملف غير مدعوم'), false);
+        }
+
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (!ALLOWED_EXTENSIONS.includes(ext)) {
+            return cb(new Error('امتداد الملف غير مدعوم'), false);
+        }
+
+        cb(null, true);
+    }
+});
 
 // ============================================================
 // تسجيل أستاذ جديد
 // ============================================================
-router.post('/teacher/register', checkBanned, [
+router.post('/teacher/register', checkBanned, upload.fields([
+    { name: 'profile_image', maxCount: 1 },
+    { name: 'diploma_image', maxCount: 1 },
+    { name: 'id_image', maxCount: 1 }
+]), validateUploadedFiles, [
     body('full_name').notEmpty().withMessage('الاسم الكامل مطلوب').isLength({ max: 100 }),
     body('email').isEmail().withMessage('بريد إلكتروني غير صالح').trim().normalizeEmail(),
     body('password').isLength({ min: 8 }).withMessage('كلمة المرور يجب أن تكون 8 أحرف على الأقل')
         .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('كلمة المرور يجب أن تحتوي على حرف كبير وحرف صغير ورقم'),
     body('phone').notEmpty().withMessage('رقم الهاتف مطلوب'),
-    body('specialization').notEmpty().withMessage('التخصص مطلوب'),
-    body('bio').notEmpty().withMessage('نبذة عنك مطلوبة'),
+    body('specialization').notEmpty().withMessage('التخصص مطلوب').isLength({ max: 100 }),
+    body('bio').notEmpty().withMessage('نبذة عنك مطلوبة').isLength({ max: 500 }),
     body('experience').notEmpty().withMessage('سنوات الخبرة مطلوبة'),
     body('recaptcha_token').notEmpty().withMessage('رمز reCAPTCHA مطلوب')
 ], async (req, res) => {
@@ -74,6 +124,28 @@ router.post('/teacher/register', checkBanned, [
         }
 
         const hashedPassword = bcrypt.hashSync(password, SALT_ROUNDS);
+        let profile_image = null;
+        let profile_url = null;
+        let diploma_image = null;
+        let id_image = null;
+
+        if (req.files?.['profile_image']?.[0]) {
+            const uploaded = await uploadToSupabase(req.files['profile_image'][0], 'teachers');
+            if (uploaded) {
+                profile_image = uploaded.filename;
+                profile_url = uploaded.url;
+            }
+        }
+
+        if (req.files?.['diploma_image']?.[0]) {
+            const uploaded = await uploadToSupabase(req.files['diploma_image'][0], 'diplomas');
+            if (uploaded) diploma_image = uploaded.filename;
+        }
+
+        if (req.files?.['id_image']?.[0]) {
+            const uploaded = await uploadToSupabase(req.files['id_image'][0], 'ids');
+            if (uploaded) id_image = uploaded.filename;
+        }
 
         const newTeacher = await insert('teachers', {
             full_name: full_name.trim(),
@@ -83,6 +155,10 @@ router.post('/teacher/register', checkBanned, [
             specialization: specialization.trim(),
             bio: bio.trim(),
             experience: experience.trim(),
+            profile_image,
+            profile_url,
+            diploma_image,
+            id_image,
             status: 'pending',
             email_verified: false,
             balance: 0,
@@ -140,7 +216,7 @@ router.post('/teacher/register', checkBanned, [
             token: token
         });
     } catch (error) {
-        console.error('خطأ في تسجيل الأستاذ:', error.message);
+        console.error('خطأ:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
@@ -235,7 +311,7 @@ router.post('/student/register', checkBanned, [
             token: token
         });
     } catch (error) {
-        console.error('خطأ في تسجيل الطالب:', error.message);
+        console.error('خطأ:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
@@ -243,7 +319,7 @@ router.post('/student/register', checkBanned, [
 // ============================================================
 // تسجيل الدخول
 // ============================================================
-router.post('/login', checkBanned, [
+router.post('/login', checkBanned, authLimiter, [
     body('email').isEmail().withMessage('بريد إلكتروني غير صالح').trim().normalizeEmail(),
     body('password').notEmpty().withMessage('كلمة المرور مطلوبة'),
     body('role').isIn(['student', 'teacher', 'admin']).withMessage('دور غير صالح')
@@ -256,6 +332,7 @@ router.post('/login', checkBanned, [
 
         const { email, password, role } = req.body;
 
+        // تسجيل دخول المدير
         if (role === 'admin') {
             if (email !== ADMIN_EMAIL) {
                 return res.status(401).json({ success: false, error: 'بيانات الدخول غير صحيحة' });
@@ -281,6 +358,7 @@ router.post('/login', checkBanned, [
             });
         }
 
+        // التحقق من محاولات تسجيل الدخول
         const attempt = trackLoginAttempt(email);
         if (attempt.locked) {
             return res.status(429).json({
@@ -344,6 +422,7 @@ router.post('/login', checkBanned, [
             });
         }
 
+        // تسجيل IP
         let ip = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'];
         if (ip && typeof ip === 'string' && ip.includes(',')) {
             ip = ip.split(',')[0].trim();
@@ -395,9 +474,9 @@ router.post('/logout', authenticate, (req, res) => {
 });
 
 // ============================================================
-// إعادة إرسال رابط التحقق
+// إعادة إرسال رابط التأكيد
 // ============================================================
-router.post('/resend-verification', [
+router.post('/resend-verification', authLimiter, [
     body('email').isEmail().withMessage('بريد إلكتروني غير صالح').trim().normalizeEmail(),
     body('role').isIn(['student', 'teacher']).withMessage('دور غير صالح'),
     body('recaptcha_token').notEmpty().withMessage('رمز reCAPTCHA مطلوب')
@@ -468,9 +547,9 @@ router.post('/resend-verification', [
 // تأكيد البريد الإلكتروني
 // ============================================================
 router.get('/verify-email', [
-    query('token').notEmpty().withMessage('الرمز مطلوب'),
-    query('email').isEmail().withMessage('بريد إلكتروني غير صالح'),
-    query('role').isIn(['student', 'teacher']).withMessage('دور غير صالح')
+    require('express-validator').query('token').notEmpty().withMessage('الرمز مطلوب'),
+    require('express-validator').query('email').isEmail().withMessage('بريد إلكتروني غير صالح'),
+    require('express-validator').query('role').isIn(['student', 'teacher']).withMessage('دور غير صالح')
 ], async (req, res) => {
     const { token, email, role } = req.query;
 
@@ -478,10 +557,6 @@ router.get('/verify-email', [
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             return res.status(400).send(renderErrorPage('بيانات غير صالحة', 'البيانات المرسلة غير صالحة'));
-        }
-
-        if (!token || !email || !role) {
-            return res.status(400).send(renderErrorPage('رابط غير صالح', 'الرابط الذي استخدمته غير صحيح. يرجى التحقق من الرابط المرسل إلى بريدك الإلكتروني.'));
         }
 
         const { data: verification, error } = await supabase
@@ -509,8 +584,6 @@ router.get('/verify-email', [
 
         const tableName = role === 'student' ? 'students' : 'teachers';
         
-        const user = await getOne(tableName, 'email', email);
-        
         await supabase
             .from(tableName)
             .update({ email_verified: true })
@@ -521,7 +594,10 @@ router.get('/verify-email', [
             .update({ used: true })
             .eq('token', token);
 
+        // معالجة مكافأة الإحالة
+        const user = await getOne(tableName, 'email', email);
         if (user) {
+            const { processReferralReward } = require('../utils/referral');
             await processReferralReward(user.id, role);
         }
 
@@ -533,37 +609,61 @@ router.get('/verify-email', [
 });
 
 // ============================================================
-// التحقق من حالة البريد الإلكتروني
+// دوال عرض الصفحات
 // ============================================================
-router.get('/check-email-verification/:email/:role', async (req, res) => {
-    try {
-        const { email, role } = req.params;
+function renderSuccessPage(title, message, subMessage, buttonText, buttonLink) {
+    return `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="UTF-8"><title>${title}</title>
+        <style>
+            body{font-family:Cairo;background:#0f5cbf;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;direction:rtl}
+            .card{background:white;padding:40px;border-radius:20px;text-align:center;max-width:500px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
+            h1{color:#10b981;font-size:2.5rem}
+            .btn{background:#0f5cbf;color:white;padding:12px 30px;border-radius:30px;text-decoration:none;display:inline-block;margin-top:20px}
+            .btn:hover{background:#0a4a9a}
+            .sub{color:#666;margin-top:10px}
+        </style>
+        </head>
+        <body>
+        <div class="card">
+            <h1>✅ ${title}</h1>
+            <p style="font-size:1.2rem;">${message}</p>
+            <p class="sub">${subMessage}</p>
+            <a href="${buttonLink || '/'}" class="btn">${buttonText || 'العودة للرئيسية'}</a>
+        </div>
+        </body>
+        </html>
+    `;
+}
 
-        let user = null;
-        if (role === 'student') {
-            user = await getOne('students', 'email', email);
-        } else if (role === 'teacher') {
-            user = await getOne('teachers', 'email', email);
-        }
-
-        if (!user) {
-            return res.json({ success: false, error: 'المستخدم غير موجود' });
-        }
-
-        res.json({ 
-            success: true, 
-            email_verified: user.email_verified === true 
-        });
-    } catch (error) {
-        console.error('خطأ:', error.message);
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
-    }
-});
+function renderErrorPage(title, message, buttonLink) {
+    return `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="UTF-8"><title>خطأ</title>
+        <style>
+            body{font-family:Cairo;background:#0f5cbf;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;direction:rtl}
+            .card{background:white;padding:40px;border-radius:20px;text-align:center;max-width:500px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
+            h1{color:#dc2626}
+            .btn{background:#0f5cbf;color:white;padding:12px 30px;border-radius:30px;text-decoration:none;display:inline-block;margin-top:20px}
+        </style>
+        </head>
+        <body>
+        <div class="card">
+            <h1>❌ ${title}</h1>
+            <p>${message}</p>
+            <a href="${buttonLink || '/'}" class="btn">العودة للرئيسية</a>
+        </div>
+        </body>
+        </html>
+    `;
+}
 
 // ============================================================
 // نسيت كلمة المرور
 // ============================================================
-router.post('/forgot-password', [
+router.post('/forgot-password', authLimiter, [
     body('email').isEmail().withMessage('بريد إلكتروني غير صالح').trim().normalizeEmail(),
     body('role').isIn(['student', 'teacher']).withMessage('دور غير صالح')
 ], async (req, res) => {
@@ -714,36 +814,6 @@ router.post('/reset-password', [
     } catch (error) {
         console.error('خطأ:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
-    }
-});
-
-// ============================================================
-// التحقق من صلاحية التوكن
-// ============================================================
-router.get('/verify-token', authenticate, (req, res) => {
-    res.json({ 
-        success: true, 
-        valid: true,
-        user: req.user,
-        expiresIn: 24 * 60 * 60 * 1000
-    });
-});
-
-// ============================================================
-// تجديد التوكن
-// ============================================================
-router.post('/refresh-token', authenticate, (req, res) => {
-    try {
-        const { userId, role, email } = req.user;
-        const newToken = generateToken(userId, role, email);
-        res.json({ 
-            success: true, 
-            token: newToken,
-            expiresIn: 24 * 60 * 60 * 1000
-        });
-    } catch (error) {
-        console.error('❌ خطأ في تجديد التوكن:', error.message);
-        res.status(500).json({ success: false, error: 'حدث خطأ في تجديد الجلسة' });
     }
 });
 
