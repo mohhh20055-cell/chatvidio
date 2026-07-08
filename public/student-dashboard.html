@@ -1829,7 +1829,8 @@
         let html = '';
         for (const offer of offers) {
             const offerDate = new Date(offer.offer_date);
-            const isFree = offer.is_free === 1;
+            const isFree = offer.is_free === true || offer.is_free === 1;
+
             const teacherImage = offer.teacher_profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(offer.teacher_name) + '&background=0f5cbf&color=fff&size=40';
             
             let levelDisplay = '';
