@@ -1,34 +1,25 @@
 // ============================================================
-// مسارات المحفظة والدفع
+// مسارات المحفظة - Wallet Routes
 // ============================================================
 
 const express = require('express');
 const router = express.Router();
-const { body, validationResult, param, query } = require('express-validator');
+const { body, query, validationResult } = require('express-validator');
 const crypto = require('crypto');
 const axios = require('axios');
 const https = require('https');
 
-// استيراد الدوال المساعدة من الملف الرئيسي
-const server = require('../server');
+// استيراد الدوال المساعدة
+const { supabase } = require('../config/database');
+const { authenticate, authorize } = require('../middleware/auth');
+const { getOne, insert, update } = require('../utils/helpers');
 
-// استخراج الدوال من server
-const { 
-    authenticate, 
-    authorize, 
-    getOne, 
-    insert, 
-    update, 
-    supabase,
-    CHARGILY_API_KEY,
-    CHARGILY_API_URL,
-    CHARGILY_WEBHOOK_SECRET,
-    renderSuccessPage,
-    renderErrorPage
-} = server;
+const CHARGILY_API_KEY = process.env.CHARGILY_API_KEY;
+const CHARGILY_API_URL = process.env.CHARGILY_API_URL || 'https://pay.chargily.net/api/v2';
+const CHARGILY_WEBHOOK_SECRET = process.env.CHARGILY_WEBHOOK_SECRET || crypto.randomBytes(32).toString('hex');
 
 // ============================================================
-// دالة إنشاء طلب شحن عبر Chargily
+// إنشاء طلب شحن عبر Chargily
 // ============================================================
 async function createChargilyCheckout(amount, studentName, studentEmail, studentPhone, description, successUrl, failureUrl) {
     try {
@@ -89,6 +80,7 @@ async function createChargilyCheckout(amount, studentName, studentEmail, student
 
         throw new Error(lastError?.response?.data?.message || lastError?.message || 'فشلت جميع محاولات الدفع');
     } catch (error) {
+        console.error('❌ خطأ Chargily:', error.response?.data || error.message);
         return {
             success: false,
             error: error.response?.data?.message || error.message || 'حدث خطأ في عملية الدفع'
@@ -99,9 +91,7 @@ async function createChargilyCheckout(amount, studentName, studentEmail, student
 // ============================================================
 // شحن الرصيد
 // ============================================================
-router.post('/student/wallet/deposit', [
-    authenticate,
-    authorize(['student']),
+router.post('/deposit', authenticate, authorize(['student']), [
     body('student_id').isInt().withMessage('معرف الطالب غير صالح'),
     body('amount').isInt({ min: 100, max: 1000000 }).withMessage('المبلغ يجب أن يكون بين 100 و 1,000,000 دج')
 ], async (req, res) => {
@@ -184,7 +174,7 @@ router.post('/student/wallet/deposit', [
 });
 
 // ============================================================
-// Webhook للتحقق من الدفع
+// Webhook Chargily
 // ============================================================
 router.post('/chargily-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
     try {
@@ -198,6 +188,7 @@ router.post('/chargily-webhook', express.raw({ type: 'application/json' }), asyn
 
         if (webhookData.event === 'checkout.paid') {
             const checkoutId = webhookData.data?.id;
+            const metadata = webhookData.data?.metadata || {};
 
             const { data: transactions } = await supabase
                 .from('wallet_transactions')
@@ -223,6 +214,8 @@ router.post('/chargily-webhook', express.raw({ type: 'application/json' }), asyn
                         status: 'completed',
                         description: `تم شحن الرصيد بنجاح بمبلغ ${addAmount} دج`
                     });
+
+                    console.log(`✅ تم تأكيد الدفع وإضافة ${addAmount} دج للطالب ${student.full_name}`);
                 }
             }
         }
@@ -237,7 +230,7 @@ router.post('/chargily-webhook', express.raw({ type: 'application/json' }), asyn
 // ============================================================
 // نجاح الدفع
 // ============================================================
-router.get('/wallet/deposit/success/:transaction_id', [
+router.get('/deposit/success/:transaction_id', [
     query('token').notEmpty().withMessage('رمز التحقق مطلوب')
 ], async (req, res) => {
     const { transaction_id } = req.params;
@@ -320,7 +313,7 @@ router.get('/wallet/deposit/success/:transaction_id', [
 // ============================================================
 // فشل الدفع
 // ============================================================
-router.get('/wallet/deposit/failure/:transaction_id', async (req, res) => {
+router.get('/deposit/failure/:transaction_id', async (req, res) => {
     const { transaction_id } = req.params;
 
     try {
@@ -355,5 +348,57 @@ router.get('/wallet/deposit/failure/:transaction_id', async (req, res) => {
         res.redirect('/student-dashboard.html');
     }
 });
+
+// ============================================================
+// دوال عرض الصفحات
+// ============================================================
+function renderSuccessPage(title, message, subMessage, buttonText, buttonLink) {
+    return `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="UTF-8"><title>${title}</title>
+        <style>
+            body{font-family:Cairo;background:#0f5cbf;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;direction:rtl}
+            .card{background:white;padding:40px;border-radius:20px;text-align:center;max-width:500px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
+            h1{color:#10b981;font-size:2.5rem}
+            .btn{background:#0f5cbf;color:white;padding:12px 30px;border-radius:30px;text-decoration:none;display:inline-block;margin-top:20px}
+            .btn:hover{background:#0a4a9a}
+            .sub{color:#666;margin-top:10px}
+        </style>
+        </head>
+        <body>
+        <div class="card">
+            <h1>✅ ${title}</h1>
+            <p style="font-size:1.2rem;">${message}</p>
+            <p class="sub">${subMessage}</p>
+            <a href="${buttonLink || '/'}" class="btn">${buttonText || 'العودة للرئيسية'}</a>
+        </div>
+        </body>
+        </html>
+    `;
+}
+
+function renderErrorPage(title, message, buttonLink) {
+    return `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="UTF-8"><title>خطأ</title>
+        <style>
+            body{font-family:Cairo;background:#0f5cbf;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;direction:rtl}
+            .card{background:white;padding:40px;border-radius:20px;text-align:center;max-width:500px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
+            h1{color:#dc2626}
+            .btn{background:#0f5cbf;color:white;padding:12px 30px;border-radius:30px;text-decoration:none;display:inline-block;margin-top:20px}
+        </style>
+        </head>
+        <body>
+        <div class="card">
+            <h1>❌ ${title}</h1>
+            <p>${message}</p>
+            <a href="${buttonLink || '/'}" class="btn">العودة للرئيسية</a>
+        </div>
+        </body>
+        </html>
+    `;
+}
 
 module.exports = router;
