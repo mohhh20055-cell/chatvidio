@@ -185,6 +185,7 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN
     ? process.env.CORS_ORIGIN.split(',') 
     : [
         'https://chatvidio.vercel.app',
+        'https://chatvidio.onrender.com',
         'https://chatvidio-git-*.vercel.app',
         'https://chatvidio-*.vercel.app',
         'https://*.vercel.app',
@@ -322,7 +323,6 @@ async function authenticate(req, res, next) {
     next();
 }
 
-// ✅ تعريف authorize محلياً في server.js (متاح لجميع الملفات)
 function authorize(roles = []) {
     return (req, res, next) => {
         if (!req.user) {
@@ -488,6 +488,455 @@ app.get('/api/get-csrf-token', authenticate, (req, res) => {
 });
 
 // ============================================================
+// ✅ مسار بدء البث للأستاذ - مباشر في server.js
+// ============================================================
+
+app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
+    try {
+        const token = req.query.token;
+        if (!token) {
+            return res.status(401).send(`
+                <!DOCTYPE html>
+                <html dir="rtl" lang="ar">
+                <head><meta charset="UTF-8"><title>خطأ</title></head>
+                <body style="font-family:Cairo;text-align:center;padding:50px;">
+                    <h1 style="color:#ef4444;">❌ يرجى تسجيل الدخول أولاً</h1>
+                    <a href="/teacher-dashboard.html" style="color:#0f5cbf;font-weight:700;">العودة للوحة التحكم</a>
+                </body></html>
+            `);
+        }
+        
+        const decoded = verifyToken(token);
+        if (!decoded || decoded.role !== 'teacher') {
+            return res.status(403).send(`
+                <!DOCTYPE html>
+                <html dir="rtl" lang="ar">
+                <head><meta charset="UTF-8"><title>خطأ</title></head>
+                <body style="font-family:Cairo;text-align:center;padding:50px;">
+                    <h1 style="color:#ef4444;">❌ غير مصرح لك</h1>
+                    <a href="/teacher-dashboard.html" style="color:#0f5cbf;font-weight:700;">العودة للوحة التحكم</a>
+                </body></html>
+            `);
+        }
+
+        const { offer_id, teacher_id } = req.params;
+        if (decoded.userId !== parseInt(teacher_id)) {
+            return res.status(403).send(`
+                <!DOCTYPE html>
+                <html dir="rtl" lang="ar">
+                <head><meta charset="UTF-8"><title>خطأ</title></head>
+                <body style="font-family:Cairo;text-align:center;padding:50px;">
+                    <h1 style="color:#ef4444;">❌ لا يمكنك بدء بث لهذا العرض</h1>
+                    <a href="/teacher-dashboard.html" style="color:#0f5cbf;font-weight:700;">العودة للوحة التحكم</a>
+                </body></html>
+            `);
+        }
+
+        const offer = await getOne('offers', 'id', offer_id);
+        if (!offer || offer.teacher_id !== parseInt(teacher_id)) {
+            return res.status(404).send(`
+                <!DOCTYPE html>
+                <html dir="rtl" lang="ar">
+                <head><meta charset="UTF-8"><title>خطأ</title></head>
+                <body style="font-family:Cairo;text-align:center;padding:50px;">
+                    <h1 style="color:#ef4444;">❌ العرض غير موجود</h1>
+                    <a href="/teacher-dashboard.html" style="color:#0f5cbf;font-weight:700;">العودة للوحة التحكم</a>
+                </body></html>
+            `);
+        }
+
+        // جلب عدد الطلاب المسجلين
+        const { count: studentsCount } = await supabase
+            .from('sessions')
+            .select('*', { count: 'exact', head: true })
+            .eq('offer_id', offer_id)
+            .eq('payment_status', 'paid');
+
+        // عرض صفحة بدء البث
+        res.send(generateTeacherStreamPage(offer, teacher_id, token, studentsCount || 0));
+        
+    } catch (error) {
+        console.error('❌ خطأ في بدء البث:', error.message);
+        res.status(500).send(`
+            <!DOCTYPE html>
+            <html dir="rtl" lang="ar">
+            <head><meta charset="UTF-8"><title>خطأ</title></head>
+            <body style="font-family:Cairo;text-align:center;padding:50px;">
+                <h1 style="color:#ef4444;">❌ حدث خطأ</h1>
+                <p style="color:#64748b;">${error.message}</p>
+                <a href="/teacher-dashboard.html" style="color:#0f5cbf;font-weight:700;">العودة للوحة التحكم</a>
+            </body></html>
+        `);
+    }
+});
+
+// ============================================================
+// ✅ دالة توليد صفحة بدء البث
+// ============================================================
+
+function generateTeacherStreamPage(offer, teacherId, token, studentsCount) {
+    const offerId = offer.id;
+    const subjectName = offer.subject_name || 'غير محدد';
+    
+    return `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>بدء البث المباشر</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Cairo', Arial, sans-serif; background: #0a0a1a; color: white; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .container { max-width: 700px; width: 90%; background: #1a1a2e; border-radius: 24px; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+        h1 { color: #0f5cbf; text-align: center; margin-bottom: 10px; font-size: 2rem; }
+        .subtitle { text-align: center; color: #94a3b8; margin-bottom: 30px; }
+        .info-box { background: #0f3460; border-radius: 12px; padding: 15px 20px; margin-bottom: 25px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+        .info-box span { color: #94a3b8; }
+        .info-box strong { color: white; }
+        .platforms { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 25px 0; }
+        .platform-card { background: #16213e; border: 2px solid transparent; border-radius: 16px; padding: 25px; text-align: center; cursor: pointer; transition: all 0.3s; }
+        .platform-card:hover { border-color: #0f5cbf; transform: translateY(-3px); }
+        .platform-card.selected { border-color: #10b981; background: #0f3460; }
+        .platform-card .icon { font-size: 3rem; display: block; margin-bottom: 10px; }
+        .platform-card .name { font-size: 1.1rem; font-weight: 700; }
+        .platform-card .desc { font-size: 0.8rem; color: #94a3b8; margin-top: 5px; }
+        .platform-card .badge-free { background: #10b981; color: white; padding: 2px 12px; border-radius: 20px; font-size: 0.7rem; display: inline-block; margin-top: 8px; }
+        .input-group { margin: 20px 0; }
+        .input-group label { display: block; margin-bottom: 8px; color: #94a3b8; font-weight: 600; }
+        .input-group input { width: 100%; padding: 14px 18px; border-radius: 12px; border: 1px solid #333; background: #0a0a1a; color: white; font-size: 1rem; transition: border 0.3s; }
+        .input-group input:focus { outline: none; border-color: #0f5cbf; }
+        .input-group .hint { font-size: 0.8rem; color: #64748b; margin-top: 5px; }
+        .btn-start { width: 100%; padding: 16px; background: linear-gradient(135deg, #0f5cbf, #0a4a9a); color: white; border: none; border-radius: 12px; font-size: 1.2rem; font-weight: 700; cursor: pointer; transition: all 0.3s; margin-top: 20px; }
+        .btn-start:hover { transform: scale(1.02); box-shadow: 0 8px 25px rgba(15, 92, 191, 0.4); }
+        .btn-start:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-back { background: transparent; color: #94a3b8; border: 1px solid #333; padding: 12px 24px; border-radius: 12px; cursor: pointer; transition: all 0.3s; margin-top: 10px; width: 100%; }
+        .btn-back:hover { background: #1a1a2e; }
+        .tip { background: #0f3460; border-radius: 12px; padding: 15px 20px; margin: 15px 0; border-right: 4px solid #f59e0b; }
+        .tip h4 { color: #f59e0b; margin-bottom: 5px; }
+        .tip p { color: #94a3b8; font-size: 0.9rem; line-height: 1.6; }
+        .waiting-list { margin-top: 20px; border-top: 1px solid #333; padding-top: 20px; }
+        .waiting-list h3 { color: #94a3b8; margin-bottom: 10px; }
+        .waiting-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #16213e; border-radius: 8px; margin-bottom: 5px; }
+        .waiting-item .name { color: white; }
+        .waiting-item .status-badge { font-size: 0.7rem; padding: 2px 10px; border-radius: 20px; }
+        .status-badge.waiting { background: #f59e0b; color: #1a1a2e; }
+        .status-badge.active { background: #10b981; color: white; }
+        .add-btn { background: #0f5cbf; color: white; border: none; padding: 4px 12px; border-radius: 20px; cursor: pointer; font-size: 0.7rem; }
+        .add-btn:hover { background: #0a4a9a; }
+        .add-all-btn { background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 12px; cursor: pointer; font-weight: 600; width: 100%; margin-top: 10px; }
+        .add-all-btn:hover { background: #059669; }
+        .btn-success { background: #10b981 !important; }
+        .btn-success:hover { background: #059669 !important; box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4) !important; }
+        @media(max-width:600px) {
+            .container { padding: 20px; }
+            .platforms { grid-template-columns: 1fr; }
+            .info-box { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🎥 بدء البث المباشر</h1>
+    <p class="subtitle">اختر المنصة التي تريد البث من خلالها (مجاني 100%)</p>
+
+    <div class="info-box">
+        <div><span>📚 المادة:</span> <strong>${escapeHtml(subjectName)}</strong></div>
+        <div><span>👨‍🏫 الأستاذ:</span> <strong>${escapeHtml(decoded?.name || 'المعلم')}</strong></div>
+        <div><span>👨‍🎓 الطلاب المسجلين:</span> <strong>${studentsCount}</strong></div>
+    </div>
+
+    <div class="tip">
+        <h4>💡 نصيحة</h4>
+        <p>• استخدم <strong>Google Meet</strong> للحصول على رابط سريع ومجاني<br>
+        • كلتا المنصتين <strong>مجانيتان</strong> ولا تحتاجان إلى دفع أي شيء<br>
+        • يمكنك إنشاء الرابط مباشرة من هنا دون مغادرة المنصة</p>
+    </div>
+
+    <div class="platforms">
+        <div class="platform-card selected" data-platform="google-meet" onclick="selectPlatform('google-meet')">
+            <span class="icon">🔵</span>
+            <div class="name">Google Meet</div>
+            <div class="desc">مجاني • 100 مشارك • سهل الاستخدام</div>
+            <span class="badge-free">✅ مجاني</span>
+        </div>
+        <div class="platform-card" data-platform="microsoft-teams" onclick="selectPlatform('microsoft-teams')">
+            <span class="icon">💜</span>
+            <div class="name">Microsoft Teams</div>
+            <div class="desc">مجاني • 100 مشارك • ميزات متقدمة</div>
+            <span class="badge-free">✅ مجاني</span>
+        </div>
+    </div>
+
+    <div class="input-group">
+        <label id="urlLabel">🔗 رابط البث من Google Meet</label>
+        <input type="url" id="streamUrl" placeholder="مثال: https://meet.google.com/xxx-xxxx-xxx" dir="ltr">
+        <div class="hint" id="urlHint">انسخ رابط الاجتماع من Google Meet وألصقه هنا، أو اضغط "إنشاء رابط جديد"</div>
+    </div>
+
+    <button class="btn-start" onclick="openMeetAndStart()">🆕 إنشاء رابط جديد وبدء البث</button>
+    <button class="btn-start" id="startBtn" onclick="startStream()" style="margin-top:10px;">📋 استخدام رابط موجود وبدء البث</button>
+    <button class="btn-back" onclick="window.location.href='/teacher-dashboard.html'">← العودة للوحة التحكم</button>
+
+    <div class="waiting-list" id="waitingList">
+        <h3>📋 قائمة الانتظار</h3>
+        <div id="studentsList">جاري التحميل...</div>
+        <button class="add-all-btn btn-success" onclick="addAllStudents()" id="addAllBtn">➕ إضافة جميع الطلاب إلى البث</button>
+    </div>
+</div>
+
+<script>
+    let selectedPlatform = 'google-meet';
+    const authToken = '${token}';
+    const offerId = ${parseInt(offerId)};
+    const teacherId = ${parseInt(teacherId)};
+    let csrfToken = '';
+
+    async function getCsrfToken() {
+        try {
+            const response = await fetch('/api/get-csrf-token', {
+                method: 'GET',
+                headers: { 'Authorization': 'Bearer ' + authToken },
+                credentials: 'include'
+            });
+            const data = await response.json();
+            csrfToken = data.csrfToken;
+            return csrfToken;
+        } catch (error) {
+            console.error('خطأ في جلب CSRF Token:', error);
+            return null;
+        }
+    }
+
+    getCsrfToken();
+
+    function selectPlatform(platform) {
+        selectedPlatform = platform;
+        document.querySelectorAll('.platform-card').forEach(el => {
+            el.classList.toggle('selected', el.dataset.platform === platform);
+        });
+        
+        const label = document.getElementById('urlLabel');
+        const hint = document.getElementById('urlHint');
+        
+        if (platform === 'google-meet') {
+            label.textContent = '🔗 رابط البث من Google Meet';
+            hint.textContent = 'انسخ رابط الاجتماع من Google Meet وألصقه هنا';
+            document.getElementById('streamUrl').placeholder = 'https://meet.google.com/xxx-xxxx-xxx';
+        } else {
+            label.textContent = '🔗 رابط البث من Microsoft Teams';
+            hint.textContent = 'انسخ رابط الاجتماع من Microsoft Teams وألصقه هنا';
+            document.getElementById('streamUrl').placeholder = 'https://teams.microsoft.com/l/meetup-join/...';
+        }
+    }
+
+    function openMeetAndStart() {
+        const meetWindow = window.open('https://meet.google.com/new', '_blank');
+        
+        setTimeout(() => {
+            const url = prompt('📌 الصق رابط Google Meet هنا:', 'https://meet.google.com/');
+            if (url && url.includes('meet.google.com')) {
+                document.getElementById('streamUrl').value = url;
+                startStream();
+            } else if (url) {
+                alert('❌ الرابط غير صحيح. يجب أن يحتوي على meet.google.com');
+            }
+        }, 2000);
+    }
+
+    async function startStream() {
+        const url = document.getElementById('streamUrl').value.trim();
+        if (!url) {
+            alert('❌ الرجاء إدخال رابط البث، أو اضغط "إنشاء رابط جديد"');
+            return;
+        }
+
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+            alert('❌ الرابط غير صحيح. يجب أن يبدأ بـ http:// أو https://');
+            return;
+        }
+
+        if (selectedPlatform === 'google-meet' && !url.includes('meet.google.com')) {
+            alert('❌ الرابط غير صحيح. يجب أن يحتوي على meet.google.com');
+            return;
+        }
+
+        if (selectedPlatform === 'microsoft-teams' && !url.includes('teams.microsoft.com')) {
+            alert('❌ الرابط غير صحيح. يجب أن يحتوي على teams.microsoft.com');
+            return;
+        }
+
+        const btn = document.getElementById('startBtn');
+        btn.disabled = true;
+        btn.textContent = '⏳ جاري بدء البث...';
+
+        try {
+            const response = await fetch('/api/stream/save-link', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + authToken,
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify({
+                    offer_id: offerId,
+                    stream_url: url,
+                    platform: selectedPlatform
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                const result = await fetch('/api/stream/add-students/' + offerId, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + authToken,
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    },
+                    body: JSON.stringify({
+                        offer_id: offerId,
+                        teacher_id: teacherId
+                    })
+                });
+
+                const resultData = await result.json();
+                
+                alert('✅ تم بدء البث المباشر بنجاح!\\n📌 رابط البث: ' + url + '\\n' +
+                      (resultData.students_count ? '👨‍🎓 تم إشعار ' + resultData.students_count + ' طالب' : ''));
+                
+                window.location.href = '/teacher-dashboard.html';
+            } else {
+                alert('❌ ' + (data.error || 'حدث خطأ في بدء البث'));
+                btn.disabled = false;
+                btn.textContent = '📋 استخدام رابط موجود وبدء البث';
+            }
+        } catch (error) {
+            console.error('خطأ:', error);
+            alert('❌ حدث خطأ في الاتصال بالخادم');
+            btn.disabled = false;
+            btn.textContent = '📋 استخدام رابط موجود وبدء البث';
+        }
+    }
+
+    async function loadWaitingList() {
+        try {
+            const response = await fetch('/api/stream/waiting-list/' + offerId + '/' + teacherId, {
+                headers: { 
+                    'Authorization': 'Bearer ' + authToken,
+                    'X-CSRF-Token': csrfToken
+                }
+            });
+            const students = await response.json();
+            const container = document.getElementById('studentsList');
+            
+            if (students.length === 0) {
+                container.innerHTML = '<p style="color:#64748b;">لا يوجد طلاب في قائمة الانتظار</p>';
+                document.getElementById('addAllBtn').style.display = 'none';
+                return;
+            }
+
+            let html = '';
+            students.forEach(s => {
+                const statusClass = s.is_active ? 'active' : 'waiting';
+                const statusText = s.is_active ? '✅ في البث' : '⏳ في الانتظار';
+                html += \`
+                    <div class="waiting-item">
+                        <span class="name">\${s.full_name || 'طالب'}</span>
+                        <span class="status-badge \${statusClass}">\${statusText}</span>
+                        \${!s.is_active ? \`<button class="add-btn" onclick="addStudent(\${s.student_id})">إضافة</button>\` : ''}
+                    </div>
+                \`;
+            });
+            container.innerHTML = html;
+            document.getElementById('addAllBtn').style.display = 'block';
+        } catch (error) {
+            console.error('خطأ في جلب قائمة الانتظار:', error);
+            document.getElementById('studentsList').innerHTML = '<p style="color:#ef4444;">حدث خطأ في جلب القائمة</p>';
+        }
+    }
+
+    async function addStudent(studentId) {
+        try {
+            const response = await fetch('/api/stream/add-student/' + offerId, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + authToken,
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify({
+                    offer_id: offerId,
+                    student_id: studentId,
+                    teacher_id: teacherId
+                })
+            });
+            const data = await response.json();
+            if (data.success) {
+                alert('✅ تم إضافة الطالب إلى البث');
+                loadWaitingList();
+            } else {
+                alert('❌ ' + (data.error || 'حدث خطأ'));
+            }
+        } catch (error) {
+            console.error('خطأ:', error);
+            alert('❌ حدث خطأ في الاتصال بالخادم');
+        }
+    }
+
+    async function addAllStudents() {
+        if (!confirm('⚠️ هل تريد إضافة جميع الطلاب في قائمة الانتظار إلى البث المباشر؟')) return;
+
+        const btn = document.getElementById('addAllBtn');
+        btn.disabled = true;
+        btn.textContent = '⏳ جاري الإضافة...';
+
+        try {
+            const response = await fetch('/api/stream/add-all-students/' + offerId, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + authToken,
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify({
+                    offer_id: offerId,
+                    teacher_id: teacherId
+                })
+            });
+            const data = await response.json();
+            if (data.success) {
+                alert('✅ تم إضافة ' + data.students_count + ' طالب إلى البث');
+                loadWaitingList();
+            } else {
+                alert('❌ ' + (data.error || 'حدث خطأ'));
+            }
+        } catch (error) {
+            console.error('خطأ:', error);
+            alert('❌ حدث خطأ في الاتصال بالخادم');
+        }
+        btn.disabled = false;
+        btn.textContent = '➕ إضافة جميع الطلاب إلى البث';
+    }
+
+    loadWaitingList();
+    setInterval(loadWaitingList, 10000);
+
+    selectPlatform('google-meet');
+</script>
+</body>
+</html>`;
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ============================================================
 // استيراد المسارات
 // ============================================================
 
@@ -538,6 +987,19 @@ app.get('/', (req, res) => {
         });
     }
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// ============================================================
+// مسار اختبار CORS
+// ============================================================
+
+app.get('/api/test-cors', (req, res) => {
+    res.json({
+        success: true,
+        message: '✅ CORS يعمل بشكل صحيح',
+        origin: req.headers.origin || 'no origin',
+        timestamp: new Date().toISOString()
+    });
 });
 
 // ============================================================
