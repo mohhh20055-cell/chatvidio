@@ -297,6 +297,8 @@ async function sendVerificationEmail(toEmail, toName, verificationUrl) {
         const sanitizedName = sanitizeInput(toName);
         const sanitizedUrl = sanitizeInput(verificationUrl);
 
+        console.log('محاولة إرسال بريد تأكيد إلى:', sanitizedEmail);
+
         const { data, error } = await resend.emails.send({
             from: 'منصة التعليم <onboarding@resend.dev>',
             to: [sanitizedEmail],
@@ -326,6 +328,7 @@ async function sendVerificationEmail(toEmail, toName, verificationUrl) {
             return false;
         }
 
+        console.log('تم إرسال بريد التأكيد بنجاح');
         return true;
     } catch (error) {
         console.error('خطأ في إرسال البريد:', error.message);
@@ -338,6 +341,8 @@ async function sendResetEmail(toEmail, toName, resetUrl) {
         const sanitizedEmail = sanitizeInput(toEmail);
         const sanitizedName = sanitizeInput(toName);
         const sanitizedUrl = sanitizeInput(resetUrl);
+
+        console.log('محاولة إرسال بريد إلى:', sanitizedEmail);
 
         const { data, error } = await resend.emails.send({
             from: 'منصة التعليم <onboarding@resend.dev>',
@@ -366,6 +371,7 @@ async function sendResetEmail(toEmail, toName, resetUrl) {
             return false;
         }
 
+        console.log('تم إرسال البريد بنجاح');
         return true;
     } catch (error) {
         console.error('خطأ في إرسال البريد:', error.message);
@@ -740,6 +746,80 @@ async function processStudentReferralRewardOnBooking(referredUserId, referredUse
     } catch (error) {
         console.error('خطأ في منح مكافأة الطالب:', error.message);
         return false;
+    }
+}
+
+// ============================================================
+// دوال شحن الرصيد عبر Chargily
+// ============================================================
+async function createChargilyCheckout(amount, studentName, studentEmail, studentPhone, description, successUrl, failureUrl) {
+    try {
+        let finalAmount = Math.max(Number(amount), 50);
+        finalAmount = Math.min(finalAmount, 1000000);
+        finalAmount = Math.round(finalAmount);
+
+        const checkoutData = {
+            amount: finalAmount,
+            currency: 'dzd',
+            success_url: successUrl,
+            failure_url: failureUrl,
+            locale: 'ar',
+            description: description || `شحن رصيد بقيمة ${finalAmount} دج`,
+            metadata: {
+                student_name: studentName || 'طالب',
+                student_email: studentEmail || '',
+                type: 'wallet_deposit',
+                timestamp: Date.now().toString()
+            }
+        };
+
+        console.log('📦 إنشاء دفع للمبلغ:', finalAmount, 'DZD');
+
+        const authMethods = [
+            { 'Authorization': `Bearer ${CHARGILY_API_KEY}` },
+            { 'X-Authorization': CHARGILY_API_KEY },
+            { 'Api-Key': CHARGILY_API_KEY }
+        ];
+
+        let lastError = null;
+
+        for (let i = 0; i < authMethods.length; i++) {
+            try {
+                const response = await axios.post(`${CHARGILY_API_URL}/checkouts`, checkoutData, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        ...authMethods[i]
+                    },
+                    timeout: 30000,
+                    httpsAgent: new https.Agent({ keepAlive: true })
+                });
+
+                if (response?.data?.checkout_url) {
+                    console.log('✅ تم إنشاء رابط الدفع بنجاح');
+                    return {
+                        success: true,
+                        checkout_url: response.data.checkout_url,
+                        checkout_id: response.data.id,
+                        amount: finalAmount
+                    };
+                }
+            } catch (error) {
+                lastError = error;
+                console.log(`❌ محاولة ${i + 1} فشلت`);
+                if (i < authMethods.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            }
+        }
+
+        throw new Error(lastError?.response?.data?.message || lastError?.message || 'فشلت جميع محاولات الدفع');
+    } catch (error) {
+        console.error('❌ خطأ Chargily:', error.response?.data || error.message);
+        return {
+            success: false,
+            error: error.response?.data?.message || error.message || 'حدث خطأ في عملية الدفع'
+        };
     }
 }
 
@@ -1154,6 +1234,9 @@ module.exports = {
     // دوال reCAPTCHA
     verifyRecaptcha,
     
+    // دوال Chargily
+    createChargilyCheckout,
+    
     // متغيرات
     MAX_LOGIN_ATTEMPTS,
     LOCKOUT_TIME,
@@ -1165,10 +1248,16 @@ module.exports = {
     CHARGILY_API_KEY,
     CHARGILY_API_URL,
     CHARGILY_WEBHOOK_SECRET,
+    ENCRYPTION_KEY,
+    ENCRYPTION_IV,
     
     // دوال تتبع تسجيل الدخول
     trackLoginAttempt,
     resetLoginAttempts,
+    
+    // دوال أخرى
+    CORS_ORIGIN,
+    isOriginAllowed,
     
     // التطبيق
     app
@@ -1194,10 +1283,21 @@ if (require.main === module) {
         console.log('📧 نظام تأكيد البريد الإلكتروني مفعل');
         console.log('🔗 نظام الإحالة مفعل');
         console.log('🎁 صناديق الهدايا للطلاب مفعلة');
+        console.log('💰 مكافأة الإحالة للأستاذ: 100 دج فور قبوله من الإدارة');
+        console.log('🎁 مكافأة الإحالة للطالب: فرصة صندوق هدايا عند حجز المحال درساً مدفوعاً');
+        console.log('🔒 نظام الحظر (IP Ban) مع تشفير IP');
+        console.log('👥 إدارة المستخدمين (حذف + حظر)');
+        console.log('💳 نظام الدفع عبر Chargily مع Webhook');
+        console.log('🔄 نظام التوجيه (redirectTo) للمدير');
+        console.log('📢 إشعارات عند حجز الحصص للطالب والأستاذ');
+        console.log('📊 إشعار للأستاذ بعدد الطلاب المسجلين في الحصة');
         console.log('='.repeat(60));
         console.log('🎥 نظام البث المباشر: Google Meet (مجاني 100%)');
         console.log('   ✅ لا يوجد حد زمني للبث');
         console.log('   ✅ 100 مشارك كحد أقصى (Google Meet مجاني)');
+        console.log('   ✅ لا يحتاج إلى أي اشتراك مدفوع');
+        console.log('   ✅ يمكن إنشاء رابط مباشر من المنصة');
+        console.log('   ✅ فقط الطلاب الذين لديهم حجز مدفوع يمكنهم الدخول');
         console.log('   ✅ الأستاذ يمكنه إضافة الطلاب من قائمة الانتظار');
         console.log('   ✅ إضافة طالب واحد أو جميع الطلاب');
         console.log('   ✅ معالجة CSRF Token تلقائياً');
