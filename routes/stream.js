@@ -7,8 +7,21 @@ const router = express.Router();
 const { body, param, validationResult } = require('express-validator');
 
 const { supabase } = require('../config/database');
-const { authenticate, authorize } = require('../middleware/auth');
+const { authenticate, checkBanned } = require('../middleware/auth');
 const { getOne, insert, update } = require('../utils/helpers');
+
+// ✅ تعريف authorize محلياً
+function authorize(roles = []) {
+    return (req, res, next) => {
+        if (!req.user) {
+            return res.status(401).json({ success: false, error: 'غير مصرح به' });
+        }
+        if (roles.length > 0 && !roles.includes(req.user.role)) {
+            return res.status(403).json({ success: false, error: 'صلاحيات غير كافية' });
+        }
+        next();
+    };
+}
 
 // ============================================================
 // حفظ رابط البث
@@ -266,83 +279,6 @@ router.post('/add-all-students/:offer_id', authenticate, authorize(['teacher']),
         });
     } catch (error) {
         console.error('❌ خطأ في إضافة جميع الطلاب:', error.message);
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
-    }
-});
-
-// ============================================================
-// إضافة الطلاب (API قديم)
-// ============================================================
-router.post('/add-students/:offer_id', authenticate, authorize(['teacher']), [
-    param('offer_id').isInt().withMessage('معرف العرض غير صالح'),
-    body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const { offer_id, teacher_id } = req.body;
-
-        if (req.user.userId !== teacher_id) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
-        }
-
-        const offer = await getOne('offers', 'id', offer_id);
-
-        if (!offer || offer.teacher_id != teacher_id) {
-            return res.status(403).json({ success: false });
-        }
-
-        await update('offers', offer_id, { status: 'live' });
-
-        const { data: waitingStudents } = await supabase
-            .from('waiting_room')
-            .select('student_id')
-            .eq('offer_id', offer_id);
-
-        const addedStudents = [];
-
-        for (const student of waitingStudents || []) {
-            const session = await getOne('sessions', 'offer_id', offer_id);
-            if (session && session.student_id === student.student_id && session.payment_status === 'paid') {
-                await insert('active_stream', { 
-                    offer_id: parseInt(offer_id), 
-                    student_id: student.student_id,
-                    added_at: new Date().toISOString()
-                });
-
-                await insert('notifications', {
-                    user_id: student.student_id,
-                    user_type: 'student',
-                    title: '🔴 البث المباشر بدأ',
-                    message: `الحصة "${offer.subject_name}" قد بدأت الآن. انضم إلى البث المباشر.`,
-                    offer_id: offer_id,
-                    stream_url: offer.stream_url,
-                    is_read: false,
-                    created_at: new Date().toISOString()
-                });
-
-                addedStudents.push(student.student_id);
-
-                await supabase
-                    .from('waiting_room')
-                    .delete()
-                    .eq('offer_id', offer_id)
-                    .eq('student_id', student.student_id);
-            } else {
-                await supabase
-                    .from('waiting_room')
-                    .delete()
-                    .eq('offer_id', offer_id)
-                    .eq('student_id', student.student_id);
-            }
-        }
-
-        res.json({ success: true, students_count: addedStudents.length, students: addedStudents });
-    } catch (error) {
-        console.error('❌ خطأ في إضافة الطلاب:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
