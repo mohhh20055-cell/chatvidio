@@ -89,6 +89,7 @@ async function remove(table, column, value) {
     }
 }
 
+// ✅ تأكد من تصدير كل الدوال
 module.exports = {
     sanitizeInput,
     sanitizeObject,
