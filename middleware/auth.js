@@ -77,6 +77,7 @@ async function checkBanned(req, res, next) {
     }
 }
 
+// ✅ تأكد من تصدير جميع الدوال بشكل صحيح
 module.exports = {
     authenticate,
     authorize,
