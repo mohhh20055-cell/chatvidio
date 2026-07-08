@@ -1,13 +1,14 @@
 // ============================================================
-// مسارات الحجز - Booking Routes
+// مسارات الحجز - Booking Routes (معدل)
 // ============================================================
 
 const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
+const crypto = require('crypto');
 
 const { supabase } = require('../config/database');
-const { authenticate, checkBanned } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const { getOne, insert, update } = require('../utils/helpers');
 
 // ✅ تعريف authorize محلياً
@@ -24,7 +25,7 @@ function authorize(roles = []) {
 }
 
 // ============================================================
-// إنشاء حجز جديد
+// إنشاء حجز جديد (معدل)
 // ============================================================
 router.post('/create', authenticate, authorize(['student']), [
     body('offer_id').isInt().withMessage('معرف العرض غير صالح'),
@@ -125,13 +126,26 @@ router.post('/create', authenticate, authorize(['student']), [
             await update('sessions', session.id, { teacher_earned: teacherEarned });
         }
 
+        // ✅ إنشاء كلمة مرور فريدة للطالب (لـ Jitsi)
+        const studentPassword = crypto.randomBytes(4).toString('hex').toUpperCase();
+        
+        // ✅ حفظ كلمة المرور الفريدة
+        await supabase
+            .from('student_room_passwords')
+            .insert({
+                offer_id: offer_id,
+                student_id: student_id,
+                password: studentPassword,
+                created_at: new Date().toISOString()
+            });
+
         await insert('notifications', {
             user_id: student_id,
             user_type: 'student',
             title: isFree ? '✅ تم حجز الحصة المجانية' : '✅ تم حجز الحصة بنجاح',
             message: isFree 
-                ? `لقد قمت بحجز الحصة "${offer.subject_name}" بنجاح (حصة مجانية). سيتم إعلامك عند بدء البث.`
-                : `لقد قمت بحجز الحصة "${offer.subject_name}" بنجاح. تم خصم ${offer.price} دج من رصيدك. سيتم إعلامك عند بدء البث.`,
+                ? `لقد قمت بحجز الحصة "${offer.subject_name}" بنجاح (حصة مجانية). سيتم إشعارك عند بدء البث.`
+                : `لقد قمت بحجز الحصة "${offer.subject_name}" بنجاح. تم خصم ${offer.price} دج من رصيدك. سيتم إشعارك عند بدء البث.`,
             offer_id: offer_id,
             is_read: false,
             created_at: new Date().toISOString()
@@ -173,7 +187,8 @@ router.post('/create', authenticate, authorize(['student']), [
             session_id: session.id,
             is_free: isFree,
             message: isFree ? 'تم الحجز بنجاح (حصة مجانية)' : `تم حجز الحصة بنجاح. تم خصم ${offer.price} دج من رصيدك.`,
-            total_booked: bookedCount || 1
+            total_booked: bookedCount || 1,
+            room_password: studentPassword // ✅ إرسال كلمة المرور للطالب
         });
     } catch (error) {
         console.error('خطأ في معالجة الحجز:', error);
