@@ -4375,7 +4375,7 @@ app.post('/api/admin/withdraw-requests/:id/reject', [
 // ============================================================
 
 // ============================================================
-// مسار حفظ رابط البث من الأستاذ
+// مسار حفظ رابط البث من الأستاذ - ✅ معدل لإضافة الطلاب تلقائياً
 // ============================================================
 app.post('/api/stream/save-link', [
     authenticate,
@@ -4400,6 +4400,7 @@ app.post('/api/stream/save-link', [
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
 
+        // ✅ تحديث العرض مع رابط البث
         await supabase
             .from('offers')
             .update({
@@ -4410,18 +4411,47 @@ app.post('/api/stream/save-link', [
             })
             .eq('id', offer_id);
 
+        // ✅ جلب جميع الطلاب الذين لديهم حجز مدفوع في هذه الحصة
         const { data: sessions } = await supabase
             .from('sessions')
             .select('student_id')
             .eq('offer_id', offer_id)
             .eq('payment_status', 'paid');
 
+        let addedCount = 0;
+
+        // ✅ إضافة جميع الطلاب إلى active_stream تلقائياً
         if (sessions && sessions.length > 0) {
+            for (const session of sessions) {
+                // التحقق من أن الطالب ليس مضافاً بالفعل
+                const { data: existing } = await supabase
+                    .from('active_stream')
+                    .select('*')
+                    .eq('offer_id', offer_id)
+                    .eq('student_id', session.student_id)
+                    .maybeSingle();
+
+                if (!existing) {
+                    await insert('active_stream', {
+                        offer_id: parseInt(offer_id),
+                        student_id: session.student_id,
+                        teacher_id: req.user.userId,
+                        joined_at: new Date().toISOString(),
+                        added_at: new Date().toISOString(),
+                        added_by_teacher: true,
+                        last_ping: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    });
+                    addedCount++;
+                }
+            }
+
+            // ✅ إرسال إشعارات للطلاب
             const notifications = sessions.map(s => ({
                 user_id: s.student_id,
                 user_type: 'student',
                 title: '🔴 البث المباشر بدأ',
-                message: `الحصة "${offer.subject_name}" قد بدأت الآن. انضم عبر الرابط: ${stream_url}`,
+                message: `الحصة "${offer.subject_name}" قد بدأت الآن. اضغط على "انضم الآن" للدخول.`,
                 offer_id: offer_id,
                 stream_url: stream_url,
                 is_read: false,
@@ -4433,18 +4463,25 @@ app.post('/api/stream/save-link', [
                 .insert(notifications);
         }
 
+        // ✅ حذف جميع الطلاب من waiting_room بعد بدء البث
+        await supabase
+            .from('waiting_room')
+            .delete()
+            .eq('offer_id', offer_id);
+
         res.json({
             success: true,
-            message: 'تم بدء البث المباشر بنجاح',
+            message: `تم بدء البث المباشر بنجاح، وتم إضافة ${addedCount} طالب إلى البث`,
             stream_url: stream_url,
-            platform: platform
+            platform: platform,
+            students_count: sessions?.length || 0,
+            added_count: addedCount
         });
     } catch (error) {
         console.error('❌ خطأ في حفظ رابط البث:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
-
 // ============================================================
 // صفحة بدء البث للأستاذ (اختيار المنصة)
 // ============================================================
