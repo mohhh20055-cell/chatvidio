@@ -58,6 +58,9 @@
         ::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--gray-400); }
 
+        /* ================================================================
+           NAVBAR
+        ================================================================ */
         .navbar {
             position: fixed;
             top: 0;
@@ -425,6 +428,9 @@
         .profile-dropdown .dropdown-item.danger { color: var(--danger); }
         .profile-dropdown .dropdown-item.danger i { color: var(--danger); }
 
+        /* ================================================================
+           MAIN CONTENT
+        ================================================================ */
         .main-wrapper {
             max-width: 1400px;
             margin: 0 auto;
@@ -865,6 +871,9 @@
         }
         .card-title i { color: var(--primary); }
 
+        /* ================================================================
+           MODALS
+        ================================================================ */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -979,6 +988,9 @@
         .gift-result .result-amount.green { color: var(--secondary); }
         .gift-result .result-amount.gray { color: var(--gray-400); }
 
+        /* ================================================================
+           TOAST
+        ================================================================ */
         .toast-container {
             position: fixed;
             bottom: 24px;
@@ -1017,6 +1029,9 @@
         .loading { text-align: center; padding: 40px; color: var(--gray-400); font-weight: 600; }
         .loading i { color: var(--primary); margin-left: 8px; }
 
+        /* ================================================================
+           RESPONSIVE
+        ================================================================ */
         @media (max-width: 767px) {
             body { padding-top: 70px; }
             .navbar { height: 64px; padding: 0 12px; }
@@ -1090,6 +1105,9 @@
 </head>
 <body>
 
+<!-- ================================================================
+     NAVBAR
+================================================================ -->
 <nav class="navbar">
     <div class="navbar-inner">
         <a class="nav-logo" onclick="showSection('offers')">
@@ -1172,7 +1190,11 @@
     </div>
 </nav>
 
+<!-- ================================================================
+     MAIN CONTENT
+================================================================ -->
 <div class="main-wrapper">
+    <!-- LEFT SIDEBAR -->
     <div class="left-sidebar">
         <div class="profile-card">
             <img id="sidebarAvatar" class="profile-avatar" src="https://ui-avatars.com/api/?name=طالب&background=0f5cbf&color=fff&size=80" alt="صورة الملف الشخصي">
@@ -1210,27 +1232,33 @@
         </div>
     </div>
 
+    <!-- CONTENT -->
     <div class="content-area">
+        <!-- OFFERS SECTION -->
         <div id="offersSection">
             <div class="section-title"><i class="fas fa-calendar-alt"></i> العروض المتوفرة</div>
             <div id="offersList" class="offers-grid"></div>
         </div>
 
+        <!-- TEACHERS SECTION -->
         <div id="teachersSection" style="display: none;">
             <div class="section-title"><i class="fas fa-chalkboard-user"></i> الأساتذة</div>
             <div id="teachersList" class="teachers-grid"></div>
         </div>
 
+        <!-- BOOKINGS SECTION -->
         <div id="bookingsSection" style="display: none;">
             <div class="section-title"><i class="fas fa-bookmark"></i> حجوزاتي</div>
             <div id="bookingsList"></div>
         </div>
 
+        <!-- TRANSACTIONS SECTION -->
         <div id="transactionsSection" style="display: none;">
             <div class="section-title"><i class="fas fa-history"></i> سجل المعاملات</div>
             <div id="transactionsList"></div>
         </div>
 
+        <!-- REFERRAL SECTION -->
         <div id="referralSection" style="display: none;">
             <div class="section-title"><i class="fas fa-link" style="color:var(--gold);"></i> نظام الإحالة</div>
             
@@ -1254,6 +1282,7 @@
                 </div>
             </div>
 
+            <!-- Gift Box -->
             <div class="gift-box-card">
                 <span class="gift-icon">🎁</span>
                 <div class="chances-display" id="giftChancesDisplay">0</div>
@@ -1266,6 +1295,7 @@
                 </p>
             </div>
 
+            <!-- Reward History -->
             <div style="margin-top:24px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                     <h4 style="font-size:1rem; font-weight:800;"><i class="fas fa-history" style="color:var(--gold);"></i> سجل المكافآت</h4>
@@ -1275,6 +1305,7 @@
         </div>
     </div>
 
+    <!-- RIGHT SIDEBAR -->
     <div class="right-sidebar">
         <div class="right-card">
             <div class="card-title"><i class="fas fa-gift" style="color:var(--gold);"></i> عروض مجانية</div>
@@ -1293,10 +1324,17 @@
     </div>
 </div>
 
+<!-- ================================================================
+     TOAST CONTAINER
+================================================================ -->
 <div class="toast-container" id="toastContainer"></div>
 
+<!-- ================================================================
+     MODALS
+================================================================ -->
 <div class="modal-overlay" id="modalOverlay"></div>
 
+<!-- EDIT PROFILE MODAL -->
 <div id="editProfileModal" class="modal">
     <div class="modal-header">
         <h3><i class="fas fa-user-edit"></i> تعديل الملف الشخصي</h3>
@@ -1313,6 +1351,7 @@
     </div>
 </div>
 
+<!-- DEPOSIT MODAL -->
 <div id="depositModal" class="modal">
     <div class="modal-header">
         <h3><i class="fas fa-plus-circle"></i> شحن الرصيد</h3>
@@ -1328,6 +1367,7 @@
     </div>
 </div>
 
+<!-- TEACHER PROFILE MODAL -->
 <div id="teacherProfileModal" class="modal">
     <div class="modal-header">
         <h3 id="teacherModalName"><i class="fas fa-chalkboard-user"></i> ملف الأستاذ</h3>
@@ -1339,6 +1379,7 @@
     </div>
 </div>
 
+<!-- GIFT RESULT MODAL -->
 <div id="giftResultModal" class="modal">
     <div class="modal-header">
         <h3><i class="fas fa-gift" style="color:var(--gold);"></i> صندوق الهدايا</h3>
@@ -1358,7 +1399,7 @@
 
 <script>
     // ================================================================
-    // ✅ لوحة الطالب - نسخة معدلة بالكامل مع دعم البث المباشر
+    // ✅ تم إصلاح جميع الدوال للعمل مع النظام الجديد
     // ================================================================
 
     let userData = null;
@@ -1374,30 +1415,23 @@
     // دوال المصادقة والأمان
     // ================================================================
 
-    async function fetchCsrfToken() {
-        try {
-            const response = await fetch('/api/get-csrf-token', {
-                method: 'GET',
-                headers: {
-                    'Authorization': 'Bearer ' + authToken
-                },
-                credentials: 'include'
-            });
-            const data = await response.json();
-            csrfToken = data.csrfToken;
-            return csrfToken;
-        } catch (error) {
-            console.error('خطأ في جلب CSRF Token:', error);
-            return null;
+    function getAuthHeaders(hasBody = true) {
+        const headers = {
+            'Authorization': `Bearer ${authToken}`,
+            'X-CSRF-Token': csrfToken || ''
+        };
+        if (hasBody) {
+            headers['Content-Type'] = 'application/json';
         }
+        return headers;
     }
 
     async function fetchWithAuth(url, options = {}) {
         const isFormData = options.body instanceof FormData;
         const headers = {
-            ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
             'Authorization': `Bearer ${authToken}`,
             'X-CSRF-Token': csrfToken || '',
+            ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
             ...options.headers
         };
         
@@ -1406,28 +1440,32 @@
             headers: headers
         });
 
+        // ✅ معالجة 401 - انتهاء الصلاحية
         if (response.status === 401) {
             showToast('⏳ انتهت صلاحية الجلسة، جاري إعادة التوجيه...', 'error');
-            localStorage.clear();
+            localStorage.removeItem('token');
+            localStorage.removeItem('userData');
             setTimeout(() => {
                 window.location.href = '/';
             }, 1500);
             throw new Error('انتهت صلاحية الجلسة');
         }
 
+        // ✅ معالجة 403 - CSRF أو حظر
         if (response.status === 403) {
             try {
                 const data = await response.json();
                 if (data.banned) {
                     showToast('⚠️ تم حظر حسابك من المنصة', 'error');
-                    localStorage.clear();
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('userData');
                     setTimeout(() => {
                         window.location.href = '/';
                     }, 2000);
                     throw new Error('حساب محظور');
                 }
                 if (data.error && data.error.includes('CSRF')) {
-                    await fetchCsrfToken();
+                    await getCsrfToken();
                     const retryResponse = await fetch(url, {
                         ...options,
                         headers: {
@@ -1449,8 +1487,22 @@
         return response;
     }
 
+    async function getCsrfToken() {
+        try {
+            const response = await fetch('/api/csrf-token', {
+                credentials: 'include'
+            });
+            const data = await response.json();
+            csrfToken = data.csrfToken;
+            return csrfToken;
+        } catch (error) {
+            console.error('خطأ في جلب CSRF Token:', error);
+            return null;
+        }
+    }
+
     // ================================================================
-    // NOTIFICATIONS
+    // NOTIFICATIONS SYSTEM
     // ================================================================
 
     async function loadNotifications() {
@@ -1546,75 +1598,10 @@
         }
     }
 
-    // ✅ الدالة الرئيسية لدخول البث من الإشعار - معدلة
-    async function joinFromNotification(offerId) {
-        try {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
-                return;
-            }
-
-            showToast('⏳ جاري التحقق من البث...', 'info');
-
-            const res = await fetchWithAuth(`/api/student/stream-status/${offerId}/${studentId}`);
-            const data = await res.json();
-            
-            console.log('📡 حالة البث:', data);
-
-            if (data.can_join && data.status === 'live') {
-                window.open(`/api/join-stream/${offerId}/${studentId}?token=${encodeURIComponent(token)}`, '_blank');
-                showToast('✅ جاري فتح البث المباشر...', 'success');
-            } else if (data.is_waiting) {
-                showToast('⏳ جاري التحضير للبث، انتظر قليلاً...', 'warning');
-            } else if (data.is_upcoming) {
-                showToast(`⏳ البث سيبدأ في ${new Date(data.offer_date).toLocaleString('ar')}`, 'info');
-            } else if (data.status === 'completed') {
-                showToast('⏹️ انتهى البث المباشر', 'warning');
-                showSection('bookings');
-            } else if (data.status === 'live' && !data.can_join) {
-                showToast('⏳ جاري إضافتك إلى البث...', 'info');
-                
-                try {
-                    const addRes = await fetchWithAuth(`/api/stream/add-student-to-stream/${offerId}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            offer_id: parseInt(offerId),
-                            student_id: parseInt(studentId)
-                        })
-                    });
-                    const addData = await addRes.json();
-                    if (addData.success) {
-                        showToast('✅ تمت إضافتك إلى البث، جاري التوجيه...', 'success');
-                        setTimeout(() => {
-                            window.open(`/api/join-stream/${offerId}/${studentId}?token=${encodeURIComponent(token)}`, '_blank');
-                        }, 1500);
-                    } else {
-                        showToast('❌ ' + (addData.error || 'حدث خطأ'), 'error');
-                    }
-                } catch(e) {
-                    console.error('خطأ في الإضافة:', e);
-                    showToast('❌ حدث خطأ في الإضافة', 'error');
-                }
-            } else {
-                showToast('❌ البث غير متاح حالياً', 'warning');
-                showSection('bookings');
-            }
-        } catch(e) {
-            if (e.message !== 'انتهت صلاحية الجلسة') {
-                console.error('خطأ في joinFromNotification:', e);
-                showToast('❌ حدث خطأ', 'error');
-            }
-        }
-        document.getElementById('notifDropdown').classList.remove('open');
-    }
-
     async function markNotificationRead(notifId, offerId) {
         try {
             const res = await fetchWithAuth(`/api/notifications/read/${notifId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                method: 'POST'
             });
             if (res.ok) {
                 const notif = notifications.find(n => n.id == notifId);
@@ -1641,8 +1628,7 @@
         for (const notif of unreadNotifs) {
             try {
                 await fetchWithAuth(`/api/notifications/read/${notif.id}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    method: 'POST'
                 });
                 notif.is_read = true;
             } catch(e) { 
@@ -1652,6 +1638,28 @@
         updateNotifBadge();
         renderNotifications();
         showToast('تم تحديد جميع الإشعارات كمقروءة', 'success');
+    }
+
+    // ✅ تم إصلاح دالة joinFromNotification - إضافة التوكن في Query Parameter
+    async function joinFromNotification(offerId) {
+        try {
+            const res = await fetchWithAuth(`/api/student/stream-status/${offerId}/${studentId}`);
+            const data = await res.json();
+            if (data.can_join) {
+                const token = localStorage.getItem('token');
+                window.open(`/api/join-stream/${offerId}/${studentId}?token=${encodeURIComponent(token)}`, '_blank');
+            } else if (data.is_waiting) {
+                showToast('⏳ جاري التحضير للبث، انتظر قليلاً...', 'warning');
+            } else {
+                showToast('البث غير متاح حالياً', 'warning');
+                showSection('bookings');
+            }
+        } catch(e) {
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                showToast('حدث خطأ', 'error');
+            }
+        }
+        document.getElementById('notifDropdown').classList.remove('open');
     }
 
     // ================================================================
@@ -1670,7 +1678,7 @@
     }
 
     // ================================================================
-    // TOAST
+    // TOAST NOTIFICATIONS
     // ================================================================
 
     function showToast(message, type = 'success') {
@@ -1718,7 +1726,7 @@
     }
 
     // ================================================================
-    // USER DATA
+    // USER DATA - ✅ تم التصحيح
     // ================================================================
 
     async function loadUserData() {
@@ -1741,8 +1749,10 @@
                 return;
             }
 
-            await fetchCsrfToken();
+            // ✅ جلب CSRF Token أولاً
+            await getCsrfToken();
 
+            // ✅ جلب بيانات المستخدم
             const res = await fetchWithAuth(`/api/student/${studentId}`);
             const data = await res.json();
             if (!data.error) {
@@ -1804,7 +1814,10 @@
             const offers = await res.json();
             renderOffers(offers);
             loadFreeOffersSidebar(offers);
-        } catch(e) { showToast('حدث خطأ', 'error'); }
+        } catch(e) { 
+            console.error('خطأ في تحميل العروض:', e);
+            showToast('حدث خطأ في تحميل العروض', 'error'); 
+        }
     }
 
     function renderOffers(offers) {
@@ -1836,7 +1849,7 @@
                 <div class="offer-card">
                     <div>
                         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                            <img src="${teacherImage}" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border:2px solid white; box-shadow:var(--shadow-sm);">
+                            <img src="${teacherImage}" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border:2px solid white; box-shadow:var(--shadow-sm);" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${escapeHtml(offer.teacher_name)}')+'&background=0f5cbf&color=fff&size=40'">
                             <div>
                                 <div style="font-weight: 800; font-size: 0.9rem; color:var(--gray-900);">${escapeHtml(offer.teacher_name)}</div>
                                 <div style="font-size: 0.72rem; color: var(--gray-500);">${offer.teacher_specialization || 'تخصص عام'}</div>
@@ -1868,7 +1881,6 @@
         try {
             const res = await fetchWithAuth('/api/booking/create', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ offer_id: offerId, student_id: studentId })
             });
             const data = await res.json();
@@ -1907,7 +1919,10 @@
             const res = await fetch('/api/teachers');
             const teachers = await res.json();
             renderTeachers(teachers);
-        } catch(e) { showToast('حدث خطأ', 'error'); }
+        } catch(e) { 
+            console.error('خطأ في تحميل الأساتذة:', e);
+            showToast('حدث خطأ', 'error'); 
+        }
     }
 
     function renderTeachers(teachers) {
@@ -1963,7 +1978,7 @@
             document.getElementById('teacherModalName').textContent = teacher.full_name;
             document.getElementById('teacherModalBody').innerHTML = `
                 <div style="text-align: center;">
-                    <img src="${teacherImage}" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 16px; border: 3px solid white; box-shadow:var(--shadow-md);">
+                    <img src="${teacherImage}" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 16px; border: 3px solid white; box-shadow:var(--shadow-md);" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${escapeHtml(teacher.full_name)}')+'&background=0f5cbf&color=fff&size=100'">
                     <div style="text-align: right; margin-top: 10px;">
                         <p style="margin:8px 0; font-size: 0.9rem; color:var(--gray-700);"><strong><i class="fas fa-graduation-cap" style="color:var(--primary); margin-left: 6px; width: 18px;"></i> التخصص:</strong> ${teacher.specialization || 'غير محدد'}</p>
                         <p style="margin:8px 0; font-size: 0.9rem; color:var(--gray-700);"><strong><i class="fas fa-briefcase" style="color:var(--primary); margin-left: 6px; width: 18px;"></i> الخبرة:</strong> ${teacher.experience || '0'} سنة</p>
@@ -1992,7 +2007,7 @@
     }
 
     // ================================================================
-    // BOOKINGS - ✅ معدل مع دعم البث المباشر
+    // BOOKINGS
     // ================================================================
 
     async function loadMyBookings() {
@@ -2044,10 +2059,10 @@
             html += `
                 <div class="booking-item">
                     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                        <img src="${teacherImage}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border:2px solid white; box-shadow:var(--shadow-sm);">
+                        <img src="${teacherImage}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border:2px solid white; box-shadow:var(--shadow-sm);" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${escapeHtml(booking.teacher_name)}')+'&background=0f5cbf&color=fff&size=40'">
                         <div>
                             <div style="font-weight: 800; font-size: 0.95rem; color:var(--gray-900);">${escapeHtml(booking.teacher_name)}</div>
-                            <div style="font-size: 0.72rem; color: var(--gray-500);">${booking.subject_name}</div>
+                            <div style="font-size: 0.72rem; color: var(--gray-500);">${escapeHtml(booking.subject_name)}</div>
                         </div>
                         <div style="margin-right: auto; font-size: 0.72rem; font-weight: 800; color: ${statusColor}; background: ${statusBg}; padding: 4px 10px; border-radius:20px;">${statusText}</div>
                     </div>
@@ -2061,7 +2076,7 @@
         container.innerHTML = html;
     }
 
-    // ✅ دالة الانضمام إلى البث المباشر - معدلة
+    // ✅ تم إصلاح دالة joinLiveStream - إضافة التوكن في Query Parameter
     function joinLiveStream(offerId) {
         const token = localStorage.getItem('token');
         if (!token) {
@@ -2191,7 +2206,6 @@
         try {
             const createRes = await fetchWithAuth('/api/referral/create', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ user_id: studentId, role: 'student' })
             });
             const createData = await createRes.json();
@@ -2340,7 +2354,6 @@
         try {
             const res = await fetchWithAuth('/api/referral/open-gift-box', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ student_id: studentId })
             });
             const data = await res.json();
@@ -2418,7 +2431,6 @@
         try {
             const res = await fetchWithAuth('/api/student/wallet/deposit', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ student_id: studentId, amount: amount })
             });
             const data = await res.json();
@@ -2519,7 +2531,7 @@
     }
 
     // ================================================================
-    // CLOSE DROPDOWNS
+    // CLOSE DROPDOWNS ON CLICK OUTSIDE
     // ================================================================
 
     document.addEventListener('click', function(e) {
@@ -2557,12 +2569,6 @@
     setInterval(() => {
         if (studentId) loadReferralData();
     }, 120000);
-
-    setInterval(() => {
-        if (authToken) {
-            fetchCsrfToken();
-        }
-    }, 3600000);
 </script>
 </body>
 </html>
