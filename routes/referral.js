@@ -5,13 +5,25 @@
 const express = require('express');
 const router = express.Router();
 const { body, param, validationResult } = require('express-validator');
+const crypto = require('crypto');
 
-// استيراد الدوال المساعدة
 const { supabase } = require('../config/database');
-const { authenticate } = require('../middleware/auth');
-const { getOne, insert, update } = require('../utils/helpers');
-const { generateReferralCode } = require('../utils/helpers');
+const { authenticate, checkBanned } = require('../middleware/auth');
+const { getOne, insert, update, generateReferralCode } = require('../utils/helpers');
 const { processReferralReward, processStudentReferralRewardOnBooking } = require('../utils/referral');
+
+// ✅ تعريف authorize محلياً
+function authorize(roles = []) {
+    return (req, res, next) => {
+        if (!req.user) {
+            return res.status(401).json({ success: false, error: 'غير مصرح به' });
+        }
+        if (roles.length > 0 && !roles.includes(req.user.role)) {
+            return res.status(403).json({ success: false, error: 'صلاحيات غير كافية' });
+        }
+        next();
+    };
+}
 
 const PLATFORM_DOMAIN = process.env.PLATFORM_DOMAIN || 'https://chatvidio.vercel.app';
 
@@ -234,7 +246,7 @@ router.post('/process', [
 // ============================================================
 // فتح صندوق الهدايا
 // ============================================================
-router.post('/open-gift-box', authenticate, [
+router.post('/open-gift-box', authenticate, authorize(['student']), [
     body('student_id').isInt().withMessage('معرف الطالب غير صالح')
 ], async (req, res) => {
     try {
@@ -322,7 +334,7 @@ router.post('/open-gift-box', authenticate, [
 // ============================================================
 // حالة صندوق الهدايا
 // ============================================================
-router.get('/gift-box-status/:student_id', authenticate, [
+router.get('/gift-box-status/:student_id', authenticate, authorize(['student']), [
     param('student_id').isInt().withMessage('معرف الطالب غير صالح')
 ], async (req, res) => {
     try {
@@ -366,7 +378,7 @@ router.get('/gift-box-status/:student_id', authenticate, [
 // ============================================================
 // إحصائيات الإحالة للأستاذ
 // ============================================================
-router.get('/teacher-stats/:teacher_id', authenticate, [
+router.get('/teacher-stats/:teacher_id', authenticate, authorize(['teacher']), [
     param('teacher_id').isInt().withMessage('معرف المعلم غير صالح')
 ], async (req, res) => {
     try {
