@@ -488,7 +488,7 @@ app.get('/api/get-csrf-token', authenticate, (req, res) => {
 });
 
 // ============================================================
-// ✅ مسار بدء البث للأستاذ - مباشر في server.js
+// ✅ مسار بدء البث للأستاذ - مباشر في server.js (معدل)
 // ============================================================
 
 app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
@@ -545,6 +545,10 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
             `);
         }
 
+        // ✅ جلب اسم الأستاذ من قاعدة البيانات
+        const teacher = await getOne('teachers', 'id', teacher_id);
+        const teacherName = teacher?.full_name || 'المعلم';
+
         // جلب عدد الطلاب المسجلين
         const { count: studentsCount } = await supabase
             .from('sessions')
@@ -552,8 +556,8 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
             .eq('offer_id', offer_id)
             .eq('payment_status', 'paid');
 
-        // عرض صفحة بدء البث
-        res.send(generateTeacherStreamPage(offer, teacher_id, token, studentsCount || 0));
+        // ✅ تمرير اسم الأستاذ إلى دالة توليد الصفحة
+        res.send(generateTeacherStreamPage(offer, teacher_id, token, studentsCount || 0, teacherName));
         
     } catch (error) {
         console.error('❌ خطأ في بدء البث:', error.message);
@@ -563,7 +567,7 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
             <head><meta charset="UTF-8"><title>خطأ</title></head>
             <body style="font-family:Cairo;text-align:center;padding:50px;">
                 <h1 style="color:#ef4444;">❌ حدث خطأ</h1>
-                <p style="color:#64748b;">${error.message}</p>
+                <p style="color:#64748b;">${escapeHtml(error.message)}</p>
                 <a href="/teacher-dashboard.html" style="color:#0f5cbf;font-weight:700;">العودة للوحة التحكم</a>
             </body></html>
         `);
@@ -571,10 +575,10 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
 });
 
 // ============================================================
-// ✅ دالة توليد صفحة بدء البث
+// ✅ دالة توليد صفحة بدء البث (معدلة)
 // ============================================================
 
-function generateTeacherStreamPage(offer, teacherId, token, studentsCount) {
+function generateTeacherStreamPage(offer, teacherId, token, studentsCount, teacherName) {
     const offerId = offer.id;
     const subjectName = offer.subject_name || 'غير محدد';
     
@@ -644,7 +648,7 @@ function generateTeacherStreamPage(offer, teacherId, token, studentsCount) {
 
     <div class="info-box">
         <div><span>📚 المادة:</span> <strong>${escapeHtml(subjectName)}</strong></div>
-        <div><span>👨‍🏫 الأستاذ:</span> <strong>${escapeHtml(decoded?.name || 'المعلم')}</strong></div>
+        <div><span>👨‍🏫 الأستاذ:</span> <strong>${escapeHtml(teacherName)}</strong></div>
         <div><span>👨‍🎓 الطلاب المسجلين:</span> <strong>${studentsCount}</strong></div>
     </div>
 
@@ -694,9 +698,16 @@ function generateTeacherStreamPage(offer, teacherId, token, studentsCount) {
     const teacherId = ${parseInt(teacherId)};
     let csrfToken = '';
 
+    // ✅ تعريف API_BASE_URL
+    const API_BASE_URL = window.location.hostname === 'localhost' 
+        ? 'http://localhost:3000' 
+        : window.location.origin;
+
+    console.log('🌐 API Base URL:', API_BASE_URL);
+
     async function getCsrfToken() {
         try {
-            const response = await fetch('/api/get-csrf-token', {
+            const response = await fetch(API_BASE_URL + '/api/get-csrf-token', {
                 method: 'GET',
                 headers: { 'Authorization': 'Bearer ' + authToken },
                 credentials: 'include'
@@ -773,7 +784,7 @@ function generateTeacherStreamPage(offer, teacherId, token, studentsCount) {
         btn.textContent = '⏳ جاري بدء البث...';
 
         try {
-            const response = await fetch('/api/stream/save-link', {
+            const response = await fetch(API_BASE_URL + '/api/stream/save-link', {
                 method: 'POST',
                 headers: {
                     'Authorization': 'Bearer ' + authToken,
@@ -790,7 +801,7 @@ function generateTeacherStreamPage(offer, teacherId, token, studentsCount) {
             const data = await response.json();
 
             if (data.success) {
-                const result = await fetch('/api/stream/add-students/' + offerId, {
+                const result = await fetch(API_BASE_URL + '/api/stream/add-students/' + offerId, {
                     method: 'POST',
                     headers: {
                         'Authorization': 'Bearer ' + authToken,
@@ -824,7 +835,7 @@ function generateTeacherStreamPage(offer, teacherId, token, studentsCount) {
 
     async function loadWaitingList() {
         try {
-            const response = await fetch('/api/stream/waiting-list/' + offerId + '/' + teacherId, {
+            const response = await fetch(API_BASE_URL + '/api/stream/waiting-list/' + offerId + '/' + teacherId, {
                 headers: { 
                     'Authorization': 'Bearer ' + authToken,
                     'X-CSRF-Token': csrfToken
@@ -861,7 +872,7 @@ function generateTeacherStreamPage(offer, teacherId, token, studentsCount) {
 
     async function addStudent(studentId) {
         try {
-            const response = await fetch('/api/stream/add-student/' + offerId, {
+            const response = await fetch(API_BASE_URL + '/api/stream/add-student/' + offerId, {
                 method: 'POST',
                 headers: {
                     'Authorization': 'Bearer ' + authToken,
@@ -895,7 +906,7 @@ function generateTeacherStreamPage(offer, teacherId, token, studentsCount) {
         btn.textContent = '⏳ جاري الإضافة...';
 
         try {
-            const response = await fetch('/api/stream/add-all-students/' + offerId, {
+            const response = await fetch(API_BASE_URL + '/api/stream/add-all-students/' + offerId, {
                 method: 'POST',
                 headers: {
                     'Authorization': 'Bearer ' + authToken,
