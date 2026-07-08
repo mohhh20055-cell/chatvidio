@@ -25,7 +25,7 @@ function authorize(roles = []) {
 }
 
 // ============================================================
-// إنشاء عرض جديد
+// ✅ إنشاء عرض جديد (معدل - مع كلمة مرور افتراضية)
 // ============================================================
 router.post('/offer/create', authenticate, authorize(['teacher']), [
     body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح'),
@@ -47,8 +47,11 @@ router.post('/offer/create', authenticate, authorize(['teacher']), [
         }
 
         const room_name = `stream_${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;
+        
+        // ✅ إنشاء كلمة مرور افتراضية للغرفة (لـ Jitsi)
+        const defaultPassword = crypto.randomBytes(4).toString('hex').toUpperCase();
 
-        await insert('offers', {
+        const newOffer = await insert('offers', {
             teacher_id,
             subject_name: subject_name.trim(),
             duration,
@@ -56,11 +59,17 @@ router.post('/offer/create', authenticate, authorize(['teacher']), [
             price: price || 0,
             is_free: is_free ? true : false,
             room_name,
+            room_password: defaultPassword, // ✅ إضافة كلمة المرور الافتراضية
             status: 'upcoming',
             education_level: education_level || null
         });
 
-        res.json({ success: true, room_name });
+        res.json({ 
+            success: true, 
+            room_name,
+            default_password: defaultPassword,
+            offer: newOffer
+        });
     } catch (error) {
         console.error('خطأ في إنشاء العرض:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
@@ -68,7 +77,7 @@ router.post('/offer/create', authenticate, authorize(['teacher']), [
 });
 
 // ============================================================
-// جلب جميع العروض القادمة
+// ✅ جلب جميع العروض القادمة (معدل - مع كلمة المرور)
 // ============================================================
 router.get('/offers', async (req, res) => {
     try {
@@ -85,7 +94,9 @@ router.get('/offers', async (req, res) => {
             teacher_specialization: o.teachers?.specialization,
             teacher_profile_image: o.teachers?.profile_image,
             teacher_profile_url: o.teachers?.profile_url,
-            teacher_id: o.teachers?.id
+            teacher_id: o.teachers?.id,
+            // ✅ إضافة كلمة المرور (إذا كانت موجودة)
+            room_password: o.room_password || null
         }));
 
         res.json(formatted);
@@ -96,7 +107,7 @@ router.get('/offers', async (req, res) => {
 });
 
 // ============================================================
-// جلب العروض المباشرة
+// ✅ جلب العروض المباشرة (معدل - مع كلمة المرور)
 // ============================================================
 router.get('/live-offers', async (req, res) => {
     try {
@@ -106,10 +117,114 @@ router.get('/live-offers', async (req, res) => {
             .eq('status', 'live')
             .order('offer_date', { ascending: false })
             .limit(20);
-        res.json(data || []);
+
+        const formatted = (data || []).map(o => ({
+            ...o,
+            teacher_name: o.teachers?.full_name,
+            teacher_specialization: o.teachers?.specialization,
+            teacher_profile_url: o.teachers?.profile_url,
+            teacher_id: o.teachers?.id,
+            // ✅ إضافة كلمة المرور (إذا كانت موجودة)
+            room_password: o.room_password || null,
+            stream_url: o.stream_url || null,
+            stream_platform: o.stream_platform || 'jitsi'
+        }));
+
+        res.json(formatted);
     } catch (error) {
         console.error('خطأ في جلب العروض المباشرة:', error.message);
         res.status(500).json([]);
+    }
+});
+
+// ============================================================
+// ✅ جلب عرض محدد (معدل - مع كلمة المرور)
+// ============================================================
+router.get('/offer/:offer_id', async (req, res) => {
+    try {
+        const { data: offer } = await supabase
+            .from('offers')
+            .select('*, teachers:teacher_id (id, full_name, specialization, profile_image, profile_url)')
+            .eq('id', req.params.offer_id)
+            .single();
+
+        if (!offer) {
+            return res.status(404).json({ success: false, error: 'العرض غير موجود' });
+        }
+
+        // ✅ جلب كلمة المرور من جدول jitsi_rooms إذا كانت موجودة
+        const { data: jitsiRoom } = await supabase
+            .from('jitsi_rooms')
+            .select('password, room_name')
+            .eq('offer_id', offer.id)
+            .single();
+
+        res.json({
+            ...offer,
+            teacher_name: offer.teachers?.full_name,
+            teacher_specialization: offer.teachers?.specialization,
+            teacher_profile_image: offer.teachers?.profile_image,
+            teacher_profile_url: offer.teachers?.profile_url,
+            teacher_id: offer.teachers?.id,
+            room_password: jitsiRoom?.password || offer.room_password || null,
+            jitsi_room_name: jitsiRoom?.room_name || null
+        });
+    } catch (error) {
+        console.error('خطأ في جلب العرض:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// ✅ تحديث كلمة مرور العرض (ميزة جديدة)
+// ============================================================
+router.put('/offer/update-password/:offer_id', authenticate, authorize(['teacher']), [
+    param('offer_id').isInt().withMessage('معرف العرض غير صالح'),
+    body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح'),
+    body('password').isLength({ min: 4, max: 10 }).withMessage('كلمة المرور يجب أن تكون بين 4 و 10 أحرف')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { offer_id, teacher_id, password } = req.body;
+
+        if (req.user.userId !== teacher_id) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        const offer = await getOne('offers', 'id', offer_id);
+        if (!offer || offer.teacher_id !== teacher_id) {
+            return res.status(403).json({ success: false, error: 'غير مصرح' });
+        }
+
+        // ✅ تحديث كلمة المرور
+        await update('offers', offer_id, { room_password: password });
+
+        // ✅ إذا كانت هناك غرفة Jitsi، تحديث كلمة المرور فيها أيضاً
+        const { data: jitsiRoom } = await supabase
+            .from('jitsi_rooms')
+            .select('id')
+            .eq('offer_id', offer_id)
+            .single();
+
+        if (jitsiRoom) {
+            await supabase
+                .from('jitsi_rooms')
+                .update({ password: password })
+                .eq('id', jitsiRoom.id);
+        }
+
+        res.json({ 
+            success: true, 
+            message: 'تم تحديث كلمة المرور بنجاح',
+            new_password: password
+        });
+    } catch (error) {
+        console.error('خطأ في تحديث كلمة المرور:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
 
@@ -139,6 +254,9 @@ router.delete('/offer/delete/:offer_id', authenticate, authorize(['teacher']), [
             return res.status(403).json({ success: false, error: 'غير مصرح' });
         }
 
+        // ✅ حذف كلمات المرور المرتبطة
+        await supabase.from('student_room_passwords').delete().eq('offer_id', offer_id);
+        await supabase.from('jitsi_rooms').delete().eq('offer_id', offer_id);
         await supabase.from('sessions').delete().eq('offer_id', offer_id);
         await supabase.from('waiting_room').delete().eq('offer_id', offer_id);
         await supabase.from('active_stream').delete().eq('offer_id', offer_id);
