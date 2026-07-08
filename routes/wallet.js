@@ -9,7 +9,10 @@ const crypto = require('crypto');
 const axios = require('axios');
 const https = require('https');
 
-// استيراد الدوال المساعدة
+// استيراد الدوال المساعدة من الملف الرئيسي
+const server = require('../server');
+
+// استخراج الدوال من server
 const { 
     authenticate, 
     authorize, 
@@ -22,7 +25,7 @@ const {
     CHARGILY_WEBHOOK_SECRET,
     renderSuccessPage,
     renderErrorPage
-} = require('../server');
+} = server;
 
 // ============================================================
 // دالة إنشاء طلب شحن عبر Chargily
