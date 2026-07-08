@@ -1108,6 +1108,70 @@ app.use((err, req, res, next) => {
         error: process.env.NODE_ENV === 'production' ? 'حدث خطأ داخلي في الخادم' : err.message
     });
 });
+// ============================================================
+// تصدير الدوال المطلوبة لملفات routes
+// ============================================================
+
+module.exports = {
+    // دوال المصادقة
+    authenticate,
+    authorize,
+    checkBanned,
+    verifyToken,
+    generateToken,
+    
+    // دوال قاعدة البيانات
+    getOne,
+    insert,
+    update,
+    remove,
+    supabase,
+    
+    // دوال مساعدة
+    sanitizeInput,
+    sanitizeObject,
+    encrypt,
+    decrypt,
+    maskIP,
+    generateVerificationToken,
+    generateReferralCode,
+    renderSuccessPage,
+    renderErrorPage,
+    uploadToSupabase,
+    validateUploadedFiles,
+    upload,
+    
+    // دوال الإحالة
+    processReferralReward,
+    processReferralOnRegister,
+    processStudentReferralRewardOnBooking,
+    
+    // دوال البريد
+    sendVerificationEmail,
+    sendResetEmail,
+    
+    // دوال reCAPTCHA
+    verifyRecaptcha,
+    
+    // متغيرات
+    MAX_LOGIN_ATTEMPTS,
+    LOCKOUT_TIME,
+    ADMIN_EMAIL,
+    ADMIN_PASSWORD_HASH,
+    SALT_ROUNDS,
+    JWT_SECRET,
+    PLATFORM_DOMAIN,
+    CHARGILY_API_KEY,
+    CHARGILY_API_URL,
+    CHARGILY_WEBHOOK_SECRET,
+    
+    // دوال تتبع تسجيل الدخول
+    trackLoginAttempt,
+    resetLoginAttempts,
+    
+    // دوال أخرى
+    app
+};
 
 // ============================================================
 // تشغيل الخادم
