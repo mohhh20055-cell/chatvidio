@@ -184,7 +184,7 @@ router.get('/bookings/:student_id', authenticate, authorize(['student']), [
 });
 
 // ============================================================
-// جلب حالة البث للطالب
+// ✅ جلب حالة البث للطالب (معدل)
 // ============================================================
 router.get('/stream-status/:offer_id/:student_id', authenticate, authorize(['student']), [
     param('offer_id').isInt().withMessage('معرف العرض غير صالح'),
@@ -202,6 +202,7 @@ router.get('/stream-status/:offer_id/:student_id', authenticate, authorize(['stu
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
 
+        // ✅ التحقق من أن الطالب لديه حجز مدفوع
         const session = await getOne('sessions', 'offer_id', offer_id);
         if (!session || session.student_id !== parseInt(student_id) || session.payment_status !== 'paid') {
             return res.json({ can_join: false, error: 'لا يوجد حجز مدفوع' });
@@ -210,7 +211,9 @@ router.get('/stream-status/:offer_id/:student_id', authenticate, authorize(['stu
         const offer = await getOne('offers', 'id', offer_id);
         if (!offer) return res.json({ can_join: false, status: 'not_found' });
 
-        if (offer.status === 'live') {
+        // ✅ إذا كان البث مباشراً ولديه رابط
+        if (offer.status === 'live' && offer.stream_url) {
+            // ✅ التحقق من أن الطالب مضاف إلى active_stream
             const { data: active } = await supabase
                 .from('active_stream')
                 .select('*')
@@ -218,17 +221,33 @@ router.get('/stream-status/:offer_id/:student_id', authenticate, authorize(['stu
                 .eq('student_id', student_id)
                 .single();
 
-            if (active) {
-                await supabase
-                    .from('notifications')
-                    .update({ is_read: true })
-                    .eq('offer_id', offer_id)
-                    .eq('user_id', student_id);
-
-                return res.json({ can_join: true, stream_url: offer.stream_url, status: 'live' });
+            // ✅ إذا لم يكن الطالب مضافاً، أضفه تلقائياً
+            if (!active) {
+                await insert('active_stream', { 
+                    offer_id: parseInt(offer_id), 
+                    student_id: parseInt(student_id),
+                    joined_at: new Date().toISOString()
+                });
+                console.log(`✅ تم إضافة الطالب ${student_id} إلى active_stream تلقائياً`);
             }
-            return res.json({ can_join: false, status: 'not_active' });
-        } else if (offer.status === 'teacher_ready') {
+
+            // ✅ تحديث الإشعار كمقروء
+            await supabase
+                .from('notifications')
+                .update({ is_read: true })
+                .eq('offer_id', offer_id)
+                .eq('user_id', student_id);
+
+            return res.json({ 
+                can_join: true, 
+                stream_url: offer.stream_url, 
+                status: 'live',
+                platform: offer.stream_platform || 'google-meet'
+            });
+        }
+
+        // ✅ إذا كان البث في حالة "جاهز للبث"
+        if (offer.status === 'teacher_ready') {
             const { data: existingWaiting } = await supabase
                 .from('waiting_room')
                 .select('*')
@@ -240,8 +259,16 @@ router.get('/stream-status/:offer_id/:student_id', authenticate, authorize(['stu
                 await insert('waiting_room', { offer_id: offer_id, student_id: student_id });
             }
             return res.json({ can_join: false, is_waiting: true, status: 'waiting' });
-        } else if (offer.status === 'upcoming') {
-            return res.json({ can_join: false, is_upcoming: true, status: 'upcoming', offer_date: offer.offer_date });
+        }
+
+        // ✅ إذا كان العرض قادماً
+        if (offer.status === 'upcoming') {
+            return res.json({ 
+                can_join: false, 
+                is_upcoming: true, 
+                status: 'upcoming', 
+                offer_date: offer.offer_date 
+            });
         }
 
         return res.json({ can_join: false, status: 'unknown' });
