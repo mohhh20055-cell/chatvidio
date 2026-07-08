@@ -488,7 +488,7 @@ app.get('/api/get-csrf-token', authenticate, (req, res) => {
 });
 
 // ============================================================
-// ✅ مسار بدء البث للأستاذ - مباشر في server.js (معدل)
+// ✅ مسار بدء البث للأستاذ - نسخة جديدة بالكامل
 // ============================================================
 
 app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
@@ -545,10 +545,6 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
             `);
         }
 
-        // ✅ جلب اسم الأستاذ من قاعدة البيانات
-        const teacher = await getOne('teachers', 'id', teacher_id);
-        const teacherName = teacher?.full_name || 'المعلم';
-
         // جلب عدد الطلاب المسجلين
         const { count: studentsCount } = await supabase
             .from('sessions')
@@ -556,8 +552,8 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
             .eq('offer_id', offer_id)
             .eq('payment_status', 'paid');
 
-        // ✅ تمرير اسم الأستاذ إلى دالة توليد الصفحة
-        res.send(generateTeacherStreamPage(offer, teacher_id, token, studentsCount || 0, teacherName));
+        // ✅ عرض صفحة بدء البث المبسطة
+        res.send(generateTeacherStreamPageSimple(offer, teacher_id, token, studentsCount || 0));
         
     } catch (error) {
         console.error('❌ خطأ في بدء البث:', error.message);
@@ -575,10 +571,10 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
 });
 
 // ============================================================
-// ✅ دالة توليد صفحة بدء البث (معدلة)
+// ✅ دالة توليد صفحة بدء البث المبسطة (نسخة جديدة)
 // ============================================================
 
-function generateTeacherStreamPage(offer, teacherId, token, studentsCount, teacherName) {
+function generateTeacherStreamPageSimple(offer, teacherId, token, studentsCount) {
     const offerId = offer.id;
     const subjectName = offer.subject_name || 'غير محدد';
     
@@ -594,102 +590,132 @@ function generateTeacherStreamPage(offer, teacherId, token, studentsCount, teach
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Cairo', Arial, sans-serif; background: #0a0a1a; color: white; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-        .container { max-width: 700px; width: 90%; background: #1a1a2e; border-radius: 24px; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
-        h1 { color: #0f5cbf; text-align: center; margin-bottom: 10px; font-size: 2rem; }
-        .subtitle { text-align: center; color: #94a3b8; margin-bottom: 30px; }
+        .container { max-width: 650px; width: 90%; background: #1a1a2e; border-radius: 24px; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+        h1 { color: #0f5cbf; text-align: center; margin-bottom: 10px; font-size: 1.8rem; }
+        .subtitle { text-align: center; color: #94a3b8; margin-bottom: 25px; }
         .info-box { background: #0f3460; border-radius: 12px; padding: 15px 20px; margin-bottom: 25px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
         .info-box span { color: #94a3b8; }
         .info-box strong { color: white; }
-        .platforms { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 25px 0; }
-        .platform-card { background: #16213e; border: 2px solid transparent; border-radius: 16px; padding: 25px; text-align: center; cursor: pointer; transition: all 0.3s; }
-        .platform-card:hover { border-color: #0f5cbf; transform: translateY(-3px); }
-        .platform-card.selected { border-color: #10b981; background: #0f3460; }
-        .platform-card .icon { font-size: 3rem; display: block; margin-bottom: 10px; }
-        .platform-card .name { font-size: 1.1rem; font-weight: 700; }
-        .platform-card .desc { font-size: 0.8rem; color: #94a3b8; margin-top: 5px; }
-        .platform-card .badge-free { background: #10b981; color: white; padding: 2px 12px; border-radius: 20px; font-size: 0.7rem; display: inline-block; margin-top: 8px; }
         .input-group { margin: 20px 0; }
-        .input-group label { display: block; margin-bottom: 8px; color: #94a3b8; font-weight: 600; }
-        .input-group input { width: 100%; padding: 14px 18px; border-radius: 12px; border: 1px solid #333; background: #0a0a1a; color: white; font-size: 1rem; transition: border 0.3s; }
-        .input-group input:focus { outline: none; border-color: #0f5cbf; }
+        .input-group label { display: block; margin-bottom: 8px; color: #94a3b8; font-weight: 700; font-size: 0.95rem; }
+        .input-group label i { color: #0f5cbf; margin-left: 6px; }
+        .input-group input, .input-group select { width: 100%; padding: 14px 18px; border-radius: 12px; border: 1px solid #333; background: #0a0a1a; color: white; font-size: 1rem; transition: border 0.3s; font-family: 'Cairo', sans-serif; }
+        .input-group input:focus, .input-group select:focus { outline: none; border-color: #0f5cbf; }
         .input-group .hint { font-size: 0.8rem; color: #64748b; margin-top: 5px; }
-        .btn-start { width: 100%; padding: 16px; background: linear-gradient(135deg, #0f5cbf, #0a4a9a); color: white; border: none; border-radius: 12px; font-size: 1.2rem; font-weight: 700; cursor: pointer; transition: all 0.3s; margin-top: 20px; }
-        .btn-start:hover { transform: scale(1.02); box-shadow: 0 8px 25px rgba(15, 92, 191, 0.4); }
+        .input-group .hint i { color: #f59e0b; }
+        .btn-start { width: 100%; padding: 16px; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: all 0.3s; margin-top: 10px; }
+        .btn-start:hover { transform: scale(1.02); box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4); }
         .btn-start:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary { background: linear-gradient(135deg, #0f5cbf, #0a4a9a); }
+        .btn-primary:hover { box-shadow: 0 8px 25px rgba(15, 92, 191, 0.4); }
+        .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .btn-danger:hover { box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4); }
         .btn-back { background: transparent; color: #94a3b8; border: 1px solid #333; padding: 12px 24px; border-radius: 12px; cursor: pointer; transition: all 0.3s; margin-top: 10px; width: 100%; }
         .btn-back:hover { background: #1a1a2e; }
         .tip { background: #0f3460; border-radius: 12px; padding: 15px 20px; margin: 15px 0; border-right: 4px solid #f59e0b; }
         .tip h4 { color: #f59e0b; margin-bottom: 5px; }
         .tip p { color: #94a3b8; font-size: 0.9rem; line-height: 1.6; }
+        .success-box { background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; border-radius: 12px; padding: 15px 20px; margin: 15px 0; display: none; }
+        .success-box h4 { color: #10b981; margin-bottom: 5px; }
+        .success-box p { color: #94a3b8; font-size: 0.9rem; }
+        .success-box .link-display { background: #0a0a1a; padding: 10px; border-radius: 8px; margin-top: 8px; word-break: break-all; color: #60a5fa; font-size: 0.85rem; border: 1px solid #1a1a2e; }
         .waiting-list { margin-top: 20px; border-top: 1px solid #333; padding-top: 20px; }
         .waiting-list h3 { color: #94a3b8; margin-bottom: 10px; }
         .waiting-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #16213e; border-radius: 8px; margin-bottom: 5px; }
-        .waiting-item .name { color: white; }
+        .waiting-item .name { color: white; font-size: 0.9rem; }
         .waiting-item .status-badge { font-size: 0.7rem; padding: 2px 10px; border-radius: 20px; }
         .status-badge.waiting { background: #f59e0b; color: #1a1a2e; }
         .status-badge.active { background: #10b981; color: white; }
-        .add-btn { background: #0f5cbf; color: white; border: none; padding: 4px 12px; border-radius: 20px; cursor: pointer; font-size: 0.7rem; }
-        .add-btn:hover { background: #0a4a9a; }
-        .add-all-btn { background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 12px; cursor: pointer; font-weight: 600; width: 100%; margin-top: 10px; }
-        .add-all-btn:hover { background: #059669; }
+        .add-all-btn { background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 12px; cursor: pointer; font-weight: 600; width: 100%; margin-top: 10px; transition: all 0.3s; }
+        .add-all-btn:hover { background: #059669; transform: translateY(-2px); }
+        .add-all-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
         .btn-success { background: #10b981 !important; }
         .btn-success:hover { background: #059669 !important; box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4) !important; }
+        .flex-buttons { display: flex; gap: 10px; margin-top: 10px; }
+        .flex-buttons .btn-start { flex: 1; }
+        .stream-status { display: inline-block; padding: 4px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
+        .stream-status.inactive { background: #f59e0b; color: #1a1a2e; }
+        .stream-status.active { background: #10b981; color: white; animation: pulse 1.5s infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.05); }
+        }
+        .toast { position: fixed; bottom: 30px; right: 30px; left: 30px; background: #1a1a2e; color: white; padding: 16px 24px; border-radius: 12px; z-index: 2000; display: none; animation: slideIn 0.4s ease; box-shadow: 0 10px 40px rgba(0,0,0,0.5); font-size: 0.95rem; max-width: 440px; margin: 0 auto; border-right: 4px solid #10b981; }
+        .toast.error { border-color: #ef4444; }
+        .toast.warning { border-color: #f59e0b; }
+        @keyframes slideIn { from { transform: translateY(100%) scale(0.95); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
         @media(max-width:600px) {
             .container { padding: 20px; }
-            .platforms { grid-template-columns: 1fr; }
             .info-box { flex-direction: column; }
+            .flex-buttons { flex-direction: column; }
         }
     </style>
 </head>
 <body>
 <div class="container">
     <h1>🎥 بدء البث المباشر</h1>
-    <p class="subtitle">اختر المنصة التي تريد البث من خلالها (مجاني 100%)</p>
+    <p class="subtitle">أدخل رابط البث من Google Meet أو Microsoft Teams</p>
 
     <div class="info-box">
         <div><span>📚 المادة:</span> <strong>${escapeHtml(subjectName)}</strong></div>
-        <div><span>👨‍🏫 الأستاذ:</span> <strong>${escapeHtml(teacherName)}</strong></div>
-        <div><span>👨‍🎓 الطلاب المسجلين:</span> <strong>${studentsCount}</strong></div>
+        <div><span>👨‍🎓 الطلاب المسجلين:</span> <strong id="studentsCountDisplay">${studentsCount}</strong></div>
+        <div><span>📊 الحالة:</span> <strong id="statusDisplay"><span class="stream-status inactive">⏳ غير مفعل</span></strong></div>
     </div>
 
     <div class="tip">
-        <h4>💡 نصيحة</h4>
-        <p>• استخدم <strong>Google Meet</strong> للحصول على رابط سريع ومجاني<br>
-        • كلتا المنصتين <strong>مجانيتان</strong> ولا تحتاجان إلى دفع أي شيء<br>
-        • يمكنك إنشاء الرابط مباشرة من هنا دون مغادرة المنصة</p>
+        <h4>💡 كيفية الحصول على رابط Google Meet</h4>
+        <p>1. افتح <strong>Google Meet</strong> في علامة تبويب جديدة<br>
+        2. اضغط على "بدء اجتماع جديد"<br>
+        3. انسخ رابط الاجتماع من شريط العناوين<br>
+        4. الصق الرابط في الحقل أدناه</p>
     </div>
 
-    <div class="platforms">
-        <div class="platform-card selected" data-platform="google-meet" onclick="selectPlatform('google-meet')">
-            <span class="icon">🔵</span>
-            <div class="name">Google Meet</div>
-            <div class="desc">مجاني • 100 مشارك • سهل الاستخدام</div>
-            <span class="badge-free">✅ مجاني</span>
-        </div>
-        <div class="platform-card" data-platform="microsoft-teams" onclick="selectPlatform('microsoft-teams')">
-            <span class="icon">💜</span>
-            <div class="name">Microsoft Teams</div>
-            <div class="desc">مجاني • 100 مشارك • ميزات متقدمة</div>
-            <span class="badge-free">✅ مجاني</span>
-        </div>
-    </div>
-
+    <!-- ✅ حقل إدخال رابط البث -->
     <div class="input-group">
-        <label id="urlLabel">🔗 رابط البث من Google Meet</label>
+        <label><i class="fas fa-link"></i> رابط البث المباشر</label>
         <input type="url" id="streamUrl" placeholder="مثال: https://meet.google.com/xxx-xxxx-xxx" dir="ltr">
-        <div class="hint" id="urlHint">انسخ رابط الاجتماع من Google Meet وألصقه هنا، أو اضغط "إنشاء رابط جديد"</div>
+        <div class="hint"><i class="fas fa-info-circle"></i> يمكنك استخدام Google Meet أو Microsoft Teams</div>
     </div>
 
-    <button class="btn-start" onclick="openMeetAndStart()">🆕 إنشاء رابط جديد وبدء البث</button>
-    <button class="btn-start" id="startBtn" onclick="startStream()" style="margin-top:10px;">📋 استخدام رابط موجود وبدء البث</button>
+    <!-- ✅ اختيار المنصة -->
+    <div class="input-group">
+        <label><i class="fas fa-video"></i> المنصة</label>
+        <select id="platformSelect">
+            <option value="google-meet">🔵 Google Meet</option>
+            <option value="microsoft-teams">💜 Microsoft Teams</option>
+            <option value="other">🟣 أخرى</option>
+        </select>
+    </div>
+
+    <!-- ✅ زر حفظ الرابط وبدء البث -->
+    <button class="btn-start btn-primary" id="startStreamBtn" onclick="saveStreamLink()">
+        <i class="fas fa-save"></i> حفظ الرابط وبدء البث
+    </button>
+
+    <!-- ✅ زر إضافة جميع الطلاب -->
+    <button class="btn-start" id="addAllBtn" onclick="addAllStudents()" disabled>
+        <i class="fas fa-users"></i> إضافة جميع الطلاب إلى البث
+    </button>
+
     <button class="btn-back" onclick="window.location.href='/teacher-dashboard.html'">← العودة للوحة التحكم</button>
 
+    <!-- ✅ رسالة نجاح -->
+    <div class="success-box" id="successBox">
+        <h4><i class="fas fa-check-circle"></i> تم بدء البث المباشر بنجاح!</h4>
+        <p>رابط البث المحفوظ:</p>
+        <div class="link-display" id="savedLinkDisplay"></div>
+        <p style="margin-top: 8px; font-size: 0.8rem;">🟢 تم إرسال إشعارات للطلاب المسجلين</p>
+    </div>
+
+    <!-- ✅ قائمة الانتظار -->
     <div class="waiting-list" id="waitingList">
         <h3>📋 قائمة الانتظار</h3>
         <div id="studentsList">جاري التحميل...</div>
-        <button class="add-all-btn btn-success" onclick="addAllStudents()" id="addAllBtn">➕ إضافة جميع الطلاب إلى البث</button>
     </div>
 </div>
+
+<!-- ✅ Toast Notifications -->
+<div class="toast" id="toast"></div>
 
 <script>
     let selectedPlatform = 'google-meet';
@@ -697,6 +723,7 @@ function generateTeacherStreamPage(offer, teacherId, token, studentsCount, teach
     const offerId = ${parseInt(offerId)};
     const teacherId = ${parseInt(teacherId)};
     let csrfToken = '';
+    let isStreamActive = false;
 
     // ✅ تعريف API_BASE_URL
     const API_BASE_URL = window.location.hostname === 'localhost' 
@@ -705,6 +732,20 @@ function generateTeacherStreamPage(offer, teacherId, token, studentsCount, teach
 
     console.log('🌐 API Base URL:', API_BASE_URL);
 
+    // ✅ دالة عرض Toast
+    function showToast(message, type = 'success') {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.className = 'toast';
+        if (type === 'error') toast.classList.add('error');
+        if (type === 'warning') toast.classList.add('warning');
+        toast.style.display = 'block';
+        setTimeout(() => {
+            toast.style.display = 'none';
+        }, 5000);
+    }
+
+    // ✅ جلب CSRF Token
     async function getCsrfToken() {
         try {
             const response = await fetch(API_BASE_URL + '/api/get-csrf-token', {
@@ -721,118 +762,7 @@ function generateTeacherStreamPage(offer, teacherId, token, studentsCount, teach
         }
     }
 
-    getCsrfToken();
-
-    function selectPlatform(platform) {
-        selectedPlatform = platform;
-        document.querySelectorAll('.platform-card').forEach(el => {
-            el.classList.toggle('selected', el.dataset.platform === platform);
-        });
-        
-        const label = document.getElementById('urlLabel');
-        const hint = document.getElementById('urlHint');
-        
-        if (platform === 'google-meet') {
-            label.textContent = '🔗 رابط البث من Google Meet';
-            hint.textContent = 'انسخ رابط الاجتماع من Google Meet وألصقه هنا';
-            document.getElementById('streamUrl').placeholder = 'https://meet.google.com/xxx-xxxx-xxx';
-        } else {
-            label.textContent = '🔗 رابط البث من Microsoft Teams';
-            hint.textContent = 'انسخ رابط الاجتماع من Microsoft Teams وألصقه هنا';
-            document.getElementById('streamUrl').placeholder = 'https://teams.microsoft.com/l/meetup-join/...';
-        }
-    }
-
-    function openMeetAndStart() {
-        const meetWindow = window.open('https://meet.google.com/new', '_blank');
-        
-        setTimeout(() => {
-            const url = prompt('📌 الصق رابط Google Meet هنا:', 'https://meet.google.com/');
-            if (url && url.includes('meet.google.com')) {
-                document.getElementById('streamUrl').value = url;
-                startStream();
-            } else if (url) {
-                alert('❌ الرابط غير صحيح. يجب أن يحتوي على meet.google.com');
-            }
-        }, 2000);
-    }
-
-    async function startStream() {
-        const url = document.getElementById('streamUrl').value.trim();
-        if (!url) {
-            alert('❌ الرجاء إدخال رابط البث، أو اضغط "إنشاء رابط جديد"');
-            return;
-        }
-
-        if (!url.startsWith('http://') && !url.startsWith('https://')) {
-            alert('❌ الرابط غير صحيح. يجب أن يبدأ بـ http:// أو https://');
-            return;
-        }
-
-        if (selectedPlatform === 'google-meet' && !url.includes('meet.google.com')) {
-            alert('❌ الرابط غير صحيح. يجب أن يحتوي على meet.google.com');
-            return;
-        }
-
-        if (selectedPlatform === 'microsoft-teams' && !url.includes('teams.microsoft.com')) {
-            alert('❌ الرابط غير صحيح. يجب أن يحتوي على teams.microsoft.com');
-            return;
-        }
-
-        const btn = document.getElementById('startBtn');
-        btn.disabled = true;
-        btn.textContent = '⏳ جاري بدء البث...';
-
-        try {
-            const response = await fetch(API_BASE_URL + '/api/stream/save-link', {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'Bearer ' + authToken,
-                    'Content-Type': 'application/json',
-                    'X-CSRF-Token': csrfToken
-                },
-                body: JSON.stringify({
-                    offer_id: offerId,
-                    stream_url: url,
-                    platform: selectedPlatform
-                })
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                const result = await fetch(API_BASE_URL + '/api/stream/add-students/' + offerId, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': 'Bearer ' + authToken,
-                        'Content-Type': 'application/json',
-                        'X-CSRF-Token': csrfToken
-                    },
-                    body: JSON.stringify({
-                        offer_id: offerId,
-                        teacher_id: teacherId
-                    })
-                });
-
-                const resultData = await result.json();
-                
-                alert('✅ تم بدء البث المباشر بنجاح!\\n📌 رابط البث: ' + url + '\\n' +
-                      (resultData.students_count ? '👨‍🎓 تم إشعار ' + resultData.students_count + ' طالب' : ''));
-                
-                window.location.href = '/teacher-dashboard.html';
-            } else {
-                alert('❌ ' + (data.error || 'حدث خطأ في بدء البث'));
-                btn.disabled = false;
-                btn.textContent = '📋 استخدام رابط موجود وبدء البث';
-            }
-        } catch (error) {
-            console.error('خطأ:', error);
-            alert('❌ حدث خطأ في الاتصال بالخادم');
-            btn.disabled = false;
-            btn.textContent = '📋 استخدام رابط موجود وبدء البث';
-        }
-    }
-
+    // ✅ تحميل قائمة الانتظار
     async function loadWaitingList() {
         try {
             const response = await fetch(API_BASE_URL + '/api/stream/waiting-list/' + offerId + '/' + teacherId, {
@@ -845,8 +775,7 @@ function generateTeacherStreamPage(offer, teacherId, token, studentsCount, teach
             const container = document.getElementById('studentsList');
             
             if (students.length === 0) {
-                container.innerHTML = '<p style="color:#64748b;">لا يوجد طلاب في قائمة الانتظار</p>';
-                document.getElementById('addAllBtn').style.display = 'none';
+                container.innerHTML = '<p style="color:#64748b; text-align:center; padding:15px;">لا يوجد طلاب في قائمة الانتظار</p>';
                 return;
             }
 
@@ -858,21 +787,50 @@ function generateTeacherStreamPage(offer, teacherId, token, studentsCount, teach
                     <div class="waiting-item">
                         <span class="name">\${s.full_name || 'طالب'}</span>
                         <span class="status-badge \${statusClass}">\${statusText}</span>
-                        \${!s.is_active ? \`<button class="add-btn" onclick="addStudent(\${s.student_id})">إضافة</button>\` : ''}
                     </div>
                 \`;
             });
             container.innerHTML = html;
-            document.getElementById('addAllBtn').style.display = 'block';
         } catch (error) {
             console.error('خطأ في جلب قائمة الانتظار:', error);
-            document.getElementById('studentsList').innerHTML = '<p style="color:#ef4444;">حدث خطأ في جلب القائمة</p>';
+            document.getElementById('studentsList').innerHTML = '<p style="color:#ef4444; text-align:center; padding:15px;">حدث خطأ في جلب القائمة</p>';
         }
     }
 
-    async function addStudent(studentId) {
+    // ✅ حفظ رابط البث في قاعدة البيانات
+    async function saveStreamLink() {
+        const url = document.getElementById('streamUrl').value.trim();
+        const platform = document.getElementById('platformSelect').value;
+        
+        if (!url) {
+            showToast('⚠️ الرجاء إدخال رابط البث', 'warning');
+            document.getElementById('streamUrl').focus();
+            return;
+        }
+
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+            showToast('⚠️ الرابط غير صحيح. يجب أن يبدأ بـ http:// أو https://', 'warning');
+            return;
+        }
+
+        // تحقق من صحة الرابط حسب المنصة
+        if (platform === 'google-meet' && !url.includes('meet.google.com')) {
+            showToast('⚠️ الرابط يجب أن يحتوي على meet.google.com', 'warning');
+            return;
+        }
+
+        if (platform === 'microsoft-teams' && !url.includes('teams.microsoft.com')) {
+            showToast('⚠️ الرابط يجب أن يحتوي على teams.microsoft.com', 'warning');
+            return;
+        }
+
+        const btn = document.getElementById('startStreamBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
+
         try {
-            const response = await fetch(API_BASE_URL + '/api/stream/add-student/' + offerId, {
+            // ✅ حفظ الرابط في قاعدة البيانات
+            const response = await fetch(API_BASE_URL + '/api/stream/save-link', {
                 method: 'POST',
                 headers: {
                     'Authorization': 'Bearer ' + authToken,
@@ -881,31 +839,61 @@ function generateTeacherStreamPage(offer, teacherId, token, studentsCount, teach
                 },
                 body: JSON.stringify({
                     offer_id: offerId,
-                    student_id: studentId,
-                    teacher_id: teacherId
+                    stream_url: url,
+                    platform: platform
                 })
             });
+
             const data = await response.json();
+
             if (data.success) {
-                alert('✅ تم إضافة الطالب إلى البث');
+                isStreamActive = true;
+                document.getElementById('successBox').style.display = 'block';
+                document.getElementById('savedLinkDisplay').textContent = url;
+                document.getElementById('statusDisplay').innerHTML = '<span class="stream-status active">🟢 بث مباشر</span>';
+                document.getElementById('addAllBtn').disabled = false;
+                
+                // ✅ تفعيل زر إضافة الطلاب
+                document.getElementById('addAllBtn').style.opacity = '1';
+                document.getElementById('addAllBtn').style.cursor = 'pointer';
+                
+                showToast('✅ تم حفظ رابط البث بنجاح!', 'success');
+                
+                // ✅ تحديث قائمة الانتظار
                 loadWaitingList();
             } else {
-                alert('❌ ' + (data.error || 'حدث خطأ'));
+                showToast('❌ ' + (data.error || 'حدث خطأ في حفظ الرابط'), 'error');
             }
         } catch (error) {
             console.error('خطأ:', error);
-            alert('❌ حدث خطأ في الاتصال بالخادم');
+            showToast('❌ حدث خطأ في الاتصال بالخادم', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> حفظ الرابط وبدء البث';
         }
     }
 
+    // ✅ إضافة جميع الطلاب إلى البث وإرسال الإشعارات
     async function addAllStudents() {
-        if (!confirm('⚠️ هل تريد إضافة جميع الطلاب في قائمة الانتظار إلى البث المباشر؟')) return;
+        if (!isStreamActive) {
+            showToast('⚠️ الرجاء حفظ رابط البث أولاً', 'warning');
+            return;
+        }
+
+        const url = document.getElementById('streamUrl').value.trim();
+        if (!url) {
+            showToast('⚠️ لا يوجد رابط بث محفوظ', 'warning');
+            return;
+        }
+
+        if (!confirm('⚠️ هل تريد إضافة جميع الطلاب إلى البث المباشر وإرسال الإشعارات؟')) return;
 
         const btn = document.getElementById('addAllBtn');
         btn.disabled = true;
-        btn.textContent = '⏳ جاري الإضافة...';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإضافة...';
 
         try {
+            // ✅ إضافة جميع الطلاب إلى البث وإرسال الإشعارات
             const response = await fetch(API_BASE_URL + '/api/stream/add-all-students/' + offerId, {
                 method: 'POST',
                 headers: {
@@ -918,25 +906,71 @@ function generateTeacherStreamPage(offer, teacherId, token, studentsCount, teach
                     teacher_id: teacherId
                 })
             });
+
             const data = await response.json();
+
             if (data.success) {
-                alert('✅ تم إضافة ' + data.students_count + ' طالب إلى البث');
+                showToast('✅ تم إضافة ' + (data.students_count || 0) + ' طالب إلى البث وإرسال الإشعارات!', 'success');
+                
+                // ✅ تحديث عدد الطلاب
+                document.getElementById('studentsCountDisplay').textContent = data.students_count || 0;
+                
+                // ✅ تحديث قائمة الانتظار
                 loadWaitingList();
+                
+                // ✅ عرض رسالة إضافية
+                if (data.students && data.students.length > 0) {
+                    showToast('📢 تم إرسال إشعارات لـ ' + data.students.length + ' طالب', 'success');
+                }
             } else {
-                alert('❌ ' + (data.error || 'حدث خطأ'));
+                showToast('❌ ' + (data.error || 'حدث خطأ'), 'error');
             }
         } catch (error) {
             console.error('خطأ:', error);
-            alert('❌ حدث خطأ في الاتصال بالخادم');
+            showToast('❌ حدث خطأ في الاتصال بالخادم', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-users"></i> إضافة جميع الطلاب إلى البث';
         }
-        btn.disabled = false;
-        btn.textContent = '➕ إضافة جميع الطلاب إلى البث';
     }
 
-    loadWaitingList();
-    setInterval(loadWaitingList, 10000);
+    // ✅ التحقق من حالة البث
+    async function checkStreamStatus() {
+        try {
+            const response = await fetch(API_BASE_URL + '/api/stream/status/' + offerId);
+            const data = await response.json();
+            
+            if (data.status === 'live' && data.stream_url) {
+                isStreamActive = true;
+                document.getElementById('streamUrl').value = data.stream_url;
+                document.getElementById('statusDisplay').innerHTML = '<span class="stream-status active">🟢 بث مباشر</span>';
+                document.getElementById('addAllBtn').disabled = false;
+                document.getElementById('successBox').style.display = 'block';
+                document.getElementById('savedLinkDisplay').textContent = data.stream_url;
+                
+                // ✅ اختيار المنصة
+                if (data.platform) {
+                    document.getElementById('platformSelect').value = data.platform;
+                }
+            }
+        } catch (error) {
+            console.error('خطأ في التحقق من حالة البث:', error);
+        }
+    }
 
-    selectPlatform('google-meet');
+    // ✅ تهيئة الصفحة
+    async function init() {
+        await getCsrfToken();
+        await loadWaitingList();
+        await checkStreamStatus();
+        
+        // تحديث قائمة الانتظار كل 10 ثواني
+        setInterval(loadWaitingList, 10000);
+        
+        console.log('✅ تم تهيئة صفحة بدء البث');
+    }
+
+    init();
 </script>
 </body>
 </html>`;
