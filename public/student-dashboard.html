@@ -1641,23 +1641,66 @@
         showToast('تم تحديد جميع الإشعارات كمقروءة', 'success');
     }
 
-  async function joinFromNotification(offerId) {
+ async function joinFromNotification(offerId) {
     try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
+            return;
+        }
+
+        // ✅ أولاً: التحقق من حالة البث
         const res = await fetchWithAuth(`/api/student/stream-status/${offerId}/${studentId}`);
         const data = await res.json();
-        if (data.can_join) {
-            const token = localStorage.getItem('token');
+        
+        console.log('📡 حالة البث:', data); // للتتبع
+
+        // ✅ إذا كان البث مباشراً والطالب لديه صلاحية الدخول
+        if (data.can_join && data.status === 'live') {
             window.open(`/api/join-stream/${offerId}/${studentId}?token=${encodeURIComponent(token)}`, '_blank');
-        } else if (data.is_waiting) {
+        } 
+        // ✅ إذا كان الطالب في قائمة الانتظار
+        else if (data.is_waiting) {
             showToast('⏳ جاري التحضير للبث، انتظر قليلاً...', 'warning');
-        } else if (data.is_upcoming) {
+        } 
+        // ✅ إذا كان البث قادم
+        else if (data.is_upcoming) {
             showToast(`⏳ البث سيبدأ في ${new Date(data.offer_date).toLocaleString('ar')}`, 'info');
-        } else {
+        } 
+        // ✅ إذا كان البث مباشر ولكن الطالب غير مضاف -> محاولة إضافته
+        else if (data.status === 'live' && !data.can_join) {
+            showToast('⏳ جاري إضافتك إلى البث...', 'info');
+            
+            // محاولة إضافة الطالب إلى active_stream
+            try {
+                const addRes = await fetchWithAuth(`/api/stream/add-student-to-stream/${offerId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        offer_id: offerId,
+                        student_id: studentId
+                    })
+                });
+                const addData = await addRes.json();
+                if (addData.success) {
+                    showToast('✅ تمت إضافتك إلى البث، جاري التوجيه...', 'success');
+                    setTimeout(() => {
+                        window.open(`/api/join-stream/${offerId}/${studentId}?token=${encodeURIComponent(token)}`, '_blank');
+                    }, 1500);
+                } else {
+                    showToast('❌ ' + (addData.error || 'حدث خطأ'), 'error');
+                }
+            } catch(e) {
+                showToast('❌ حدث خطأ في الإضافة', 'error');
+            }
+        } 
+        else {
             showToast('البث غير متاح حالياً', 'warning');
             showSection('bookings');
         }
     } catch(e) {
         if (e.message !== 'انتهت صلاحية الجلسة') {
+            console.error('خطأ:', e);
             showToast('حدث خطأ', 'error');
         }
     }
