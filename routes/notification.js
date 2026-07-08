@@ -1,26 +1,20 @@
 // ============================================================
-// مسارات الإشعارات
+// مسارات الإشعارات - Notification Routes
 // ============================================================
 
 const express = require('express');
 const router = express.Router();
 const { param, validationResult } = require('express-validator');
 
-// استيراد الدوال المساعدة من الملف الرئيسي
-const server = require('../server');
-
-// استخراج الدوال من server
-const { 
-    authenticate, 
-    update, 
-    supabase
-} = server;
+// استيراد الدوال المساعدة
+const { supabase } = require('../config/database');
+const { authenticate } = require('../middleware/auth');
+const { update } = require('../utils/helpers');
 
 // ============================================================
 // جلب الإشعارات
 // ============================================================
-router.get('/notifications/:user_id/:user_type', [
-    authenticate,
+router.get('/:user_id/:user_type', authenticate, [
     param('user_id').isInt().withMessage('معرف المستخدم غير صالح'),
     param('user_type').isIn(['student', 'teacher']).withMessage('نوع المستخدم غير صالح')
 ], async (req, res) => {
@@ -51,10 +45,9 @@ router.get('/notifications/:user_id/:user_type', [
 });
 
 // ============================================================
-// تحديد إشعار كمقروء
+// قراءة إشعار
 // ============================================================
-router.post('/notifications/read/:notification_id', [
-    authenticate,
+router.post('/read/:notification_id', authenticate, [
     param('notification_id').isInt().withMessage('معرف الإشعار غير صالح')
 ], async (req, res) => {
     try {
