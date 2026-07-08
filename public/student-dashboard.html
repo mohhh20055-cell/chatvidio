@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        /* جميع الأنماط تبقى كما هي - لم يتم تغييرها */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
             --primary: #0f5cbf;
@@ -60,7 +59,7 @@
         ::-webkit-scrollbar-thumb:hover { background: var(--gray-400); }
 
         /* ================================================================
-           NAVBAR - الشريط العلوي المتطور
+           NAVBAR
         ================================================================ */
         .navbar {
             position: fixed;
@@ -181,7 +180,6 @@
         .nav-balance i { font-size: 1rem; }
         .nav-balance .currency { font-size: 0.75rem; margin-right: 2px; }
 
-        /* ===== NOTIFICATION BELL ===== */
         .nav-notifications {
             position: relative;
             flex-shrink: 0;
@@ -344,7 +342,6 @@
         }
         .notif-empty i { font-size: 2.2rem; margin-bottom: 12px; display: block; }
 
-        /* ===== PROFILE DROPDOWN ===== */
         .nav-profile {
             display: flex;
             align-items: center;
@@ -465,9 +462,6 @@
         }
         .section-title i { color: var(--primary); }
 
-        /* ================================================================
-           CARDS & GRIDS
-        ================================================================ */
         .offers-grid, .teachers-grid {
             display: grid;
             grid-template-columns: 1fr;
@@ -609,9 +603,6 @@
             gap: 6px;
         }
 
-        /* ================================================================
-           BOOKINGS & TRANSACTIONS
-        ================================================================ */
         .booking-item, .transaction-item {
             background: white;
             border-radius: var(--radius-sm);
@@ -640,9 +631,6 @@
             transform: translateY(-1px);
         }
 
-        /* ================================================================
-           REFERRAL & GIFT BOX
-        ================================================================ */
         .referral-card {
             background: var(--gradient-gold);
             color: white;
@@ -766,9 +754,6 @@
         .reward-item .reward-icon { font-size: 1.3rem; margin-left: 10px; }
         .reward-item .reward-amount { font-weight: 800; color: var(--gold-dark); font-size: 1rem; }
 
-        /* ================================================================
-           SIDEBARS
-        ================================================================ */
         .left-sidebar, .right-sidebar { display: none; }
         .left-sidebar { position: sticky; top: 94px; height: fit-content; }
         .right-sidebar { position: sticky; top: 94px; height: fit-content; }
@@ -989,7 +974,6 @@
         }
         .close-modal:hover { color: var(--gray-700); }
 
-        /* ===== GIFT RESULT MODAL ===== */
         .gift-result {
             text-align: center;
             padding: 24px 12px;
@@ -1122,7 +1106,7 @@
 <body>
 
 <!-- ================================================================
-     NAVBAR - الشريط العلوي المتطور
+     NAVBAR
 ================================================================ -->
 <nav class="navbar">
     <div class="navbar-inner">
@@ -1154,7 +1138,6 @@
             </button>
         </div>
 
-        <!-- الرصيد -->
         <div class="nav-balance" onclick="showSection('transactions')" title="الرصيد المتاح">
             <i class="fas fa-wallet"></i>
             <span class="balance-label">الرصيد:</span>
@@ -1162,7 +1145,6 @@
             <span class="currency">دج</span>
         </div>
 
-        <!-- الإشعارات -->
         <div class="nav-notifications">
             <button class="nav-notifications-btn" onclick="toggleNotifications()" id="notifBtn">
                 <i class="fas fa-bell"></i>
@@ -1182,7 +1164,6 @@
             </div>
         </div>
 
-        <!-- الملف الشخصي -->
         <div class="nav-profile" onclick="toggleProfileDropdown()" id="profileBtn">
             <img id="navProfileImg" src="https://ui-avatars.com/api/?name=طالب&background=0f5cbf&color=fff&size=64" alt="صورة">
             <span class="profile-name" id="navProfileName">طالب</span>
@@ -1418,12 +1399,9 @@
 
 <script>
     // ================================================================
-    // ⚠️ تم إزالة جميع إشارات الكابتشا القديم
+    // ✅ تم إصلاح مشكلة التوكن بشكل كامل
     // ================================================================
 
-    // ================================================================
-    // متغيرات وتكوينات الأمان
-    // ================================================================
     let userData = null;
     let studentId = null;
     let currentSection = 'offers';
@@ -1446,7 +1424,6 @@
     }
 
     async function fetchWithAuth(url, options = {}) {
-        // إزالة Content-Type إذا كان body من نوع FormData
         const isFormData = options.body instanceof FormData;
         const headers = {
             ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
@@ -1460,7 +1437,6 @@
             headers: headers
         });
 
-        // إذا كان 401 -> انتهت الجلسة
         if (response.status === 401) {
             showToast('⏳ انتهت صلاحية الجلسة، جاري إعادة التوجيه...', 'error');
             localStorage.clear();
@@ -1470,7 +1446,6 @@
             throw new Error('انتهت صلاحية الجلسة');
         }
 
-        // إذا كان 403 -> حساب محظور أو CSRF
         if (response.status === 403) {
             try {
                 const data = await response.json();
@@ -1483,9 +1458,7 @@
                     throw new Error('حساب محظور');
                 }
                 if (data.error && data.error.includes('CSRF')) {
-                    // محاولة تجديد CSRF Token
                     await getCsrfToken();
-                    // إعادة المحاولة مرة واحدة
                     const retryResponse = await fetch(url, {
                         ...options,
                         headers: {
@@ -1662,27 +1635,27 @@
         showToast('تم تحديد جميع الإشعارات كمقروءة', 'success');
     }
 
-   async function joinFromNotification(offerId) {
-    try {
-        const res = await fetchWithAuth(`/api/student/stream-status/${offerId}/${studentId}`);
-        const data = await res.json();
-        if (data.can_join) {
-            const token = localStorage.getItem('token');
-            // ✅ إضافة التوكن كـ Query Parameter
-            window.open(`/api/join-stream/${offerId}/${studentId}?token=${encodeURIComponent(token)}`, '_blank');
-        } else if (data.is_waiting) {
-            showToast('⏳ جاري التحضير للبث، انتظر قليلاً...', 'warning');
-        } else {
-            showToast('البث غير متاح حالياً', 'warning');
-            showSection('bookings');
+    // ✅ تم إصلاح دالة joinFromNotification - إضافة التوكن
+    async function joinFromNotification(offerId) {
+        try {
+            const res = await fetchWithAuth(`/api/student/stream-status/${offerId}/${studentId}`);
+            const data = await res.json();
+            if (data.can_join) {
+                const token = localStorage.getItem('token');
+                window.open(`/api/join-stream/${offerId}/${studentId}?token=${encodeURIComponent(token)}`, '_blank');
+            } else if (data.is_waiting) {
+                showToast('⏳ جاري التحضير للبث، انتظر قليلاً...', 'warning');
+            } else {
+                showToast('البث غير متاح حالياً', 'warning');
+                showSection('bookings');
+            }
+        } catch(e) {
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                showToast('حدث خطأ', 'error');
+            }
         }
-    } catch(e) {
-        if (e.message !== 'انتهت صلاحية الجلسة') {
-            showToast('حدث خطأ', 'error');
-        }
+        document.getElementById('notifDropdown').classList.remove('open');
     }
-    document.getElementById('notifDropdown').classList.remove('open');
-}
 
     // ================================================================
     // PROFILE DROPDOWN
@@ -1753,9 +1726,8 @@
 
     async function loadUserData() {
         try {
-            // ✅ استخدام نفس المفتاح المستخدم في تسجيل الدخول
             const storedData = localStorage.getItem('userData');
-            const token = localStorage.getItem('token'); // ✅ تم التصحيح من 'authToken' إلى 'token'
+            const token = localStorage.getItem('token');
             
             if (storedData) {
                 userData = JSON.parse(storedData);
@@ -2092,6 +2064,16 @@
         container.innerHTML = html;
     }
 
+    // ✅ تم إصلاح دالة joinLiveStream - إضافة التوكن
+    function joinLiveStream(offerId) {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
+            return;
+        }
+        window.open(`/api/join-stream/${offerId}/${studentId}?token=${encodeURIComponent(token)}`, '_blank');
+    }
+
     // ================================================================
     // TRANSACTIONS
     // ================================================================
@@ -2204,15 +2186,6 @@
         container.innerHTML = html;
     }
 
-   function joinLiveStream(offerId) {
-    const token = localStorage.getItem('token');
-    if (!token) {
-        showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
-        return;
-    }
-    // ✅ إضافة التوكن كـ Query Parameter
-    window.open(`/api/join-stream/${offerId}/${studentId}?token=${encodeURIComponent(token)}`, '_blank');
-}
     // ================================================================
     // REFERRAL SYSTEM
     // ================================================================
@@ -2574,7 +2547,6 @@
         showSection('offers');
     });
 
-    // تحديث البيانات بشكل دوري
     setInterval(() => {
         if (currentSection === 'offers') loadOffers();
         else if (currentSection === 'bookings') loadMyBookings();
