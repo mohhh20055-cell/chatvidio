@@ -5,10 +5,13 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
-const { body, validationResult } = require('express-validator');
+const { body, validationResult, query } = require('express-validator');
 const crypto = require('crypto');
 
-// استيراد الدوال المساعدة
+// استيراد الدوال المساعدة من الملف الرئيسي
+const server = require('../server');
+
+// استخراج الدوال من server
 const { 
     authenticate, 
     getOne, 
@@ -30,12 +33,13 @@ const {
     sendVerificationEmail,
     sendResetEmail,
     processReferralOnRegister,
+    processReferralReward,
     renderSuccessPage,
     renderErrorPage,
     sanitizeInput,
     encrypt,
     maskIP
-} = require('../server');
+} = server;
 
 // ============================================================
 // تسجيل أستاذ جديد
