@@ -1452,7 +1452,7 @@
     let authToken = null;
     let csrfToken = null;
 
-    // ✅ تحديد رابط API الأساسي
+    // ✅ تحديد رابط API الأساسي - متوافق مع الخادم
     const API_BASE_URL = window.location.hostname === 'localhost' 
         ? 'http://localhost:3000' 
         : 'https://chatvidio.onrender.com';
@@ -1477,7 +1477,8 @@
         
         const response = await fetch(fullUrl, {
             ...options,
-            headers: headers
+            headers: headers,
+            credentials: 'include'
         });
 
         if (response.status === 401) {
@@ -2057,7 +2058,7 @@
     }
 
     // ================================================================
-    // TEACHERS - ✅ تم إصلاح عرض الأساتذة
+    // TEACHERS
     // ================================================================
 
     async function loadTeachers() {
@@ -2263,7 +2264,7 @@
     }
 
     // ================================================================
-    // OFFERS - ✅ تم إصلاح مشكلة التوكن في البث المباشر
+    // OFFERS
     // ================================================================
 
     async function loadOffers() {
@@ -2376,7 +2377,7 @@
 
     // ✅ تم إصلاح دالة enterStream - إضافة التوكن إلى الرابط
     async function enterStream(offerId) {
-        if (confirm('⚠️ هل تريد بدء البث المباشر؟ سيتم توجيهك إلى صفحة اختيار منصة البث (Google Meet / Microsoft Teams)')) {
+        if (confirm('⚠️ هل تريد بدء البث المباشر؟ سيتم توجيهك إلى صفحة اختيار منصة البث (Jitsi Meet)')) {
             const token = localStorage.getItem('token');
             if (!token) {
                 showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
@@ -2395,7 +2396,6 @@
             showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
             return;
         }
-        // ✅ استخدم رابط المعلم الصحيح مع API_BASE_URL
         const streamUrl = `${API_BASE_URL}/api/teacher-stream/${offerId}/${teacherId}?token=${encodeURIComponent(token)}`;
         window.open(streamUrl, '_blank');
     }
