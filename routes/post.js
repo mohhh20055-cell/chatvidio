@@ -1,40 +1,51 @@
 // ============================================================
-// مسارات المنشورات
+// مسارات المنشورات - Post Routes
 // ============================================================
 
 const express = require('express');
 const router = express.Router();
-const { body, validationResult, param } = require('express-validator');
+const { body, param, validationResult } = require('express-validator');
+const multer = require('multer');
+const path = require('path');
 
-// استيراد الدوال المساعدة من الملف الرئيسي
-const server = require('../server');
+// استيراد الدوال المساعدة
+const { supabase } = require('../config/database');
+const { authenticate, authorize } = require('../middleware/auth');
+const { getOne, insert, update, remove } = require('../utils/helpers');
+const { uploadToSupabase, validateUploadedFiles, ALLOWED_MIME_TYPES, ALLOWED_EXTENSIONS, MAX_FILE_SIZE } = require('../utils/upload');
 
-// استخراج الدوال من server
-const { 
-    authenticate, 
-    authorize, 
-    getOne, 
-    insert, 
-    update, 
-    remove,
-    supabase,
-    uploadToSupabase,
-    validateUploadedFiles,
-    upload,
-    sanitizeInput
-} = server;
+// ============================================================
+// إعداد Multer
+// ============================================================
+const storage = multer.memoryStorage();
+
+const upload = multer({
+    storage: storage,
+    limits: {
+        fileSize: MAX_FILE_SIZE,
+        files: 5
+    },
+    fileFilter: (req, file, cb) => {
+        if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+            return cb(new Error('نوع الملف غير مدعوم'), false);
+        }
+
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (!ALLOWED_EXTENSIONS.includes(ext)) {
+            return cb(new Error('امتداد الملف غير مدعوم'), false);
+        }
+
+        cb(null, true);
+    }
+});
 
 // ============================================================
 // إنشاء منشور
 // ============================================================
-router.post('/post/create', [
-    authenticate,
-    authorize(['teacher']),
-    upload.fields([
-        { name: 'image', maxCount: 1 },
-        { name: 'file', maxCount: 1 }
-    ]),
-    validateUploadedFiles,
+router.post('/create', authenticate, authorize(['teacher']), upload.fields([
+    { name: 'image', maxCount: 1 },
+    { name: 'file', maxCount: 1 }
+]), validateUploadedFiles, [
     body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح'),
     body('title').notEmpty().withMessage('العنوان مطلوب').isLength({ max: 200 }),
     body('content').notEmpty().withMessage('المحتوى مطلوب').isLength({ max: 5000 })
@@ -81,9 +92,9 @@ router.post('/post/create', [
 });
 
 // ============================================================
-// جلب منشورات أستاذ
+// جلب منشورات الأستاذ
 // ============================================================
-router.get('/posts/:teacher_id', async (req, res) => {
+router.get('/:teacher_id', async (req, res) => {
     try {
         const { data } = await supabase
             .from('posts')
@@ -113,7 +124,7 @@ router.get('/posts/:teacher_id', async (req, res) => {
 });
 
 // ============================================================
-// جلب منشور محدد
+// جلب منشور مع التعليقات
 // ============================================================
 router.get('/post/:post_id', async (req, res) => {
     try {
@@ -146,9 +157,7 @@ router.get('/post/:post_id', async (req, res) => {
 // ============================================================
 // إعجاب بمنشور
 // ============================================================
-router.post('/post/like', [
-    authenticate,
-    authorize(['student']),
+router.post('/like', authenticate, authorize(['student']), [
     body('post_id').isInt().withMessage('معرف المنشور غير صالح'),
     body('student_id').isInt().withMessage('معرف الطالب غير صالح')
 ], async (req, res) => {
@@ -179,11 +188,9 @@ router.post('/post/like', [
 });
 
 // ============================================================
-// إلغاء إعجاب بمنشور
+// إلغاء الإعجاب
 // ============================================================
-router.post('/post/unlike', [
-    authenticate,
-    authorize(['student']),
+router.post('/unlike', authenticate, authorize(['student']), [
     body('post_id').isInt().withMessage('معرف المنشور غير صالح'),
     body('student_id').isInt().withMessage('معرف الطالب غير صالح')
 ], async (req, res) => {
@@ -214,12 +221,9 @@ router.post('/post/unlike', [
 });
 
 // ============================================================
-// التحقق من حالة الإعجاب
+// التحقق من الإعجاب
 // ============================================================
-router.get('/post/check-like/:post_id/:student_id', [
-    authenticate,
-    authorize(['student'])
-], async (req, res) => {
+router.get('/check-like/:post_id/:student_id', authenticate, authorize(['student']), async (req, res) => {
     try {
         const { post_id, student_id } = req.params;
 
@@ -242,9 +246,7 @@ router.get('/post/check-like/:post_id/:student_id', [
 // ============================================================
 // إضافة تعليق
 // ============================================================
-router.post('/post/comment', [
-    authenticate,
-    authorize(['student']),
+router.post('/comment', authenticate, authorize(['student']), [
     body('post_id').isInt().withMessage('معرف المنشور غير صالح'),
     body('student_id').isInt().withMessage('معرف الطالب غير صالح'),
     body('comment').notEmpty().withMessage('التعليق مطلوب').isLength({ max: 1000 })
@@ -283,9 +285,7 @@ router.post('/post/comment', [
 // ============================================================
 // حذف تعليق
 // ============================================================
-router.delete('/post/comment/:comment_id', [
-    authenticate,
-    authorize(['teacher']),
+router.delete('/comment/:comment_id', authenticate, authorize(['teacher']), [
     param('comment_id').isInt().withMessage('معرف التعليق غير صالح'),
     body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح'),
     body('post_id').isInt().withMessage('معرف المنشور غير صالح')
@@ -318,9 +318,7 @@ router.delete('/post/comment/:comment_id', [
 // ============================================================
 // حذف منشور
 // ============================================================
-router.delete('/post/:post_id', [
-    authenticate,
-    authorize(['teacher']),
+router.delete('/:post_id', authenticate, authorize(['teacher']), [
     param('post_id').isInt().withMessage('معرف المنشور غير صالح'),
     body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
 ], async (req, res) => {
