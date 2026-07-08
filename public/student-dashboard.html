@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes, viewport-fit=cover">
-    <title>ZoomDz | لوحة الطالب</title>
+    <title>ZoomDz | لوحة الطالب - Jitsi Meet</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
@@ -35,6 +35,7 @@
             --gradient-gold: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
             --gradient-gift: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
             --gradient-danger: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            --gradient-jitsi: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
             --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
             --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
             --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
@@ -57,6 +58,71 @@
         ::-webkit-scrollbar-track { background: var(--gray-100); }
         ::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--gray-400); }
+
+        /* ================================================================
+           JITSI MEET BADGE
+        ================================================================ */
+        .jitsi-badge {
+            display: inline-block;
+            background: var(--gradient-jitsi);
+            color: white;
+            padding: 4px 16px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 2px 8px rgba(26, 115, 232, 0.3);
+        }
+        .jitsi-badge i { margin-left: 6px; }
+
+        /* ================================================================
+           PASSWORD BADGE
+        ================================================================ */
+        .password-badge {
+            display: inline-block;
+            background: #0f3460;
+            padding: 2px 14px;
+            border-radius: 20px;
+            color: #60a5fa;
+            font-size: 0.75rem;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 2px;
+            border: 1px dashed rgba(96, 165, 250, 0.3);
+            margin-right: 6px;
+        }
+        .password-label {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+            font-weight: 700;
+            margin-left: 4px;
+        }
+
+        /* ================================================================
+           JOIN STREAM BUTTON - JITSI
+        ================================================================ */
+        .join-stream-btn {
+            background: var(--gradient-jitsi);
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            font-family: 'Cairo', sans-serif;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 4px 14px rgba(26, 115, 232, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .join-stream-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(26, 115, 232, 0.4);
+        }
 
         /* ================================================================
            NAVBAR
@@ -322,7 +388,7 @@
             margin-top: 6px;
         }
         .notif-item .notif-action button {
-            background: var(--secondary);
+            background: var(--gradient-jitsi);
             color: white;
             border: none;
             padding: 4px 14px;
@@ -334,7 +400,7 @@
             margin-top: 8px;
             font-family: 'Cairo', sans-serif;
         }
-        .notif-item .notif-action button:hover { background: var(--secondary-dark); }
+        .notif-item .notif-action button:hover { opacity: 0.9; transform: translateY(-1px); }
         .notif-empty {
             padding: 40px 20px;
             text-align: center;
@@ -614,34 +680,6 @@
         .booking-item:hover, .transaction-item:hover {
             border-color: var(--primary-light);
             box-shadow: var(--shadow-sm);
-        }
-        .join-stream-btn {
-            background: var(--gradient-secondary);
-            color: white;
-            border: none;
-            padding: 8px 18px;
-            border-radius: 30px;
-            font-size: 0.82rem;
-            font-weight: 700;
-            font-family: 'Cairo', sans-serif;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-        .join-stream-btn:hover {
-            transform: translateY(-1px);
-        }
-        .password-badge {
-            display: inline-block;
-            background: #0f3460;
-            padding: 2px 12px;
-            border-radius: 20px;
-            color: #60a5fa;
-            font-size: 0.7rem;
-            font-weight: 700;
-            font-family: 'Courier New', monospace;
-            letter-spacing: 2px;
-            border: 1px dashed rgba(96, 165, 250, 0.3);
-            margin-right: 6px;
         }
 
         .referral-card {
@@ -1210,6 +1248,7 @@
     <!-- LEFT SIDEBAR -->
     <div class="left-sidebar">
         <div class="profile-card">
+            <div class="jitsi-badge"><i class="fas fa-video"></i> Jitsi Meet - مجاني 100%</div>
             <img id="sidebarAvatar" class="profile-avatar" src="https://ui-avatars.com/api/?name=طالب&background=0f5cbf&color=fff&size=80" alt="صورة الملف الشخصي">
             <div class="profile-name" id="sidebarName"></div>
             <div class="profile-email" id="sidebarEmail"></div>
@@ -1412,7 +1451,7 @@
 
 <script>
     // ================================================================
-    // ✅ تم إصلاح جميع الدوال للعمل مع النظام الجديد (Jitsi + كلمات مرور)
+    // ✅ تم إصلاح جميع الدوال للعمل مع Jitsi Meet + كلمات المرور
     // ================================================================
 
     let userData = null;
@@ -1430,6 +1469,7 @@
         : 'https://chatvidio.onrender.com';
 
     console.log('🌐 API Base URL:', API_BASE_URL);
+    console.log('🎥 نظام البث: Jitsi Meet (مجاني 100%)');
 
     // ================================================================
     // دوال المصادقة والأمان
@@ -1447,7 +1487,6 @@
     }
 
     async function fetchWithAuth(url, options = {}) {
-        // ✅ إضافة API_BASE_URL إذا كان الرابط نسبياً
         const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
         
         const isFormData = options.body instanceof FormData;
@@ -1463,7 +1502,6 @@
             headers: headers
         });
 
-        // ✅ معالجة 401 - انتهاء الصلاحية
         if (response.status === 401) {
             showToast('⏳ انتهت صلاحية الجلسة، جاري إعادة التوجيه...', 'error');
             localStorage.removeItem('token');
@@ -1474,7 +1512,6 @@
             throw new Error('انتهت صلاحية الجلسة');
         }
 
-        // ✅ معالجة 403 - CSRF أو حظر
         if (response.status === 403) {
             try {
                 const data = await response.json();
@@ -1590,7 +1627,7 @@
                         ${notif.offer_id ? `
                             <div class="notif-action">
                                 <button onclick="event.stopPropagation(); joinFromNotification(${notif.offer_id})">
-                                    <i class="fas fa-video"></i> انضم الآن
+                                    <i class="fas fa-video"></i> انضم الآن (Jitsi)
                                 </button>
                             </div>
                         ` : ''}
@@ -1663,19 +1700,16 @@
         showToast('تم تحديد جميع الإشعارات كمقروءة', 'success');
     }
 
-    // ✅ تم إصلاح دالة joinFromNotification - تستخدم Jitsi مع كلمة المرور
+    // ✅ جوجل ميت تم إزالته - Jitsi Meet مع كلمة المرور
     async function joinFromNotification(offerId) {
         try {
             const res = await fetchWithAuth(`/api/student/stream-status/${offerId}/${studentId}`);
             const data = await res.json();
             if (data.can_join && data.stream_url) {
-                // ✅ إذا كان البث يستخدم Jitsi مع كلمة مرور
                 if (data.platform === 'jitsi' && data.room_password) {
-                    // عرض كلمة المرور للطالب قبل فتح البث
                     const password = data.room_password;
                     const confirmJoin = confirm(`🔐 هذا البث يستخدم Jitsi Meet مع كلمة مرور\n\n🔑 كلمة المرور: ${password}\n\nهل تريد فتح البث الآن؟`);
                     if (confirmJoin) {
-                        // ✅ فتح Jitsi في نافذة جديدة مع تذكير بكلمة المرور
                         const newWindow = window.open(data.stream_url, '_blank');
                         if (newWindow) {
                             setTimeout(() => {
@@ -1684,7 +1718,6 @@
                         }
                     }
                 } else {
-                    // ✅ Google Meet أو منصة أخرى بدون كلمة مرور
                     window.open(data.stream_url, '_blank');
                 }
             } else if (data.is_waiting) {
@@ -1765,7 +1798,7 @@
     }
 
     // ================================================================
-    // USER DATA - ✅ تم التصحيح
+    // USER DATA
     // ================================================================
 
     async function loadUserData() {
@@ -1788,10 +1821,8 @@
                 return;
             }
 
-            // ✅ جلب CSRF Token أولاً
             await getCsrfToken();
 
-            // ✅ جلب بيانات المستخدم
             const res = await fetchWithAuth(`/api/student/${studentId}`);
             const data = await res.json();
             if (!data.error) {
@@ -1888,6 +1919,7 @@
             html += `
                 <div class="offer-card">
                     <div>
+                        <div class="jitsi-badge"><i class="fas fa-video"></i> Jitsi Meet</div>
                         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
                             <img src="${teacherImage}" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border:2px solid white; box-shadow:var(--shadow-sm);" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${escapeHtml(offer.teacher_name)}')+'&background=0f5cbf&color=fff&size=40'">
                             <div>
@@ -1926,9 +1958,9 @@
             const data = await res.json();
             if (data.success) {
                 if (isFree || data.is_free) {
-                    showToast('✅ تم حجز الحصة المجانية بنجاح! سيتم إشعارك عند بدء البث', 'success');
+                    showToast('✅ تم حجز الحصة المجانية بنجاح! سيتم إشعارك عند بدء البث عبر Jitsi', 'success');
                 } else {
-                    showToast(`✅ تم الحجز! تم خصم ${price} دج. سيتم إشعارك عند بدء البث`, 'success');
+                    showToast(`✅ تم الحجز! تم خصم ${price} دج. سيتم إشعارك عند بدء البث عبر Jitsi`, 'success');
                 }
                 loadWallet();
                 loadMyBookings();
@@ -1949,7 +1981,7 @@
     }
 
     // ================================================================
-    // TEACHERS - ✅ تم إصلاح عرض الأساتذة
+    // TEACHERS
     // ================================================================
 
     async function loadTeachers() {
@@ -2037,7 +2069,7 @@
                             <div style="display: flex; justify-content: center; gap: 4px; flex-wrap: wrap;">${socialHtml}</div>
                         </div>
                     ` : ''}
-                    <div style="margin-top: 16px; padding: 10px; background: var(--gold-light); border-radius: var(--radius-sm); border-right: 4px solid var(--gold); border-left: 1px solid rgba(217, 119, 6, 0.15); border-top: 1px solid rgba(217, 119, 6, 0.15); border-bottom: 1px solid rgba(217, 119, 6, 0.15); text-align: right;">
+                    <div style="margin-top: 16px; padding: 10px; background: var(--gold-light); border-radius: var(--radius-sm); border-right: 4px solid var(--gold); text-align: right;">
                         <p style="font-size: 0.8rem; color: var(--gold-dark); font-weight: 700;"><i class="fas fa-info-circle" style="margin-left: 6px;"></i> يمكنك التواصل مع الأستاذ عبر قسم الرسائل في المنصة</p>
                     </div>
                 </div>
@@ -2052,7 +2084,7 @@
     }
 
     // ================================================================
-    // BOOKINGS - ✅ تم إصلاح عرض كلمة المرور للبث
+    // BOOKINGS - مع دعم كلمة المرور لـ Jitsi
     // ================================================================
 
     async function loadMyBookings() {
@@ -2101,34 +2133,60 @@
                 statusBg = 'var(--gray-100)';
             }
 
-            // ✅ عرض كلمة المرور إذا كانت موجودة
+            // ✅ عرض كلمة المرور الخاصة بالطالب
             let passwordDisplay = '';
             if (booking.room_password) {
-                passwordDisplay = `<span class="password-label">🔑 كلمة المرور:</span> <span class="password-badge">${booking.room_password}</span>`;
+                passwordDisplay = `
+                    <div style="margin-top: 8px; font-size: 0.85rem;">
+                        <span class="password-label">🔑 كلمة المرور:</span> 
+                        <span class="password-badge">${booking.room_password}</span>
+                        <button onclick="copyPassword('${booking.room_password}')" style="background:transparent; border:none; color:var(--primary); cursor:pointer; font-size:0.75rem; font-weight:700;">
+                            <i class="fas fa-copy"></i> نسخ
+                        </button>
+                    </div>
+                `;
             }
 
             html += `
                 <div class="booking-item">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                        <div class="jitsi-badge"><i class="fas fa-video"></i> Jitsi Meet</div>
+                        <div style="margin-right: auto; font-size: 0.72rem; font-weight: 800; color: ${statusColor}; background: ${statusBg}; padding: 4px 10px; border-radius:20px;">${statusText}</div>
+                    </div>
                     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
                         <img src="${teacherImage}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border:2px solid white; box-shadow:var(--shadow-sm);" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${escapeHtml(booking.teacher_name)}')+'&background=0f5cbf&color=fff&size=40'">
                         <div>
                             <div style="font-weight: 800; font-size: 0.95rem; color:var(--gray-900);">${escapeHtml(booking.teacher_name)}</div>
                             <div style="font-size: 0.72rem; color: var(--gray-500);">${escapeHtml(booking.subject_name)}</div>
                         </div>
-                        <div style="margin-right: auto; font-size: 0.72rem; font-weight: 800; color: ${statusColor}; background: ${statusBg}; padding: 4px 10px; border-radius:20px;">${statusText}</div>
                     </div>
                     <div style="font-size: 0.85rem; margin: 6px 0; color: var(--gray-700);"><i class="fas fa-calendar-alt" style="color:var(--gray-400); margin-left: 8px;"></i> ${offerDate.toLocaleString('ar')}</div>
                     <div style="font-size: 0.85rem; margin: 6px 0; color: var(--gray-700);"><i class="fas fa-clock" style="color:var(--gray-400); margin-left: 8px;"></i> ${booking.duration} دقيقة</div>
                     <div style="font-size: 0.85rem; color: var(--gray-700); font-weight:700;"><i class="fas fa-tags" style="color:var(--gray-400); margin-left: 8px;"></i> ${booking.is_free ? '🎁 مجانية' : `💰 ${booking.price} دج`}</div>
                     ${passwordDisplay}
-                    ${isLive && isPaid ? `<button class="join-stream-btn" style="margin-top: 12px; width: 100%;" onclick="joinLiveStream(${booking.offer_id})"><i class="fas fa-video"></i> انضم للبث المباشر</button>` : ''}
+                    ${isLive && isPaid ? `<button class="join-stream-btn" style="margin-top: 12px; width: 100%;" onclick="joinLiveStream(${booking.offer_id})"><i class="fas fa-video"></i> انضم للبث المباشر (Jitsi)</button>` : ''}
                 </div>
             `;
         }
         container.innerHTML = html;
     }
 
-    // ✅ تم إصلاح دالة joinLiveStream - تدعم Jitsi مع كلمة مرور
+    // ✅ دالة نسخ كلمة المرور
+    function copyPassword(password) {
+        navigator.clipboard.writeText(password).then(() => {
+            showToast('✅ تم نسخ كلمة المرور!', 'success');
+        }).catch(() => {
+            const textArea = document.createElement('textarea');
+            textArea.value = password;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            showToast('✅ تم نسخ كلمة المرور!', 'success');
+        });
+    }
+
+    // ✅ دالة الانضمام للبث المباشر - Jitsi Meet مع كلمة المرور
     function joinLiveStream(offerId) {
         const token = localStorage.getItem('token');
         if (!token) {
@@ -2136,18 +2194,14 @@
             return;
         }
         
-        // ✅ جلب حالة البث والحصول على الرابط وكلمة المرور
         fetchWithAuth(`/api/student/stream-status/${offerId}/${studentId}`)
             .then(res => res.json())
             .then(data => {
                 if (data.can_join && data.stream_url) {
-                    // ✅ إذا كان البث يستخدم Jitsi مع كلمة مرور
                     if (data.platform === 'jitsi' && data.room_password) {
-                        // عرض كلمة المرور للطالب قبل فتح البث
                         const password = data.room_password;
                         const confirmJoin = confirm(`🔐 هذا البث يستخدم Jitsi Meet مع كلمة مرور\n\n🔑 كلمة المرور: ${password}\n\nهل تريد فتح البث الآن؟`);
                         if (confirmJoin) {
-                            // ✅ فتح Jitsi في نافذة جديدة مع تذكير بكلمة المرور
                             const newWindow = window.open(data.stream_url, '_blank');
                             if (newWindow) {
                                 setTimeout(() => {
@@ -2156,7 +2210,6 @@
                             }
                         }
                     } else {
-                        // ✅ Google Meet أو منصة أخرى بدون كلمة مرور
                         window.open(data.stream_url, '_blank');
                     }
                 } else if (data.is_waiting) {
@@ -2275,7 +2328,7 @@
                 <div style="padding: 10px 0; border-bottom: 1px solid var(--gray-100);">
                     <div style="font-weight: 700; font-size: 0.8rem; color:var(--gray-900);">${escapeHtml(b.subject_name)}</div>
                     <div style="font-size: 0.7rem; color: var(--gray-500);"><i class="fas fa-calendar-alt" style="margin-left:4px;"></i>${offerDate.toLocaleDateString('ar')}</div>
-                    ${isLive ? `<button class="join-stream-btn" style="margin-top:6px; font-size:0.65rem; padding:4px 12px;" onclick="joinLiveStream(${b.offer_id})">انضم</button>` : ''}
+                    ${isLive ? `<button class="join-stream-btn" style="margin-top:6px; font-size:0.65rem; padding:4px 12px;" onclick="joinLiveStream(${b.offer_id})">انضم (Jitsi)</button>` : ''}
                 </div>
             `;
         }
