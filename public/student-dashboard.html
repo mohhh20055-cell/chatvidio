@@ -1399,7 +1399,7 @@
 
 <script>
     // ================================================================
-    // ✅ تم إصلاح مشكلة التوكن بشكل كامل
+    // ✅ تم إصلاح مشكلة التوكن و CSRF بشكل كامل
     // ================================================================
 
     let userData = null;
@@ -1412,7 +1412,7 @@
     let csrfToken = null;
 
     // ================================================================
-    // دوال المصادقة والأمان
+    // دوال المصادقة والأمان - ✅ مع CSRF Token
     // ================================================================
 
     function getAuthHeaders() {
@@ -1421,6 +1421,25 @@
             'X-CSRF-Token': csrfToken || '',
             'Content-Type': 'application/json'
         };
+    }
+
+    // ✅ دالة لجلب CSRF Token من الخادم
+    async function fetchCsrfToken() {
+        try {
+            const response = await fetch('/api/get-csrf-token', {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + authToken
+                },
+                credentials: 'include'
+            });
+            const data = await response.json();
+            csrfToken = data.csrfToken;
+            return csrfToken;
+        } catch (error) {
+            console.error('خطأ في جلب CSRF Token:', error);
+            return null;
+        }
     }
 
     async function fetchWithAuth(url, options = {}) {
@@ -1458,7 +1477,8 @@
                     throw new Error('حساب محظور');
                 }
                 if (data.error && data.error.includes('CSRF')) {
-                    await getCsrfToken();
+                    // ✅ تجديد CSRF Token وإعادة المحاولة
+                    await fetchCsrfToken();
                     const retryResponse = await fetch(url, {
                         ...options,
                         headers: {
@@ -1478,20 +1498,6 @@
         }
 
         return response;
-    }
-
-    async function getCsrfToken() {
-        try {
-            const response = await fetch('/api/csrf-token', {
-                credentials: 'include'
-            });
-            const data = await response.json();
-            csrfToken = data.csrfToken;
-            return csrfToken;
-        } catch (error) {
-            console.error('خطأ في جلب CSRF Token:', error);
-            return null;
-        }
     }
 
     // ================================================================
@@ -1721,7 +1727,7 @@
     }
 
     // ================================================================
-    // USER DATA - ✅ تم التصحيح
+    // USER DATA - ✅ مع CSRF Token
     // ================================================================
 
     async function loadUserData() {
@@ -1744,7 +1750,7 @@
                 return;
             }
 
-            await getCsrfToken();
+            // ✅ جلب CSRF Token            await fetchCsrfToken();
 
             const res = await fetchWithAuth(`/api/student/${studentId}`);
             const data = await res.json();
@@ -2540,7 +2546,7 @@
     });
 
     // ================================================================
-    // INIT
+    // INIT - ✅ مع CSRF Token
     // ================================================================
 
     loadUserData().then(() => {
@@ -2560,6 +2566,13 @@
     setInterval(() => {
         if (studentId) loadReferralData();
     }, 120000);
+
+    // ✅ تجديد CSRF Token كل ساعة
+    setInterval(() => {
+        if (authToken) {
+            fetchCsrfToken();
+        }
+    }, 3600000);
 </script>
 </body>
 </html>
