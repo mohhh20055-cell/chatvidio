@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes, viewport-fit=cover">
@@ -1343,6 +1343,7 @@
         
         <hr class="social-divider">
         
+        <!-- روابط التواصل الاجتماعي -->
         <div style="margin: 16px 0;">
             <div class="social-label"><i class="fas fa-share-alt"></i> روابط التواصل الاجتماعي</div>
             <p style="font-size: 0.75rem; color: var(--gray-400); margin-bottom: 12px;">أضف روابط صفحاتك على منصات التواصل الاجتماعي لتظهر للطلاب</p>
@@ -1438,7 +1439,7 @@
 
 <script>
     // ================================================================
-    // ✅ لوحة الأستاذ - نسخة معدلة بالكامل مع دعم البث المباشر
+    // ✅ تم إصلاح مشكلة التوكن بشكل كامل
     // ================================================================
 
     let userData = null;
@@ -1455,30 +1456,12 @@
     // دوال المصادقة والأمان
     // ================================================================
 
-    async function fetchCsrfToken() {
-        try {
-            const response = await fetch('/api/get-csrf-token', {
-                method: 'GET',
-                headers: {
-                    'Authorization': 'Bearer ' + authToken
-                },
-                credentials: 'include'
-            });
-            const data = await response.json();
-            csrfToken = data.csrfToken;
-            return csrfToken;
-        } catch (error) {
-            console.error('خطأ في جلب CSRF Token:', error);
-            return null;
-        }
-    }
-
     async function fetchWithAuth(url, options = {}) {
         const isFormData = options.body instanceof FormData;
         const headers = {
-            ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
             'Authorization': `Bearer ${authToken}`,
             'X-CSRF-Token': csrfToken || '',
+            ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
             ...options.headers
         };
         
@@ -1508,7 +1491,7 @@
                     throw new Error('حساب محظور');
                 }
                 if (data.error && data.error.includes('CSRF')) {
-                    await fetchCsrfToken();
+                    await getCsrfToken();
                     const retryResponse = await fetch(url, {
                         ...options,
                         headers: {
@@ -1530,8 +1513,22 @@
         return response;
     }
 
+    async function getCsrfToken() {
+        try {
+            const response = await fetch('/api/csrf-token', {
+                credentials: 'include'
+            });
+            const data = await response.json();
+            csrfToken = data.csrfToken;
+            return csrfToken;
+        } catch (error) {
+            console.error('خطأ في جلب CSRF Token:', error);
+            return null;
+        }
+    }
+
     // ================================================================
-    // NOTIFICATIONS
+    // NOTIFICATIONS SYSTEM
     // ================================================================
 
     async function loadNotifications() {
@@ -1620,8 +1617,7 @@
     async function markNotificationRead(notifId) {
         try {
             const res = await fetchWithAuth(`/api/notifications/read/${notifId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                method: 'POST'
             });
             if (res.ok) {
                 const notif = notifications.find(n => n.id == notifId);
@@ -1642,8 +1638,7 @@
         for (const notif of unreadNotifs) {
             try {
                 await fetchWithAuth(`/api/notifications/read/${notif.id}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    method: 'POST'
                 });
                 notif.is_read = true;
             } catch(e) { 
@@ -1672,7 +1667,7 @@
     }
 
     // ================================================================
-    // TOAST
+    // TOAST NOTIFICATIONS
     // ================================================================
 
     function showToast(message, type = 'success') {
@@ -1755,7 +1750,7 @@
                 return;
             }
 
-            await fetchCsrfToken();
+            await getCsrfToken();
 
             const res = await fetchWithAuth(`/api/teacher/${teacherId}`);
             const data = await res.json();
@@ -1775,6 +1770,7 @@
         }
     }
 
+    // ===== دالة عرض روابط التواصل الاجتماعي =====
     function renderSocialLinks(userData) {
         const socialLinks = [
             { url: userData.facebook_url, icon: 'fab fa-facebook-f', label: 'فيسبوك', cls: 'facebook' },
@@ -1964,7 +1960,6 @@
         try {
             const createRes = await fetchWithAuth('/api/referral/create', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ user_id: teacherId, role: 'teacher' })
             });
             const createData = await createRes.json();
@@ -2082,7 +2077,10 @@
                 `;
             }
             container.innerHTML = html;
-        } catch(e) { showToast('حدث خطأ', 'error'); }
+        } catch(e) { 
+            console.error('خطأ في تحميل الأساتذة:', e);
+            showToast('حدث خطأ', 'error'); 
+        }
     }
 
     // ================================================================
@@ -2162,7 +2160,6 @@
         try {
             const res = await fetchWithAuth('/api/messages/send', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     sender_id: teacherId,
                     sender_type: 'teacher',
@@ -2251,7 +2248,7 @@
     }
 
     // ================================================================
-    // OFFERS - ✅ مع دعم البث المباشر
+    // OFFERS - ✅ تم إصلاح مشكلة التوكن في البث المباشر
     // ================================================================
 
     async function loadOffers() {
@@ -2305,6 +2302,7 @@
                 levelDisplay = `<div style="font-size:0.75rem; color:#8b5cf6; margin-top:4px;"><i class="fas fa-graduation-cap"></i> المستوى: ${levelName}</div>`;
             }
 
+            // ✅ أزرار البث المباشر مع التوكن
             let streamButton = '';
             if (!isExpired && offer.status === 'upcoming') {
                 streamButton = `<button class="start-stream-btn" onclick="enterStream(${offer.id})"><i class="fas fa-play"></i> بدء البث</button>`;
@@ -2325,30 +2323,6 @@
             </div>`;
         }
         container.innerHTML = html;
-    }
-
-    // ✅ دالة بدء البث - معدلة مع دعم CSRF
-    async function enterStream(offerId) {
-        if (confirm('⚠️ هل تريد بدء البث المباشر؟ سيتم توجيهك إلى صفحة اختيار منصة البث (Google Meet / Microsoft Teams)')) {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
-                return;
-            }
-            await fetchCsrfToken();
-            window.open(`/api/teacher-start-stream/${offerId}/${teacherId}?token=${encodeURIComponent(token)}`, '_blank');
-            setTimeout(() => loadOffers(), 2000);
-        }
-    }
-
-    // ✅ دالة دخول البث - معدلة
-    function joinTeacherStream(offerId) {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
-            return;
-        }
-        window.open(`/api/teacher-stream/${offerId}/${teacherId}?token=${encodeURIComponent(token)}`, '_blank');
     }
 
     async function deleteExpiredOffers() {
@@ -2372,7 +2346,6 @@
             try {
                 const deleteRes = await fetchWithAuth(`/api/offer/delete/${offer.id}`, {
                     method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ teacher_id: teacherId })
                 });
                 const data = await deleteRes.json();
@@ -2386,11 +2359,33 @@
         loadOffers();
     }
 
+    // ✅ تم إصلاح دالة enterStream - إضافة التوكن إلى الرابط
+    async function enterStream(offerId) {
+        if (confirm('⚠️ هل تريد بدء البث المباشر؟ سيتم توجيهك إلى صفحة اختيار منصة البث (Google Meet / Microsoft Teams)')) {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
+                return;
+            }
+            window.open(`/api/teacher-start-stream/${offerId}/${teacherId}?token=${encodeURIComponent(token)}`, '_blank');
+            setTimeout(() => loadOffers(), 2000);
+        }
+    }
+
+    // ✅ تم إصلاح دالة joinTeacherStream - دعم Google Meet مع التوكن
+    function joinTeacherStream(offerId) {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
+            return;
+        }
+        window.open(`/api/join-stream/${offerId}/${teacherId}?token=${encodeURIComponent(token)}`, '_blank');
+    }
+
     async function deleteOffer(offerId) {
         if (confirm('⚠️ هل أنت متأكد من حذف هذا العرض؟')) {
             const res = await fetchWithAuth(`/api/offer/delete/${offerId}`, {
                 method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ teacher_id: teacherId })
             });
             const data = await res.json();
@@ -2473,7 +2468,6 @@
         try {
             const res = await fetchWithAuth('/api/offer/create', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
             const result = await res.json();
@@ -2517,7 +2511,6 @@
         try {
             const res = await fetchWithAuth('/api/teacher/withdraw-request', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ teacher_id: teacherId, amount: amount, ccp_account: ccpAccount })
             });
             const data = await res.json();
@@ -2633,7 +2626,7 @@
     }
 
     // ================================================================
-    // CLOSE DROPDOWNS
+    // CLOSE DROPDOWNS ON CLICK OUTSIDE
     // ================================================================
 
     document.addEventListener('click', function(e) {
@@ -2677,12 +2670,6 @@
             if (section === 'teachers') loadTeachers();
         }
     }, 15000);
-
-    setInterval(() => {
-        if (authToken) {
-            fetchCsrfToken();
-        }
-    }, 3600000);
 </script>
 </body>
 </html>
