@@ -9,7 +9,7 @@ const path = require('path');
 const { body, validationResult, param } = require('express-validator');
 const { v4: uuidv4 } = require('uuid');
 
-// استيراد الدوال المساعدة
+// استيراد الدوال المساعدة من الملف الرئيسي
 const { 
     authenticate, 
     authorize, 
