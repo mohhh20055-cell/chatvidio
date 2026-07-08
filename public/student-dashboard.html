@@ -630,6 +630,19 @@
         .join-stream-btn:hover {
             transform: translateY(-1px);
         }
+        .password-badge {
+            display: inline-block;
+            background: #0f3460;
+            padding: 2px 12px;
+            border-radius: 20px;
+            color: #60a5fa;
+            font-size: 0.7rem;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 2px;
+            border: 1px dashed rgba(96, 165, 250, 0.3);
+            margin-right: 6px;
+        }
 
         .referral-card {
             background: var(--gradient-gold);
@@ -1399,7 +1412,7 @@
 
 <script>
     // ================================================================
-    // ✅ تم إصلاح جميع الدوال للعمل مع النظام الجديد
+    // ✅ تم إصلاح جميع الدوال للعمل مع النظام الجديد (Jitsi + كلمات مرور)
     // ================================================================
 
     let userData = null;
@@ -1650,15 +1663,30 @@
         showToast('تم تحديد جميع الإشعارات كمقروءة', 'success');
     }
 
-    // ✅ تم إصلاح دالة joinFromNotification - فتح رابط البث مباشرة
+    // ✅ تم إصلاح دالة joinFromNotification - تستخدم Jitsi مع كلمة المرور
     async function joinFromNotification(offerId) {
         try {
             const res = await fetchWithAuth(`/api/student/stream-status/${offerId}/${studentId}`);
             const data = await res.json();
             if (data.can_join && data.stream_url) {
-                const token = localStorage.getItem('token');
-                // ✅ فتح الرابط مباشرة (تم إضافة التوكن في الـ API)
-                window.open(data.stream_url, '_blank');
+                // ✅ إذا كان البث يستخدم Jitsi مع كلمة مرور
+                if (data.platform === 'jitsi' && data.room_password) {
+                    // عرض كلمة المرور للطالب قبل فتح البث
+                    const password = data.room_password;
+                    const confirmJoin = confirm(`🔐 هذا البث يستخدم Jitsi Meet مع كلمة مرور\n\n🔑 كلمة المرور: ${password}\n\nهل تريد فتح البث الآن؟`);
+                    if (confirmJoin) {
+                        // ✅ فتح Jitsi في نافذة جديدة مع تذكير بكلمة المرور
+                        const newWindow = window.open(data.stream_url, '_blank');
+                        if (newWindow) {
+                            setTimeout(() => {
+                                alert(`🔑 كلمة مرور البث: ${password}\nأدخلها عند الطلب في صفحة Jitsi`);
+                            }, 2000);
+                        }
+                    }
+                } else {
+                    // ✅ Google Meet أو منصة أخرى بدون كلمة مرور
+                    window.open(data.stream_url, '_blank');
+                }
             } else if (data.is_waiting) {
                 showToast('⏳ جاري التحضير للبث، انتظر قليلاً...', 'warning');
             } else {
@@ -2024,7 +2052,7 @@
     }
 
     // ================================================================
-    // BOOKINGS
+    // BOOKINGS - ✅ تم إصلاح عرض كلمة المرور للبث
     // ================================================================
 
     async function loadMyBookings() {
@@ -2073,6 +2101,12 @@
                 statusBg = 'var(--gray-100)';
             }
 
+            // ✅ عرض كلمة المرور إذا كانت موجودة
+            let passwordDisplay = '';
+            if (booking.room_password) {
+                passwordDisplay = `<span class="password-label">🔑 كلمة المرور:</span> <span class="password-badge">${booking.room_password}</span>`;
+            }
+
             html += `
                 <div class="booking-item">
                     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
@@ -2086,6 +2120,7 @@
                     <div style="font-size: 0.85rem; margin: 6px 0; color: var(--gray-700);"><i class="fas fa-calendar-alt" style="color:var(--gray-400); margin-left: 8px;"></i> ${offerDate.toLocaleString('ar')}</div>
                     <div style="font-size: 0.85rem; margin: 6px 0; color: var(--gray-700);"><i class="fas fa-clock" style="color:var(--gray-400); margin-left: 8px;"></i> ${booking.duration} دقيقة</div>
                     <div style="font-size: 0.85rem; color: var(--gray-700); font-weight:700;"><i class="fas fa-tags" style="color:var(--gray-400); margin-left: 8px;"></i> ${booking.is_free ? '🎁 مجانية' : `💰 ${booking.price} دج`}</div>
+                    ${passwordDisplay}
                     ${isLive && isPaid ? `<button class="join-stream-btn" style="margin-top: 12px; width: 100%;" onclick="joinLiveStream(${booking.offer_id})"><i class="fas fa-video"></i> انضم للبث المباشر</button>` : ''}
                 </div>
             `;
@@ -2093,20 +2128,37 @@
         container.innerHTML = html;
     }
 
-    // ✅ تم إصلاح دالة joinLiveStream - فتح رابط البث مباشرة
+    // ✅ تم إصلاح دالة joinLiveStream - تدعم Jitsi مع كلمة مرور
     function joinLiveStream(offerId) {
         const token = localStorage.getItem('token');
         if (!token) {
             showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
             return;
         }
-        // ✅ جلب حالة البث والحصول على الرابط مباشرة
+        
+        // ✅ جلب حالة البث والحصول على الرابط وكلمة المرور
         fetchWithAuth(`/api/student/stream-status/${offerId}/${studentId}`)
             .then(res => res.json())
             .then(data => {
                 if (data.can_join && data.stream_url) {
-                    // ✅ فتح الرابط مباشرة (تم إضافة التوكن في الـ API)
-                    window.open(data.stream_url, '_blank');
+                    // ✅ إذا كان البث يستخدم Jitsi مع كلمة مرور
+                    if (data.platform === 'jitsi' && data.room_password) {
+                        // عرض كلمة المرور للطالب قبل فتح البث
+                        const password = data.room_password;
+                        const confirmJoin = confirm(`🔐 هذا البث يستخدم Jitsi Meet مع كلمة مرور\n\n🔑 كلمة المرور: ${password}\n\nهل تريد فتح البث الآن؟`);
+                        if (confirmJoin) {
+                            // ✅ فتح Jitsi في نافذة جديدة مع تذكير بكلمة المرور
+                            const newWindow = window.open(data.stream_url, '_blank');
+                            if (newWindow) {
+                                setTimeout(() => {
+                                    alert(`🔑 كلمة مرور البث: ${password}\nأدخلها عند الطلب في صفحة Jitsi`);
+                                }, 2000);
+                            }
+                        }
+                    } else {
+                        // ✅ Google Meet أو منصة أخرى بدون كلمة مرور
+                        window.open(data.stream_url, '_blank');
+                    }
                 } else if (data.is_waiting) {
                     showToast('⏳ جاري التحضير للبث، انتظر قليلاً...', 'warning');
                 } else {
