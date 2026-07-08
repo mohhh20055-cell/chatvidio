@@ -408,7 +408,9 @@ const csrfExcludedPaths = [
     '/api/join-stream',
     '/api/teacher-start-stream',
     '/api/teacher-stream',
-    '/api/chargily-webhook'
+    '/api/chargily-webhook',
+    '/api/start-jitsi-stream',
+    '/api/join-jitsi'
 ];
 
 app.use((req, res, next) => {
@@ -488,7 +490,279 @@ app.get('/api/get-csrf-token', authenticate, (req, res) => {
 });
 
 // ============================================================
-// ✅ مسار بدء البث للأستاذ - نسخة جديدة بالكامل
+// ✅ نظام البث المباشر باستخدام Jitsi Meet (مجاني 100%)
+// ============================================================
+
+// ============================================================
+// ✅ بدء البث باستخدام Jitsi Meet
+// ============================================================
+
+app.post('/api/start-jitsi-stream', authenticate, authorize(['teacher']), [
+    require('express-validator').body('offer_id').isInt().withMessage('معرف العرض غير صالح')
+], async (req, res) => {
+    try {
+        const errors = require('express-validator').validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { offer_id } = req.body;
+        
+        const offer = await getOne('offers', 'id', offer_id);
+        if (!offer) {
+            return res.status(404).json({ success: false, error: 'العرض غير موجود' });
+        }
+        
+        // ✅ إنشاء غرفة Jitsi (بدون خادم خاص)
+        const roomName = `zoomdz_${offer_id}_${Date.now()}`;
+        const password = crypto.randomBytes(6).toString('hex').toUpperCase();
+        const roomUrl = `https://meet.jit.si/${roomName}`;
+        
+        // ✅ حفظ في قاعدة البيانات
+        await supabase
+            .from('jitsi_rooms')
+            .insert({
+                offer_id: offer_id,
+                room_name: roomName,
+                password: password,
+                room_url: roomUrl,
+                created_at: new Date().toISOString()
+            });
+        
+        // ✅ تحديث العرض
+        await supabase
+            .from('offers')
+            .update({
+                stream_url: roomUrl,
+                stream_platform: 'jitsi',
+                status: 'live',
+                room_password: password,
+                stream_started_at: new Date().toISOString()
+            })
+            .eq('id', offer_id);
+        
+        // ✅ إرسال إشعارات للطلاب
+        const { data: sessions } = await supabase
+            .from('sessions')
+            .select('student_id')
+            .eq('offer_id', offer_id)
+            .eq('payment_status', 'paid');
+        
+        if (sessions && sessions.length > 0) {
+            const notifications = sessions.map(s => ({
+                user_id: s.student_id,
+                user_type: 'student',
+                title: '🔴 البث المباشر بدأ',
+                message: `الحصة "${offer.subject_name}" قد بدأت الآن. انضم عبر زر البث المباشر.`,
+                offer_id: offer_id,
+                is_read: false,
+                created_at: new Date().toISOString()
+            }));
+            
+            await supabase
+                .from('notifications')
+                .insert(notifications);
+        }
+        
+        res.json({
+            success: true,
+            room_url: roomUrl,
+            password: password,
+            room_name: roomName,
+            message: 'تم بدء البث بنجاح (مجاني 100%)'
+        });
+    } catch (error) {
+        console.error('❌ خطأ في بدء البث:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
+// ✅ التحقق من كلمة مرور Jitsi
+// ============================================================
+
+app.post('/api/verify-jitsi-password', async (req, res) => {
+    try {
+        const { room_name, password } = req.body;
+        
+        const { data } = await supabase
+            .from('jitsi_rooms')
+            .select('password')
+            .eq('room_name', room_name)
+            .single();
+        
+        if (data && data.password === password) {
+            res.json({ success: true });
+        } else {
+            res.json({ success: false, error: 'كلمة المرور غير صحيحة' });
+        }
+    } catch (error) {
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
+// ✅ صفحة دخول الطالب للبث (Jitsi - رابط مباشر)
+// ============================================================
+
+app.get('/api/join-jitsi/:offer_id', authenticate, async (req, res) => {
+    try {
+        const token = req.query.token;
+        const decoded = verifyToken(token);
+        if (!decoded || decoded.role !== 'student') {
+            return res.status(403).json({ error: 'غير مصرح' });
+        }
+        
+        const { offer_id } = req.params;
+        const studentId = decoded.userId;
+        
+        // ✅ التحقق من الحجز المدفوع
+        const session = await getOne('sessions', 'offer_id', offer_id);
+        if (!session || session.student_id !== studentId || session.payment_status !== 'paid') {
+            return res.status(403).send(`
+                <!DOCTYPE html>
+                <html dir="rtl" lang="ar">
+                <head><meta charset="UTF-8"><title>خطأ</title></head>
+                <body style="font-family:Cairo;text-align:center;padding:50px;">
+                    <h1 style="color:#ef4444;">❌ يجب حجز الحصة أولاً</h1>
+                    <a href="/student-dashboard.html" style="color:#0f5cbf;font-weight:700;">العودة للوحة التحكم</a>
+                </body></html>
+            `);
+        }
+        
+        const offer = await getOne('offers', 'id', offer_id);
+        if (!offer || offer.status !== 'live') {
+            return res.status(400).send(`
+                <!DOCTYPE html>
+                <html dir="rtl" lang="ar">
+                <head><meta charset="UTF-8"><title>خطأ</title></head>
+                <body style="font-family:Cairo;text-align:center;padding:50px;">
+                    <h1 style="color:#f59e0b;">⏳ البث لم يبدأ بعد</h1>
+                    <a href="/student-dashboard.html" style="color:#0f5cbf;font-weight:700;">العودة للوحة التحكم</a>
+                </body></html>
+            `);
+        }
+        
+        // ✅ عرض صفحة دخول Jitsi
+        res.send(generateJitsiJoinPage(offer));
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.status(500).send(`
+            <!DOCTYPE html>
+            <html dir="rtl" lang="ar">
+            <head><meta charset="UTF-8"><title>خطأ</title></head>
+            <body style="font-family:Cairo;text-align:center;padding:50px;">
+                <h1 style="color:#ef4444;">❌ حدث خطأ</h1>
+                <p style="color:#64748b;">${error.message}</p>
+                <a href="/student-dashboard.html" style="color:#0f5cbf;font-weight:700;">العودة للوحة التحكم</a>
+            </body></html>
+        `);
+    }
+});
+
+// ============================================================
+// ✅ دالة توليد صفحة دخول Jitsi (بدون iframe)
+// ============================================================
+
+function generateJitsiJoinPage(offer) {
+    const roomUrl = offer.stream_url || '';
+    const password = offer.room_password || '';
+    const subjectName = offer.subject_name || 'غير محدد';
+    
+    return `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>دخول البث المباشر</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Cairo', sans-serif; background: #0a0a1a; color: white; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .container { max-width: 450px; width: 90%; background: #1a1a2e; border-radius: 24px; padding: 40px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+        h1 { color: #0f5cbf; font-size: 1.5rem; margin-bottom: 10px; }
+        .subtitle { color: #94a3b8; font-size: 0.9rem; margin-bottom: 20px; }
+        .password-box { background: #0f3460; padding: 20px; border-radius: 12px; margin: 20px 0; border: 2px dashed rgba(96, 165, 250, 0.3); }
+        .password-box span { color: #60a5fa; font-size: 2.2rem; font-weight: 900; letter-spacing: 8px; font-family: 'Courier New', monospace; }
+        .password-label { color: #94a3b8; font-size: 0.8rem; margin-bottom: 8px; }
+        .btn { background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; padding: 16px 30px; border-radius: 12px; font-size: 1.1rem; font-weight: 700; cursor: pointer; width: 100%; transition: all 0.3s; margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .btn:hover { transform: scale(1.02); box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4); }
+        .info { color: #64748b; font-size: 0.8rem; margin-top: 16px; line-height: 1.6; }
+        .info i { color: #f59e0b; }
+        .copy-btn { background: transparent; border: 1px solid #333; color: #94a3b8; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.8rem; transition: all 0.3s; margin-top: 8px; }
+        .copy-btn:hover { background: #1a1a2e; border-color: #0f5cbf; color: white; }
+        .warning { color: #f59e0b; font-size: 0.75rem; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎥 ${escapeHtml(subjectName)}</h1>
+        <p class="subtitle">🔐 أدخل كلمة المرور للدخول إلى البث المباشر</p>
+        
+        <div class="password-box">
+            <div class="password-label">🔑 كلمة مرور البث</div>
+            <span id="roomPassword">${password}</span>
+            <br>
+            <button class="copy-btn" onclick="copyPassword()">
+                <i class="fas fa-copy"></i> نسخ كلمة المرور
+            </button>
+        </div>
+        
+        <button class="btn" onclick="joinJitsi()">
+            <i class="fas fa-video"></i> فتح البث المباشر
+        </button>
+        
+        <p class="info">
+            <i class="fas fa-info-circle"></i> سيتم فتح Jitsi Meet في نافذة جديدة<br>
+            ⚠️ أدخل كلمة المرور أعلاه عند الطلب
+        </p>
+        <p class="warning">
+            ⚠️ لا تشارك كلمة المرور مع أي شخص خارج الحصة
+        </p>
+    </div>
+    
+    <script>
+        const roomUrl = '${roomUrl}';
+        const password = '${password}';
+        
+        function copyPassword() {
+            navigator.clipboard.writeText(password).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                btn.innerHTML = '✅ تم النسخ';
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fas fa-copy"></i> نسخ كلمة المرور';
+                }, 2000);
+            });
+        }
+        
+        function joinJitsi() {
+            // ✅ فتح Jitsi في نافذة جديدة (بدون iframe)
+            // ✅ هذا يعمل بدون أي حد زمني (مجاني 100%)
+            const newWindow = window.open(roomUrl, '_blank');
+            
+            if (newWindow) {
+                setTimeout(() => {
+                    alert('🔑 كلمة المرور: ' + password + '\\n\\nأدخلها عند الطلب في صفحة Jitsi');
+                }, 2000);
+            } else {
+                alert('⚠️ يرجى السماح بفتح النوافذ المنبثقة');
+            }
+        }
+    </script>
+</body>
+</html>
+    `;
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ============================================================
+// ✅ مسار بدء البث للأستاذ (النسخة القديمة - للتوافق)
 // ============================================================
 
 app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
@@ -552,8 +826,8 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
             .eq('offer_id', offer_id)
             .eq('payment_status', 'paid');
 
-        // ✅ عرض صفحة بدء البث المبسطة
-        res.send(generateTeacherStreamPageSimple(offer, teacher_id, token, studentsCount || 0));
+        // ✅ عرض صفحة بدء البث مع Jitsi
+        res.send(generateTeacherStartPage(offer, teacher_id, token, studentsCount || 0));
         
     } catch (error) {
         console.error('❌ خطأ في بدء البث:', error.message);
@@ -571,10 +845,10 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
 });
 
 // ============================================================
-// ✅ دالة توليد صفحة بدء البث المبسطة (نسخة جديدة)
+// ✅ صفحة بدء البث للأستاذ (مع Jitsi)
 // ============================================================
 
-function generateTeacherStreamPageSimple(offer, teacherId, token, studentsCount) {
+function generateTeacherStartPage(offer, teacherId, token, studentsCount) {
     const offerId = offer.id;
     const subjectName = offer.subject_name || 'غير محدد';
     
@@ -602,14 +876,11 @@ function generateTeacherStreamPageSimple(offer, teacherId, token, studentsCount)
         .input-group input, .input-group select { width: 100%; padding: 14px 18px; border-radius: 12px; border: 1px solid #333; background: #0a0a1a; color: white; font-size: 1rem; transition: border 0.3s; font-family: 'Cairo', sans-serif; }
         .input-group input:focus, .input-group select:focus { outline: none; border-color: #0f5cbf; }
         .input-group .hint { font-size: 0.8rem; color: #64748b; margin-top: 5px; }
-        .input-group .hint i { color: #f59e0b; }
-        .btn-start { width: 100%; padding: 16px; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: all 0.3s; margin-top: 10px; }
-        .btn-start:hover { transform: scale(1.02); box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4); }
+        .btn-start { width: 100%; padding: 16px; background: linear-gradient(135deg, #0f5cbf, #0a4a9a); color: white; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: all 0.3s; margin-top: 10px; }
+        .btn-start:hover { transform: scale(1.02); box-shadow: 0 8px 25px rgba(15, 92, 191, 0.4); }
         .btn-start:disabled { opacity: 0.5; cursor: not-allowed; }
-        .btn-primary { background: linear-gradient(135deg, #0f5cbf, #0a4a9a); }
-        .btn-primary:hover { box-shadow: 0 8px 25px rgba(15, 92, 191, 0.4); }
-        .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); }
-        .btn-danger:hover { box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4); }
+        .btn-success { background: linear-gradient(135deg, #10b981, #059669); }
+        .btn-success:hover { box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4); }
         .btn-back { background: transparent; color: #94a3b8; border: 1px solid #333; padding: 12px 24px; border-radius: 12px; cursor: pointer; transition: all 0.3s; margin-top: 10px; width: 100%; }
         .btn-back:hover { background: #1a1a2e; }
         .tip { background: #0f3460; border-radius: 12px; padding: 15px 20px; margin: 15px 0; border-right: 4px solid #f59e0b; }
@@ -619,27 +890,6 @@ function generateTeacherStreamPageSimple(offer, teacherId, token, studentsCount)
         .success-box h4 { color: #10b981; margin-bottom: 5px; }
         .success-box p { color: #94a3b8; font-size: 0.9rem; }
         .success-box .link-display { background: #0a0a1a; padding: 10px; border-radius: 8px; margin-top: 8px; word-break: break-all; color: #60a5fa; font-size: 0.85rem; border: 1px solid #1a1a2e; }
-        .waiting-list { margin-top: 20px; border-top: 1px solid #333; padding-top: 20px; }
-        .waiting-list h3 { color: #94a3b8; margin-bottom: 10px; }
-        .waiting-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #16213e; border-radius: 8px; margin-bottom: 5px; }
-        .waiting-item .name { color: white; font-size: 0.9rem; }
-        .waiting-item .status-badge { font-size: 0.7rem; padding: 2px 10px; border-radius: 20px; }
-        .status-badge.waiting { background: #f59e0b; color: #1a1a2e; }
-        .status-badge.active { background: #10b981; color: white; }
-        .add-all-btn { background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 12px; cursor: pointer; font-weight: 600; width: 100%; margin-top: 10px; transition: all 0.3s; }
-        .add-all-btn:hover { background: #059669; transform: translateY(-2px); }
-        .add-all-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
-        .btn-success { background: #10b981 !important; }
-        .btn-success:hover { background: #059669 !important; box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4) !important; }
-        .flex-buttons { display: flex; gap: 10px; margin-top: 10px; }
-        .flex-buttons .btn-start { flex: 1; }
-        .stream-status { display: inline-block; padding: 4px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
-        .stream-status.inactive { background: #f59e0b; color: #1a1a2e; }
-        .stream-status.active { background: #10b981; color: white; animation: pulse 1.5s infinite; }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.7; transform: scale(1.05); }
-        }
         .toast { position: fixed; bottom: 30px; right: 30px; left: 30px; background: #1a1a2e; color: white; padding: 16px 24px; border-radius: 12px; z-index: 2000; display: none; animation: slideIn 0.4s ease; box-shadow: 0 10px 40px rgba(0,0,0,0.5); font-size: 0.95rem; max-width: 440px; margin: 0 auto; border-right: 4px solid #10b981; }
         .toast.error { border-color: #ef4444; }
         .toast.warning { border-color: #f59e0b; }
@@ -647,14 +897,13 @@ function generateTeacherStreamPageSimple(offer, teacherId, token, studentsCount)
         @media(max-width:600px) {
             .container { padding: 20px; }
             .info-box { flex-direction: column; }
-            .flex-buttons { flex-direction: column; }
         }
     </style>
 </head>
 <body>
 <div class="container">
     <h1>🎥 بدء البث المباشر</h1>
-    <p class="subtitle">أدخل رابط البث من Google Meet أو Microsoft Teams</p>
+    <p class="subtitle">باستخدام Jitsi Meet (مجاني 100%)</p>
 
     <div class="info-box">
         <div><span>📚 المادة:</span> <strong>${escapeHtml(subjectName)}</strong></div>
@@ -663,33 +912,16 @@ function generateTeacherStreamPageSimple(offer, teacherId, token, studentsCount)
     </div>
 
     <div class="tip">
-        <h4>💡 كيفية الحصول على رابط Google Meet</h4>
-        <p>1. افتح <strong>Google Meet</strong> في علامة تبويب جديدة<br>
-        2. اضغط على "بدء اجتماع جديد"<br>
-        3. انسخ رابط الاجتماع من شريط العناوين<br>
-        4. الصق الرابط في الحقل أدناه</p>
+        <h4>💡 ما هو Jitsi Meet؟</h4>
+        <p>Jitsi Meet هو بديل مجاني 100% لـ Google Meet<br>
+        • <strong>مجاني تماماً</strong> بدون أي حد زمني<br>
+        • <strong>آمن</strong> مع كلمة مرور للغرفة<br>
+        • <strong>سريع</strong> ولا يحتاج إلى تثبيت</p>
     </div>
 
-    <!-- ✅ حقل إدخال رابط البث -->
-    <div class="input-group">
-        <label><i class="fas fa-link"></i> رابط البث المباشر</label>
-        <input type="url" id="streamUrl" placeholder="مثال: https://meet.google.com/xxx-xxxx-xxx" dir="ltr">
-        <div class="hint"><i class="fas fa-info-circle"></i> يمكنك استخدام Google Meet أو Microsoft Teams</div>
-    </div>
-
-    <!-- ✅ اختيار المنصة -->
-    <div class="input-group">
-        <label><i class="fas fa-video"></i> المنصة</label>
-        <select id="platformSelect">
-            <option value="google-meet">🔵 Google Meet</option>
-            <option value="microsoft-teams">💜 Microsoft Teams</option>
-            <option value="other">🟣 أخرى</option>
-        </select>
-    </div>
-
-    <!-- ✅ زر حفظ الرابط وبدء البث -->
-    <button class="btn-start btn-primary" id="startStreamBtn" onclick="saveStreamLink()">
-        <i class="fas fa-save"></i> حفظ الرابط وبدء البث
+    <!-- ✅ زر بدء البث -->
+    <button class="btn-start btn-success" id="startStreamBtn" onclick="startJitsiStream()">
+        <i class="fas fa-play"></i> بدء البث المباشر
     </button>
 
     <!-- ✅ زر إضافة جميع الطلاب -->
@@ -705,12 +937,7 @@ function generateTeacherStreamPageSimple(offer, teacherId, token, studentsCount)
         <p>رابط البث المحفوظ:</p>
         <div class="link-display" id="savedLinkDisplay"></div>
         <p style="margin-top: 8px; font-size: 0.8rem;">🟢 تم إرسال إشعارات للطلاب المسجلين</p>
-    </div>
-
-    <!-- ✅ قائمة الانتظار -->
-    <div class="waiting-list" id="waitingList">
-        <h3>📋 قائمة الانتظار</h3>
-        <div id="studentsList">جاري التحميل...</div>
+        <p style="margin-top: 8px; font-size: 0.8rem; color: #f59e0b;">🔑 كلمة المرور: <strong id="passwordDisplay"></strong></p>
     </div>
 </div>
 
@@ -718,7 +945,6 @@ function generateTeacherStreamPageSimple(offer, teacherId, token, studentsCount)
 <div class="toast" id="toast"></div>
 
 <script>
-    let selectedPlatform = 'google-meet';
     const authToken = '${token}';
     const offerId = ${parseInt(offerId)};
     const teacherId = ${parseInt(teacherId)};
@@ -732,7 +958,6 @@ function generateTeacherStreamPageSimple(offer, teacherId, token, studentsCount)
 
     console.log('🌐 API Base URL:', API_BASE_URL);
 
-    // ✅ دالة عرض Toast
     function showToast(message, type = 'success') {
         const toast = document.getElementById('toast');
         toast.textContent = message;
@@ -740,12 +965,9 @@ function generateTeacherStreamPageSimple(offer, teacherId, token, studentsCount)
         if (type === 'error') toast.classList.add('error');
         if (type === 'warning') toast.classList.add('warning');
         toast.style.display = 'block';
-        setTimeout(() => {
-            toast.style.display = 'none';
-        }, 5000);
+        setTimeout(() => { toast.style.display = 'none'; }, 5000);
     }
 
-    // ✅ جلب CSRF Token
     async function getCsrfToken() {
         try {
             const response = await fetch(API_BASE_URL + '/api/get-csrf-token', {
@@ -762,86 +984,20 @@ function generateTeacherStreamPageSimple(offer, teacherId, token, studentsCount)
         }
     }
 
-    // ✅ تحميل قائمة الانتظار
-    async function loadWaitingList() {
-        try {
-            const response = await fetch(API_BASE_URL + '/api/stream/waiting-list/' + offerId + '/' + teacherId, {
-                headers: { 
-                    'Authorization': 'Bearer ' + authToken,
-                    'X-CSRF-Token': csrfToken
-                }
-            });
-            const students = await response.json();
-            const container = document.getElementById('studentsList');
-            
-            if (students.length === 0) {
-                container.innerHTML = '<p style="color:#64748b; text-align:center; padding:15px;">لا يوجد طلاب في قائمة الانتظار</p>';
-                return;
-            }
-
-            let html = '';
-            students.forEach(s => {
-                const statusClass = s.is_active ? 'active' : 'waiting';
-                const statusText = s.is_active ? '✅ في البث' : '⏳ في الانتظار';
-                html += \`
-                    <div class="waiting-item">
-                        <span class="name">\${s.full_name || 'طالب'}</span>
-                        <span class="status-badge \${statusClass}">\${statusText}</span>
-                    </div>
-                \`;
-            });
-            container.innerHTML = html;
-        } catch (error) {
-            console.error('خطأ في جلب قائمة الانتظار:', error);
-            document.getElementById('studentsList').innerHTML = '<p style="color:#ef4444; text-align:center; padding:15px;">حدث خطأ في جلب القائمة</p>';
-        }
-    }
-
-    // ✅ حفظ رابط البث في قاعدة البيانات
-    async function saveStreamLink() {
-        const url = document.getElementById('streamUrl').value.trim();
-        const platform = document.getElementById('platformSelect').value;
-        
-        if (!url) {
-            showToast('⚠️ الرجاء إدخال رابط البث', 'warning');
-            document.getElementById('streamUrl').focus();
-            return;
-        }
-
-        if (!url.startsWith('http://') && !url.startsWith('https://')) {
-            showToast('⚠️ الرابط غير صحيح. يجب أن يبدأ بـ http:// أو https://', 'warning');
-            return;
-        }
-
-        // تحقق من صحة الرابط حسب المنصة
-        if (platform === 'google-meet' && !url.includes('meet.google.com')) {
-            showToast('⚠️ الرابط يجب أن يحتوي على meet.google.com', 'warning');
-            return;
-        }
-
-        if (platform === 'microsoft-teams' && !url.includes('teams.microsoft.com')) {
-            showToast('⚠️ الرابط يجب أن يحتوي على teams.microsoft.com', 'warning');
-            return;
-        }
-
+    async function startJitsiStream() {
         const btn = document.getElementById('startStreamBtn');
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري بدء البث...';
 
         try {
-            // ✅ حفظ الرابط في قاعدة البيانات
-            const response = await fetch(API_BASE_URL + '/api/stream/save-link', {
+            const response = await fetch(API_BASE_URL + '/api/start-jitsi-stream', {
                 method: 'POST',
                 headers: {
                     'Authorization': 'Bearer ' + authToken,
                     'Content-Type': 'application/json',
                     'X-CSRF-Token': csrfToken
                 },
-                body: JSON.stringify({
-                    offer_id: offerId,
-                    stream_url: url,
-                    platform: platform
-                })
+                body: JSON.stringify({ offer_id: offerId })
             });
 
             const data = await response.json();
@@ -849,40 +1005,27 @@ function generateTeacherStreamPageSimple(offer, teacherId, token, studentsCount)
             if (data.success) {
                 isStreamActive = true;
                 document.getElementById('successBox').style.display = 'block';
-                document.getElementById('savedLinkDisplay').textContent = url;
+                document.getElementById('savedLinkDisplay').textContent = data.room_url;
+                document.getElementById('passwordDisplay').textContent = data.password;
                 document.getElementById('statusDisplay').innerHTML = '<span class="stream-status active">🟢 بث مباشر</span>';
                 document.getElementById('addAllBtn').disabled = false;
                 
-                // ✅ تفعيل زر إضافة الطلاب
-                document.getElementById('addAllBtn').style.opacity = '1';
-                document.getElementById('addAllBtn').style.cursor = 'pointer';
-                
-                showToast('✅ تم حفظ رابط البث بنجاح!', 'success');
-                
-                // ✅ تحديث قائمة الانتظار
-                loadWaitingList();
+                showToast('✅ تم بدء البث بنجاح!', 'success');
             } else {
-                showToast('❌ ' + (data.error || 'حدث خطأ في حفظ الرابط'), 'error');
+                showToast('❌ ' + (data.error || 'حدث خطأ'), 'error');
             }
         } catch (error) {
             console.error('خطأ:', error);
             showToast('❌ حدث خطأ في الاتصال بالخادم', 'error');
         } finally {
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-save"></i> حفظ الرابط وبدء البث';
+            btn.innerHTML = '<i class="fas fa-play"></i> بدء البث المباشر';
         }
     }
 
-    // ✅ إضافة جميع الطلاب إلى البث وإرسال الإشعارات
     async function addAllStudents() {
         if (!isStreamActive) {
-            showToast('⚠️ الرجاء حفظ رابط البث أولاً', 'warning');
-            return;
-        }
-
-        const url = document.getElementById('streamUrl').value.trim();
-        if (!url) {
-            showToast('⚠️ لا يوجد رابط بث محفوظ', 'warning');
+            showToast('⚠️ الرجاء بدء البث أولاً', 'warning');
             return;
         }
 
@@ -893,7 +1036,6 @@ function generateTeacherStreamPageSimple(offer, teacherId, token, studentsCount)
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإضافة...';
 
         try {
-            // ✅ إضافة جميع الطلاب إلى البث وإرسال الإشعارات
             const response = await fetch(API_BASE_URL + '/api/stream/add-all-students/' + offerId, {
                 method: 'POST',
                 headers: {
@@ -910,18 +1052,7 @@ function generateTeacherStreamPageSimple(offer, teacherId, token, studentsCount)
             const data = await response.json();
 
             if (data.success) {
-                showToast('✅ تم إضافة ' + (data.students_count || 0) + ' طالب إلى البث وإرسال الإشعارات!', 'success');
-                
-                // ✅ تحديث عدد الطلاب
-                document.getElementById('studentsCountDisplay').textContent = data.students_count || 0;
-                
-                // ✅ تحديث قائمة الانتظار
-                loadWaitingList();
-                
-                // ✅ عرض رسالة إضافية
-                if (data.students && data.students.length > 0) {
-                    showToast('📢 تم إرسال إشعارات لـ ' + data.students.length + ' طالب', 'success');
-                }
+                showToast('✅ تم إضافة ' + (data.students_count || 0) + ' طالب وإرسال الإشعارات!', 'success');
             } else {
                 showToast('❌ ' + (data.error || 'حدث خطأ'), 'error');
             }
@@ -934,39 +1065,9 @@ function generateTeacherStreamPageSimple(offer, teacherId, token, studentsCount)
         }
     }
 
-    // ✅ التحقق من حالة البث
-    async function checkStreamStatus() {
-        try {
-            const response = await fetch(API_BASE_URL + '/api/stream/status/' + offerId);
-            const data = await response.json();
-            
-            if (data.status === 'live' && data.stream_url) {
-                isStreamActive = true;
-                document.getElementById('streamUrl').value = data.stream_url;
-                document.getElementById('statusDisplay').innerHTML = '<span class="stream-status active">🟢 بث مباشر</span>';
-                document.getElementById('addAllBtn').disabled = false;
-                document.getElementById('successBox').style.display = 'block';
-                document.getElementById('savedLinkDisplay').textContent = data.stream_url;
-                
-                // ✅ اختيار المنصة
-                if (data.platform) {
-                    document.getElementById('platformSelect').value = data.platform;
-                }
-            }
-        } catch (error) {
-            console.error('خطأ في التحقق من حالة البث:', error);
-        }
-    }
-
     // ✅ تهيئة الصفحة
     async function init() {
         await getCsrfToken();
-        await loadWaitingList();
-        await checkStreamStatus();
-        
-        // تحديث قائمة الانتظار كل 10 ثواني
-        setInterval(loadWaitingList, 10000);
-        
         console.log('✅ تم تهيئة صفحة بدء البث');
     }
 
@@ -974,11 +1075,6 @@ function generateTeacherStreamPageSimple(offer, teacherId, token, studentsCount)
 </script>
 </body>
 </html>`;
-}
-
-function escapeHtml(text) {
-    if (!text) return '';
-    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 // ============================================================
