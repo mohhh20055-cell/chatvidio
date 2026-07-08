@@ -1,34 +1,48 @@
 // ============================================================
-// مسارات الأساتذة
+// مسارات الأستاذ - Teacher Routes
 // ============================================================
 
 const express = require('express');
 const router = express.Router();
-const { body, validationResult, param } = require('express-validator');
+const { body, param, validationResult } = require('express-validator');
+const multer = require('multer');
+const path = require('path');
 
-// استيراد الدوال المساعدة من الملف الرئيسي
-const server = require('../server');
-
-// استخراج الدوال من server
-const { 
-    authenticate, 
-    authorize, 
-    getOne, 
-    insert, 
-    update, 
-    remove,
-    supabase,
-    uploadToSupabase,
-    validateUploadedFiles,
-    upload,
-    sanitizeInput
-} = server;
+// استيراد الدوال المساعدة
+const { supabase } = require('../config/database');
+const { authenticate, authorize, checkBanned } = require('../middleware/auth');
+const { getOne, insert, update, remove } = require('../utils/helpers');
+const { uploadToSupabase, validateUploadedFiles, ALLOWED_MIME_TYPES, ALLOWED_EXTENSIONS, MAX_FILE_SIZE } = require('../utils/upload');
 
 // ============================================================
-// جلب بيانات أستاذ
+// إعداد Multer
 // ============================================================
-router.get('/teacher/:teacher_id', [
-    authenticate,
+const storage = multer.memoryStorage();
+
+const upload = multer({
+    storage: storage,
+    limits: {
+        fileSize: MAX_FILE_SIZE,
+        files: 5
+    },
+    fileFilter: (req, file, cb) => {
+        if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+            return cb(new Error('نوع الملف غير مدعوم'), false);
+        }
+
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (!ALLOWED_EXTENSIONS.includes(ext)) {
+            return cb(new Error('امتداد الملف غير مدعوم'), false);
+        }
+
+        cb(null, true);
+    }
+});
+
+// ============================================================
+// جلب بيانات الأستاذ
+// ============================================================
+router.get('/:teacher_id', authenticate, [
     param('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
 ], async (req, res) => {
     try {
@@ -55,13 +69,9 @@ router.get('/teacher/:teacher_id', [
 });
 
 // ============================================================
-// تحديث بيانات الأستاذ (الصورة فقط)
+// تحديث صورة الأستاذ الشخصية
 // ============================================================
-router.post('/teacher/update-profile', [
-    authenticate,
-    authorize(['teacher']),
-    upload.single('profile_image'),
-    validateUploadedFiles,
+router.post('/update-profile', authenticate, authorize(['teacher']), upload.single('profile_image'), validateUploadedFiles, [
     body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
 ], async (req, res) => {
     try {
@@ -104,15 +114,11 @@ router.post('/teacher/update-profile', [
 });
 
 // ============================================================
-// تحديث ملف الأستاذ مع الروابط الاجتماعية
+// تحديث الملف الشخصي مع الروابط الاجتماعية
 // ============================================================
-router.post('/teacher/update-profile-with-social', [
-    authenticate,
-    authorize(['teacher']),
-    upload.fields([
-        { name: 'profile_image', maxCount: 1 }
-    ]),
-    validateUploadedFiles,
+router.post('/update-profile-with-social', authenticate, authorize(['teacher']), upload.fields([
+    { name: 'profile_image', maxCount: 1 }
+]), validateUploadedFiles, [
     body('teacher_id').isInt().withMessage('معرف الأستاذ مطلوب')
 ], async (req, res) => {
     try {
@@ -175,9 +181,7 @@ router.post('/teacher/update-profile-with-social', [
             .eq('id', teacher_id)
             .select();
 
-        if (error) {
-            throw error;
-        }
+        if (error) throw error;
 
         res.json({
             success: true,
@@ -186,86 +190,14 @@ router.post('/teacher/update-profile-with-social', [
         });
     } catch (error) {
         console.error('خطأ في تحديث الملف الشخصي:', error.message);
-        res.status(500).json({
-            success: false,
-            error: error.message || 'حدث خطأ أثناء تحديث الملف الشخصي'
-        });
+        res.status(500).json({ success: false, error: error.message || 'حدث خطأ أثناء تحديث الملف الشخصي' });
     }
 });
 
 // ============================================================
-// جلب جميع الأساتذة المقبولين
+// جلب الرصيد والأرباح
 // ============================================================
-router.get('/teachers', async (req, res) => {
-    try {
-        const { data } = await supabase
-            .from('teachers')
-            .select('id, full_name, specialization, bio, experience, profile_image, profile_url')
-            .eq('status', 'approved')
-            .eq('email_verified', true)
-            .order('created_at', { ascending: false });
-        res.json(data || []);
-    } catch (error) {
-        res.status(500).json([]);
-    }
-});
-
-// ============================================================
-// عرض ملف أستاذ عام
-// ============================================================
-router.get('/public/teacher/:teacher_id', async (req, res) => {
-    try {
-        const teacher_id = parseInt(req.params.teacher_id);
-        if (isNaN(teacher_id)) {
-            return res.status(400).json({ error: 'معرف غير صالح' });
-        }
-
-        const { data: teacher, error } = await supabase
-            .from('teachers')
-            .select('id, full_name, email, phone, specialization, bio, experience, profile_url, status, facebook_url, instagram_url, linkedin_url, youtube_url, twitter_url, website_url, whatsapp_url')
-            .eq('id', teacher_id)
-            .single();
-
-        if (error) {
-            return res.status(404).json({ error: 'الأستاذ غير موجود' });
-        }
-
-        if (!teacher) {
-            return res.status(404).json({ error: 'الأستاذ غير موجود' });
-        }
-
-        res.json(teacher);
-    } catch (error) {
-        console.error('❌ خطأ في جلب ملف الأستاذ:', error.message);
-        res.status(500).json({ error: 'حدث خطأ في الخادم' });
-    }
-});
-
-// ============================================================
-// جلب الأساتذة العامة (بدون مصادقة)
-// ============================================================
-router.get('/public/teachers', async (req, res) => {
-    try {
-        const { data } = await supabase
-            .from('teachers')
-            .select('id, full_name, specialization, bio, experience, profile_url')
-            .eq('status', 'approved')
-            .eq('email_verified', true)
-            .order('created_at', { ascending: false })
-            .limit(100);
-        res.json(data || []);
-    } catch (error) {
-        console.error('خطأ:', error.message);
-        res.status(500).json([]);
-    }
-});
-
-// ============================================================
-// جلب رصيد الأستاذ
-// ============================================================
-router.get('/teacher/balance/:teacher_id', [
-    authenticate,
-    authorize(['teacher']),
+router.get('/balance/:teacher_id', authenticate, authorize(['teacher']), [
     param('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
 ], async (req, res) => {
     try {
@@ -301,11 +233,9 @@ router.get('/teacher/balance/:teacher_id', [
 });
 
 // ============================================================
-// طلب سحب الأرباح
+// طلب سحب
 // ============================================================
-router.post('/teacher/withdraw-request', [
-    authenticate,
-    authorize(['teacher']),
+router.post('/withdraw-request', authenticate, authorize(['teacher']), [
     body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح'),
     body('amount').isFloat({ min: 1, max: 1000000 }).withMessage('المبلغ غير صالح'),
     body('ccp_account').isLength({ min: 10, max: 20 }).withMessage('رقم حساب CCP غير صالح')
@@ -349,11 +279,9 @@ router.post('/teacher/withdraw-request', [
 });
 
 // ============================================================
-// جلب طلبات السحب للأستاذ
+// جلب طلبات السحب
 // ============================================================
-router.get('/teacher/withdraw-requests/:teacher_id', [
-    authenticate,
-    authorize(['teacher']),
+router.get('/withdraw-requests/:teacher_id', authenticate, authorize(['teacher']), [
     param('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
 ], async (req, res) => {
     try {
@@ -373,6 +301,35 @@ router.get('/teacher/withdraw-requests/:teacher_id', [
             .select('*')
             .eq('teacher_id', teacher_id)
             .order('created_at', { ascending: false });
+        res.json(data || []);
+    } catch (error) {
+        res.status(500).json([]);
+    }
+});
+
+// ============================================================
+// جلب عروض الأستاذ
+// ============================================================
+router.get('/offers/:teacher_id', authenticate, authorize(['teacher']), [
+    param('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const teacher_id = parseInt(req.params.teacher_id);
+
+        if (req.user.userId !== teacher_id) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه العروض' });
+        }
+
+        const { data } = await supabase
+            .from('offers')
+            .select('*')
+            .eq('teacher_id', teacher_id)
+            .order('offer_date', { ascending: false });
         res.json(data || []);
     } catch (error) {
         res.status(500).json([]);
