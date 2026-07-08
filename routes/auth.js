@@ -11,7 +11,6 @@ const multer = require('multer');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 
-// استيراد الدوال المساعدة
 const { supabase } = require('../config/database');
 const { authenticate, authorize, checkBanned } = require('../middleware/auth');
 const { authLimiter } = require('../middleware/rateLimit');
@@ -19,17 +18,35 @@ const { getOne, insert, update, generateVerificationToken, generateReferralCode,
 const { encrypt, maskIP } = require('../utils/encryption');
 const { generateToken, verifyToken } = require('../utils/jwt');
 const { sendVerificationEmail, sendResetEmail } = require('../utils/email');
-const { uploadToSupabase, validateUploadedFiles, ALLOWED_MIME_TYPES, ALLOWED_EXTENSIONS, MAX_FILE_SIZE } = require('../utils/upload');
+const { uploadToSupabase, validateUploadedFiles } = require('../utils/upload');
 const { verifyRecaptcha } = require('../utils/validation');
-const { processReferralOnRegister } = require('../utils/referral');
 
-// الثوابت
 const SALT_ROUNDS = 12;
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_TIME = 15 * 60 * 1000;
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@platform.com';
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || bcrypt.hashSync('admin123', 12);
-const PLATFORM_DOMAIN = process.env.PLATFORM_DOMAIN || 'https://chatvidio.vercel.app';
+
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf'];
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
+const storage = multer.memoryStorage();
+
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: MAX_FILE_SIZE, files: 5 },
+    fileFilter: (req, file, cb) => {
+        if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+            return cb(new Error('نوع الملف غير مدعوم'), false);
+        }
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (!ALLOWED_EXTENSIONS.includes(ext)) {
+            return cb(new Error('امتداد الملف غير مدعوم'), false);
+        }
+        cb(null, true);
+    }
+});
 
 // ============================================================
 // نظام تتبع محاولات تسجيل الدخول الفاشلة
@@ -61,31 +78,6 @@ function trackLoginAttempt(email) {
 function resetLoginAttempts(email) {
     loginAttempts.delete(email);
 }
-
-// ============================================================
-// إعداد Multer
-// ============================================================
-const storage = multer.memoryStorage();
-
-const upload = multer({
-    storage: storage,
-    limits: {
-        fileSize: MAX_FILE_SIZE,
-        files: 5
-    },
-    fileFilter: (req, file, cb) => {
-        if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
-            return cb(new Error('نوع الملف غير مدعوم'), false);
-        }
-
-        const ext = path.extname(file.originalname).toLowerCase();
-        if (!ALLOWED_EXTENSIONS.includes(ext)) {
-            return cb(new Error('امتداد الملف غير مدعوم'), false);
-        }
-
-        cb(null, true);
-    }
-});
 
 // ============================================================
 // تسجيل أستاذ جديد
@@ -195,15 +187,6 @@ router.post('/teacher/register', checkBanned, upload.fields([
         
         const emailSent = await sendVerificationEmail(email, full_name, verificationUrl);
 
-        const refCode = req.cookies?.referral_code || req.query.ref;
-        if (refCode) {
-            try {
-                await processReferralOnRegister(refCode, newTeacher.id, 'teacher');
-            } catch (e) {
-                console.error('خطأ في معالجة الإحالة:', e.message);
-            }
-        }
-
         const token = generateToken(newTeacher.id, 'teacher', email);
 
         res.json({ 
@@ -216,7 +199,7 @@ router.post('/teacher/register', checkBanned, upload.fields([
             token: token
         });
     } catch (error) {
-        console.error('خطأ:', error.message);
+        console.error('خطأ في تسجيل أستاذ:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
@@ -290,15 +273,6 @@ router.post('/student/register', checkBanned, [
         
         const emailSent = await sendVerificationEmail(email, full_name, verificationUrl);
 
-        const refCode = req.cookies?.referral_code || req.query.ref;
-        if (refCode) {
-            try {
-                await processReferralOnRegister(refCode, newStudent.id, 'student');
-            } catch (e) {
-                console.error('خطأ في معالجة الإحالة:', e.message);
-            }
-        }
-
         const token = generateToken(newStudent.id, 'student', email);
 
         res.json({ 
@@ -311,7 +285,7 @@ router.post('/student/register', checkBanned, [
             token: token
         });
     } catch (error) {
-        console.error('خطأ:', error.message);
+        console.error('خطأ في تسجيل طالب:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
@@ -332,7 +306,6 @@ router.post('/login', checkBanned, authLimiter, [
 
         const { email, password, role } = req.body;
 
-        // تسجيل دخول المدير
         if (role === 'admin') {
             if (email !== ADMIN_EMAIL) {
                 return res.status(401).json({ success: false, error: 'بيانات الدخول غير صحيحة' });
@@ -358,7 +331,6 @@ router.post('/login', checkBanned, authLimiter, [
             });
         }
 
-        // التحقق من محاولات تسجيل الدخول
         const attempt = trackLoginAttempt(email);
         if (attempt.locked) {
             return res.status(429).json({
@@ -422,7 +394,6 @@ router.post('/login', checkBanned, authLimiter, [
             });
         }
 
-        // تسجيل IP
         let ip = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'];
         if (ip && typeof ip === 'string' && ip.includes(',')) {
             ip = ip.split(',')[0].trim();
@@ -538,281 +509,7 @@ router.post('/resend-verification', authLimiter, [
             });
         }
     } catch (error) {
-        console.error('خطأ:', error.message);
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
-    }
-});
-
-// ============================================================
-// تأكيد البريد الإلكتروني
-// ============================================================
-router.get('/verify-email', [
-    require('express-validator').query('token').notEmpty().withMessage('الرمز مطلوب'),
-    require('express-validator').query('email').isEmail().withMessage('بريد إلكتروني غير صالح'),
-    require('express-validator').query('role').isIn(['student', 'teacher']).withMessage('دور غير صالح')
-], async (req, res) => {
-    const { token, email, role } = req.query;
-
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).send(renderErrorPage('بيانات غير صالحة', 'البيانات المرسلة غير صالحة'));
-        }
-
-        const { data: verification, error } = await supabase
-            .from('email_verifications')
-            .select('*')
-            .eq('token', token)
-            .eq('email', email)
-            .eq('role', role)
-            .eq('used', false)
-            .single();
-
-        if (error || !verification) {
-            return res.status(400).send(renderErrorPage('رمز غير صالح', 'رمز التحقق غير صالح أو تم استخدامه بالفعل.'));
-        }
-
-        const expiresAt = new Date(verification.expires_at);
-        if (expiresAt < new Date()) {
-            await supabase
-                .from('email_verifications')
-                .update({ used: true })
-                .eq('token', token);
-
-            return res.status(400).send(renderErrorPage('انتهت الصلاحية', 'انتهت صلاحية رابط التأكيد. يمكنك طلب رابط جديد من خلال صفحة تسجيل الدخول.', '/'));
-        }
-
-        const tableName = role === 'student' ? 'students' : 'teachers';
-        
-        await supabase
-            .from(tableName)
-            .update({ email_verified: true })
-            .eq('email', email);
-
-        await supabase
-            .from('email_verifications')
-            .update({ used: true })
-            .eq('token', token);
-
-        // معالجة مكافأة الإحالة
-        const user = await getOne(tableName, 'email', email);
-        if (user) {
-            const { processReferralReward } = require('../utils/referral');
-            await processReferralReward(user.id, role);
-        }
-
-        return res.send(renderSuccessPage('تم تأكيد الحساب', 'تم تأكيد حسابك بنجاح 🎉', 'يمكنك الآن تسجيل الدخول والاستفادة من جميع خدمات المنصة.', 'تسجيل الدخول', '/'));
-    } catch (error) {
-        console.error('خطأ في تأكيد البريد:', error.message);
-        return res.status(500).send(renderErrorPage('حدث خطأ', 'حدث خطأ أثناء تأكيد الحساب. يرجى المحاولة مرة أخرى.'));
-    }
-});
-
-// ============================================================
-// دوال عرض الصفحات
-// ============================================================
-function renderSuccessPage(title, message, subMessage, buttonText, buttonLink) {
-    return `
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset="UTF-8"><title>${title}</title>
-        <style>
-            body{font-family:Cairo;background:#0f5cbf;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;direction:rtl}
-            .card{background:white;padding:40px;border-radius:20px;text-align:center;max-width:500px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
-            h1{color:#10b981;font-size:2.5rem}
-            .btn{background:#0f5cbf;color:white;padding:12px 30px;border-radius:30px;text-decoration:none;display:inline-block;margin-top:20px}
-            .btn:hover{background:#0a4a9a}
-            .sub{color:#666;margin-top:10px}
-        </style>
-        </head>
-        <body>
-        <div class="card">
-            <h1>✅ ${title}</h1>
-            <p style="font-size:1.2rem;">${message}</p>
-            <p class="sub">${subMessage}</p>
-            <a href="${buttonLink || '/'}" class="btn">${buttonText || 'العودة للرئيسية'}</a>
-        </div>
-        </body>
-        </html>
-    `;
-}
-
-function renderErrorPage(title, message, buttonLink) {
-    return `
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset="UTF-8"><title>خطأ</title>
-        <style>
-            body{font-family:Cairo;background:#0f5cbf;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;direction:rtl}
-            .card{background:white;padding:40px;border-radius:20px;text-align:center;max-width:500px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
-            h1{color:#dc2626}
-            .btn{background:#0f5cbf;color:white;padding:12px 30px;border-radius:30px;text-decoration:none;display:inline-block;margin-top:20px}
-        </style>
-        </head>
-        <body>
-        <div class="card">
-            <h1>❌ ${title}</h1>
-            <p>${message}</p>
-            <a href="${buttonLink || '/'}" class="btn">العودة للرئيسية</a>
-        </div>
-        </body>
-        </html>
-    `;
-}
-
-// ============================================================
-// نسيت كلمة المرور
-// ============================================================
-router.post('/forgot-password', authLimiter, [
-    body('email').isEmail().withMessage('بريد إلكتروني غير صالح').trim().normalizeEmail(),
-    body('role').isIn(['student', 'teacher']).withMessage('دور غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const { email, role } = req.body;
-
-        let user = null;
-        if (role === 'student') {
-            user = await getOne('students', 'email', email);
-        } else if (role === 'teacher') {
-            user = await getOne('teachers', 'email', email);
-        }
-
-        if (!user) {
-            return res.status(404).json({ success: false, error: 'لا يوجد حساب بهذا البريد الإلكتروني' });
-        }
-
-        const resetToken = crypto.randomBytes(32).toString('hex');
-        const expiresAt = new Date();
-        expiresAt.setHours(expiresAt.getHours() + 1);
-
-        await insert('password_resets', {
-            email: email,
-            role: role,
-            token: resetToken,
-            expires_at: expiresAt.toISOString(),
-            used: false,
-            created_at: new Date().toISOString()
-        });
-
-        const baseUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${process.env.PORT || 3000}`;
-        const resetUrl = `${baseUrl}/reset-password.html?token=${resetToken}&email=${encodeURIComponent(email)}&role=${role}`;
-
-        const emailSent = await sendResetEmail(email, user.full_name, resetUrl);
-
-        if (emailSent) {
-            res.json({ success: true, message: 'تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني' });
-        } else {
-            res.json({
-                success: true,
-                message: `لم نتمكن من إرسال البريد. الرابط الخاص بك: ${resetUrl}`,
-                showDirectLink: true,
-                resetUrl: resetUrl
-            });
-        }
-    } catch (error) {
-        console.error('خطأ:', error.message);
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
-    }
-});
-
-// ============================================================
-// التحقق من رمز إعادة التعيين
-// ============================================================
-router.post('/verify-reset-token', [
-    body('token').notEmpty().withMessage('الرمز مطلوب'),
-    body('email').isEmail().withMessage('بريد إلكتروني غير صالح').trim().normalizeEmail(),
-    body('role').isIn(['student', 'teacher']).withMessage('دور غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const { token, email, role } = req.body;
-
-        const { data: resetRecord } = await supabase
-            .from('password_resets')
-            .select('*')
-            .eq('token', token)
-            .eq('email', email)
-            .eq('role', role)
-            .eq('used', false)
-            .single();
-
-        if (!resetRecord) {
-            return res.status(400).json({ success: false, error: 'رابط إعادة التعيين غير صالح أو تم استخدامه بالفعل' });
-        }
-
-        const expiresAt = new Date(resetRecord.expires_at);
-        if (expiresAt < new Date()) {
-            return res.status(400).json({ success: false, error: 'انتهت صلاحية رابط إعادة التعيين' });
-        }
-
-        res.json({ success: true });
-    } catch (error) {
-        console.error('خطأ:', error.message);
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
-    }
-});
-
-// ============================================================
-// إعادة تعيين كلمة المرور
-// ============================================================
-router.post('/reset-password', [
-    body('token').notEmpty().withMessage('الرمز مطلوب'),
-    body('email').isEmail().withMessage('بريد إلكتروني غير صالح').trim().normalizeEmail(),
-    body('role').isIn(['student', 'teacher']).withMessage('دور غير صالح'),
-    body('new_password').isLength({ min: 8 }).withMessage('كلمة المرور يجب أن تكون 8 أحرف على الأقل')
-        .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('كلمة المرور يجب أن تحتوي على حرف كبير وحرف صغير ورقم')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const { token, email, role, new_password } = req.body;
-
-        const { data: resetRecord } = await supabase
-            .from('password_resets')
-            .select('*')
-            .eq('token', token)
-            .eq('email', email)
-            .eq('role', role)
-            .eq('used', false)
-            .single();
-
-        if (!resetRecord) {
-            return res.status(400).json({ success: false, error: 'رابط إعادة التعيين غير صالح' });
-        }
-
-        const expiresAt = new Date(resetRecord.expires_at);
-        if (expiresAt < new Date()) {
-            return res.status(400).json({ success: false, error: 'انتهت صلاحية رابط إعادة التعيين' });
-        }
-
-        const hashedPassword = bcrypt.hashSync(new_password, SALT_ROUNDS);
-        const tableName = role === 'student' ? 'students' : 'teachers';
-
-        await supabase
-            .from(tableName)
-            .update({ password: hashedPassword })
-            .eq('email', email);
-
-        await supabase
-            .from('password_resets')
-            .update({ used: true })
-            .eq('token', token);
-
-        res.json({ success: true, message: 'تم تغيير كلمة المرور بنجاح' });
-    } catch (error) {
-        console.error('خطأ:', error.message);
+        console.error('خطأ في إعادة إرسال التأكيد:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
