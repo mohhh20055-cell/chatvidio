@@ -14,7 +14,7 @@ const { getOne, insert, update, remove } = require('../utils/helpers');
 const { encrypt, maskIP } = require('../utils/encryption');
 const { processReferralReward } = require('../utils/referral');
 
-// ✅ تعريف authorize محلياً (حل سريع)
+// ✅ تعريف authorize محلياً - هذا هو الحل الوحيد الذي يعمل في Vercel
 function authorize(roles = []) {
     return (req, res, next) => {
         if (!req.user) {
@@ -30,7 +30,6 @@ function authorize(roles = []) {
 // الثوابت
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@platform.com';
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || bcrypt.hashSync('admin123', 12);
-const SALT_ROUNDS = 12;
 
 // ============================================================
 // جلب جميع الطلاب
@@ -43,7 +42,7 @@ router.get('/students', authenticate, authorize(['admin']), async (req, res) => 
             .order('created_at', { ascending: false });
         res.json(data || []);
     } catch (error) {
-        console.error('خطأ:', error.message);
+        console.error('خطأ في جلب الطلاب:', error.message);
         res.status(500).json([]);
     }
 });
@@ -60,7 +59,7 @@ router.get('/pending-teachers', authenticate, authorize(['admin']), async (req, 
             .order('created_at', { ascending: false });
         res.json(data || []);
     } catch (error) {
-        console.error('خطأ:', error.message);
+        console.error('خطأ في جلب الأساتذة المعلقين:', error.message);
         res.status(500).json([]);
     }
 });
@@ -77,7 +76,7 @@ router.get('/approved-teachers', authenticate, authorize(['admin']), async (req,
             .order('created_at', { ascending: false });
         res.json(data || []);
     } catch (error) {
-        console.error('خطأ:', error.message);
+        console.error('خطأ في جلب الأساتذة المقبولين:', error.message);
         res.status(500).json([]);
     }
 });
@@ -141,6 +140,7 @@ router.post('/reject-teacher/:id', [
         });
         res.json({ success: true });
     } catch (error) {
+        console.error('خطأ في رفض الأستاذ:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
@@ -380,7 +380,7 @@ router.get('/banned-users', authenticate, authorize(['admin']), async (req, res)
             .order('banned_at', { ascending: false });
         res.json(data || []);
     } catch (error) {
-        console.error('خطأ:', error.message);
+        console.error('خطأ في جلب المحظورين:', error.message);
         res.status(500).json([]);
     }
 });
@@ -397,6 +397,7 @@ router.get('/withdraw-requests', authenticate, authorize(['admin']), async (req,
             .order('created_at', { ascending: true });
         res.json(data || []);
     } catch (error) {
+        console.error('خطأ في جلب طلبات السحب:', error.message);
         res.status(500).json([]);
     }
 });
@@ -442,6 +443,7 @@ router.post('/withdraw-requests/:id/approve', [
 
         res.json({ success: true });
     } catch (error) {
+        console.error('خطأ في قبول طلب سحب:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
@@ -489,6 +491,7 @@ router.post('/withdraw-requests/:id/reject', [
 
         res.json({ success: true });
     } catch (error) {
+        console.error('خطأ في رفض طلب سحب:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
@@ -553,7 +556,7 @@ router.post('/send-notification-to-all-students', [
             message: `تم إرسال الإشعار إلى ${students.length} طالب`
         });
     } catch (error) {
-        console.error('خطأ:', error.message);
+        console.error('خطأ في إرسال الإشعار:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
@@ -570,7 +573,7 @@ router.get('/sent-notifications', authenticate, authorize(['admin']), async (req
 
         res.json(data || []);
     } catch (error) {
-        console.error('خطأ:', error.message);
+        console.error('خطأ في جلب الإشعارات المرسلة:', error.message);
         res.status(500).json([]);
     }
 });
@@ -595,6 +598,7 @@ router.delete('/delete-notification/:id', [
             .eq('id', req.params.id);
         res.json({ success: true });
     } catch (error) {
+        console.error('خطأ في حذف الإشعار:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
@@ -627,6 +631,7 @@ router.get('/performance', authenticate, authorize(['admin']), async (req, res) 
             total_sessions: sessions?.count || 0
         });
     } catch (error) {
+        console.error('خطأ في مراقبة الأداء:', error.message);
         res.status(500).json({ status: 'error', error: error.message });
     }
 });
@@ -642,7 +647,7 @@ router.get('/support-messages', authenticate, authorize(['admin']), async (req, 
             .order('created_at', { ascending: false });
         res.json(data || []);
     } catch (error) {
-        console.error('خطأ:', error.message);
+        console.error('خطأ في جلب رسائل الدعم:', error.message);
         res.status(500).json([]);
     }
 });
@@ -661,6 +666,7 @@ router.put('/support-messages/:id/read', [
         await update('support_messages', req.params.id, { status: 'read' });
         res.json({ success: true });
     } catch (error) {
+        console.error('خطأ في تحديث رسالة الدعم:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
@@ -679,6 +685,7 @@ router.delete('/support-messages/:id', [
         await remove('support_messages', 'id', req.params.id);
         res.json({ success: true });
     } catch (error) {
+        console.error('خطأ في حذف رسالة الدعم:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
