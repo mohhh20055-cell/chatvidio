@@ -8,7 +8,6 @@ const { body, validationResult } = require('express-validator');
 
 // استيراد الدوال المساعدة
 const { insert } = require('../utils/helpers');
-const { sanitizeInput } = require('../utils/sanitize');
 
 // ============================================================
 // إرسال رسالة دعم
@@ -37,10 +36,10 @@ router.post('/send', [
             created_at: new Date().toISOString()
         });
 
-        console.log(`رسالة دعم جديدة من ${sanitizeInput(name)} (${sanitizeInput(email)})`);
+        console.log(`📩 رسالة دعم جديدة من ${name} (${email})`);
         res.json({ success: true, message: 'تم إرسال رسالتك بنجاح' });
     } catch (error) {
-        console.error('خطأ:', error.message);
+        console.error('❌ خطأ في إرسال رسالة الدعم:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
