@@ -27,6 +27,7 @@ async function authenticate(req, res, next) {
     next();
 }
 
+// ✅ تأكد من أن هذه الدالة موجودة ومصدرة
 function authorize(roles = []) {
     return (req, res, next) => {
         if (!req.user) {
@@ -77,9 +78,13 @@ async function checkBanned(req, res, next) {
     }
 }
 
-// ✅ تأكد من تصدير جميع الدوال بشكل صحيح
+// ✅ تأكد من التصدير الصحيح
 module.exports = {
     authenticate,
     authorize,
     checkBanned
 };
+
+// ✅ أضف هذا السطر للتأكد من أن authorize معرفة
+console.log('✅ middleware/auth.js تم تحميله بنجاح');
+console.log('✅ authorize هي:', typeof authorize);
