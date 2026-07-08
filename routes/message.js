@@ -1,33 +1,25 @@
 // ============================================================
-// مسارات الرسائل
+// مسارات المراسلات - Message Routes
 // ============================================================
 
 const express = require('express');
 const router = express.Router();
-const { body, validationResult, param } = require('express-validator');
+const { body, param, validationResult } = require('express-validator');
 
-// استيراد الدوال المساعدة من الملف الرئيسي
-const server = require('../server');
-
-// استخراج الدوال من server
-const { 
-    authenticate, 
-    getOne, 
-    insert, 
-    supabase,
-    sanitizeInput
-} = server;
+// استيراد الدوال المساعدة
+const { supabase } = require('../config/database');
+const { authenticate } = require('../middleware/auth');
+const { getOne, insert } = require('../utils/helpers');
 
 // ============================================================
 // إرسال رسالة
 // ============================================================
-router.post('/messages/send', [
-    authenticate,
+router.post('/send', authenticate, [
     body('sender_id').isInt().withMessage('معرف المرسل غير صالح'),
     body('sender_type').isIn(['student', 'teacher']).withMessage('نوع المرسل غير صالح'),
     body('receiver_id').isInt().withMessage('معرف المستقبل غير صالح'),
     body('receiver_type').isIn(['student', 'teacher']).withMessage('نوع المستقبل غير صالح'),
-    body('message').notEmpty().withMessage('الرسالة مطلوبة').isLength({ max: 2000 }).withMessage('الرسالة طويلة جداً')
+    body('message').notEmpty().withMessage('الرسالة مطلوبة').isLength({ max: 2000 })
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -70,8 +62,7 @@ router.post('/messages/send', [
 // ============================================================
 // جلب المحادثات
 // ============================================================
-router.get('/messages/conversations/:user_id/:user_type', [
-    authenticate,
+router.get('/conversations/:user_id/:user_type', authenticate, [
     param('user_id').isInt().withMessage('معرف المستخدم غير صالح'),
     param('user_type').isIn(['student', 'teacher']).withMessage('نوع المستخدم غير صالح')
 ], async (req, res) => {
@@ -131,10 +122,9 @@ router.get('/messages/conversations/:user_id/:user_type', [
 });
 
 // ============================================================
-// جلب رسائل محادثة محددة
+// جلب محادثة محددة
 // ============================================================
-router.get('/messages/:user_id/:user_type/:other_id/:other_type', [
-    authenticate,
+router.get('/:user_id/:user_type/:other_id/:other_type', authenticate, [
     param('user_id').isInt().withMessage('معرف المستخدم غير صالح'),
     param('user_type').isIn(['student', 'teacher']).withMessage('نوع المستخدم غير صالح'),
     param('other_id').isInt().withMessage('معرف الطرف الآخر غير صالح'),
