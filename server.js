@@ -375,10 +375,23 @@ app.get('/api/csrf-token', (req, res) => {
     res.json({ csrfToken: token });
 });
 
+// ✅ نقطة نهاية إضافية لجلب CSRF Token مع التوكن
+app.get('/api/get-csrf-token', authenticate, (req, res) => {
+    const token = crypto.randomBytes(32).toString('hex');
+    res.cookie('csrf_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 3600000
+    });
+    res.json({ csrfToken: token });
+});
+
 // ============================================================
 // 7. CSRF Protection - مع استثناء المسارات العامة
 // ============================================================
 app.use((req, res, next) => {
+    // ✅ المسارات العامة (لا تحتاج CSRF)
     const publicPaths = [
         '/api/login',
         '/api/student/register',
@@ -388,6 +401,7 @@ app.use((req, res, next) => {
         '/api/verify-email',
         '/api/resend-verification',
         '/api/csrf-token',
+        '/api/get-csrf-token',
         '/api/public/teachers',
         '/api/public/offers',
         '/api/public/stats',
@@ -398,22 +412,42 @@ app.use((req, res, next) => {
         '/api/test-cors',
         '/api/ping',
         '/api/verify-token',
-        '/api/refresh-token'
+        '/api/refresh-token',
+        // ✅ مسارات البث المباشر - استثناء من CSRF
+        '/api/stream/save-link',
+        '/api/stream/add-student',
+        '/api/stream/add-all-students',
+        '/api/stream/add-students',
+        '/api/stream/waiting-list',
+        '/api/stream/status',
+        '/api/student/stream-status',
+        '/api/join-stream',
+        '/api/teacher-start-stream',
+        '/api/teacher-stream'
     ];
     
     const publicMethods = ['GET', 'HEAD', 'OPTIONS'];
     
-    const isPublicPath = publicPaths.some(path => req.path === path);
+    // التحقق من المسار الصريح أو المسار الذي يبدأ بـ
+    const isPublicPath = publicPaths.some(path => {
+        if (path === req.path) return true;
+        // للتحقق من المسارات التي تبدأ بـ (مثل /api/stream/status/123)
+        if (req.path.startsWith(path + '/')) return true;
+        return false;
+    });
+    
     const isPublicMethod = publicMethods.includes(req.method);
     
     if (isPublicPath || isPublicMethod) {
         return next();
     }
     
+    // ✅ التحقق من CSRF Token
     const csrfToken = req.headers['x-csrf-token'];
     const cookieToken = req.cookies.csrf_token;
     
     if (!csrfToken || !cookieToken || csrfToken !== cookieToken) {
+        console.log(`❌ CSRF فشل: ${req.path}`);
         return res.status(403).json({ 
             success: false, 
             error: 'طلب غير مصرح به (CSRF)',
@@ -4477,8 +4511,6 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
                     .tip { background: #0f3460; border-radius: 12px; padding: 15px 20px; margin: 15px 0; border-right: 4px solid #f59e0b; }
                     .tip h4 { color: #f59e0b; margin-bottom: 5px; }
                     .tip p { color: #94a3b8; font-size: 0.9rem; line-height: 1.6; }
-                    .hidden { display: none; }
-                    .students-count { background: #0f5cbf; padding: 3px 12px; border-radius: 20px; font-size: 0.8rem; }
                     .waiting-list { margin-top: 20px; border-top: 1px solid #333; padding-top: 20px; }
                     .waiting-list h3 { color: #94a3b8; margin-bottom: 10px; }
                     .waiting-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #16213e; border-radius: 8px; margin-bottom: 5px; }
@@ -4554,6 +4586,29 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
                 const authToken = '${token}';
                 const offerId = ${parseInt(offer_id)};
                 const teacherId = ${parseInt(teacher_id)};
+                let csrfToken = '';
+
+                // جلب CSRF Token
+                async function getCsrfToken() {
+                    try {
+                        const response = await fetch('/api/get-csrf-token', {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': 'Bearer ' + authToken
+                            },
+                            credentials: 'include'
+                        });
+                        const data = await response.json();
+                        csrfToken = data.csrfToken;
+                        return csrfToken;
+                    } catch (error) {
+                        console.error('خطأ في جلب CSRF Token:', error);
+                        return null;
+                    }
+                }
+
+                // استدعاء CSRF عند التحميل
+                getCsrfToken();
 
                 function selectPlatform(platform) {
                     selectedPlatform = platform;
@@ -4575,12 +4630,9 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
                     }
                 }
 
-                // فتح Google Meet في نافذة جديدة ثم حفظ الرابط
                 function openMeetAndStart() {
-                    // فتح Google Meet في نافذة جديدة
                     const meetWindow = window.open('https://meet.google.com/new', '_blank');
                     
-                    // طلب من الأستاذ إدخال الرابط بعد الإنشاء
                     setTimeout(() => {
                         const url = prompt('📌 الصق رابط Google Meet هنا:', 'https://meet.google.com/');
                         if (url && url.includes('meet.google.com')) {
@@ -4623,7 +4675,8 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
                             method: 'POST',
                             headers: {
                                 'Authorization': 'Bearer ' + authToken,
-                                'Content-Type': 'application/json'
+                                'Content-Type': 'application/json',
+                                'X-CSRF-Token': csrfToken
                             },
                             body: JSON.stringify({
                                 offer_id: offerId,
@@ -4639,7 +4692,8 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
                                 method: 'POST',
                                 headers: {
                                     'Authorization': 'Bearer ' + authToken,
-                                    'Content-Type': 'application/json'
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-Token': csrfToken
                                 },
                                 body: JSON.stringify({
                                     offer_id: offerId,
@@ -4666,11 +4720,13 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
                     }
                 }
 
-                // جلب قائمة الانتظار
                 async function loadWaitingList() {
                     try {
                         const response = await fetch('/api/stream/waiting-list/' + offerId + '/' + teacherId, {
-                            headers: { 'Authorization': 'Bearer ' + authToken }
+                            headers: { 
+                                'Authorization': 'Bearer ' + authToken,
+                                'X-CSRF-Token': csrfToken
+                            }
                         });
                         const students = await response.json();
                         const container = document.getElementById('studentsList');
@@ -4701,14 +4757,14 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
                     }
                 }
 
-                // إضافة طالب واحد
                 async function addStudent(studentId) {
                     try {
                         const response = await fetch('/api/stream/add-student/' + offerId, {
                             method: 'POST',
                             headers: {
                                 'Authorization': 'Bearer ' + authToken,
-                                'Content-Type': 'application/json'
+                                'Content-Type': 'application/json',
+                                'X-CSRF-Token': csrfToken
                             },
                             body: JSON.stringify({
                                 offer_id: offerId,
@@ -4729,7 +4785,6 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
                     }
                 }
 
-                // إضافة جميع الطلاب
                 async function addAllStudents() {
                     if (!confirm('⚠️ هل تريد إضافة جميع الطلاب في قائمة الانتظار إلى البث المباشر؟')) return;
 
@@ -4742,7 +4797,8 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
                             method: 'POST',
                             headers: {
                                 'Authorization': 'Bearer ' + authToken,
-                                'Content-Type': 'application/json'
+                                'Content-Type': 'application/json',
+                                'X-CSRF-Token': csrfToken
                             },
                             body: JSON.stringify({
                                 offer_id: offerId,
@@ -4764,7 +4820,6 @@ app.get('/api/teacher-start-stream/:offer_id/:teacher_id', async (req, res) => {
                     btn.textContent = '➕ إضافة جميع الطلاب إلى البث';
                 }
 
-                // تحميل القائمة كل 10 ثوانٍ
                 loadWaitingList();
                 setInterval(loadWaitingList, 10000);
 
@@ -5774,7 +5829,7 @@ if (require.main === module) {
         console.log('🔒 الأمان:');
         console.log('   ✅ Helmet مع CSP محسن');
         console.log('   ✅ JWT للمصادقة مع دعم Query Parameter');
-        console.log('   ✅ CSRF Protection');
+        console.log('   ✅ CSRF Protection مع استثناء مسارات البث');
         console.log('   ✅ Rate Limiting متقدم');
         console.log('   ✅ تنقية جميع المدخلات (XSS)');
         console.log('   ✅ تشفير عناوين IP');
@@ -5802,6 +5857,7 @@ if (require.main === module) {
         console.log('   ✅ فقط الطلاب الذين لديهم حجز مدفوع يمكنهم الدخول');
         console.log('   ✅ الأستاذ يمكنه إضافة الطلاب من قائمة الانتظار');
         console.log('   ✅ إضافة طالب واحد أو جميع الطلاب');
+        console.log('   ✅ معالجة CSRF Token تلقائياً');
         console.log('='.repeat(60));
         console.log(`📅 التاريخ: ${new Date().toLocaleString('ar-EG')}`);
         console.log('='.repeat(60));
