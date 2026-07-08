@@ -5520,6 +5520,133 @@ app.post('/api/stream/add-student-to-stream/:offer_id', [
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
+// ============================================================
+// مسار التحقق من البث ودخول الطالب - ✅ معدل
+// ============================================================
+app.get('/api/student/stream-status/:offer_id/:student_id', [
+    authenticate,
+    authorize(['student']),
+    param('offer_id').isInt().withMessage('معرف العرض غير صالح'),
+    param('student_id').isInt().withMessage('معرف الطالب غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { offer_id, student_id } = req.params;
+
+        if (req.user.userId !== parseInt(student_id)) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        // ✅ التحقق من أن الطالب لديه حجز مدفوع
+        const session = await getOne('sessions', 'offer_id', offer_id);
+        if (!session || session.student_id !== parseInt(student_id) || session.payment_status !== 'paid') {
+            return res.json({ 
+                can_join: false, 
+                error: 'لا يوجد حجز مدفوع',
+                status: 'no_booking'
+            });
+        }
+
+        const offer = await getOne('offers', 'id', offer_id);
+        if (!offer) {
+            return res.json({ 
+                can_join: false, 
+                status: 'not_found',
+                error: 'العرض غير موجود'
+            });
+        }
+
+        // ✅ إذا كان البث مباشر (live)
+        if (offer.status === 'live') {
+            // ✅ التحقق من أن الطالب مضاف إلى active_stream
+            const { data: active } = await supabase
+                .from('active_stream')
+                .select('*')
+                .eq('offer_id', offer_id)
+                .eq('student_id', student_id)
+                .single();
+
+            // ✅ إذا لم يكن الطالب مضافاً، نضيفه تلقائياً
+            if (!active) {
+                console.log(`🔄 إضافة الطالب ${student_id} إلى active_stream تلقائياً`);
+                await insert('active_stream', {
+                    offer_id: parseInt(offer_id),
+                    student_id: parseInt(student_id),
+                    teacher_id: offer.teacher_id,
+                    joined_at: new Date().toISOString(),
+                    added_at: new Date().toISOString(),
+                    added_by_teacher: false,
+                    last_ping: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                });
+            }
+
+            // ✅ تحديث الإشعارات كمقروءة
+            await supabase
+                .from('notifications')
+                .update({ is_read: true })
+                .eq('offer_id', offer_id)
+                .eq('user_id', student_id);
+
+            return res.json({ 
+                can_join: true, 
+                stream_url: offer.stream_url, 
+                status: 'live',
+                offer_id: offer_id
+            });
+        } 
+        // ✅ إذا كان البث في حالة انتظار
+        else if (offer.status === 'teacher_ready') {
+            const { data: existingWaiting } = await supabase
+                .from('waiting_room')
+                .select('*')
+                .eq('offer_id', offer_id)
+                .eq('student_id', student_id)
+                .maybeSingle();
+
+            if (!existingWaiting) {
+                await insert('waiting_room', { 
+                    offer_id: offer_id, 
+                    student_id: student_id 
+                });
+            }
+            return res.json({ 
+                can_join: false, 
+                is_waiting: true, 
+                status: 'waiting' 
+            });
+        } 
+        // ✅ إذا كان البث قادم
+        else if (offer.status === 'upcoming') {
+            return res.json({ 
+                can_join: false, 
+                is_upcoming: true, 
+                status: 'upcoming', 
+                offer_date: offer.offer_date 
+            });
+        } 
+        // ✅ إذا كان البث منتهي
+        else if (offer.status === 'completed') {
+            return res.json({ 
+                can_join: false, 
+                status: 'completed',
+                error: 'انتهى البث المباشر'
+            });
+        }
+
+        return res.json({ 
+            can_join: false, 
+            status: 'unknown' 
+        });
+    } catch (error) {
+        console.error('❌ خطأ في حالة البث للطالب:', error.message);
+        res.status(500).json({ can_join: false, status: 'error' });
+    }
+});
 
 // ============================================================
 // ============================================================
