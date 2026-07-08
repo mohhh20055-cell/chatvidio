@@ -7,6 +7,7 @@ const router = express.Router();
 const { body, param, validationResult } = require('express-validator');
 const multer = require('multer');
 const path = require('path');
+const crypto = require('crypto');
 
 const { supabase } = require('../config/database');
 const { authenticate, checkBanned } = require('../middleware/auth');
@@ -149,7 +150,7 @@ router.get('/bookings/:student_id', authenticate, authorize(['student']), [
 
         const { data } = await supabase
             .from('sessions')
-            .select('*, offers:offer_id (id, subject_name, offer_date, duration, price, is_free, status, room_name, teachers:teacher_id (id, full_name, profile_image, profile_url))')
+            .select('*, offers:offer_id (id, subject_name, offer_date, duration, price, is_free, status, room_name, stream_url, stream_platform, room_password, teachers:teacher_id (id, full_name, profile_image, profile_url))')
             .eq('student_id', student_id)
             .order('created_at', { ascending: false });
 
@@ -170,6 +171,9 @@ router.get('/bookings/:student_id', authenticate, authorize(['student']), [
             is_free: s.offers?.is_free,
             offer_status: s.offers?.status,
             room_name: s.offers?.room_name,
+            stream_url: s.offers?.stream_url,
+            stream_platform: s.offers?.stream_platform,
+            room_password: s.offers?.room_password,
             teacher_id: s.offers?.teachers?.id,
             teacher_name: s.offers?.teachers?.full_name,
             teacher_image: s.offers?.teachers?.profile_image,
@@ -184,7 +188,7 @@ router.get('/bookings/:student_id', authenticate, authorize(['student']), [
 });
 
 // ============================================================
-// ✅ جلب حالة البث للطالب (معدل)
+// ✅ جلب حالة البث للطالب (معدل - يدعم Jitsi)
 // ============================================================
 router.get('/stream-status/:offer_id/:student_id', authenticate, authorize(['student']), [
     param('offer_id').isInt().withMessage('معرف العرض غير صالح'),
@@ -211,7 +215,7 @@ router.get('/stream-status/:offer_id/:student_id', authenticate, authorize(['stu
         const offer = await getOne('offers', 'id', offer_id);
         if (!offer) return res.json({ can_join: false, status: 'not_found' });
 
-        // ✅ إذا كان البث مباشراً ولديه رابط
+        // ✅ إذا كان البث مباشراً ولديه رابط (يدعم Jitsi و Google Meet)
         if (offer.status === 'live' && offer.stream_url) {
             // ✅ التحقق من أن الطالب مضاف إلى active_stream
             const { data: active } = await supabase
@@ -238,11 +242,25 @@ router.get('/stream-status/:offer_id/:student_id', authenticate, authorize(['stu
                 .eq('offer_id', offer_id)
                 .eq('user_id', student_id);
 
+            // ✅ جلب كلمة المرور الفريدة للطالب (لـ Jitsi)
+            const { data: studentPass } = await supabase
+                .from('student_room_passwords')
+                .select('password')
+                .eq('offer_id', offer_id)
+                .eq('student_id', student_id)
+                .eq('used', false)
+                .single();
+
+            // ✅ التحقق من وجود كلمة مرور الغرفة
+            const roomPassword = studentPass?.password || offer.room_password || '';
+
             return res.json({ 
                 can_join: true, 
                 stream_url: offer.stream_url, 
                 status: 'live',
-                platform: offer.stream_platform || 'google-meet'
+                platform: offer.stream_platform || 'jitsi',
+                room_password: roomPassword,
+                has_password: !!roomPassword
             });
         }
 
@@ -275,6 +293,71 @@ router.get('/stream-status/:offer_id/:student_id', authenticate, authorize(['stu
     } catch (error) {
         console.error('خطأ في جلب حالة البث:', error.message);
         res.status(500).json({ can_join: false, status: 'error' });
+    }
+});
+
+// ============================================================
+// ✅ جلب كلمة مرور البث للطالب (لـ Jitsi)
+// ============================================================
+router.get('/stream-password/:offer_id/:student_id', authenticate, authorize(['student']), [
+    param('offer_id').isInt().withMessage('معرف العرض غير صالح'),
+    param('student_id').isInt().withMessage('معرف الطالب غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { offer_id, student_id } = req.params;
+
+        if (req.user.userId !== parseInt(student_id)) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        // ✅ التحقق من أن الطالب لديه حجز مدفوع
+        const session = await getOne('sessions', 'offer_id', offer_id);
+        if (!session || session.student_id !== parseInt(student_id) || session.payment_status !== 'paid') {
+            return res.status(403).json({ success: false, error: 'لا يوجد حجز مدفوع' });
+        }
+
+        // ✅ جلب كلمة المرور الفريدة للطالب
+        const { data: studentPass } = await supabase
+            .from('student_room_passwords')
+            .select('password')
+            .eq('offer_id', offer_id)
+            .eq('student_id', student_id)
+            .eq('used', false)
+            .single();
+
+        // ✅ إذا لم توجد كلمة مرور، جلب كلمة مرور الغرفة العامة
+        let password = studentPass?.password || null;
+        
+        if (!password) {
+            const offer = await getOne('offers', 'id', offer_id);
+            password = offer?.room_password || null;
+        }
+
+        if (!password) {
+            return res.json({ success: false, error: 'لا توجد كلمة مرور للبث' });
+        }
+
+        // ✅ تسجيل استخدام كلمة المرور
+        if (studentPass) {
+            await supabase
+                .from('student_room_passwords')
+                .update({ used: true, used_at: new Date().toISOString() })
+                .eq('id', studentPass.id);
+        }
+
+        res.json({
+            success: true,
+            password: password,
+            room_password: password
+        });
+    } catch (error) {
+        console.error('خطأ في جلب كلمة مرور البث:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
 
