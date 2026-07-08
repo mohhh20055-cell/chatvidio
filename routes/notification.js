@@ -6,10 +6,22 @@ const express = require('express');
 const router = express.Router();
 const { param, validationResult } = require('express-validator');
 
-// استيراد الدوال المساعدة
 const { supabase } = require('../config/database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, checkBanned } = require('../middleware/auth');
 const { update } = require('../utils/helpers');
+
+// ✅ تعريف authorize محلياً (ليس مستخدم هنا لكن للتوحيد)
+function authorize(roles = []) {
+    return (req, res, next) => {
+        if (!req.user) {
+            return res.status(401).json({ success: false, error: 'غير مصرح به' });
+        }
+        if (roles.length > 0 && !roles.includes(req.user.role)) {
+            return res.status(403).json({ success: false, error: 'صلاحيات غير كافية' });
+        }
+        next();
+    };
+}
 
 // ============================================================
 // جلب الإشعارات
@@ -40,6 +52,7 @@ router.get('/:user_id/:user_type', authenticate, [
 
         res.json(data || []);
     } catch (error) {
+        console.error('خطأ في جلب الإشعارات:', error.message);
         res.status(500).json([]);
     }
 });
@@ -71,6 +84,7 @@ router.post('/read/:notification_id', authenticate, [
         await update('notifications', notification_id, { is_read: true });
         res.json({ success: true });
     } catch (error) {
+        console.error('خطأ في تحديث الإشعار:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
