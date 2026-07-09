@@ -1,5 +1,5 @@
 // ============================================================
-// مسارات الأستاذ - Teacher Routes (معدل بالكامل)
+// مسارات الأستاذ - Teacher Routes (مصلح بالكامل)
 // ============================================================
 
 const express = require('express');
@@ -100,8 +100,8 @@ router.post('/update-profile', authenticate, authorize(['teacher']), upload.sing
 
         const updateData = {
             profile_image: uploaded.filename,
-            profile_url: uploaded.url,
-            updated_at: new Date().toISOString()
+            profile_url: uploaded.url
+            // ❌ إزالة updated_at لتجنب خطأ العمود
         };
 
         const { data, error } = await supabase
@@ -124,7 +124,7 @@ router.post('/update-profile', authenticate, authorize(['teacher']), upload.sing
 });
 
 // ============================================================
-// تحديث الملف الشخصي مع الروابط الاجتماعية
+// ✅ تحديث الملف الشخصي مع الروابط الاجتماعية والمستوى التعليمي (مصلح)
 // ============================================================
 router.post('/update-profile-with-social', authenticate, authorize(['teacher']), upload.fields([
     { name: 'profile_image', maxCount: 1 }
@@ -137,7 +137,21 @@ router.post('/update-profile-with-social', authenticate, authorize(['teacher']),
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        const { teacher_id, facebook_url, instagram_url, linkedin_url, youtube_url, twitter_url, website_url, whatsapp_url } = req.body;
+        // ✅ إضافة teaching_level إلى المتغيرات المستخرجة
+        const { 
+            teacher_id, 
+            facebook_url, 
+            instagram_url, 
+            linkedin_url, 
+            youtube_url, 
+            twitter_url, 
+            website_url, 
+            whatsapp_url,
+            teaching_level  // ← هذا مهم!
+        } = req.body;
+
+        console.log('📝 تحديث الملف الشخصي للأستاذ:', teacher_id);
+        console.log('🎓 المستوى التعليمي:', teaching_level);
 
         if (req.user.userId !== parseInt(teacher_id)) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بتحديث هذا الملف' });
@@ -160,13 +174,18 @@ router.post('/update-profile-with-social', authenticate, authorize(['teacher']),
             }
         }
 
-        const updateData = {
-            updated_at: new Date().toISOString()
-        };
+        // ✅ بناء كائن التحديث بدون updated_at
+        const updateData = {};
 
         if (profile_image) { updateData.profile_image = profile_image; }
         if (profile_url) { updateData.profile_url = profile_url; }
 
+        // ✅ إضافة teaching_level إذا تم إرساله
+        if (teaching_level !== undefined && teaching_level !== null) {
+            updateData.teaching_level = teaching_level.trim() || null;
+        }
+
+        // ✅ روابط التواصل الاجتماعي
         const socialFields = {
             facebook_url,
             instagram_url,
@@ -190,27 +209,40 @@ router.post('/update-profile-with-social', authenticate, authorize(['teacher']),
             }
         }
 
+        console.log('💾 البيانات المراد تحديثها:', updateData);
+
+        // ✅ تحديث قاعدة البيانات
         const { data, error } = await supabase
             .from('teachers')
             .update(updateData)
             .eq('id', teacher_id)
             .select();
 
-        if (error) throw error;
+        if (error) {
+            console.error('❌ خطأ في تحديث قاعدة البيانات:', error);
+            throw error;
+        }
+
+        const updatedTeacher = data ? data[0] : null;
+
+        console.log('✅ تم تحديث الملف الشخصي بنجاح');
+        console.log('🎓 المستوى التعليمي المحفوظ:', updatedTeacher?.teaching_level);
 
         res.json({
             success: true,
-            message: 'تم تحديث الملف الشخصي وروابط التواصل الاجتماعي بنجاح',
-            user: data ? data[0] : null
+            message: 'تم تحديث الملف الشخصي وروابط التواصل الاجتماعي والمستوى التعليمي بنجاح',
+            teaching_level: updatedTeacher?.teaching_level || null,
+            user: updatedTeacher
         });
     } catch (error) {
-        console.error('خطأ في تحديث الملف الشخصي:', error.message);
+        console.error('❌ خطأ في تحديث الملف الشخصي:', error.message);
+        console.error('📚 Stack:', error.stack);
         res.status(500).json({ success: false, error: error.message || 'حدث خطأ أثناء تحديث الملف الشخصي' });
     }
 });
 
 // ============================================================
-// جلب الرصيد والأرباح (معدل - تم إصلاح خطأ الاستعلام)
+// جلب الرصيد والأرباح
 // ============================================================
 router.get('/balance/:teacher_id', authenticate, authorize(['teacher']), [
     param('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
@@ -336,8 +368,8 @@ router.post('/withdraw-request', authenticate, authorize(['teacher']), [
 
         await update('teachers', teacher_id, {
             balance: (teacher.balance || 0) - amount,
-            pending_withdraw: (teacher.pending_withdraw || 0) + amount,
-            updated_at: new Date().toISOString()
+            pending_withdraw: (teacher.pending_withdraw || 0) + amount
+            // ❌ إزالة updated_at
         });
 
         await insert('notifications', {
@@ -394,7 +426,7 @@ router.get('/withdraw-requests/:teacher_id', authenticate, authorize(['teacher']
 });
 
 // ============================================================
-// ✅ جلب عروض الأستاذ (معدل - بدون علاقات معقدة)
+// جلب عروض الأستاذ
 // ============================================================
 router.get('/offers/:teacher_id', authenticate, authorize(['teacher']), [
     param('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
@@ -411,7 +443,6 @@ router.get('/offers/:teacher_id', authenticate, authorize(['teacher']), [
             return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه العروض' });
         }
 
-        // ✅ جلب العروض أولاً
         const { data: offers, error: offersError } = await supabase
             .from('offers')
             .select('*')
@@ -427,7 +458,6 @@ router.get('/offers/:teacher_id', authenticate, authorize(['teacher']), [
             return res.json([]);
         }
 
-        // ✅ تنسيق البيانات مباشرة من جدول العروض
         const formatted = offers.map(offer => ({
             id: offer.id,
             teacher_id: offer.teacher_id,
@@ -442,8 +472,8 @@ router.get('/offers/:teacher_id', authenticate, authorize(['teacher']), [
             room_password: offer.room_password || null,
             stream_url: offer.stream_url || null,
             stream_platform: offer.stream_platform || 'jitsi',
-            created_at: offer.created_at,
-            updated_at: offer.updated_at
+            created_at: offer.created_at
+            // ❌ إزالة updated_at
         }));
 
         res.json(formatted);
@@ -454,7 +484,7 @@ router.get('/offers/:teacher_id', authenticate, authorize(['teacher']), [
 });
 
 // ============================================================
-// ✅ جلب عرض محدد للأستاذ (معدل - مع كلمة المرور)
+// جلب عرض محدد للأستاذ
 // ============================================================
 router.get('/offer/:offer_id', authenticate, authorize(['teacher']), [
     param('offer_id').isInt().withMessage('معرف العرض غير صالح')
@@ -476,7 +506,6 @@ router.get('/offer/:offer_id', authenticate, authorize(['teacher']), [
             return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذا العرض' });
         }
 
-        // ✅ جلب عدد الطلاب المسجلين
         const { count: studentsCount, error: countError } = await supabase
             .from('sessions')
             .select('*', { count: 'exact', head: true })
@@ -501,7 +530,7 @@ router.get('/offer/:offer_id', authenticate, authorize(['teacher']), [
 });
 
 // ============================================================
-// ✅ تحديث كلمة مرور العرض (ميزة جديدة للأستاذ)
+// تحديث كلمة مرور العرض
 // ============================================================
 router.put('/offer/update-password/:offer_id', authenticate, authorize(['teacher']), [
     param('offer_id').isInt().withMessage('معرف العرض غير صالح'),
@@ -525,10 +554,9 @@ router.put('/offer/update-password/:offer_id', authenticate, authorize(['teacher
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
 
-        // ✅ تحديث كلمة المرور في جدول offers
         await update('offers', offer_id, {
-            room_password: password,
-            updated_at: new Date().toISOString()
+            room_password: password
+            // ❌ إزالة updated_at
         });
 
         res.json({
@@ -543,7 +571,7 @@ router.put('/offer/update-password/:offer_id', authenticate, authorize(['teacher
 });
 
 // ============================================================
-// ✅ جلب إحصائيات الأستاذ
+// جلب إحصائيات الأستاذ
 // ============================================================
 router.get('/stats/:teacher_id', authenticate, authorize(['teacher']), async (req, res) => {
     try {
@@ -553,7 +581,6 @@ router.get('/stats/:teacher_id', authenticate, authorize(['teacher']), async (re
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
 
-        // ✅ عدد العروض
         const { count: totalOffers, error: offersError } = await supabase
             .from('offers')
             .select('*', { count: 'exact', head: true })
@@ -563,7 +590,6 @@ router.get('/stats/:teacher_id', authenticate, authorize(['teacher']), async (re
             console.error('خطأ في جلب عدد العروض:', offersError.message);
         }
 
-        // ✅ عدد العروض النشطة
         const { count: activeOffers, error: activeError } = await supabase
             .from('offers')
             .select('*', { count: 'exact', head: true })
@@ -574,7 +600,6 @@ router.get('/stats/:teacher_id', authenticate, authorize(['teacher']), async (re
             console.error('خطأ في جلب عدد العروض النشطة:', activeError.message);
         }
 
-        // ✅ جلب العروض أولاً لحساب الطلاب
         const { data: offers, error: offersDataError } = await supabase
             .from('offers')
             .select('id')
@@ -590,7 +615,6 @@ router.get('/stats/:teacher_id', authenticate, authorize(['teacher']), async (re
         if (offers && offers.length > 0) {
             const offerIds = offers.map(o => o.id);
 
-            // ✅ عدد الطلاب المسجلين
             const { count: studentsCount, error: studentsError } = await supabase
                 .from('sessions')
                 .select('*', { count: 'exact', head: true })
@@ -603,7 +627,6 @@ router.get('/stats/:teacher_id', authenticate, authorize(['teacher']), async (re
                 totalStudents = studentsCount || 0;
             }
 
-            // ✅ عدد الحصص المكتملة
             const { count: completedCount, error: completedError } = await supabase
                 .from('sessions')
                 .select('*', { count: 'exact', head: true })
