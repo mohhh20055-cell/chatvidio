@@ -1,5 +1,5 @@
 // ============================================================
-// مسارات العروض - Offer Routes (معدل بالكامل - بدون علاقات معقدة)
+// مسارات العروض - Offer Routes (معدل بالكامل)
 // ============================================================
 
 const express = require('express');
@@ -8,84 +8,151 @@ const { body, param, validationResult } = require('express-validator');
 const crypto = require('crypto');
 
 const { supabase } = require('../config/database');
-const { authenticate, authorize, checkBanned } = require('../middleware/auth');
-const { getOne, insert, update, remove } = require('../utils/helpers');
+const { authenticate, authorize } = require('../middleware/auth');
+const { getOne, insert, update } = require('../utils/helpers');
 
 // ============================================================
-// ✅ إنشاء عرض جديد (معدل - مع كلمة مرور افتراضية)
+// ✅ إنشاء عرض جديد (مصلح بالكامل)
 // ============================================================
 router.post('/offer/create', authenticate, authorize(['teacher']), [
-    body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح'),
     body('subject_name').notEmpty().withMessage('اسم المادة مطلوب').isLength({ max: 100 }),
     body('duration').isInt({ min: 1, max: 360 }).withMessage('المدة غير صالحة (1-360 دقيقة)'),
     body('offer_date').notEmpty().withMessage('تاريخ العرض مطلوب').isISO8601().withMessage('تاريخ غير صالح'),
-    body('price').isFloat({ min: 0, max: 1000000 }).withMessage('السعر غير صالح')
+    body('price').isFloat({ min: 0, max: 1000000 }).withMessage('السعر غير صالح'),
+    body('is_free').optional().isBoolean().withMessage('is_free يجب أن يكون true أو false'),
+    body('education_level').optional().isString().withMessage('المستوى التعليمي يجب أن يكون نصاً')
 ], async (req, res) => {
     try {
+        // ✅ التحقق من صحة المدخلات
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
+            console.log('❌ أخطاء في التحقق:', errors.array());
+            return res.status(400).json({ 
+                success: false, 
+                errors: errors.array() 
+            });
         }
 
-        const { teacher_id, subject_name, duration, offer_date, price, is_free, education_level } = req.body;
+        const { 
+            subject_name, 
+            duration, 
+            offer_date, 
+            price, 
+            is_free = false, 
+            education_level = null 
+        } = req.body;
 
-        if (req.user.userId !== teacher_id) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك بإنشاء عروض لهذا الحساب' });
+        // ✅ استخدام teacher_id من التوكن (الأكثر أماناً)
+        const teacher_id = req.user.userId;
+
+        console.log('📝 محاولة إنشاء عرض للأستاذ:', teacher_id);
+        console.log('📚 المادة:', subject_name);
+
+        // ✅ التحقق من وجود الأستاذ في جدول teachers
+        const { data: teacher, error: teacherError } = await supabase
+            .from('teachers')
+            .select('id, full_name, status, specialization')
+            .eq('id', teacher_id)
+            .single();
+
+        if (teacherError || !teacher) {
+            console.error('❌ الأستاذ غير موجود:', teacherError?.message);
+            return res.status(404).json({ 
+                success: false, 
+                error: 'الأستاذ غير موجود في النظام' 
+            });
         }
 
-        const teacher = await getOne('teachers', 'id', teacher_id);
-        if (!teacher) {
-            return res.status(404).json({ success: false, error: 'الأستاذ غير موجود' });
-        }
+        console.log('👨‍🏫 الأستاذ:', teacher.full_name);
+        console.log('📊 الحالة:', teacher.status);
 
+        // ✅ التحقق من أن الحساب معتمد
         if (teacher.status !== 'approved') {
-            return res.status(403).json({ success: false, error: 'حسابك غير معتمد بعد، يرجى الانتظار حتى مراجعة الإدارة' });
+            return res.status(403).json({ 
+                success: false, 
+                error: 'حسابك غير معتمد بعد، يرجى الانتظار حتى مراجعة الإدارة' 
+            });
         }
 
+        // ✅ إنشاء كلمات المرور والغرفة
         const room_name = `stream_${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;
         const defaultPassword = crypto.randomBytes(4).toString('hex').toUpperCase();
 
-        const newOffer = await insert('offers', {
-            teacher_id,
+        // ✅ إدخال العرض في قاعدة البيانات
+        const newOffer = {
+            teacher_id: teacher_id,
             subject_name: subject_name.trim(),
             duration: parseInt(duration),
             offer_date: new Date(offer_date).toISOString(),
             price: parseFloat(price) || 0,
             is_free: is_free ? true : false,
-            room_name,
+            room_name: room_name,
             room_password: defaultPassword,
             status: 'upcoming',
             education_level: education_level || null,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
-        });
+        };
 
+        console.log('💾 إدخال العرض:', newOffer);
+
+        const { data: insertedOffer, error: insertError } = await supabase
+            .from('offers')
+            .insert(newOffer)
+            .select()
+            .single();
+
+        if (insertError) {
+            console.error('❌ خطأ في إدخال العرض:', insertError);
+            return res.status(500).json({ 
+                success: false, 
+                error: 'حدث خطأ في قاعدة البيانات: ' + insertError.message 
+            });
+        }
+
+        if (!insertedOffer) {
+            return res.status(500).json({ 
+                success: false, 
+                error: 'فشل إنشاء العرض، يرجى المحاولة مرة أخرى' 
+            });
+        }
+
+        console.log('✅ تم إنشاء العرض بنجاح:', insertedOffer.id);
+
+        // ✅ إرجاع النتيجة
         res.json({ 
             success: true, 
             message: 'تم إنشاء العرض بنجاح',
-            room_name,
+            room_name: room_name,
             default_password: defaultPassword,
             offer: {
-                id: newOffer.id,
-                subject_name: newOffer.subject_name,
-                duration: newOffer.duration,
-                offer_date: newOffer.offer_date,
-                price: newOffer.price,
-                is_free: newOffer.is_free,
-                status: newOffer.status,
-                education_level: newOffer.education_level,
-                room_password: defaultPassword
+                id: insertedOffer.id,
+                teacher_id: insertedOffer.teacher_id,
+                subject_name: insertedOffer.subject_name,
+                duration: insertedOffer.duration,
+                offer_date: insertedOffer.offer_date,
+                price: insertedOffer.price,
+                is_free: insertedOffer.is_free,
+                status: insertedOffer.status,
+                education_level: insertedOffer.education_level,
+                room_name: insertedOffer.room_name,
+                room_password: insertedOffer.room_password,
+                created_at: insertedOffer.created_at
             }
         });
+
     } catch (error) {
-        console.error('خطأ في إنشاء العرض:', error.message);
-        console.error('Stack:', error.stack);
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم أثناء إنشاء العرض' });
+        console.error('❌ خطأ في إنشاء العرض:', error.message);
+        console.error('📚 Stack:', error.stack);
+        res.status(500).json({ 
+            success: false, 
+            error: 'حدث خطأ في الخادم أثناء إنشاء العرض: ' + error.message 
+        });
     }
 });
 
 // ============================================================
-// ✅ جلب جميع العروض القادمة (معدل - بدون علاقات معقدة)
+// ✅ جلب جميع العروض القادمة (معدل)
 // ============================================================
 router.get('/offers', async (req, res) => {
     try {
@@ -154,7 +221,7 @@ router.get('/offers', async (req, res) => {
 });
 
 // ============================================================
-// ✅ جلب العروض المباشرة (معدل - بدون علاقات معقدة)
+// ✅ جلب العروض المباشرة
 // ============================================================
 router.get('/live-offers', async (req, res) => {
     try {
@@ -189,7 +256,6 @@ router.get('/live-offers', async (req, res) => {
             }
         }
 
-        // ✅ تنسيق البيانات
         const formatted = offers.map(offer => {
             const teacher = teachersMap[offer.teacher_id] || {};
 
@@ -222,7 +288,7 @@ router.get('/live-offers', async (req, res) => {
 });
 
 // ============================================================
-// ✅ جلب عرض محدد (معدل - بدون علاقات معقدة)
+// ✅ جلب عرض محدد
 // ============================================================
 router.get('/offer/:offer_id', async (req, res) => {
     try {
@@ -260,17 +326,6 @@ router.get('/offer/:offer_id', async (req, res) => {
             console.error('خطأ في جلب عدد الطلاب:', countError.message);
         }
 
-        // ✅ جلب قائمة الطلاب المسجلين
-        const { data: students, error: studentsError } = await supabase
-            .from('sessions')
-            .select('student_id, students:student_id (id, full_name, email, profile_url)')
-            .eq('offer_id', offer_id)
-            .eq('payment_status', 'paid');
-
-        if (studentsError) {
-            console.error('خطأ في جلب قائمة الطلاب:', studentsError.message);
-        }
-
         res.json({
             id: offer.id,
             teacher_id: offer.teacher_id,
@@ -290,8 +345,7 @@ router.get('/offer/:offer_id', async (req, res) => {
             teacher_specialization: teacher?.specialization || '',
             teacher_profile_image: teacher?.profile_image || null,
             teacher_profile_url: teacher?.profile_url || null,
-            students_count: studentsCount || 0,
-            students: students || []
+            students_count: studentsCount || 0
         });
     } catch (error) {
         console.error('خطأ في جلب العرض:', error.message);
@@ -300,49 +354,50 @@ router.get('/offer/:offer_id', async (req, res) => {
 });
 
 // ============================================================
-// ✅ تحديث كلمة مرور العرض (ميزة جديدة)
+// ✅ جلب عروض الأستاذ (للوحة التحكم)
 // ============================================================
-router.put('/offer/update-password/:offer_id', authenticate, authorize(['teacher']), [
-    param('offer_id').isInt().withMessage('معرف العرض غير صالح'),
-    body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح'),
-    body('password').isLength({ min: 4, max: 10 }).withMessage('كلمة المرور يجب أن تكون بين 4 و 10 أحرف')
-], async (req, res) => {
+router.get('/teacher/offers/:teacher_id', authenticate, authorize(['teacher']), async (req, res) => {
     try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const offer_id = parseInt(req.params.offer_id);
-        const { teacher_id, password } = req.body;
-
+        const teacher_id = parseInt(req.params.teacher_id);
+        
         if (req.user.userId !== teacher_id) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
 
-        const offer = await getOne('offers', 'id', offer_id);
-        if (!offer) {
-            return res.status(404).json({ success: false, error: 'العرض غير موجود' });
+        const { data: offers, error: offersError } = await supabase
+            .from('offers')
+            .select('*')
+            .eq('teacher_id', teacher_id)
+            .order('offer_date', { ascending: false });
+
+        if (offersError) throw offersError;
+
+        if (!offers || offers.length === 0) {
+            return res.json([]);
         }
 
-        if (offer.teacher_id !== teacher_id) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك بتحديث كلمة مرور هذا العرض' });
-        }
+        const formatted = offers.map(offer => ({
+            id: offer.id,
+            teacher_id: offer.teacher_id,
+            subject_name: offer.subject_name,
+            duration: offer.duration,
+            offer_date: offer.offer_date,
+            price: offer.price,
+            is_free: offer.is_free,
+            status: offer.status,
+            education_level: offer.education_level,
+            room_name: offer.room_name || null,
+            room_password: offer.room_password || null,
+            stream_url: offer.stream_url || null,
+            stream_platform: offer.stream_platform || 'jitsi',
+            created_at: offer.created_at,
+            updated_at: offer.updated_at
+        }));
 
-        // ✅ تحديث كلمة المرور في جدول offers
-        await update('offers', offer_id, {
-            room_password: password,
-            updated_at: new Date().toISOString()
-        });
-
-        res.json({
-            success: true,
-            message: 'تم تحديث كلمة المرور بنجاح',
-            new_password: password
-        });
+        res.json(formatted);
     } catch (error) {
-        console.error('خطأ في تحديث كلمة المرور:', error.message);
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+        console.error('خطأ في جلب عروض الأستاذ:', error.message);
+        res.status(500).json([]);
     }
 });
 
@@ -350,8 +405,7 @@ router.put('/offer/update-password/:offer_id', authenticate, authorize(['teacher
 // ✅ حذف عرض
 // ============================================================
 router.delete('/offer/delete/:offer_id', authenticate, authorize(['teacher']), [
-    param('offer_id').isInt().withMessage('معرف العرض غير صالح'),
-    body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
+    param('offer_id').isInt().withMessage('معرف العرض غير صالح')
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -360,11 +414,7 @@ router.delete('/offer/delete/:offer_id', authenticate, authorize(['teacher']), [
         }
 
         const offer_id = parseInt(req.params.offer_id);
-        const { teacher_id } = req.body;
-
-        if (req.user.userId !== teacher_id) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك بحذف هذا العرض' });
-        }
+        const teacher_id = req.user.userId;
 
         const offer = await getOne('offers', 'id', offer_id);
         if (!offer) {
@@ -382,118 +432,26 @@ router.delete('/offer/delete/:offer_id', authenticate, authorize(['teacher']), [
             });
         }
 
-        // ✅ حذف البيانات المرتبطة بالعرض
-        const tables = [
-            'student_room_passwords',
-            'sessions',
-            'waiting_room',
-            'active_stream'
-        ];
-
+        // ✅ حذف البيانات المرتبطة
+        const tables = ['sessions', 'waiting_room', 'active_stream'];
         for (const table of tables) {
             try {
-                const { error: deleteError } = await supabase
-                    .from(table)
-                    .delete()
-                    .eq('offer_id', offer_id);
-
-                if (deleteError) {
-                    console.error(`خطأ في حذف البيانات من ${table}:`, deleteError.message);
-                }
-            } catch (deleteError) {
-                console.error(`خطأ في حذف البيانات من ${table}:`, deleteError.message);
+                await supabase.from(table).delete().eq('offer_id', offer_id);
+            } catch (e) {
+                console.error(`خطأ في حذف ${table}:`, e.message);
             }
         }
 
-        // ✅ حذف العرض نفسه
-        const { error: offerDeleteError } = await supabase
-            .from('offers')
-            .delete()
-            .eq('id', offer_id);
-
-        if (offerDeleteError) {
-            throw offerDeleteError;
-        }
+        // ✅ حذف العرض
+        await supabase.from('offers').delete().eq('id', offer_id);
 
         res.json({ 
             success: true, 
-            message: 'تم حذف العرض وجميع البيانات المرتبطة به بنجاح'
+            message: 'تم حذف العرض بنجاح'
         });
     } catch (error) {
         console.error('خطأ في حذف العرض:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
-    }
-});
-
-// ============================================================
-// ✅ عدد المنتظرين في العرض
-// ============================================================
-router.get('/waiting-count/:offer_id', async (req, res) => {
-    try {
-        const offer_id = parseInt(req.params.offer_id);
-        
-        const { count, error } = await supabase
-            .from('waiting_room')
-            .select('*', { count: 'exact', head: true })
-            .eq('offer_id', offer_id);
-
-        if (error) throw error;
-
-        res.json({ count: count || 0 });
-    } catch (error) {
-        console.error('خطأ في جلب عدد المنتظرين:', error.message);
-        res.json({ count: 0 });
-    }
-});
-
-// ============================================================
-// ✅ جلب عروض الأستاذ (للوحة التحكم - معدل بدون علاقات)
-// ============================================================
-router.get('/teacher/offers/:teacher_id', authenticate, authorize(['teacher']), async (req, res) => {
-    try {
-        const teacher_id = parseInt(req.params.teacher_id);
-        
-        if (req.user.userId !== teacher_id) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
-        }
-
-        // ✅ جلب العروض أولاً
-        const { data: offers, error: offersError } = await supabase
-            .from('offers')
-            .select('*')
-            .eq('teacher_id', teacher_id)
-            .order('offer_date', { ascending: false });
-
-        if (offersError) throw offersError;
-
-        if (!offers || offers.length === 0) {
-            return res.json([]);
-        }
-
-        // ✅ تنسيق البيانات مع كلمات المرور
-        const formatted = offers.map(offer => ({
-            id: offer.id,
-            teacher_id: offer.teacher_id,
-            subject_name: offer.subject_name,
-            duration: offer.duration,
-            offer_date: offer.offer_date,
-            price: offer.price,
-            is_free: offer.is_free,
-            status: offer.status,
-            education_level: offer.education_level,
-            room_name: offer.room_name || null,
-            room_password: offer.room_password || null,
-            jitsi_room_url: offer.stream_url || null,
-            stream_url: offer.stream_url || null,
-            stream_platform: offer.stream_platform || 'jitsi',
-            created_at: offer.created_at,
-            updated_at: offer.updated_at
-        }));
-
-        res.json(formatted);
-    } catch (error) {
-        console.error('خطأ في جلب عروض الأستاذ:', error.message);
-        res.status(500).json([]);
     }
 });
 
