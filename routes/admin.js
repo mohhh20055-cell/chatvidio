@@ -303,16 +303,21 @@ router.post('/delete-user', [
         }
         
         // جلب IP المستخدم
-        const { data: loginLog } = await supabase
-            .from('login_logs')
-            .select('ip_address_encrypted')
-            .eq('user_id', user_id)
-            .eq('user_role', role)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
-        
-        const userIp = loginLog?.ip_address_encrypted || null;
+        let userIp = null;
+        try {
+            const { data: loginLog } = await supabase
+                .from('login_logs')
+                .select('ip_address_encrypted')
+                .eq('user_id', user_id)
+                .eq('user_role', role)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
+            
+            userIp = loginLog?.ip_address_encrypted || null;
+        } catch (logError) {
+            console.warn('⚠️ لا يوجد سجل دخول لهذا المستخدم:', logError.message);
+        }
         
         // حذف المستخدم
         const { error } = await supabase
@@ -361,7 +366,7 @@ router.post('/delete-user', [
 });
 
 // ============================================================
-// ✅ حظر المستخدم
+// ✅ حظر المستخدم - معدل للتعامل مع حالة عدم وجود IP
 // ============================================================
 router.post('/ban-user', [
     authenticate,
@@ -385,21 +390,31 @@ router.post('/ban-user', [
             return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
         }
         
-        const { data: loginLog } = await supabase
-            .from('login_logs')
-            .select('ip_address_encrypted')
-            .eq('user_id', user_id)
-            .eq('user_role', role)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
-        
-        const userIp = loginLog?.ip_address_encrypted || null;
-        
-        if (!userIp) {
-            return res.status(400).json({ success: false, error: 'لا يمكن تحديد IP المستخدم' });
+        // ✅ محاولة جلب IP المستخدم
+        let userIp = null;
+        try {
+            const { data: loginLog } = await supabase
+                .from('login_logs')
+                .select('ip_address_encrypted')
+                .eq('user_id', user_id)
+                .eq('user_role', role)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
+            
+            userIp = loginLog?.ip_address_encrypted || null;
+        } catch (logError) {
+            console.warn('⚠️ لا يوجد سجل دخول لهذا المستخدم:', logError.message);
         }
         
+        // ✅ إذا لم يوجد IP، نستخدم معرف المستخدم كمعرف فريد للحظر
+        if (!userIp) {
+            console.log(`⚠️ لا يمكن تحديد IP للمستخدم ${user_id}, سيتم استخدام معرف المستخدم للحظر`);
+            // إنشاء معرف فريد للمستخدم
+            userIp = `user_${user_id}_${role}_${Date.now()}`;
+        }
+        
+        // ✅ التحقق من عدم وجود حظر سابق
         const { data: existingBan } = await supabase
             .from('banned_users')
             .select('*')
@@ -407,9 +422,27 @@ router.post('/ban-user', [
             .single();
         
         if (existingBan) {
-            return res.status(400).json({ success: false, error: 'هذا المستخدم محظور بالفعل' });
+            // ✅ إذا كان محظوراً بالفعل، قم بتحديث السبب والتاريخ
+            await supabase
+                .from('banned_users')
+                .update({
+                    ban_reason: reason || 'تم تحديث سبب الحظر',
+                    banned_at: new Date().toISOString(),
+                    banned_by: 'admin'
+                })
+                .eq('id', existingBan.id);
+            
+            // ✅ تحديث حالة المستخدم في جدول الطلاب/الأساتذة
+            await supabase
+                .from(tableName)
+                .update({ is_banned: true, ban_reason: reason || 'لم يتم تحديد سبب' })
+                .eq('id', user_id);
+            
+            console.log(`🔒 تم تحديث حظر المستخدم ${user_id}`);
+            return res.json({ success: true, message: 'تم تحديث حظر المستخدم بنجاح' });
         }
         
+        // ✅ إنشاء سجل حظر جديد
         await insert('banned_users', {
             user_id: user_id,
             user_role: role,
@@ -421,6 +454,7 @@ router.post('/ban-user', [
             banned_by: 'admin'
         });
         
+        // ✅ تحديث حالة المستخدم
         const { error } = await supabase
             .from(tableName)
             .update({ is_banned: true, ban_reason: reason || 'لم يتم تحديد سبب' })
@@ -855,14 +889,15 @@ router.get('/performance', authenticate, authorize(['admin']), async (req, res) 
 });
 
 // ============================================================
-// ✅ رسائل الدعم
+// ✅ رسائل الدعم - باستخدام جدول messages
 // ============================================================
 router.get('/support-messages', authenticate, authorize(['admin']), async (req, res) => {
     try {
         console.log('📥 جلب رسائل الدعم...');
         
+        // استخدام جدول messages بدلاً من support_messages
         const { data, error } = await supabase
-            .from('support_messages')
+            .from('messages')
             .select('*')
             .order('created_at', { ascending: false });
 
@@ -871,8 +906,24 @@ router.get('/support-messages', authenticate, authorize(['admin']), async (req, 
             return res.status(500).json({ success: false, error: error.message });
         }
 
-        console.log(`✅ تم جلب ${data?.length || 0} رسالة دعم`);
-        res.json(data || []);
+        // تحويل البيانات لتتناسب مع تنسيق رسائل الدعم
+        const formattedMessages = (data || []).map(msg => ({
+            id: msg.id,
+            name: 'مستخدم',
+            email: 'غير محدد',
+            phone: null,
+            subject: 'رسالة دعم',
+            message: msg.message,
+            status: msg.is_read ? 'read' : 'unread',
+            created_at: msg.created_at,
+            sender_id: msg.sender_id,
+            sender_type: msg.sender_type,
+            receiver_id: msg.receiver_id,
+            receiver_type: msg.receiver_type
+        }));
+
+        console.log(`✅ تم جلب ${formattedMessages.length} رسالة دعم`);
+        res.json(formattedMessages);
     } catch (error) {
         console.error('❌ خطأ في جلب رسائل الدعم:', error.message);
         res.status(500).json({ success: false, error: error.message });
@@ -897,8 +948,8 @@ router.put('/support-messages/:id/read', [
         console.log(`📥 تحديث رسالة دعم ID: ${id} كمقروءة`);
 
         const { error } = await supabase
-            .from('support_messages')
-            .update({ status: 'read' })
+            .from('messages')
+            .update({ is_read: true })
             .eq('id', id);
 
         if (error) {
@@ -932,7 +983,7 @@ router.delete('/support-messages/:id', [
         console.log(`📥 حذف رسالة دعم ID: ${id}`);
 
         const { error } = await supabase
-            .from('support_messages')
+            .from('messages')
             .delete()
             .eq('id', id);
 
