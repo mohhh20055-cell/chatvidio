@@ -438,7 +438,15 @@ const csrfExcludedPaths = [
     '/api/chargily-webhook',
     '/api/start-jitsi-stream',
     '/api/join-jitsi',
-    '/api/support/send'
+    '/api/support/send',
+    '/api/admin/send-notification-to-all-students',  // ✅ إرسال الإشعارات للطلاب
+    '/api/admin/students',  // ✅ جلب الطلاب (قد يكون مفيداً)
+    '/api/admin/approved-teachers',  // ✅ جلب الأساتذة المقبولين
+    '/api/admin/pending-teachers',  // ✅ جلب الأساتذة المعلقين
+    '/api/admin/banned-users',  // ✅ جلب المحظورين
+    '/api/admin/withdraw-requests',  // ✅ طلبات السحب
+    '/api/admin/support-messages',  // ✅ رسائل الدعم
+    '/api/admin/sent-notifications'  // ✅ الإشعارات المرسلة
 ];
 
 app.use((req, res, next) => {
