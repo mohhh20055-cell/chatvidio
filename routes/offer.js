@@ -1,5 +1,5 @@
 // ============================================================
-// مسارات العروض - Offer Routes (معدل بالكامل)
+// مسارات العروض - Offer Routes (معدل بالكامل مع دعم نظام البث والرصيد المعلق)
 // ============================================================
 
 const express = require('express');
@@ -12,7 +12,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { getOne, insert, update } = require('../utils/helpers');
 
 // ============================================================
-// ✅ إنشاء عرض جديد (مصلح بالكامل)
+// ✅ إنشاء عرض جديد (مع دعم نظام البث والرصيد المعلق)
 // ============================================================
 router.post('/offer/create', authenticate, authorize(['teacher']), [
     body('subject_name').notEmpty().withMessage('اسم المادة مطلوب').isLength({ max: 100 }),
@@ -42,7 +42,7 @@ router.post('/offer/create', authenticate, authorize(['teacher']), [
             education_level = null 
         } = req.body;
 
-        // ✅ استخدام teacher_id من التوكن (الأكثر أماناً)
+        // ✅ استخدام teacher_id من التوكن
         const teacher_id = req.user.userId;
 
         console.log('📝 محاولة إنشاء عرض للأستاذ:', teacher_id);
@@ -51,7 +51,7 @@ router.post('/offer/create', authenticate, authorize(['teacher']), [
         // ✅ التحقق من وجود الأستاذ في جدول teachers
         const { data: teacher, error: teacherError } = await supabase
             .from('teachers')
-            .select('id, full_name, status, specialization')
+            .select('id, full_name, status, specialization, teaching_level')
             .eq('id', teacher_id)
             .single();
 
@@ -74,11 +74,25 @@ router.post('/offer/create', authenticate, authorize(['teacher']), [
             });
         }
 
+        // ✅ التحقق من وجود المستوى التعليمي للأستاذ
+        if (!teacher.teaching_level && !education_level) {
+            return res.status(400).json({
+                success: false,
+                error: 'يرجى تحديد المستوى التعليمي للعرض أو تحديث ملفك الشخصي بالمستوى الذي تدرسه'
+            });
+        }
+
+        // ✅ استخدام مستوى الأستاذ إذا لم يتم تحديد مستوى للعرض
+        const finalEducationLevel = education_level || teacher.teaching_level;
+
+        // ✅ حساب الوقت الكلي بالثواني
+        const totalSeconds = parseInt(duration) * 60;
+
         // ✅ إنشاء كلمات المرور والغرفة
         const room_name = `stream_${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;
         const defaultPassword = crypto.randomBytes(4).toString('hex').toUpperCase();
 
-        // ✅ إدخال العرض في قاعدة البيانات
+        // ✅ إدخال العرض في قاعدة البيانات (مع حقول البث)
         const newOffer = {
             teacher_id: teacher_id,
             subject_name: subject_name.trim(),
@@ -89,7 +103,11 @@ router.post('/offer/create', authenticate, authorize(['teacher']), [
             room_name: room_name,
             room_password: defaultPassword,
             status: 'upcoming',
-            education_level: education_level || null,
+            education_level: finalEducationLevel,
+            total_seconds: totalSeconds,
+            remaining_seconds: totalSeconds,
+            is_paused: false,
+            booked_count: 0,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
         };
@@ -125,6 +143,7 @@ router.post('/offer/create', authenticate, authorize(['teacher']), [
             message: 'تم إنشاء العرض بنجاح',
             room_name: room_name,
             default_password: defaultPassword,
+            total_seconds: totalSeconds,
             offer: {
                 id: insertedOffer.id,
                 teacher_id: insertedOffer.teacher_id,
@@ -137,6 +156,8 @@ router.post('/offer/create', authenticate, authorize(['teacher']), [
                 education_level: insertedOffer.education_level,
                 room_name: insertedOffer.room_name,
                 room_password: insertedOffer.room_password,
+                total_seconds: insertedOffer.total_seconds,
+                remaining_seconds: insertedOffer.remaining_seconds,
                 created_at: insertedOffer.created_at
             }
         });
@@ -152,18 +173,126 @@ router.post('/offer/create', authenticate, authorize(['teacher']), [
 });
 
 // ============================================================
-// ✅ جلب جميع العروض القادمة (معدل)
+// ✅ تحديث عرض (مع دعم تحديث حالة البث)
+// ============================================================
+router.put('/offer/update/:offer_id', authenticate, authorize(['teacher']), [
+    param('offer_id').isInt().withMessage('معرف العرض غير صالح'),
+    body('subject_name').optional().isString().withMessage('اسم المادة يجب أن يكون نصاً'),
+    body('duration').optional().isInt({ min: 1, max: 360 }).withMessage('المدة غير صالحة (1-360 دقيقة)'),
+    body('offer_date').optional().isISO8601().withMessage('تاريخ غير صالح'),
+    body('price').optional().isFloat({ min: 0 }).withMessage('السعر غير صالح'),
+    body('is_free').optional().isBoolean().withMessage('is_free يجب أن يكون true أو false'),
+    body('education_level').optional().isString().withMessage('المستوى التعليمي يجب أن يكون نصاً'),
+    body('status').optional().isIn(['upcoming', 'live', 'paused', 'completed']).withMessage('حالة غير صالحة'),
+    body('remaining_seconds').optional().isInt().withMessage('الوقت المتبقي غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const offer_id = parseInt(req.params.offer_id);
+        const teacher_id = req.user.userId;
+
+        // ✅ التحقق من وجود العرض
+        const offer = await getOne('offers', 'id', offer_id);
+        if (!offer) {
+            return res.status(404).json({ success: false, error: 'العرض غير موجود' });
+        }
+
+        if (offer.teacher_id !== teacher_id) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك بتحديث هذا العرض' });
+        }
+
+        // ✅ تحضير بيانات التحديث
+        const updateData = {};
+        const allowedFields = ['subject_name', 'duration', 'offer_date', 'price', 'is_free', 'education_level', 'status', 'remaining_seconds'];
+
+        for (const field of allowedFields) {
+            if (req.body[field] !== undefined && req.body[field] !== null) {
+                if (field === 'duration') {
+                    updateData[field] = parseInt(req.body[field]);
+                    // ✅ تحديث total_seconds و remaining_seconds تلقائياً عند تغيير المدة
+                    const newTotalSeconds = parseInt(req.body[field]) * 60;
+                    updateData.total_seconds = newTotalSeconds;
+                    if (offer.status === 'upcoming') {
+                        updateData.remaining_seconds = newTotalSeconds;
+                    }
+                } else if (field === 'price') {
+                    updateData[field] = parseFloat(req.body[field]);
+                } else if (field === 'is_free') {
+                    updateData[field] = req.body[field] === true || req.body[field] === 'true';
+                } else if (field === 'status') {
+                    updateData[field] = req.body[field];
+                    if (req.body[field] === 'completed') {
+                        updateData.completed_at = new Date().toISOString();
+                    } else if (req.body[field] === 'paused') {
+                        updateData.is_paused = true;
+                        updateData.paused_at = new Date().toISOString();
+                    } else if (req.body[field] === 'live') {
+                        updateData.is_paused = false;
+                        if (!offer.stream_started_at) {
+                            updateData.stream_started_at = new Date().toISOString();
+                        }
+                    }
+                } else if (field === 'remaining_seconds') {
+                    updateData[field] = parseInt(req.body[field]);
+                } else {
+                    updateData[field] = req.body[field];
+                }
+            }
+        }
+
+        updateData.updated_at = new Date().toISOString();
+
+        console.log('📝 تحديث العرض:', offer_id, updateData);
+
+        const { data: updatedOffer, error: updateError } = await supabase
+            .from('offers')
+            .update(updateData)
+            .eq('id', offer_id)
+            .select()
+            .single();
+
+        if (updateError) {
+            console.error('❌ خطأ في تحديث العرض:', updateError);
+            return res.status(500).json({ success: false, error: updateError.message });
+        }
+
+        res.json({
+            success: true,
+            message: 'تم تحديث العرض بنجاح',
+            offer: updatedOffer
+        });
+    } catch (error) {
+        console.error('❌ خطأ في تحديث العرض:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
+// ✅ جلب جميع العروض القادمة (مع فلتر المستوى التعليمي)
 // ============================================================
 router.get('/offers', async (req, res) => {
     try {
         const now = new Date().toISOString();
         
-        const { data: offers, error } = await supabase
+        let query = supabase
             .from('offers')
             .select('*')
-            .eq('status', 'upcoming')
-            .gt('offer_date', now)
+            .in('status', ['upcoming', 'live', 'teacher_ready'])
             .order('offer_date', { ascending: true });
+
+        // ✅ فلتر حسب المستوى التعليمي (اختياري)
+        if (req.query.education_level) {
+            const level = req.query.education_level;
+            if (level !== 'all') {
+                query = query.eq('education_level', level);
+            }
+        }
+
+        const { data: offers, error } = await query;
 
         if (error) throw error;
 
@@ -193,6 +322,16 @@ router.get('/offers', async (req, res) => {
         const formatted = offers.map(offer => {
             const teacher = teachersMap[offer.teacher_id] || {};
 
+            // ✅ حساب الوقت المتبقي للعروض المباشرة
+            let remainingSeconds = offer.remaining_seconds || 0;
+            if (offer.status === 'live' && !offer.is_paused && offer.stream_started_at) {
+                const startedAt = new Date(offer.stream_started_at);
+                const nowTime = new Date();
+                const elapsed = Math.floor((nowTime - startedAt) / 1000);
+                const total = offer.total_seconds || (offer.duration * 60);
+                remainingSeconds = Math.max(0, total - elapsed);
+            }
+
             return {
                 id: offer.id,
                 teacher_id: offer.teacher_id,
@@ -205,6 +344,12 @@ router.get('/offers', async (req, res) => {
                 education_level: offer.education_level,
                 room_password: offer.room_password || null,
                 room_name: offer.room_name || null,
+                stream_url: offer.stream_url || null,
+                stream_platform: offer.stream_platform || 'jitsi',
+                total_seconds: offer.total_seconds || (offer.duration * 60),
+                remaining_seconds: remainingSeconds,
+                is_paused: offer.is_paused || false,
+                booked_count: offer.booked_count || 0,
                 created_at: offer.created_at,
                 teacher_name: teacher.full_name || 'غير معروف',
                 teacher_specialization: teacher.specialization || '',
@@ -259,6 +404,16 @@ router.get('/live-offers', async (req, res) => {
         const formatted = offers.map(offer => {
             const teacher = teachersMap[offer.teacher_id] || {};
 
+            // ✅ حساب الوقت المتبقي
+            let remainingSeconds = offer.remaining_seconds || 0;
+            if (offer.status === 'live' && !offer.is_paused && offer.stream_started_at) {
+                const startedAt = new Date(offer.stream_started_at);
+                const nowTime = new Date();
+                const elapsed = Math.floor((nowTime - startedAt) / 1000);
+                const total = offer.total_seconds || (offer.duration * 60);
+                remainingSeconds = Math.max(0, total - elapsed);
+            }
+
             return {
                 id: offer.id,
                 teacher_id: offer.teacher_id,
@@ -273,6 +428,10 @@ router.get('/live-offers', async (req, res) => {
                 stream_platform: offer.stream_platform || 'jitsi',
                 room_password: offer.room_password || null,
                 room_name: offer.room_name || null,
+                total_seconds: offer.total_seconds || (offer.duration * 60),
+                remaining_seconds: remainingSeconds,
+                is_paused: offer.is_paused || false,
+                booked_count: offer.booked_count || 0,
                 created_at: offer.created_at,
                 teacher_name: teacher.full_name || 'غير معروف',
                 teacher_specialization: teacher.specialization || '',
@@ -288,7 +447,7 @@ router.get('/live-offers', async (req, res) => {
 });
 
 // ============================================================
-// ✅ جلب عرض محدد
+// ✅ جلب عرض محدد (مع معلومات البث والرصيد المعلق)
 // ============================================================
 router.get('/offer/:offer_id', async (req, res) => {
     try {
@@ -320,10 +479,32 @@ router.get('/offer/:offer_id', async (req, res) => {
             .from('sessions')
             .select('*', { count: 'exact', head: true })
             .eq('offer_id', offer_id)
-            .eq('payment_status', 'paid');
+            .in('payment_status', ['paid', 'pending_stream']);
 
         if (countError) {
             console.error('خطأ في جلب عدد الطلاب:', countError.message);
+        }
+
+        // ✅ جلب الرصيد المعلق الإجمالي
+        const { data: pendingData, error: pendingError } = await supabase
+            .from('sessions')
+            .select('pending_balance')
+            .eq('offer_id', offer_id)
+            .eq('payment_status', 'pending_stream');
+
+        let totalPendingBalance = 0;
+        if (!pendingError && pendingData) {
+            totalPendingBalance = pendingData.reduce((sum, s) => sum + (s.pending_balance || 0), 0);
+        }
+
+        // ✅ حساب الوقت المتبقي
+        let remainingSeconds = offer.remaining_seconds || 0;
+        if (offer.status === 'live' && !offer.is_paused && offer.stream_started_at) {
+            const startedAt = new Date(offer.stream_started_at);
+            const nowTime = new Date();
+            const elapsed = Math.floor((nowTime - startedAt) / 1000);
+            const total = offer.total_seconds || (offer.duration * 60);
+            remainingSeconds = Math.max(0, total - elapsed);
         }
 
         res.json({
@@ -340,7 +521,15 @@ router.get('/offer/:offer_id', async (req, res) => {
             stream_platform: offer.stream_platform || 'jitsi',
             room_password: offer.room_password || null,
             room_name: offer.room_name || null,
+            total_seconds: offer.total_seconds || (offer.duration * 60),
+            remaining_seconds: remainingSeconds,
+            is_paused: offer.is_paused || false,
+            booked_count: offer.booked_count || 0,
+            total_pending_balance: totalPendingBalance,
             created_at: offer.created_at,
+            updated_at: offer.updated_at,
+            stream_started_at: offer.stream_started_at || null,
+            completed_at: offer.completed_at || null,
             teacher_name: teacher?.full_name || 'غير معروف',
             teacher_specialization: teacher?.specialization || '',
             teacher_profile_image: teacher?.profile_image || null,
@@ -376,23 +565,40 @@ router.get('/teacher/offers/:teacher_id', authenticate, authorize(['teacher']), 
             return res.json([]);
         }
 
-        const formatted = offers.map(offer => ({
-            id: offer.id,
-            teacher_id: offer.teacher_id,
-            subject_name: offer.subject_name,
-            duration: offer.duration,
-            offer_date: offer.offer_date,
-            price: offer.price,
-            is_free: offer.is_free,
-            status: offer.status,
-            education_level: offer.education_level,
-            room_name: offer.room_name || null,
-            room_password: offer.room_password || null,
-            stream_url: offer.stream_url || null,
-            stream_platform: offer.stream_platform || 'jitsi',
-            created_at: offer.created_at,
-            updated_at: offer.updated_at
-        }));
+        const formatted = offers.map(offer => {
+            // ✅ حساب الوقت المتبقي
+            let remainingSeconds = offer.remaining_seconds || 0;
+            if (offer.status === 'live' && !offer.is_paused && offer.stream_started_at) {
+                const startedAt = new Date(offer.stream_started_at);
+                const nowTime = new Date();
+                const elapsed = Math.floor((nowTime - startedAt) / 1000);
+                const total = offer.total_seconds || (offer.duration * 60);
+                remainingSeconds = Math.max(0, total - elapsed);
+            }
+
+            return {
+                id: offer.id,
+                teacher_id: offer.teacher_id,
+                subject_name: offer.subject_name,
+                duration: offer.duration,
+                offer_date: offer.offer_date,
+                price: offer.price,
+                is_free: offer.is_free,
+                status: offer.status,
+                education_level: offer.education_level,
+                room_name: offer.room_name || null,
+                room_password: offer.room_password || null,
+                stream_url: offer.stream_url || null,
+                stream_platform: offer.stream_platform || 'jitsi',
+                total_seconds: offer.total_seconds || (offer.duration * 60),
+                remaining_seconds: remainingSeconds,
+                is_paused: offer.is_paused || false,
+                booked_count: offer.booked_count || 0,
+                created_at: offer.created_at,
+                updated_at: offer.updated_at,
+                stream_started_at: offer.stream_started_at || null
+            };
+        });
 
         res.json(formatted);
     } catch (error) {
@@ -433,7 +639,7 @@ router.delete('/offer/delete/:offer_id', authenticate, authorize(['teacher']), [
         }
 
         // ✅ حذف البيانات المرتبطة
-        const tables = ['sessions', 'waiting_room', 'active_stream'];
+        const tables = ['sessions', 'waiting_room', 'active_stream', 'student_room_passwords'];
         for (const table of tables) {
             try {
                 await supabase.from(table).delete().eq('offer_id', offer_id);
@@ -442,8 +648,23 @@ router.delete('/offer/delete/:offer_id', authenticate, authorize(['teacher']), [
             }
         }
 
+        // ✅ حذف الإشعارات المرتبطة
+        try {
+            await supabase.from('notifications').delete().eq('offer_id', offer_id);
+        } catch (e) {
+            console.error('خطأ في حذف الإشعارات:', e.message);
+        }
+
         // ✅ حذف العرض
-        await supabase.from('offers').delete().eq('id', offer_id);
+        const { error: deleteError } = await supabase
+            .from('offers')
+            .delete()
+            .eq('id', offer_id);
+
+        if (deleteError) {
+            console.error('❌ خطأ في حذف العرض:', deleteError);
+            return res.status(500).json({ success: false, error: deleteError.message });
+        }
 
         res.json({ 
             success: true, 
@@ -452,6 +673,51 @@ router.delete('/offer/delete/:offer_id', authenticate, authorize(['teacher']), [
     } catch (error) {
         console.error('خطأ في حذف العرض:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// ✅ جلب مستويات التعليم المتاحة (للفلترة)
+// ============================================================
+router.get('/education-levels', async (req, res) => {
+    try {
+        const { data: offers, error } = await supabase
+            .from('offers')
+            .select('education_level')
+            .not('education_level', 'is', null)
+            .neq('education_level', '');
+
+        if (error) throw error;
+
+        const levels = [...new Set(offers.map(o => o.education_level).filter(Boolean))];
+
+        const levelMap = {
+            '5eme_pri': 'خامسة ابتدائي',
+            '1ere_am': 'أولى متوسط',
+            '2eme_am': 'ثانية متوسط',
+            '3eme_am': 'ثالثة متوسط',
+            '4eme_am': 'رابعة متوسط',
+            '5eme_am': 'خامسة متوسط',
+            '1ere_as': 'أولى ثانوي',
+            '2eme_as': 'ثانية ثانوي',
+            '3eme_as': 'ثالثة ثانوي',
+            'bac': 'بكالوريا',
+            '1ere_uni': 'أولى جامعي',
+            '2eme_uni': 'ثانية جامعي',
+            '3eme_uni': 'ثالثة جامعي',
+            'master': 'ماستر',
+            'doctorat': 'دكتوراه'
+        };
+
+        const formattedLevels = levels.map(level => ({
+            value: level,
+            label: levelMap[level] || level
+        }));
+
+        res.json(formattedLevels);
+    } catch (error) {
+        console.error('خطأ في جلب مستويات التعليم:', error.message);
+        res.status(500).json([]);
     }
 });
 
