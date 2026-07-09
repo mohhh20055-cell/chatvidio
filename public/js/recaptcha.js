@@ -1,13 +1,11 @@
 // =============================================
 // تعيين مفتاح reCAPTCHA مباشرة
 // =============================================
-// هذا هو المفتاح العام (Site Key) - آمن للاستخدام في المتصفح
+// تم تعيين المفتاح يدوياً - لا حاجة لقراءة من .env
 window.RECAPTCHA_SITE_KEY = '6Lcv8kctAAAAAHcoWBv_e87vrjP7I6IzQJSV6THf';
 
-// =============================================
-// التحقق من وجود المفتاح
-// =============================================
-console.log('🔑 تم تعيين مفتاح reCAPTCHA:', window.RECAPTCHA_SITE_KEY);
+console.log('🔑 تم تعيين مفتاح reCAPTCHA من public/js/recaptcha.js');
+console.log('🔑 المفتاح:', window.RECAPTCHA_SITE_KEY);
 
 // =============================================
 // حالة reCAPTCHA
@@ -69,11 +67,11 @@ function onRecaptchaLoaded() {
     console.log('🔑 قيمة RECAPTCHA_SITE_KEY:', window.RECAPTCHA_SITE_KEY);
     
     if (!window.RECAPTCHA_SITE_KEY) {
-        console.warn('⚠️ RECAPTCHA_SITE_KEY غير مضبوط.');
-        renderRecaptchaMissing();
-        return;
+        console.warn('⚠️ RECAPTCHA_SITE_KEY غير مضبوط. جاري تعيينه يدوياً...');
+        window.RECAPTCHA_SITE_KEY = '6Lcv8kctAAAAAHcoWBv_e87vrjP7I6IzQJSV6THf';
+        console.log('✅ تم تعيين المفتاح يدوياً:', window.RECAPTCHA_SITE_KEY);
     }
-    console.log('✅ تم تحميل reCAPTCHA بنجاح');
+    
     renderAllRecaptchaWidgets();
 }
 
@@ -85,16 +83,15 @@ function renderRecaptchaWidget(type, containerId) {
     
     if (typeof grecaptcha === 'undefined') {
         console.warn('⚠️ grecaptcha غير محمل بعد');
+        setTimeout(function() {
+            renderRecaptchaWidget(type, containerId);
+        }, 500);
         return;
     }
     
     if (!window.RECAPTCHA_SITE_KEY) {
-        console.error('❌ RECAPTCHA_SITE_KEY غير موجود!');
-        var container = document.getElementById(containerId);
-        if (container) {
-            container.innerHTML = '<div style="color:#ef4444;font-size:0.85rem;padding:10px;background:#fef2f2;border-radius:8px;border:1px solid #fca5a5;">⚠️ مفتاح reCAPTCHA غير مضبوط</div>';
-        }
-        return;
+        console.error('❌ RECAPTCHA_SITE_KEY غير موجود! جاري تعيينه...');
+        window.RECAPTCHA_SITE_KEY = '6Lcv8kctAAAAAHcoWBv_e87vrjP7I6IzQJSV6THf';
     }
     
     var container = document.getElementById(containerId);
@@ -127,23 +124,11 @@ function renderRecaptchaWidget(type, containerId) {
         });
         recaptchaWidgets[type] = widgetId;
         console.log('✅ تم عرض reCAPTCHA لنوع: ' + type + ' (ID: ' + widgetId + ')');
+        console.log('🔑 المفتاح المستخدم:', window.RECAPTCHA_SITE_KEY);
     } catch (err) {
         console.error('❌ خطأ في عرض reCAPTCHA:', err);
-        container.innerHTML = '<div style="color:#ef4444;font-size:0.85rem;padding:10px;background:#fef2f2;border-radius:8px;border:1px solid #fca5a5;">⚠️ خطأ في عرض reCAPTCHA</div>';
+        container.innerHTML = '<div style="color:#ef4444;font-size:0.85rem;padding:10px;background:#fef2f2;border-radius:8px;border:1px solid #fca5a5;">⚠️ خطأ في عرض reCAPTCHA: ' + err.message + '</div>';
     }
-}
-
-// =============================================
-// دالة عرض رسالة عدم وجود مفتاح
-// =============================================
-function renderRecaptchaMissing() {
-    var ids = ['loginRecaptcha', 'studentRecaptcha', 'teacherRecaptcha'];
-    ids.forEach(function (id) {
-        var el = document.getElementById(id);
-        if (el) {
-            el.innerHTML = '<div style="color:#ef4444;font-size:0.85rem;text-align:center;padding:15px;background:#fef2f2;border-radius:8px;border:1px solid #fca5a5;">⚠️ مفتاح reCAPTCHA غير مضبوط.<br>تم تعيين المفتاح: ' + (window.RECAPTCHA_SITE_KEY || 'غير موجود') + '</div>';
-        }
-    });
 }
 
 // =============================================
@@ -157,7 +142,7 @@ function renderAllRecaptchaWidgets() {
 }
 
 // =============================================
-// دالة إعادة تعيين عنصر reCAPTCHA محدد
+// دوال إعادة تعيين reCAPTCHA
 // =============================================
 function resetRecaptchaWidget(type) {
     recaptchaState[type] = false;
@@ -171,9 +156,6 @@ function resetRecaptchaWidget(type) {
     }
 }
 
-// =============================================
-// دالة إعادة تعيين حالة reCAPTCHA بالكامل
-// =============================================
 function resetRecaptchaState() {
     recaptchaState.login = false;
     recaptchaState.student = false;
@@ -184,9 +166,6 @@ function resetRecaptchaState() {
     }, 100);
 }
 
-// =============================================
-// دالة تبديل علامات التبويب مع reCAPTCHA
-// =============================================
 function switchTabRecaptcha(tab) {
     console.log('🔄 التبديل إلى علامة التبويب: ' + tab);
     setTimeout(function () {
@@ -197,18 +176,22 @@ function switchTabRecaptcha(tab) {
         } else if (tab === 'teacher-register') {
             renderRecaptchaWidget('teacher', 'teacherRecaptcha');
         }
-    }, 50);
+    }, 100);
 }
 
-// =============================================
-// دالة للتحقق من حالة reCAPTCHA
-// =============================================
 function isRecaptchaVerified(type) {
     return recaptchaState[type] === true;
 }
 
 // =============================================
-// تهيئة reCAPTCHA عند تحميل الصفحة
+// تهيئة إضافية
 // =============================================
-console.log('✅ تم تحميل سكريبت reCAPTCHA');
-console.log('🔑 المفتاح الحالي:', window.RECAPTCHA_SITE_KEY);
+console.log('✅ تم تحميل recaptcha.js من public/js/');
+console.log('🔑 المفتاح النهائي:', window.RECAPTCHA_SITE_KEY);
+console.log('🔑 طول المفتاح:', window.RECAPTCHA_SITE_KEY ? window.RECAPTCHA_SITE_KEY.length : 0);
+
+// التأكد من أن المفتاح موجود في window
+if (!window.RECAPTCHA_SITE_KEY) {
+    window.RECAPTCHA_SITE_KEY = '6Lcv8kctAAAAAHcoWBv_e87vrjP7I6IzQJSV6THf';
+    console.log('🔄 تم إعادة تعيين المفتاح في نهاية الملف');
+}
