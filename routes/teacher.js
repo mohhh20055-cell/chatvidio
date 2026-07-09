@@ -270,7 +270,7 @@ router.post('/update-teaching-level', authenticate, authorize(['admin']), [
 });
 
 // ============================================================
-// ✅ جلب الأساتذة مع فلتر المستوى التعليمي (للعامة)
+// ✅ جلب الأساتذة مع فلتر المستوى التعليمي (للواجهة الأمامية)
 // ============================================================
 router.get('/public/teachers', async (req, res) => {
     try {
@@ -299,6 +299,51 @@ router.get('/public/teachers', async (req, res) => {
         res.json(sanitized);
     } catch (error) {
         console.error('خطأ في جلب الأساتذة:', error.message);
+        res.status(500).json([]);
+    }
+});
+
+// ============================================================
+// ✅ جلب مستويات التعليم المتاحة (للتصفية في الواجهة الأمامية)
+// ============================================================
+router.get('/public/teaching-levels', async (req, res) => {
+    try {
+        const { data: teachers, error } = await supabase
+            .from('teachers')
+            .select('teaching_level')
+            .eq('status', 'approved')
+            .not('teaching_level', 'is', null);
+
+        if (error) throw error;
+
+        // استخراج المستويات الفريدة
+        const levels = [...new Set(teachers.map(t => t.teaching_level).filter(Boolean))];
+        
+        // ترجمة المستويات
+        const levelMap = {
+            '5eme_pri': 'خامسة ابتدائي',
+            '1ere_am': 'أولى متوسط',
+            '2eme_am': 'ثانية متوسط',
+            '3eme_am': 'ثالثة متوسط',
+            '4eme_am': 'رابعة متوسط',
+            '5eme_am': 'خامسة متوسط',
+            '1ere_as': 'أولى ثانوي',
+            'bac': 'بكالوريا',
+            '1ere_uni': 'أولى جامعي',
+            '2eme_uni': 'ثانية جامعي',
+            '3eme_uni': 'ثالثة جامعي',
+            'master': 'ماستر',
+            'doctorat': 'دكتوراه'
+        };
+
+        const formattedLevels = levels.map(level => ({
+            value: level,
+            label: levelMap[level] || level
+        }));
+
+        res.json(formattedLevels);
+    } catch (error) {
+        console.error('خطأ في جلب مستويات التعليم:', error.message);
         res.status(500).json([]);
     }
 });
@@ -707,6 +752,91 @@ router.get('/stats/:teacher_id', authenticate, authorize(['teacher']), async (re
     } catch (error) {
         console.error('خطأ في جلب إحصائيات الأستاذ:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// جلب قائمة الطلاب المسجلين في عروض الأستاذ
+// ============================================================
+router.get('/students/:teacher_id', authenticate, authorize(['teacher']), [
+    param('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const teacher_id = parseInt(req.params.teacher_id);
+
+        if (req.user.userId !== teacher_id) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه المعلومات' });
+        }
+
+        // جلب جميع عروض الأستاذ
+        const { data: offers, error: offersError } = await supabase
+            .from('offers')
+            .select('id, subject_name')
+            .eq('teacher_id', teacher_id);
+
+        if (offersError) {
+            console.error('خطأ في جلب عروض الأستاذ:', offersError.message);
+            return res.status(500).json([]);
+        }
+
+        if (!offers || offers.length === 0) {
+            return res.json([]);
+        }
+
+        const offerIds = offers.map(o => o.id);
+
+        // جلب جميع الجلسات المدفوعة لهذه العروض
+        const { data: sessions, error: sessionsError } = await supabase
+            .from('sessions')
+            .select(`
+                id,
+                student_id,
+                offer_id,
+                payment_status,
+                created_at,
+                students:student_id (
+                    id,
+                    full_name,
+                    email,
+                    phone,
+                    education_level
+                ),
+                offers:offer_id (
+                    subject_name
+                )
+            `)
+            .in('offer_id', offerIds)
+            .eq('payment_status', 'paid')
+            .order('created_at', { ascending: false });
+
+        if (sessionsError) {
+            console.error('خطأ في جلب الجلسات:', sessionsError.message);
+            return res.status(500).json([]);
+        }
+
+        // تنسيق البيانات
+        const formatted = (sessions || []).map(session => ({
+            session_id: session.id,
+            student_id: session.student_id,
+            student_name: session.students?.full_name || 'غير معروف',
+            student_email: session.students?.email || '',
+            student_phone: session.students?.phone || '',
+            student_education_level: session.students?.education_level || '',
+            offer_id: session.offer_id,
+            offer_subject: session.offers?.subject_name || 'غير معروف',
+            payment_status: session.payment_status,
+            booked_at: session.created_at
+        }));
+
+        res.json(formatted);
+    } catch (error) {
+        console.error('خطأ في جلب طلاب الأستاذ:', error.message);
+        res.status(500).json([]);
     }
 });
 
