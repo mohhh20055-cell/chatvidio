@@ -9,18 +9,43 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const multer = require('multer');
 const path = require('path');
+const jwt = require('jsonwebtoken');
 
 const { supabase } = require('../config/database');
 const { authenticate, authorize, checkBanned } = require('../middleware/auth');
 const { authLimiter } = require('../middleware/rateLimit');
 const { getOne, insert, update, generateVerificationToken, generateReferralCode, sanitizeObject } = require('../utils/helpers');
 const { encrypt, maskIP } = require('../utils/encryption');
-const { generateToken, verifyToken } = require('../utils/jwt');
 const { sendVerificationEmail, sendResetEmail } = require('../utils/email');
 const { processReferralOnRegister } = require('../utils/referral');
 const { uploadToSupabase, validateUploadedFiles } = require('../utils/upload');
 const { verifyRecaptcha } = require('../utils/validation');
 
+// ============================================================
+// ✅ دوال JWT معرفة محلياً لتجنب التعارض
+// ============================================================
+const JWT_SECRET = process.env.JWT_SECRET || 'zoomdz_secret_key_2024_for_testing_only';
+const JWT_EXPIRY = '24h';
+
+function generateToken(userId, role, email) {
+    return jwt.sign(
+        { userId, role, email },
+        JWT_SECRET,
+        { expiresIn: JWT_EXPIRY }
+    );
+}
+
+function verifyToken(token) {
+    try {
+        return jwt.verify(token, JWT_SECRET);
+    } catch (error) {
+        return null;
+    }
+}
+
+// ============================================================
+// الثوابت
+// ============================================================
 const SALT_ROUNDS = 12;
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_TIME = 15 * 60 * 1000;
@@ -154,7 +179,7 @@ async function markPasswordResetUsed(token) {
 }
 
 // ============================================================
-// ✅ دالة للتحقق من وجود جدول student_room_passwords وإنشائه إذا لم يكن موجوداً
+// ✅ دالة للتحقق من وجود جدول student_room_passwords
 // ============================================================
 async function ensureStudentRoomPasswordsTable() {
     try {
@@ -184,8 +209,6 @@ async function ensureStudentRoomPasswordsTable() {
                 
                 if (createError) {
                     console.error('❌ فشل إنشاء الجدول تلقائياً:', createError.message);
-                    console.log('⚠️ يرجى إنشاء الجدول يدوياً في Supabase SQL Editor باستخدام:');
-                    console.log(createTableSQL);
                     return false;
                 }
                 
@@ -193,7 +216,6 @@ async function ensureStudentRoomPasswordsTable() {
                 return true;
             } catch (rpcError) {
                 console.error('❌ فشل إنشاء الجدول عبر RPC:', rpcError.message);
-                console.log('⚠️ يرجى إنشاء الجدول يدوياً في Supabase SQL Editor');
                 return false;
             }
         }
@@ -222,12 +244,13 @@ router.post('/teacher/register', checkBanned, upload.fields([
     body('specialization').notEmpty().withMessage('التخصص مطلوب').isLength({ max: 100 }),
     body('bio').notEmpty().withMessage('نبذة عنك مطلوبة').isLength({ max: 500 }),
     body('experience').notEmpty().withMessage('سنوات الخبرة مطلوبة'),
-    body('teaching_level').notEmpty().withMessage('المستوى الدراسي مطلوب'), // ✅ إضافة المستوى التعليمي
+    body('teaching_level').notEmpty().withMessage('المستوى الدراسي مطلوب'),
     body('recaptcha_token').notEmpty().withMessage('رمز reCAPTCHA مطلوب')
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
+            console.log('❌ أخطاء التحقق:', errors.array());
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
@@ -235,11 +258,13 @@ router.post('/teacher/register', checkBanned, upload.fields([
 
         console.log(`📥 تسجيل أستاذ جديد: ${full_name}, المستوى: ${teaching_level}`);
 
+        // التحقق من reCAPTCHA
         const recaptchaResult = await verifyRecaptcha(recaptcha_token);
         if (!recaptchaResult.success) {
             return res.status(400).json({ success: false, error: recaptchaResult.error });
         }
 
+        // التحقق من وجود البريد
         const existingTeacher = await getOne('teachers', 'email', email);
         if (existingTeacher) {
             return res.status(400).json({ success: false, error: 'البريد الإلكتروني مستخدم مسبقاً' });
@@ -269,7 +294,7 @@ router.post('/teacher/register', checkBanned, upload.fields([
             if (uploaded) id_image = uploaded.filename;
         }
 
-        // ✅ إضافة teaching_level إلى بيانات الأستاذ
+        // إنشاء الأستاذ
         const newTeacher = await insert('teachers', {
             full_name: full_name.trim(),
             email: email.trim(),
@@ -278,7 +303,7 @@ router.post('/teacher/register', checkBanned, upload.fields([
             specialization: specialization.trim(),
             bio: bio.trim(),
             experience: experience.trim(),
-            teaching_level: teaching_level.trim(), // ✅ حفظ المستوى التعليمي
+            teaching_level: teaching_level.trim(),
             profile_image,
             profile_url,
             diploma_image,
@@ -295,12 +320,14 @@ router.post('/teacher/register', checkBanned, upload.fields([
             ban_reason: null
         });
 
+        // إنشاء رمز الإحالة
         const referralCode = generateReferralCode(full_name, newTeacher.id);
         await supabase
             .from('teachers')
             .update({ referral_code: referralCode })
             .eq('id', newTeacher.id);
 
+        // إنشاء رمز التحقق
         const verificationToken = generateVerificationToken();
         const expiresAt = new Date();
         expiresAt.setHours(expiresAt.getHours() + 24);
@@ -314,6 +341,7 @@ router.post('/teacher/register', checkBanned, upload.fields([
             created_at: new Date().toISOString()
         });
 
+        // إرسال بريد التحقق
         const baseUrl = process.env.PLATFORM_URL ||
                         (req.get('x-forwarded-proto') || req.protocol) + '://' + req.get('host');
         const verificationUrl = `${baseUrl}/api/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}&role=teacher`;
@@ -326,6 +354,7 @@ router.post('/teacher/register', checkBanned, upload.fields([
             await processReferralOnRegister(ref, newTeacher.id, 'teacher');
         }
 
+        // إنشاء التوكن
         const token = generateToken(newTeacher.id, 'teacher', email);
 
         res.json({ 
@@ -334,13 +363,14 @@ router.post('/teacher/register', checkBanned, upload.fields([
             email_verification_sent: emailSent,
             email: email,
             role: 'teacher',
-            teaching_level: teaching_level, // ✅ إرجاع المستوى التعليمي
+            teaching_level: teaching_level,
             referral_code: referralCode,
             token: token
         });
     } catch (error) {
         console.error('❌ خطأ في تسجيل أستاذ:', error.message);
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+        console.error('📚 Stack:', error.stack);
+        res.status(500).json({ success: false, error: error.message || 'حدث خطأ في الخادم' });
     }
 });
 
@@ -353,12 +383,13 @@ router.post('/student/register', checkBanned, [
     body('password').isLength({ min: 8 }).withMessage('كلمة المرور يجب أن تكون 8 أحرف على الأقل')
         .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('كلمة المرور يجب أن تحتوي على حرف كبير وحرف صغير ورقم'),
     body('phone').notEmpty().withMessage('رقم الهاتف مطلوب'),
-    body('education_level').notEmpty().withMessage('المستوى الدراسي مطلوب'), // ✅ إضافة المستوى التعليمي
+    body('education_level').notEmpty().withMessage('المستوى الدراسي مطلوب'),
     body('recaptcha_token').notEmpty().withMessage('رمز reCAPTCHA مطلوب')
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
+            console.log('❌ أخطاء التحقق:', errors.array());
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
@@ -366,11 +397,13 @@ router.post('/student/register', checkBanned, [
 
         console.log(`📥 تسجيل طالب جديد: ${full_name}, المستوى: ${education_level}`);
 
+        // التحقق من reCAPTCHA
         const recaptchaResult = await verifyRecaptcha(recaptcha_token);
         if (!recaptchaResult.success) {
             return res.status(400).json({ success: false, error: recaptchaResult.error });
         }
 
+        // التحقق من وجود البريد
         const existingStudent = await getOne('students', 'email', email);
         if (existingStudent) {
             return res.status(400).json({ success: false, error: 'البريد الإلكتروني مستخدم' });
@@ -378,13 +411,13 @@ router.post('/student/register', checkBanned, [
 
         const hashedPassword = bcrypt.hashSync(password, SALT_ROUNDS);
         
-        // ✅ إضافة education_level إلى بيانات الطالب
+        // إنشاء الطالب
         const newStudent = await insert('students', {
             full_name: full_name.trim(),
             email: email.trim(),
             password: hashedPassword,
             phone: phone.trim(),
-            education_level: education_level.trim(), // ✅ حفظ المستوى التعليمي
+            education_level: education_level.trim(),
             wallet_balance: 0,
             email_verified: false,
             referral_balance: 0,
@@ -394,12 +427,14 @@ router.post('/student/register', checkBanned, [
             ban_reason: null
         });
 
+        // إنشاء رمز الإحالة
         const referralCode = generateReferralCode(full_name, newStudent.id);
         await supabase
             .from('students')
             .update({ referral_code: referralCode })
             .eq('id', newStudent.id);
 
+        // إنشاء رمز التحقق
         const verificationToken = generateVerificationToken();
         const expiresAt = new Date();
         expiresAt.setHours(expiresAt.getHours() + 24);
@@ -413,6 +448,7 @@ router.post('/student/register', checkBanned, [
             created_at: new Date().toISOString()
         });
 
+        // إرسال بريد التحقق
         const baseUrl = process.env.PLATFORM_URL ||
                         (req.get('x-forwarded-proto') || req.protocol) + '://' + req.get('host');
         const verificationUrl = `${baseUrl}/api/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}&role=student`;
@@ -425,6 +461,7 @@ router.post('/student/register', checkBanned, [
             await processReferralOnRegister(ref, newStudent.id, 'student');
         }
 
+        // إنشاء التوكن
         const token = generateToken(newStudent.id, 'student', email);
 
         res.json({ 
@@ -433,13 +470,14 @@ router.post('/student/register', checkBanned, [
             email_verification_sent: emailSent,
             email: email,
             role: 'student',
-            education_level: education_level, // ✅ إرجاع المستوى التعليمي
+            education_level: education_level,
             referral_code: referralCode,
             token: token
         });
     } catch (error) {
         console.error('❌ خطأ في تسجيل طالب:', error.message);
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+        console.error('📚 Stack:', error.stack);
+        res.status(500).json({ success: false, error: error.message || 'حدث خطأ في الخادم' });
     }
 });
 
@@ -582,8 +620,8 @@ router.post('/login', checkBanned, authLimiter, [
                 balance: user.wallet_balance || user.balance || 0,
                 email_verified: user.email_verified,
                 referral_code: user.referral_code,
-                education_level: user.education_level || null, // ✅ إرجاع المستوى التعليمي للطالب
-                teaching_level: user.teaching_level || null // ✅ إرجاع المستوى التعليمي للأستاذ
+                education_level: user.education_level || null,
+                teaching_level: user.teaching_level || null
             }
         });
     } catch (error) {
