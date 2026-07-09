@@ -1,5 +1,5 @@
 // ============================================================
-// مسارات المصادقة - Auth Routes (معدل بالكامل)
+// مسارات المصادقة - Auth Routes (معدل بالكامل مع دعم نظام البث)
 // ============================================================
 
 const express = require('express');
@@ -16,7 +16,7 @@ const { authenticate, authorize, checkBanned } = require('../middleware/auth');
 const { authLimiter } = require('../middleware/rateLimit');
 const { getOne, insert, update, generateVerificationToken, generateReferralCode, sanitizeObject } = require('../utils/helpers');
 const { encrypt, maskIP } = require('../utils/encryption');
-const { sendVerificationEmail, sendResetEmail } = require('../utils/email');
+const { sendVerificationEmail, sendResetEmail, sendTeacherApprovalEmail, sendTeacherRejectionEmail } = require('../utils/email');
 const { processReferralOnRegister } = require('../utils/referral');
 const { uploadToSupabase, validateUploadedFiles } = require('../utils/upload');
 const { verifyRecaptcha } = require('../utils/validation');
@@ -290,7 +290,9 @@ router.post('/teacher/register', checkBanned, upload.fields([
             pending_withdraw: 0,
             referral_code: null,
             is_banned: false,
-            ban_reason: null
+            ban_reason: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
         });
 
         // ✅ 8. إنشاء رمز الإحالة
@@ -305,7 +307,19 @@ router.post('/teacher/register', checkBanned, upload.fields([
             await processReferralOnRegister(ref, newTeacher.id, 'teacher');
         }
 
-        // ✅ 10. إرسال إشعار للمدير (يمكن إضافته لاحقاً)
+        // ✅ 10. إرسال إشعار للمدير
+        try {
+            await insert('notifications', {
+                user_id: 1, // Admin ID
+                user_type: 'admin',
+                title: '📝 طلب تسجيل أستاذ جديد',
+                message: `قام الأستاذ ${full_name} بتقديم طلب تسجيل. يرجى مراجعة الطلب.`,
+                is_read: false,
+                created_at: new Date().toISOString()
+            });
+        } catch (notifError) {
+            console.error('⚠️ خطأ في إرسال إشعار للمدير:', notifError.message);
+        }
 
         // ✅ 11. الرد بنجاح - لا يتم إرسال بريد تحقق للأستاذ
         res.json({ 
@@ -400,7 +414,9 @@ router.post('/student/register', checkBanned, [
             gift_box_chances: 0,
             referral_code: null,
             is_banned: false,
-            ban_reason: null
+            ban_reason: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
         });
 
         // ✅ 7. إنشاء رمز الإحالة
@@ -418,7 +434,21 @@ router.post('/student/register', checkBanned, [
         // ✅ 9. إنشاء توكن للطالب (تسجيل الدخول التلقائي)
         const token = generateToken(newStudent.id, 'student', email);
 
-        // ✅ 10. الرد بنجاح - لا يتم إرسال بريد تحقق للطالب
+        // ✅ 10. إرسال إشعار ترحيب
+        try {
+            await insert('notifications', {
+                user_id: newStudent.id,
+                user_type: 'student',
+                title: '🎉 مرحباً بك في ZoomDz!',
+                message: `مرحباً ${full_name}! نتمنى لك تجربة تعليمية ممتعة. يمكنك البدء بحجز الدروس من قسم "العروض".`,
+                is_read: false,
+                created_at: new Date().toISOString()
+            });
+        } catch (notifError) {
+            console.error('⚠️ خطأ في إرسال إشعار الترحيب:', notifError.message);
+        }
+
+        // ✅ 11. الرد بنجاح - لا يتم إرسال بريد تحقق للطالب
         res.json({ 
             success: true, 
             message: '✅ تم تسجيل حسابك بنجاح! يمكنك الآن تسجيل الدخول والبدء في التعلم.',
@@ -442,7 +472,7 @@ router.post('/student/register', checkBanned, [
 });
 
 // ============================================================
-// ✅ تسجيل الدخول (مع رسائل خطأ محسنة)
+// ✅ تسجيل الدخول (مع رسائل خطأ محسنة ودعم حالة البث)
 // ============================================================
 router.post('/login', checkBanned, authLimiter, [
     body('email').isEmail().withMessage('بريد إلكتروني غير صالح').trim().normalizeEmail(),
@@ -563,6 +593,12 @@ router.post('/login', checkBanned, authLimiter, [
             }
         }
 
+        // ✅ التحقق من البريد الإلكتروني للطلاب (اختياري)
+        if (userRole === 'student' && !user.email_verified) {
+            // يمكن تفعيل هذا إذا أردت التأكد من البريد للطلاب
+            // لكن حالياً الطلاب مؤكدون تلقائياً
+        }
+
         // ✅ تسجيل سجل الدخول
         let ip = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'];
         if (ip && typeof ip === 'string' && ip.includes(',')) {
@@ -587,6 +623,19 @@ router.post('/login', checkBanned, authLimiter, [
             }
         }
 
+        // ✅ التحقق من وجود بث نشط للأستاذ
+        let hasActiveStream = false;
+        if (userRole === 'teacher') {
+            const { data: activeOffer } = await supabase
+                .from('offers')
+                .select('id, status')
+                .eq('teacher_id', user.id)
+                .in('status', ['live', 'teacher_ready', 'paused'])
+                .single();
+
+            hasActiveStream = !!activeOffer;
+        }
+
         // ✅ إنشاء التوكن
         const token = generateToken(user.id, userRole, email);
         const redirectPath = userRole === 'teacher' ? '/teacher-dashboard.html' : '/student-dashboard.html';
@@ -606,7 +655,8 @@ router.post('/login', checkBanned, authLimiter, [
                 referral_code: user.referral_code,
                 education_level: user.education_level || null,
                 teaching_level: user.teaching_level || null,
-                status: user.status || null
+                status: user.status || null,
+                has_active_stream: hasActiveStream // ✅ إعلام العميل بوجود بث نشط
             }
         });
 
@@ -904,6 +954,56 @@ router.post('/reset-password', [
         });
     } catch (error) {
         console.error('خطأ في إعادة تعيين كلمة المرور:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// ✅ الحصول على معلومات المستخدم الحالي (مع حالة البث)
+// ============================================================
+router.get('/me', authenticate, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const role = req.user.role;
+
+        let user = null;
+        let table = role === 'student' ? 'students' : 'teachers';
+        
+        user = await getOne(table, 'id', userId);
+        
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
+        }
+
+        // ✅ التحقق من وجود بث نشط للأستاذ
+        let hasActiveStream = false;
+        let activeOffer = null;
+        if (role === 'teacher') {
+            const { data: offer } = await supabase
+                .from('offers')
+                .select('id, status, subject_name, stream_url, remaining_seconds, total_seconds, is_paused')
+                .eq('teacher_id', userId)
+                .in('status', ['live', 'teacher_ready', 'paused'])
+                .single();
+
+            if (offer) {
+                hasActiveStream = true;
+                activeOffer = offer;
+            }
+        }
+
+        delete user.password;
+
+        res.json({
+            success: true,
+            user: {
+                ...user,
+                has_active_stream: hasActiveStream,
+                active_offer: activeOffer
+            }
+        });
+    } catch (error) {
+        console.error('خطأ في جلب معلومات المستخدم:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
