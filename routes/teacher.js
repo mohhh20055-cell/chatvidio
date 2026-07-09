@@ -1,5 +1,5 @@
 // ============================================================
-// مسارات الأستاذ - Teacher Routes (مصلح بالكامل)
+// مسارات الأستاذ - Teacher Routes (معدل بالكامل - متوافق مع نظام المستوى التعليمي)
 // ============================================================
 
 const express = require('express');
@@ -101,7 +101,6 @@ router.post('/update-profile', authenticate, authorize(['teacher']), upload.sing
         const updateData = {
             profile_image: uploaded.filename,
             profile_url: uploaded.url
-            // ❌ إزالة updated_at لتجنب خطأ العمود
         };
 
         const { data, error } = await supabase
@@ -124,7 +123,7 @@ router.post('/update-profile', authenticate, authorize(['teacher']), upload.sing
 });
 
 // ============================================================
-// ✅ تحديث الملف الشخصي مع الروابط الاجتماعية والمستوى التعليمي (مصلح)
+// تحديث الملف الشخصي مع الروابط الاجتماعية (بدون تعديل المستوى التعليمي)
 // ============================================================
 router.post('/update-profile-with-social', authenticate, authorize(['teacher']), upload.fields([
     { name: 'profile_image', maxCount: 1 }
@@ -137,7 +136,6 @@ router.post('/update-profile-with-social', authenticate, authorize(['teacher']),
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        // ✅ إضافة teaching_level إلى المتغيرات المستخرجة
         const { 
             teacher_id, 
             facebook_url, 
@@ -146,12 +144,11 @@ router.post('/update-profile-with-social', authenticate, authorize(['teacher']),
             youtube_url, 
             twitter_url, 
             website_url, 
-            whatsapp_url,
-            teaching_level  // ← هذا مهم!
+            whatsapp_url
+            // ❌ تم إزالة teaching_level - لا يمكن تعديله من هنا
         } = req.body;
 
         console.log('📝 تحديث الملف الشخصي للأستاذ:', teacher_id);
-        console.log('🎓 المستوى التعليمي:', teaching_level);
 
         if (req.user.userId !== parseInt(teacher_id)) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بتحديث هذا الملف' });
@@ -174,18 +171,12 @@ router.post('/update-profile-with-social', authenticate, authorize(['teacher']),
             }
         }
 
-        // ✅ بناء كائن التحديث بدون updated_at
         const updateData = {};
 
         if (profile_image) { updateData.profile_image = profile_image; }
         if (profile_url) { updateData.profile_url = profile_url; }
 
-        // ✅ إضافة teaching_level إذا تم إرساله
-        if (teaching_level !== undefined && teaching_level !== null) {
-            updateData.teaching_level = teaching_level.trim() || null;
-        }
-
-        // ✅ روابط التواصل الاجتماعي
+        // روابط التواصل الاجتماعي
         const socialFields = {
             facebook_url,
             instagram_url,
@@ -211,7 +202,6 @@ router.post('/update-profile-with-social', authenticate, authorize(['teacher']),
 
         console.log('💾 البيانات المراد تحديثها:', updateData);
 
-        // ✅ تحديث قاعدة البيانات
         const { data, error } = await supabase
             .from('teachers')
             .update(updateData)
@@ -226,18 +216,90 @@ router.post('/update-profile-with-social', authenticate, authorize(['teacher']),
         const updatedTeacher = data ? data[0] : null;
 
         console.log('✅ تم تحديث الملف الشخصي بنجاح');
-        console.log('🎓 المستوى التعليمي المحفوظ:', updatedTeacher?.teaching_level);
 
         res.json({
             success: true,
-            message: 'تم تحديث الملف الشخصي وروابط التواصل الاجتماعي والمستوى التعليمي بنجاح',
-            teaching_level: updatedTeacher?.teaching_level || null,
+            message: 'تم تحديث الملف الشخصي وروابط التواصل الاجتماعي بنجاح',
             user: updatedTeacher
         });
     } catch (error) {
         console.error('❌ خطأ في تحديث الملف الشخصي:', error.message);
         console.error('📚 Stack:', error.stack);
         res.status(500).json({ success: false, error: error.message || 'حدث خطأ أثناء تحديث الملف الشخصي' });
+    }
+});
+
+// ============================================================
+// ✅ تحديث المستوى التعليمي فقط (للإدارة فقط)
+// ============================================================
+router.post('/update-teaching-level', authenticate, authorize(['admin']), [
+    body('teacher_id').isInt().withMessage('معرف الأستاذ مطلوب'),
+    body('teaching_level').notEmpty().withMessage('المستوى التعليمي مطلوب')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { teacher_id, teaching_level } = req.body;
+
+        const teacher = await getOne('teachers', 'id', teacher_id);
+        if (!teacher) {
+            return res.status(404).json({ success: false, error: 'الأستاذ غير موجود' });
+        }
+
+        const { data, error } = await supabase
+            .from('teachers')
+            .update({ teaching_level: teaching_level.trim() })
+            .eq('id', teacher_id)
+            .select();
+
+        if (error) throw error;
+
+        res.json({
+            success: true,
+            message: 'تم تحديث المستوى التعليمي بنجاح',
+            teaching_level: teaching_level,
+            user: data ? data[0] : null
+        });
+    } catch (error) {
+        console.error('❌ خطأ في تحديث المستوى التعليمي:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// ✅ جلب الأساتذة مع فلتر المستوى التعليمي (للعامة)
+// ============================================================
+router.get('/public/teachers', async (req, res) => {
+    try {
+        const { level } = req.query;
+        
+        let query = supabase
+            .from('teachers')
+            .select('*')
+            .eq('status', 'approved')
+            .order('created_at', { ascending: false });
+
+        if (level && level !== 'all') {
+            query = query.eq('teaching_level', level);
+        }
+
+        const { data: teachers, error } = await query;
+
+        if (error) throw error;
+
+        // إزالة كلمات المرور
+        const sanitized = (teachers || []).map(t => {
+            delete t.password;
+            return t;
+        });
+
+        res.json(sanitized);
+    } catch (error) {
+        console.error('خطأ في جلب الأساتذة:', error.message);
+        res.status(500).json([]);
     }
 });
 
@@ -264,7 +326,6 @@ router.get('/balance/:teacher_id', authenticate, authorize(['teacher']), [
             return res.status(404).json({ success: false, error: 'أستاذ غير موجود' });
         }
 
-        // ✅ جلب العروض الخاصة بالأستاذ أولاً
         const { data: offers, error: offersError } = await supabase
             .from('offers')
             .select('id')
@@ -276,7 +337,6 @@ router.get('/balance/:teacher_id', authenticate, authorize(['teacher']), [
 
         const offerIds = (offers || []).map(o => o.id);
 
-        // ✅ جلب الجلسات المدفوعة لهذه العروض
         let paidSessions = [];
         if (offerIds.length > 0) {
             const { data: sessions, error: sessionsError } = await supabase
@@ -369,7 +429,6 @@ router.post('/withdraw-request', authenticate, authorize(['teacher']), [
         await update('teachers', teacher_id, {
             balance: (teacher.balance || 0) - amount,
             pending_withdraw: (teacher.pending_withdraw || 0) + amount
-            // ❌ إزالة updated_at
         });
 
         await insert('notifications', {
@@ -473,7 +532,6 @@ router.get('/offers/:teacher_id', authenticate, authorize(['teacher']), [
             stream_url: offer.stream_url || null,
             stream_platform: offer.stream_platform || 'jitsi',
             created_at: offer.created_at
-            // ❌ إزالة updated_at
         }));
 
         res.json(formatted);
@@ -556,7 +614,6 @@ router.put('/offer/update-password/:offer_id', authenticate, authorize(['teacher
 
         await update('offers', offer_id, {
             room_password: password
-            // ❌ إزالة updated_at
         });
 
         res.json({
