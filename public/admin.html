@@ -336,6 +336,16 @@
             margin: 2px 0;
         }
         .level-badge i { margin-left: 4px; }
+        .error-state {
+            text-align: center;
+            padding: 40px;
+            color: #dc2626;
+        }
+        .error-state i {
+            font-size: 3rem;
+            display: block;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
@@ -569,6 +579,46 @@
             document.getElementById('imageModal').style.display = 'none';
         }
 
+        // ============================================================
+        // ✅ دوال جلب البيانات مع معالجة الأخطاء
+        // ============================================================
+
+        // دالة مساعدة لجلب البيانات مع معالجة الأخطاء
+        async function fetchData(url, errorMessage = 'حدث خطأ في تحميل البيانات') {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    throw new Error('الرجاء تسجيل الدخول');
+                }
+
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.status === 401) {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('userData');
+                    window.location.href = '/';
+                    throw new Error('انتهت صلاحية الجلسة');
+                }
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+
+                const data = await response.json();
+                return data;
+
+            } catch (error) {
+                console.error('❌ خطأ في جلب البيانات:', error.message);
+                throw new Error(`${errorMessage}: ${error.message}`);
+            }
+        }
+
         function showTab(tab) {
             document.getElementById('pendingTab').style.display = tab === 'pending' ? 'block' : 'none';
             document.getElementById('approvedTab').style.display = tab === 'approved' ? 'block' : 'none';
@@ -619,9 +669,13 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإرسال...';
             
             try {
+                const token = localStorage.getItem('token');
                 const res = await fetch('/api/admin/send-notification-to-all-students', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
                     body: JSON.stringify({ title, message })
                 });
                 const data = await res.json();
@@ -648,16 +702,15 @@
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
             
             try {
-                const res = await fetch('/api/admin/sent-notifications');
-                const notifications = await res.json();
+                const data = await fetchData('/api/admin/sent-notifications', 'خطأ في تحميل الإشعارات');
                 
-                if (!notifications || notifications.length === 0) {
+                if (!data || data.length === 0) {
                     container.innerHTML = '<div class="empty-state"><i class="fas fa-bell-slash"></i>لا توجد إشعارات مرسلة بعد</div>';
                     return;
                 }
                 
                 let html = '';
-                for (const notif of notifications) {
+                for (const notif of data) {
                     const date = new Date(notif.created_at);
                     html += `
                         <div class="notification-card" style="background: #f8fafc; border-right-color: ${notif.sent_to_all ? '#10b981' : '#0f5cbf'};">
@@ -688,7 +741,7 @@
                 container.innerHTML = html;
             } catch(e) {
                 console.error(e);
-                container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle" style="color:#ef4444;"></i>حدث خطأ في تحميل الإشعارات</div>';
+                container.innerHTML = `<div class="error-state"><i class="fas fa-exclamation-triangle" style="color:#ef4444;"></i>${e.message}</div>`;
             }
         }
 
@@ -697,7 +750,11 @@
             if (!confirm('هل أنت متأكد من حذف هذا الإشعار؟')) return;
             
             try {
-                const res = await fetch(`/api/admin/delete-notification/${id}`, { method: 'DELETE' });
+                const token = localStorage.getItem('token');
+                const res = await fetch(`/api/admin/delete-notification/${id}`, { 
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
                 const data = await res.json();
                 if (data.success) {
                     showNotification('تم حذف الإشعار', 'success');
@@ -723,9 +780,13 @@
             const banUser = document.getElementById('banUserCheckbox').checked;
             
             try {
+                const token = localStorage.getItem('token');
                 const res = await fetch('/api/admin/delete-user', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
                     body: JSON.stringify({ 
                         user_id: currentActionId, 
                         role: currentActionRole,
@@ -770,9 +831,13 @@
             const reason = document.getElementById('banReason').value.trim() || 'لم يتم تحديد سبب';
             
             try {
+                const token = localStorage.getItem('token');
                 const res = await fetch('/api/admin/ban-user', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
                     body: JSON.stringify({ 
                         user_id: currentActionId, 
                         role: currentActionRole,
@@ -807,9 +872,13 @@
 
         async function confirmUnbanUser() {
             try {
+                const token = localStorage.getItem('token');
                 const res = await fetch('/api/admin/unban-user', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
                     body: JSON.stringify({ 
                         user_id: currentActionId, 
                         role: currentActionRole
@@ -863,16 +932,15 @@
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
             
             try {
-                const res = await fetch('/api/admin/banned-users');
-                const users = await res.json();
+                const data = await fetchData('/api/admin/banned-users', 'خطأ في تحميل المحظورين');
                 
-                if (!users || users.length === 0) {
+                if (!data || data.length === 0) {
                     container.innerHTML = '<div class="empty-state"><i class="fas fa-check-circle" style="color:#10b981;"></i>لا يوجد مستخدمون محظورون</div>';
                     return;
                 }
                 
                 let html = '<div class="users-grid">';
-                for (const user of users) {
+                for (const user of data) {
                     const isStudent = user.role === 'student';
                     const roleLabel = isStudent ? 'طالب' : 'أستاذ';
                     const roleClass = isStudent ? 'role-student' : 'role-teacher';
@@ -899,7 +967,7 @@
                 container.innerHTML = html;
             } catch(e) {
                 console.error(e);
-                container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle" style="color:#ef4444;"></i>حدث خطأ في تحميل البيانات</div>';
+                container.innerHTML = `<div class="error-state"><i class="fas fa-exclamation-triangle" style="color:#ef4444;"></i>${e.message}</div>`;
             }
         }
 
@@ -909,14 +977,12 @@
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
             
             try {
-                const res = await fetch('/api/admin/students');
-                const students = await res.json();
-                allStudents = students || [];
-                
+                const data = await fetchData('/api/admin/students', 'خطأ في تحميل الطلاب');
+                allStudents = data || [];
                 renderStudents(allStudents);
             } catch(e) {
                 console.error(e);
-                container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle" style="color:#ef4444;"></i>حدث خطأ في تحميل البيانات</div>';
+                container.innerHTML = `<div class="error-state"><i class="fas fa-exclamation-triangle" style="color:#ef4444;"></i>${e.message}</div>`;
             }
         }
 
@@ -985,14 +1051,14 @@
             const container = document.getElementById('pendingTeachers');
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
             try {
-                const res = await fetch('/api/admin/pending-teachers');
-                const teachers = await res.json();
-                if (!teachers || teachers.length === 0) {
+                const data = await fetchData('/api/admin/pending-teachers', 'خطأ في تحميل طلبات الأساتذة');
+                
+                if (!data || data.length === 0) {
                     container.innerHTML = '<div class="empty-state"><i class="fas fa-check-circle" style="color:#10b981;"></i>لا توجد طلبات pending</div>';
                     return;
                 }
                 let html = '<div class="teachers-grid">';
-                for (const t of teachers) {
+                for (const t of data) {
                     const imageUrl = t.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(t.full_name) + '&background=0f5cbf&color=fff&size=80';
                     const levelDisplay = t.teaching_level ? getLevelDisplay(t.teaching_level) : null;
                     
@@ -1017,7 +1083,7 @@
                 container.innerHTML = html;
             } catch(e) { 
                 console.error(e);
-                container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle" style="color:#ef4444;"></i>حدث خطأ في تحميل البيانات</div>';
+                container.innerHTML = `<div class="error-state"><i class="fas fa-exclamation-triangle" style="color:#ef4444;"></i>${e.message}</div>`;
             }
         }
 
@@ -1025,14 +1091,14 @@
             const container = document.getElementById('approvedTeachers');
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
             try {
-                const res = await fetch('/api/admin/approved-teachers');
-                const teachers = await res.json();
-                if (!teachers || teachers.length === 0) {
+                const data = await fetchData('/api/admin/approved-teachers', 'خطأ في تحميل الأساتذة');
+                
+                if (!data || data.length === 0) {
                     container.innerHTML = '<div class="empty-state"><i class="fas fa-users"></i>لا توجد أساتذة مقبولون</div>';
                     return;
                 }
                 let html = '<div class="teachers-grid">';
-                for (const t of teachers) {
+                for (const t of data) {
                     const isBanned = t.is_banned === true;
                     const imageUrl = t.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(t.full_name) + '&background=0f5cbf&color=fff&size=80';
                     const levelDisplay = t.teaching_level ? getLevelDisplay(t.teaching_level) : null;
@@ -1070,25 +1136,29 @@
                 container.innerHTML = html;
             } catch(e) { 
                 console.error(e);
-                container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle" style="color:#ef4444;"></i>حدث خطأ في تحميل البيانات</div>';
+                container.innerHTML = `<div class="error-state"><i class="fas fa-exclamation-triangle" style="color:#ef4444;"></i>${e.message}</div>`;
             }
         }
 
         async function approveTeacher(id) {
-            if (confirm('✅ هل أنت متأكد من قبول هذا الأستاذ؟')) {
-                try {
-                    const res = await fetch(`/api/admin/approve-teacher/${id}`, { method: 'POST' });
-                    const data = await res.json();
-                    if (data.success) {
-                        showNotification('✅ تم قبول الأستاذ بنجاح', 'success');
-                        loadPendingTeachers();
-                        loadApprovedTeachers();
-                    } else {
-                        showNotification(data.error || '❌ حدث خطأ', 'error');
-                    }
-                } catch(e) {
-                    showNotification('❌ حدث خطأ', 'error');
+            if (!confirm('✅ هل أنت متأكد من قبول هذا الأستاذ؟')) return;
+            
+            try {
+                const token = localStorage.getItem('token');
+                const res = await fetch(`/api/admin/approve-teacher/${id}`, { 
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showNotification('✅ تم قبول الأستاذ بنجاح', 'success');
+                    loadPendingTeachers();
+                    loadApprovedTeachers();
+                } else {
+                    showNotification(data.error || '❌ حدث خطأ', 'error');
                 }
+            } catch(e) {
+                showNotification('❌ حدث خطأ', 'error');
             }
         }
 
@@ -1106,9 +1176,13 @@
                 return;
             }
             try {
+                const token = localStorage.getItem('token');
                 const res = await fetch(`/api/admin/reject-teacher/${currentActionId}`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
                     body: JSON.stringify({ reason: reason })
                 });
                 const data = await res.json();
@@ -1129,14 +1203,14 @@
             const container = document.getElementById('withdrawalsList');
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
             try {
-                const res = await fetch('/api/admin/withdraw-requests');
-                const requests = await res.json();
-                if (!requests || requests.length === 0) {
+                const data = await fetchData('/api/admin/withdraw-requests', 'خطأ في تحميل طلبات السحب');
+                
+                if (!data || data.length === 0) {
                     container.innerHTML = '<div class="empty-state"><i class="fas fa-check-circle" style="color:#10b981;"></i>لا توجد طلبات سحب pending</div>';
                     return;
                 }
                 let html = '<div class="requests-grid">';
-                for (const req of requests) {
+                for (const req of data) {
                     html += `
                         <div class="request-card">
                             <h3><i class="fas fa-chalkboard-user"></i> ${escapeHtml(req.teachers?.full_name)}</h3>
@@ -1156,24 +1230,28 @@
                 container.innerHTML = html;
             } catch(e) { 
                 console.error(e);
-                container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle" style="color:#ef4444;"></i>حدث خطأ في تحميل البيانات</div>';
+                container.innerHTML = `<div class="error-state"><i class="fas fa-exclamation-triangle" style="color:#ef4444;"></i>${e.message}</div>`;
             }
         }
 
         async function approveWithdraw(id) {
-            if (confirm('💰 هل تم تحويل المبلغ إلى حساب الأستاذ؟')) {
-                try {
-                    const res = await fetch(`/api/admin/withdraw-requests/${id}/approve`, { method: 'POST' });
-                    const data = await res.json();
-                    if (data.success) {
-                        showNotification('✅ تم تأكيد السحب بنجاح', 'success');
-                        loadWithdrawals();
-                    } else {
-                        showNotification(data.error || '❌ حدث خطأ', 'error');
-                    }
-                } catch(e) {
-                    showNotification('❌ حدث خطأ', 'error');
+            if (!confirm('💰 هل تم تحويل المبلغ إلى حساب الأستاذ؟')) return;
+            
+            try {
+                const token = localStorage.getItem('token');
+                const res = await fetch(`/api/admin/withdraw-requests/${id}/approve`, { 
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showNotification('✅ تم تأكيد السحب بنجاح', 'success');
+                    loadWithdrawals();
+                } else {
+                    showNotification(data.error || '❌ حدث خطأ', 'error');
                 }
+            } catch(e) {
+                showNotification('❌ حدث خطأ', 'error');
             }
         }
 
@@ -1181,9 +1259,13 @@
             const reason = prompt('⚠️ الرجاء إدخال سبب الرفض:');
             if (reason) {
                 try {
+                    const token = localStorage.getItem('token');
                     const res = await fetch(`/api/admin/withdraw-requests/${id}/reject`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
                         body: JSON.stringify({ reason: reason })
                     });
                     const data = await res.json();
@@ -1204,14 +1286,14 @@
             const container = document.getElementById('supportMessagesList');
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
             try {
-                const res = await fetch('/api/admin/support-messages');
-                const messages = await res.json();
-                if (!messages || messages.length === 0) {
+                const data = await fetchData('/api/admin/support-messages', 'خطأ في تحميل رسائل الدعم');
+                
+                if (!data || data.length === 0) {
                     container.innerHTML = '<div class="empty-state"><i class="fas fa-envelope-open-text"></i>لا توجد رسائل دعم</div>';
                     return;
                 }
                 let html = '<div class="messages-grid">';
-                for (const msg of messages) {
+                for (const msg of data) {
                     const date = new Date(msg.created_at);
                     const isUnread = msg.status === 'unread';
                     html += `
@@ -1241,13 +1323,17 @@
                 container.innerHTML = html;
             } catch(e) {
                 console.error(e);
-                container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle" style="color:#ef4444;"></i>حدث خطأ في تحميل البيانات</div>';
+                container.innerHTML = `<div class="error-state"><i class="fas fa-exclamation-triangle" style="color:#ef4444;"></i>${e.message}</div>`;
             }
         }
 
         async function markAsRead(id) {
             try {
-                const res = await fetch(`/api/admin/support-messages/${id}/read`, { method: 'PUT' });
+                const token = localStorage.getItem('token');
+                const res = await fetch(`/api/admin/support-messages/${id}/read`, { 
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
                 const data = await res.json();
                 if (data.success) {
                     showNotification('تم تحديث حالة الرسالة', 'success');
@@ -1259,17 +1345,21 @@
         }
 
         async function deleteMessage(id) {
-            if (confirm('هل أنت متأكد من حذف هذه الرسالة؟')) {
-                try {
-                    const res = await fetch(`/api/admin/support-messages/${id}`, { method: 'DELETE' });
-                    const data = await res.json();
-                    if (data.success) {
-                        showNotification('تم حذف الرسالة', 'success');
-                        loadSupportMessages();
-                    }
-                } catch(e) {
-                    showNotification('حدث خطأ', 'error');
+            if (!confirm('هل أنت متأكد من حذف هذه الرسالة؟')) return;
+            
+            try {
+                const token = localStorage.getItem('token');
+                const res = await fetch(`/api/admin/support-messages/${id}`, { 
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showNotification('تم حذف الرسالة', 'success');
+                    loadSupportMessages();
                 }
+            } catch(e) {
+                showNotification('حدث خطأ', 'error');
             }
         }
 
