@@ -1,5 +1,5 @@
 // ============================================================
-// مسارات المحفظة - Wallet Routes
+// مسارات المحفظة - Wallet Routes (معدل بالكامل مع دعم الرصيد المعلق)
 // ============================================================
 
 const express = require('express');
@@ -184,6 +184,73 @@ router.post('/deposit', authenticate, authorize(['student']), [
 });
 
 // ============================================================
+// جلب رصيد الطالب ومعاملاته (مع الرصيد المعلق)
+// ============================================================
+router.get('/balance/:student_id', authenticate, authorize(['student']), async (req, res) => {
+    try {
+        const student_id = parseInt(req.params.student_id);
+
+        if (req.user.userId !== student_id) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        const student = await getOne('students', 'id', student_id);
+        if (!student) {
+            return res.status(404).json({ success: false, error: 'الطالب غير موجود' });
+        }
+
+        // ✅ جلب معاملات المحفظة
+        const { data: transactions, error: transactionsError } = await supabase
+            .from('wallet_transactions')
+            .select('*')
+            .eq('student_id', student_id)
+            .order('created_at', { ascending: false })
+            .limit(50);
+
+        if (transactionsError) {
+            console.error('خطأ في جلب المعاملات:', transactionsError.message);
+        }
+
+        // ✅ جلب الرصيد المعلق من الحجوزات
+        const { data: pendingSessions, error: pendingError } = await supabase
+            .from('sessions')
+            .select('pending_balance, payment_status')
+            .eq('student_id', student_id)
+            .eq('payment_status', 'pending_stream');
+
+        let totalPendingBalance = 0;
+        if (!pendingError && pendingSessions) {
+            totalPendingBalance = pendingSessions.reduce((sum, s) => sum + (s.pending_balance || 0), 0);
+        }
+
+        // ✅ جلب المبلغ المعلق في معاملات المحفظة
+        const { data: pendingTransactions, error: pendingTransError } = await supabase
+            .from('wallet_transactions')
+            .select('amount')
+            .eq('student_id', student_id)
+            .eq('status', 'pending_stream');
+
+        if (!pendingTransError && pendingTransactions) {
+            const pendingTransAmount = pendingTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+            totalPendingBalance += pendingTransAmount;
+        }
+
+        res.json({
+            success: true,
+            balance: student.wallet_balance || 0,
+            pending_balance: totalPendingBalance,
+            total_balance: (student.wallet_balance || 0) - totalPendingBalance,
+            transactions: transactions || [],
+            gift_box_chances: student.gift_box_chances || 0,
+            referral_balance: student.referral_balance || 0
+        });
+    } catch (error) {
+        console.error('❌ خطأ في جلب الرصيد:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
 // Webhook Chargily
 // ============================================================
 router.post('/chargily-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
@@ -248,6 +315,16 @@ router.post('/chargily-webhook', express.raw({ type: 'application/json' }), asyn
                         description: `تم شحن الرصيد بنجاح بمبلغ ${addAmount} دج`
                     });
 
+                    // ✅ إرسال إشعار للطالب
+                    await insert('notifications', {
+                        user_id: student.id,
+                        user_type: 'student',
+                        title: '💰 تم شحن الرصيد',
+                        message: `تم شحن رصيدك بمبلغ ${addAmount} دج. رصيدك الحالي: ${newBalance} دج`,
+                        is_read: false,
+                        created_at: new Date().toISOString()
+                    });
+
                     console.log(`✅ تم تأكيد الدفع وإضافة ${addAmount} دج للطالب ${student.full_name}`);
                 }
             }
@@ -310,6 +387,16 @@ router.get('/deposit/success/:transaction_id', [
         await update('wallet_transactions', transaction_id, {
             status: 'completed',
             description: `تم شحن الرصيد بنجاح بمبلغ ${amount} دج`
+        });
+
+        // ✅ إرسال إشعار للطالب
+        await insert('notifications', {
+            user_id: student.id,
+            user_type: 'student',
+            title: '💰 تم شحن الرصيد',
+            message: `تم شحن رصيدك بمبلغ ${amount} دج. رصيدك الحالي: ${newBalance} دج`,
+            is_read: false,
+            created_at: new Date().toISOString()
         });
 
         res.send(`
@@ -379,6 +466,62 @@ router.get('/deposit/failure/:transaction_id', async (req, res) => {
     } catch (error) {
         console.error('❌ خطأ في معالجة فشل الدفع:', error.message);
         res.redirect('/student-dashboard.html');
+    }
+});
+
+// ============================================================
+// جلب سجل معاملات الطالب
+// ============================================================
+router.get('/transactions/:student_id', authenticate, authorize(['student']), async (req, res) => {
+    try {
+        const student_id = parseInt(req.params.student_id);
+
+        if (req.user.userId !== student_id) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        const { data: transactions, error } = await supabase
+            .from('wallet_transactions')
+            .select('*')
+            .eq('student_id', student_id)
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('خطأ في جلب المعاملات:', error.message);
+            return res.status(500).json({ success: false, error: error.message });
+        }
+
+        // ✅ إضافة معلومات الرصيد المعلق من الحجوزات
+        const { data: pendingSessions, error: pendingError } = await supabase
+            .from('sessions')
+            .select('id, pending_balance, created_at, offers:offer_id(subject_name)')
+            .eq('student_id', student_id)
+            .eq('payment_status', 'pending_stream');
+
+        let pendingTransactions = [];
+        if (!pendingError && pendingSessions) {
+            pendingTransactions = pendingSessions.map(s => ({
+                id: s.id,
+                amount: s.pending_balance || 0,
+                type: 'withdraw_pending',
+                status: 'pending_stream',
+                description: `حجز حصة "${s.offers?.subject_name || 'غير معروف'}" (في انتظار البث)`,
+                created_at: s.created_at
+            }));
+        }
+
+        // ✅ دمج المعاملات
+        const allTransactions = [...(transactions || []), ...pendingTransactions];
+        allTransactions.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        res.json({
+            success: true,
+            transactions: allTransactions,
+            pending_count: pendingTransactions.length
+        });
+    } catch (error) {
+        console.error('❌ خطأ في جلب المعاملات:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
 
