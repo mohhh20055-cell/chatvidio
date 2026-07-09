@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes, viewport-fit=cover">
-    <title>ZoomDz | لوحة الأستاذ - Jitsi Meet</title>
+    <title>ZoomDz | لوحة الأستاذ</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
@@ -32,7 +32,6 @@
             --gradient-secondary: linear-gradient(135deg, #10b981 0%, #059669 100%);
             --gradient-gold: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
             --gradient-danger: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-            --gradient-jitsi: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
             --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
             --shadow-md: 0 4px 20px rgba(0,0,0,0.08);
             --shadow-lg: 0 8px 40px rgba(0,0,0,0.12);
@@ -55,26 +54,67 @@
         ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--primary-dark); }
 
-        /* ================================================================
-           JITSI MEET BADGE
-        ================================================================ */
-        .jitsi-badge {
-            display: inline-block;
-            background: var(--gradient-jitsi);
-            color: white;
-            padding: 4px 16px;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            font-weight: 700;
-            margin-bottom: 10px;
-            border: 1px solid rgba(255,255,255,0.2);
-            box-shadow: 0 2px 8px rgba(26, 115, 232, 0.3);
+        /* ============================================================
+           تحذير المستوى التعليمي - Teaching Level Required Banner
+        ============================================================ */
+        .teaching-level-banner {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border: 2px solid var(--gold);
+            border-radius: var(--radius-sm);
+            padding: 16px 20px;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            box-shadow: 0 4px 16px rgba(245, 158, 11, 0.15);
         }
-        .jitsi-badge i { margin-left: 6px; }
+        .teaching-level-banner .banner-icon {
+            font-size: 1.8rem;
+            color: var(--gold-dark);
+            flex-shrink: 0;
+        }
+        .teaching-level-banner .banner-content {
+            flex: 1;
+            min-width: 200px;
+        }
+        .teaching-level-banner .banner-content h4 {
+            color: var(--gold-dark);
+            font-size: 1rem;
+            font-weight: 800;
+            margin-bottom: 2px;
+        }
+        .teaching-level-banner .banner-content p {
+            color: #78350f;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .teaching-level-banner .banner-btn {
+            background: var(--gradient-gold);
+            color: white;
+            border: none;
+            padding: 8px 24px;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .teaching-level-banner .banner-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+        }
+        .teaching-level-banner .banner-btn i { font-size: 0.9rem; }
 
-        /* ================================================================
+        /* ============================================================
            NAVBAR
-        ================================================================ */
+        ============================================================ */
         .navbar {
             position: fixed;
             top: 0;
@@ -170,6 +210,15 @@
             background: var(--primary);
             color: white;
             box-shadow: 0 4px 14px rgba(15, 92, 191, 0.3);
+        }
+        .nav-tab .nav-badge {
+            background: var(--danger);
+            color: white;
+            font-size: 0.55rem;
+            padding: 1px 7px;
+            border-radius: 20px;
+            margin-right: 3px;
+            font-weight: 700;
         }
 
         .nav-balance {
@@ -416,9 +465,9 @@
         .profile-dropdown .dropdown-item.danger { color: var(--danger); }
         .profile-dropdown .dropdown-item.danger i { color: var(--danger); }
 
-        /* ================================================================
+        /* ============================================================
            MAIN CONTENT
-        ================================================================ */
+        ============================================================ */
         .main-wrapper {
             max-width: 1300px;
             margin: 0 auto;
@@ -538,22 +587,22 @@
             transition: var(--transition);
         }
         .start-stream-btn {
-            background: var(--gradient-jitsi);
+            background: var(--gradient-main);
             color: white;
-            box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+            box-shadow: 0 4px 12px rgba(15, 92, 191, 0.3);
         }
-        .start-stream-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(26, 115, 232, 0.4); }
+        .start-stream-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(15, 92, 191, 0.4); }
         .delete-btn {
             background: var(--gradient-danger);
             color: white;
         }
         .delete-btn:hover { transform: translateY(-2px); }
         .message-btn {
-            background: var(--gradient-main);
+            background: var(--gradient-secondary);
             color: white;
-            box-shadow: 0 4px 12px rgba(15, 92, 191, 0.2);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
         }
-        .message-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(15, 92, 191, 0.3); }
+        .message-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3); }
 
         .btn-primary, .btn-danger {
             border: none;
@@ -579,22 +628,6 @@
             box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
         }
         .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(239, 68, 68, 0.3); }
-        .btn-jitsi {
-            background: var(--gradient-jitsi);
-            color: white;
-            border: none;
-            padding: 8px 20px;
-            border-radius: 30px;
-            cursor: pointer;
-            font-weight: 700;
-            font-size: 0.8rem;
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
-        }
-        .btn-jitsi:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(26, 115, 232, 0.4); }
 
         .section-actions {
             display: flex;
@@ -1117,9 +1150,9 @@
         .loading { text-align: center; padding: 30px; color: var(--gray-400); }
         .loading i { color: var(--primary); }
 
-        /* ================================================================
+        /* ============================================================
            RESPONSIVE
-        ================================================================ */
+        ============================================================ */
         @media (max-width: 767px) {
             body { padding-top: 56px; }
             .navbar { height: 56px; padding: 0 10px; }
@@ -1147,6 +1180,8 @@
             .social-links-grid { gap: 6px; }
             .social-link-item { font-size: 0.75rem; padding: 6px 12px; }
             .profile-display .profile-avatar { width: 90px; height: 90px; }
+            .teaching-level-banner { flex-direction: column; text-align: center; padding: 14px; }
+            .teaching-level-banner .banner-btn { width: 100%; justify-content: center; }
         }
 
         @media (min-width: 768px) {
@@ -1198,6 +1233,7 @@
             <button class="nav-tab" data-section="offers" onclick="showSection('offers')">
                 <i class="fas fa-calendar-alt"></i>
                 <span class="tab-label">عروضي</span>
+                <span class="nav-badge" id="offersBadge" style="display:none;">0</span>
             </button>
             <button class="nav-tab" data-section="earnings" onclick="showSection('earnings')">
                 <i class="fas fa-money-bill-wave"></i>
@@ -1283,6 +1319,17 @@
         <!-- OFFERS SECTION -->
         <div id="offersSection" style="display: none;">
             <div class="section-title"><i class="fas fa-calendar-alt"></i> عروضي</div>
+            <!-- ===== تحذير المستوى التعليمي ===== -->
+            <div id="teachingLevelBanner" class="teaching-level-banner" style="display: none;">
+                <div class="banner-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="banner-content">
+                    <h4>⚠️ قم بإدخال المستوى الدراسي للطلبة</h4>
+                    <p>لا يمكنك إضافة عروض جديدة حتى تقوم بتحديد المستوى الدراسي الذي تدرسه في ملفك الشخصي.</p>
+                </div>
+                <button class="banner-btn" onclick="showEditProfileModal()">
+                    <i class="fas fa-edit"></i> تعديل الملف الشخصي
+                </button>
+            </div>
             <div class="section-actions">
                 <button class="btn-primary" onclick="showCreateOfferModal()"><i class="fas fa-plus"></i> عرض جديد</button>
                 <button class="btn-danger" onclick="deleteExpiredOffers()"><i class="fas fa-trash"></i> حذف المنتهية</button>
@@ -1369,10 +1416,40 @@
             <p style="color: var(--danger); margin-bottom: 10px; font-size: 0.8rem; font-weight: 600;">
                 <i class="fas fa-exclamation-triangle"></i> لا يمكن تغيير المعلومات الشخصية إلا عبر الإدارة
             </p>
-            <label style="font-weight: 700; color: var(--gray-800); display: block; margin-bottom: 6px;">
-                <i class="fas fa-camera" style="color: var(--primary);"></i> الصورة الشخصية
-            </label>
-            <input type="file" id="editProfileImage" accept="image/*">
+            
+            <!-- ===== المستوى التعليمي ===== -->
+            <div class="education-level-group" style="margin-top: 12px;">
+                <label><i class="fas fa-graduation-cap"></i> المستوى الدراسي الذي تدرسه <span style="color: var(--danger);">*</span></label>
+                <select id="editTeachingLevel" style="width: 100%; padding: 10px 14px; border: 2px solid var(--gray-200); border-radius: var(--radius-sm); font-family: 'Cairo', sans-serif; font-size: 0.9rem; background: white;">
+                    <option value="">-- اختر المستوى --</option>
+                    <option value="5eme_pri">خامسة ابتدائي</option>
+                    <option value="1ere_am">أولى متوسط</option>
+                    <option value="2eme_am">ثانية متوسط</option>
+                    <option value="3eme_am">ثالثة متوسط</option>
+                    <option value="4eme_am">رابعة متوسط</option>
+                    <option value="5eme_am">خامسة متوسط</option>
+                    <option value="1ere_as">أولى ثانوي</option>
+                    <option value="2eme_as">ثانية ثانوي</option>
+                    <option value="3eme_as">ثالثة ثانوي</option>
+                    <option value="bac">بكالوريا</option>
+                    <option value="1ere_uni">أولى جامعي</option>
+                    <option value="2eme_uni">ثانية جامعي</option>
+                    <option value="3eme_uni">ثالثة جامعي</option>
+                    <option value="master">ماستر</option>
+                    <option value="doctorat">دكتوراه</option>
+                    <option value="other">آخر</option>
+                </select>
+                <p style="font-size: 0.7rem; color: var(--gray-400); margin-top: 4px;">
+                    <i class="fas fa-info-circle"></i> حدد المستوى الدراسي الذي تدرسه ليتمكن الطلاب من معرفة تخصصك
+                </p>
+            </div>
+
+            <div style="margin-top: 12px;">
+                <label style="font-weight: 700; color: var(--gray-800); display: block; margin-bottom: 6px;">
+                    <i class="fas fa-camera" style="color: var(--primary);"></i> الصورة الشخصية
+                </label>
+                <input type="file" id="editProfileImage" accept="image/*">
+            </div>
         </div>
         
         <hr class="social-divider">
@@ -1449,10 +1526,21 @@
             <label><i class="fas fa-graduation-cap"></i> المستوى التعليمي</label>
             <select id="educationLevel" onchange="toggleOtherLevel()">
                 <option value="">-- اختر المستوى --</option>
-                <option value="primary">خامسة ابتدائي</option>
-                <option value="middle">شهادة التعليم المتوسط</option>
-                <option value="high">بكالوريا</option>
-                <option value="university">تعليم جامعي</option>
+                <option value="5eme_pri">خامسة ابتدائي</option>
+                <option value="1ere_am">أولى متوسط</option>
+                <option value="2eme_am">ثانية متوسط</option>
+                <option value="3eme_am">ثالثة متوسط</option>
+                <option value="4eme_am">رابعة متوسط</option>
+                <option value="5eme_am">خامسة متوسط</option>
+                <option value="1ere_as">أولى ثانوي</option>
+                <option value="2eme_as">ثانية ثانوي</option>
+                <option value="3eme_as">ثالثة ثانوي</option>
+                <option value="bac">بكالوريا</option>
+                <option value="1ere_uni">أولى جامعي</option>
+                <option value="2eme_uni">ثانية جامعي</option>
+                <option value="3eme_uni">ثالثة جامعي</option>
+                <option value="master">ماستر</option>
+                <option value="doctorat">دكتوراه</option>
                 <option value="other">آخر</option>
             </select>
         </div>
@@ -1473,7 +1561,7 @@
 
 <script>
     // ================================================================
-    // ✅ تم إصلاح مشكلة التوكن بشكل كامل - Jitsi Meet فقط
+    // ✅ تم إصلاح مشكلة التوكن بشكل كامل
     // ================================================================
 
     let userData = null;
@@ -1807,11 +1895,27 @@
             loadBalance();
             loadReferralData();
             loadNotifications();
+            checkTeachingLevel();
         } catch(e) {
             console.error('خطأ في تحميل بيانات المستخدم:', e);
             if (e.message === 'انتهت صلاحية الجلسة') {
                 window.location.href = '/';
             }
+        }
+    }
+
+    // ===== التحقق من وجود المستوى التعليمي =====
+    function checkTeachingLevel() {
+        const banner = document.getElementById('teachingLevelBanner');
+        const createOfferBtn = document.querySelector('.btn-primary');
+        
+        if (userData && userData.teaching_level) {
+            banner.style.display = 'none';
+            if (createOfferBtn) createOfferBtn.disabled = false;
+        } else {
+            banner.style.display = 'flex';
+            if (createOfferBtn) createOfferBtn.disabled = true;
+            showToast('⚠️ قم بإدخال المستوى الدراسي في ملفك الشخصي لتتمكن من إضافة عروض', 'warning');
         }
     }
 
@@ -1858,9 +1962,28 @@
         document.getElementById('navProfileName').textContent = userName.split(' ')[0];
         document.getElementById('navProfileImg').src = userImage;
 
+        // عرض المستوى التعليمي في الملف الشخصي
+        const levelMap = {
+            '5eme_pri': 'خامسة ابتدائي',
+            '1ere_am': 'أولى متوسط',
+            '2eme_am': 'ثانية متوسط',
+            '3eme_am': 'ثالثة متوسط',
+            '4eme_am': 'رابعة متوسط',
+            '5eme_am': 'خامسة متوسط',
+            '1ere_as': 'أولى ثانوي',
+            '2eme_as': 'ثانية ثانوي',
+            '3eme_as': 'ثالثة ثانوي',
+            'bac': 'بكالوريا',
+            '1ere_uni': 'أولى جامعي',
+            '2eme_uni': 'ثانية جامعي',
+            '3eme_uni': 'ثالثة جامعي',
+            'master': 'ماستر',
+            'doctorat': 'دكتوراه'
+        };
+        const teachingLevelDisplay = userData.teaching_level ? levelMap[userData.teaching_level] || userData.teaching_level : 'لم يحدد بعد';
+
         document.getElementById('profileInfo').innerHTML = `
             <div class="profile-display">
-                <div class="jitsi-badge"><i class="fas fa-video"></i> Jitsi Meet - مجاني 100%</div>
                 <img src="${userImage}" alt="صورة الملف الشخصي" class="profile-avatar" 
                      onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=0f5cbf&color=fff&size=120'">
                 <div class="profile-name">${escapeHtml(userData.full_name)}</div>
@@ -1889,6 +2012,13 @@
                             ${userData.status === 'approved' ? '✅ معتمد' : '⏳ قيد المراجعة'}
                         </div>
                     </div>
+                    <div class="profile-info-item" style="border-color: var(--gold);">
+                        <div class="label">🎓 المستوى الدراسي</div>
+                        <div class="value" style="color: var(--gold-dark); font-weight: 800;">
+                            ${teachingLevelDisplay}
+                            ${!userData.teaching_level ? '<span style="font-size: 0.7rem; color: var(--danger); display: block;">⚠️ مطلوب لإضافة عروض</span>' : ''}
+                        </div>
+                    </div>
                 </div>
 
                 <div class="social-links-section">
@@ -1914,9 +2044,6 @@
 
                 <p style="color: var(--gray-400); margin-top: 16px; font-size: 0.7rem;">
                     <i class="fas fa-lock"></i> لا يمكن تعديل المعلومات الشخصية (الاسم، التخصص، الخبرة) إلا عبر الإدارة
-                </p>
-                <p style="color: var(--gray-400); margin-top: 8px; font-size: 0.7rem;">
-                    <i class="fas fa-video"></i> نظام البث: Jitsi Meet (مجاني 100%)
                 </p>
             </div>
         `;
@@ -2302,7 +2429,7 @@
     }
 
     // ================================================================
-    // OFFERS - Jitsi Meet فقط
+    // OFFERS
     // ================================================================
 
     async function loadOffers() {
@@ -2329,11 +2456,21 @@
         const now = new Date();
         let html = '';
         const levelMap = {
-            'primary': 'خامسة ابتدائي',
-            'middle': 'شهادة التعليم المتوسط',
-            'high': 'بكالوريا',
-            'university': 'تعليم جامعي',
-            'other': 'آخر'
+            '5eme_pri': 'خامسة ابتدائي',
+            '1ere_am': 'أولى متوسط',
+            '2eme_am': 'ثانية متوسط',
+            '3eme_am': 'ثالثة متوسط',
+            '4eme_am': 'رابعة متوسط',
+            '5eme_am': 'خامسة متوسط',
+            '1ere_as': 'أولى ثانوي',
+            '2eme_as': 'ثانية ثانوي',
+            '3eme_as': 'ثالثة ثانوي',
+            'bac': 'بكالوريا',
+            '1ere_uni': 'أولى جامعي',
+            '2eme_uni': 'ثانية جامعي',
+            '3eme_uni': 'ثالثة جامعي',
+            'master': 'ماستر',
+            'doctorat': 'دكتوراه'
         };
 
         for (const offer of offers) {
@@ -2356,19 +2493,17 @@
                 levelDisplay = `<div style="font-size:0.75rem; color:#8b5cf6; margin-top:4px;"><i class="fas fa-graduation-cap"></i> المستوى: ${levelName}</div>`;
             }
 
-            // ✅ أزرار البث المباشر مع Jitsi Meet فقط
             let streamButton = '';
             let addStudentsButton = '';
             if (!isExpired && offer.status === 'upcoming') {
-                streamButton = `<button class="start-stream-btn" onclick="startStreamNow(${offer.id})"><i class="fas fa-play"></i> بدء البث (Jitsi)</button>`;
+                streamButton = `<button class="start-stream-btn" onclick="startStreamNow(${offer.id})"><i class="fas fa-play"></i> بدء البث</button>`;
             } else if (!isExpired && (offer.status === 'teacher_ready' || offer.status === 'live')) {
-                streamButton = `<button class="start-stream-btn" onclick="joinTeacherStream(${offer.id})"><i class="fas fa-video"></i> دخول البث (Jitsi)</button>`;
+                streamButton = `<button class="start-stream-btn" onclick="joinTeacherStream(${offer.id})"><i class="fas fa-video"></i> دخول البث</button>`;
                 addStudentsButton = `<button class="message-btn" style="margin-top:8px;" onclick="addStudentsToStream(${offer.id})"><i class="fas fa-user-plus"></i> إضافة الطلاب</button>`;
             }
 
             html += `<div class="offer-card ${isExpired ? 'expired' : ''}">
                 ${isExpired ? '<span class="expired-label">منتهية</span>' : ''}
-                <div class="jitsi-badge"><i class="fas fa-video"></i> Jitsi Meet</div>
                 <div class="offer-title">${escapeHtml(offer.subject_name)}</div>
                 <div style="font-size:0.85rem; color:var(--gray-600);"><i class="fas fa-calendar-alt" style="color:var(--primary);"></i> ${offerDate.toLocaleString('ar')}</div>
                 <div style="font-size:0.85rem; color:var(--gray-600);"><i class="fas fa-clock" style="color:var(--primary);"></i> ${offer.duration} دقيقة</div>
@@ -2417,9 +2552,8 @@
         loadOffers();
     }
 
-    // ✅ بدء البث عبر Jitsi Meet مباشرةً بدون صفحة وسيطة
     async function startStreamNow(offerId) {
-        if (!confirm('⚠️ هل تريد بدء البث المباشر عبر Jitsi Meet؟ (مجاني 100%)')) return;
+        if (!confirm('⚠️ هل تريد بدء البث المباشر؟')) return;
 
         const token = localStorage.getItem('token');
         if (!token) {
@@ -2439,7 +2573,7 @@
                 const newWindow = window.open(data.room_url, '_blank');
                 if (newWindow) {
                     setTimeout(() => {
-                        alert(`🔑 كلمة مرور البث: ${data.password}\n\nأدخلها عند الطلب في صفحة Jitsi Meet`);
+                        alert(`🔑 كلمة مرور البث: ${data.password}\n\nأدخلها عند الطلب في صفحة البث`);
                     }, 2000);
                 } else {
                     showToast('⚠️ يرجى السماح بفتح النوافذ المنبثقة', 'warning');
@@ -2455,7 +2589,6 @@
         }
     }
 
-    // ✅ دخول البث عبر Jitsi Meet فقط
     async function joinTeacherStream(offerId) {
         try {
             const res = await fetchWithAuth(`/api/teacher/offer/${offerId}`);
@@ -2464,7 +2597,7 @@
                 const newWindow = window.open(data.stream_url, '_blank');
                 if (newWindow && data.room_password) {
                     setTimeout(() => {
-                        alert(`🔑 كلمة مرور البث: ${data.room_password}\n\nأدخلها عند الطلب في صفحة Jitsi Meet`);
+                        alert(`🔑 كلمة مرور البث: ${data.room_password}\n\nأدخلها عند الطلب في صفحة البث`);
                     }, 2000);
                 }
             } else {
@@ -2477,7 +2610,6 @@
         }
     }
 
-    // ✅ إضافة الطلاب إلى البث وإرسال الإشعارات
     async function addStudentsToStream(offerId) {
         if (!confirm('⚠️ هل تريد إضافة جميع الطلاب المسجلين إلى البث وإرسال الإشعارات؟')) return;
 
@@ -2521,6 +2653,13 @@
     // ================================================================
 
     function showCreateOfferModal() {
+        // التحقق من وجود المستوى التعليمي قبل فتح النافذة
+        if (!userData || !userData.teaching_level) {
+            showToast('⚠️ قم بإدخال المستوى الدراسي في ملفك الشخصي أولاً', 'warning');
+            showEditProfileModal();
+            return;
+        }
+
         document.getElementById('subjectName').value = '';
         document.getElementById('duration').value = '60';
         document.getElementById('offerDate').value = '';
@@ -2659,6 +2798,7 @@
             document.getElementById('twitterUrl').value = userData.twitter_url || '';
             document.getElementById('websiteUrl').value = userData.website_url || '';
             document.getElementById('whatsappUrl').value = userData.whatsapp_url || '';
+            document.getElementById('editTeachingLevel').value = userData.teaching_level || '';
         }
         document.getElementById('modalOverlay').style.display = 'block';
         document.getElementById('editProfileModal').style.display = 'block';
@@ -2671,6 +2811,11 @@
         const imageFile = document.getElementById('editProfileImage').files[0];
         if (imageFile) {
             formData.append('profile_image', imageFile);
+        }
+
+        const teachingLevel = document.getElementById('editTeachingLevel').value;
+        if (teachingLevel) {
+            formData.append('teaching_level', teachingLevel);
         }
 
         const socialData = {
