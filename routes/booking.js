@@ -1,5 +1,5 @@
 // ============================================================
-// مسارات الحجز - Booking Routes (مصلح بالكامل)
+// مسارات الحجز - Booking Routes (مصلح بالكامل مع نظام الرصيد المعلق)
 // ============================================================
 
 const express = require('express');
@@ -12,7 +12,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { getOne, insert, update } = require('../utils/helpers');
 
 // ============================================================
-// ✅ إنشاء حجز جديد (مصلح بالكامل)
+// ✅ إنشاء حجز جديد (مع نظام الرصيد المعلق)
 // ============================================================
 router.post('/create', authenticate, authorize(['student']), [
     body('offer_id').isInt().withMessage('معرف العرض غير صالح'),
@@ -45,15 +45,6 @@ router.post('/create', authenticate, authorize(['student']), [
 
         console.log('👨‍🎓 الطالب:', student.full_name);
 
-        // ✅ التحقق من تأكيد البريد الإلكتروني (اختياري)
-        // if (!student.email_verified) {
-        //     return res.status(403).json({ 
-        //         success: false, 
-        //         error: 'يجب تأكيد البريد الإلكتروني أولاً قبل حجز الحصص',
-        //         email_not_verified: true
-        //     });
-        // }
-
         // ✅ التحقق من وجود العرض
         const offer = await getOne('offers', 'id', offer_id);
         if (!offer) {
@@ -66,7 +57,7 @@ router.post('/create', authenticate, authorize(['student']), [
         // ✅ التحقق من أن العرض ليس منتهياً
         const now = new Date();
         const offerDate = new Date(offer.offer_date);
-        if (offerDate < now && offer.status !== 'live') {
+        if (offerDate < now && offer.status !== 'live' && offer.status !== 'teacher_ready') {
             return res.status(400).json({ success: false, error: 'هذا العرض قد انتهى' });
         }
 
@@ -83,16 +74,25 @@ router.post('/create', authenticate, authorize(['student']), [
         }
 
         if (existing) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'لقد قمت بالفعل بحجز هذه الحصة',
-                existing_session: existing
-            });
+            if (existing.payment_status === 'cancelled') {
+                // ✅ إذا كان الحجز ملغى، نسمح بإعادة الحجز
+                await supabase
+                    .from('sessions')
+                    .delete()
+                    .eq('id', existing.id);
+            } else {
+                return res.status(400).json({ 
+                    success: false, 
+                    error: 'لقد قمت بالفعل بحجز هذه الحصة',
+                    existing_session: existing
+                });
+            }
         }
 
         // ✅ تحديد إذا كانت الحصة مجانية
         let isFree = offer.is_free === true || offer.price === 0;
         let session = null;
+        let pendingBalance = 0;
 
         // ✅ التحقق من الرصيد للعروض المدفوعة
         if (!isFree) {
@@ -100,20 +100,22 @@ router.post('/create', authenticate, authorize(['student']), [
             if (currentBalance < offer.price) {
                 return res.status(400).json({
                     success: false,
-                    error: `رصيدك غير كافٍ. رصيدك الحالي: ${currentBalance} دج. سعر الحصة: ${offer.price} دج`,
+                    error: `⚠️ رصيدك غير كافٍ. رصيدك الحالي: ${currentBalance} دج. سعر الحصة: ${offer.price} دج`,
                     insufficient_balance: true,
                     needed: offer.price - currentBalance
                 });
             }
+            pendingBalance = offer.price;
         }
 
-        // ✅ إنشاء الجلسة (بدون teacher_id)
+        // ✅ إنشاء الجلسة مع حالة "pending_stream" (في انتظار البث)
         const sessionData = {
             offer_id: offer_id,
             student_id: student_id,
-            payment_status: 'paid',
+            payment_status: 'pending_stream', // ✅ في انتظار البث
             payment_amount: isFree ? 0 : offer.price,
             teacher_earned: 0,
+            pending_balance: isFree ? 0 : offer.price, // ✅ الرصيد المعلق
             paid_from_wallet: !isFree,
             created_at: new Date().toISOString()
         };
@@ -137,7 +139,7 @@ router.post('/create', authenticate, authorize(['student']), [
         session = newSession;
         console.log('✅ تم إنشاء الجلسة:', session.id);
 
-        // ✅ خصم المبلغ للعروض المدفوعة
+        // ✅ خصم المبلغ للعروض المدفوعة (يذهب إلى الرصيد المعلق)
         if (!isFree) {
             const newBalance = (student.wallet_balance || 0) - offer.price;
             await update('students', student_id, { 
@@ -145,15 +147,23 @@ router.post('/create', authenticate, authorize(['student']), [
                 updated_at: new Date().toISOString()
             });
 
-            // ✅ تسجيل المعاملة
+            // ✅ تسجيل المعاملة (خصم من المحفظة)
             await insert('wallet_transactions', {
                 student_id: student_id,
                 amount: offer.price,
                 type: 'withdraw',
-                status: 'completed',
-                description: `حجز حصة: ${offer.subject_name}`,
+                status: 'pending_stream', // ✅ معلق حتى انتهاء البث
+                description: `حجز حصة "${offer.subject_name}" (في انتظار البث)`,
                 created_at: new Date().toISOString()
             });
+
+            // ✅ تحديث الرصيد المعلق للأستاذ (في جدول teachers)
+            const teacher = await getOne('teachers', 'id', offer.teacher_id);
+            if (teacher) {
+                await update('teachers', offer.teacher_id, {
+                    pending_withdraw: (teacher.pending_withdraw || 0) + offer.price
+                });
+            }
         }
 
         // ✅ إضافة الطالب إلى غرفة الانتظار
@@ -192,7 +202,7 @@ router.post('/create', authenticate, authorize(['student']), [
             .from('sessions')
             .select('*', { count: 'exact', head: true })
             .eq('offer_id', offer_id)
-            .eq('payment_status', 'paid');
+            .in('payment_status', ['paid', 'pending_stream']);
 
         if (countError) {
             console.error('⚠️ خطأ في حساب عدد الطلاب:', countError.message);
@@ -206,8 +216,8 @@ router.post('/create', authenticate, authorize(['student']), [
             user_type: 'student',
             title: isFree ? '✅ تم حجز الحصة المجانية' : '✅ تم حجز الحصة بنجاح',
             message: isFree 
-                ? `لقد قمت بحجز الحصة "${offer.subject_name}" بنجاح (حصة مجانية). سيتم إشعارك عند بدء البث.`
-                : `لقد قمت بحجز الحصة "${offer.subject_name}" بنجاح. تم خصم ${offer.price} دج من رصيدك. سيتم إشعارك عند بدء البث.`,
+                ? `✅ لقد قمت بحجز الحصة "${offer.subject_name}" بنجاح (حصة مجانية). سيتم إشعارك عند بدء البث.`
+                : `✅ لقد قمت بحجز الحصة "${offer.subject_name}" بنجاح. تم خصم ${offer.price} دج من رصيدك (رصيد معلق حتى انتهاء البث). سيتم إشعارك عند بدء البث.`,
             offer_id: offer_id,
             is_read: false,
             created_at: new Date().toISOString()
@@ -221,7 +231,7 @@ router.post('/create', authenticate, authorize(['student']), [
                     user_id: offer.teacher_id,
                     user_type: 'teacher',
                     title: `📊 طالب جديد حجز حصتك "${offer.subject_name}"`,
-                    message: `قام الطالب ${student.full_name} بحجز حصتك "${offer.subject_name}". إجمالي الطلاب المسجلين الآن: ${totalBooked} طالب.`,
+                    message: `قام الطالب ${student.full_name} بحجز حصتك "${offer.subject_name}". إجمالي الطلاب المسجلين الآن: ${totalBooked} طالب.\n💰 المبلغ المعلق: ${isFree ? 0 : offer.price} دج`,
                     offer_id: offer_id,
                     is_read: false,
                     created_at: new Date().toISOString()
@@ -231,12 +241,21 @@ router.post('/create', authenticate, authorize(['student']), [
             console.error('⚠️ خطأ في إرسال إشعار المدرس:', notifError.message);
         }
 
+        // ✅ تحديث عدد الطلاب في العرض
+        await update('offers', offer_id, {
+            booked_count: totalBooked,
+            updated_at: new Date().toISOString()
+        });
+
         // ✅ إرجاع النتيجة
         return res.json({
             success: true,
             session_id: session.id,
             is_free: isFree,
-            message: isFree ? 'تم الحجز بنجاح (حصة مجانية)' : `تم حجز الحصة بنجاح. تم خصم ${offer.price} دج من رصيدك.`,
+            pending_balance: isFree ? 0 : offer.price,
+            message: isFree 
+                ? '✅ تم الحجز بنجاح (حصة مجانية)' 
+                : `✅ تم حجز الحصة بنجاح. تم خصم ${offer.price} دج من رصيدك (رصيد معلق حتى انتهاء البث).`,
             total_booked: totalBooked,
             room_password: studentPassword,
             offer: {
@@ -244,7 +263,8 @@ router.post('/create', authenticate, authorize(['student']), [
                 subject_name: offer.subject_name,
                 teacher_id: offer.teacher_id,
                 price: offer.price,
-                is_free: offer.is_free
+                is_free: offer.is_free,
+                duration: offer.duration
             }
         });
 
@@ -259,7 +279,138 @@ router.post('/create', authenticate, authorize(['student']), [
 });
 
 // ============================================================
-// ✅ جلب حجوزات الطالب
+// ✅ تأكيد إتمام البث وتحويل الرصيد المعلق (يُستدعى من نظام البث)
+// ============================================================
+router.post('/confirm-stream-completion', authenticate, authorize(['teacher']), [
+    body('offer_id').isInt().withMessage('معرف العرض غير صالح'),
+    body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { offer_id, teacher_id } = req.body;
+
+        // ✅ التحقق من الصلاحية
+        if (req.user.userId !== teacher_id) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        // ✅ جلب العرض
+        const offer = await getOne('offers', 'id', offer_id);
+        if (!offer) {
+            return res.status(404).json({ success: false, error: 'العرض غير موجود' });
+        }
+
+        if (offer.teacher_id !== teacher_id) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        // ✅ جلب جميع الجلسات المعلقة لهذا العرض
+        const { data: sessions, error: sessionsError } = await supabase
+            .from('sessions')
+            .select('*')
+            .eq('offer_id', offer_id)
+            .eq('payment_status', 'pending_stream');
+
+        if (sessionsError) {
+            console.error('❌ خطأ في جلب الجلسات المعلقة:', sessionsError);
+            return res.status(500).json({ success: false, error: sessionsError.message });
+        }
+
+        let totalEarned = 0;
+        let convertedCount = 0;
+
+        // ✅ تحويل كل جلسة من pending_stream إلى paid
+        for (const session of sessions) {
+            const earnedAmount = session.pending_balance || session.payment_amount || 0;
+            
+            await supabase
+                .from('sessions')
+                .update({
+                    payment_status: 'paid',
+                    teacher_earned: earnedAmount,
+                    completed_at: new Date().toISOString()
+                })
+                .eq('id', session.id);
+
+            // ✅ تحديث معاملة المحفظة
+            await supabase
+                .from('wallet_transactions')
+                .update({
+                    status: 'completed',
+                    description: `حصة "${offer.subject_name}" - تم إتمام البث`
+                })
+                .eq('student_id', session.student_id)
+                .eq('amount', earnedAmount)
+                .eq('type', 'withdraw')
+                .eq('status', 'pending_stream');
+
+            totalEarned += earnedAmount;
+            convertedCount++;
+        }
+
+        // ✅ تحديث رصيد الأستاذ
+        if (totalEarned > 0) {
+            const teacher = await getOne('teachers', 'id', teacher_id);
+            if (teacher) {
+                await update('teachers', teacher_id, {
+                    balance: (teacher.balance || 0) + totalEarned,
+                    total_earned: (teacher.total_earned || 0) + totalEarned,
+                    pending_withdraw: Math.max(0, (teacher.pending_withdraw || 0) - totalEarned)
+                });
+            }
+        }
+
+        // ✅ إرسال إشعارات للطلاب
+        if (convertedCount > 0) {
+            const { data: students } = await supabase
+                .from('students')
+                .select('id, full_name')
+                .in('id', sessions.map(s => s.student_id));
+
+            if (students && students.length > 0) {
+                const notifications = students.map(s => ({
+                    user_id: s.id,
+                    user_type: 'student',
+                    title: '✅ تم إتمام البث',
+                    message: `تم إتمام البث المباشر للحصة "${offer.subject_name}". شكراً لمشاركتك!`,
+                    offer_id: offer_id,
+                    is_read: false,
+                    created_at: new Date().toISOString()
+                }));
+                await supabase.from('notifications').insert(notifications);
+            }
+        }
+
+        // ✅ تحديث حالة العرض إلى completed
+        await update('offers', offer_id, {
+            status: 'completed',
+            completed_at: new Date().toISOString(),
+            total_earned: totalEarned
+        });
+
+        // ✅ تنظيف الجداول المؤقتة
+        await supabase.from('active_stream').delete().eq('offer_id', offer_id);
+        await supabase.from('waiting_room').delete().eq('offer_id', offer_id);
+
+        return res.json({
+            success: true,
+            message: 'تم تأكيد إتمام البث وتحويل الرصيد المعلق',
+            converted_sessions: convertedCount,
+            total_earned: totalEarned
+        });
+
+    } catch (error) {
+        console.error('❌ خطأ في تأكيد إتمام البث:', error.message);
+        return res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
+// ✅ جلب حجوزات الطالب (مع حالة الرصيد المعلق)
 // ============================================================
 router.get('/student/:student_id', authenticate, authorize(['student']), async (req, res) => {
     try {
@@ -284,7 +435,16 @@ router.get('/student/:student_id', authenticate, authorize(['student']), async (
                     status,
                     stream_url,
                     stream_platform,
-                    room_password
+                    room_password,
+                    booked_count
+                ),
+                teachers:offers!inner (
+                    teacher_id (
+                        id,
+                        full_name,
+                        profile_url,
+                        specialization
+                    )
                 )
             `)
             .eq('student_id', student_id)
@@ -292,9 +452,19 @@ router.get('/student/:student_id', authenticate, authorize(['student']), async (
 
         if (error) throw error;
 
+        // ✅ تنسيق البيانات مع إضافة معلومات الرصيد المعلق
+        const formattedBookings = (bookings || []).map(booking => ({
+            ...booking,
+            is_pending_stream: booking.payment_status === 'pending_stream',
+            pending_balance: booking.pending_balance || 0,
+            teacher_name: booking.teachers?.[0]?.teacher_id?.full_name || 'غير معروف',
+            teacher_profile: booking.teachers?.[0]?.teacher_id?.profile_url || null,
+            teacher_specialization: booking.teachers?.[0]?.teacher_id?.specialization || ''
+        }));
+
         return res.json({
             success: true,
-            bookings: bookings || []
+            bookings: formattedBookings
         });
     } catch (error) {
         console.error('خطأ في جلب حجوزات الطالب:', error.message);
@@ -303,7 +473,7 @@ router.get('/student/:student_id', authenticate, authorize(['student']), async (
 });
 
 // ============================================================
-// ✅ جلب حجوزات المدرس
+// ✅ جلب حجوزات المدرس (مع الرصيد المعلق)
 // ============================================================
 router.get('/teacher/:teacher_id', authenticate, authorize(['teacher']), async (req, res) => {
     try {
@@ -316,13 +486,13 @@ router.get('/teacher/:teacher_id', authenticate, authorize(['teacher']), async (
         // ✅ جلب جميع العروض الخاصة بالمدرس أولاً
         const { data: offers, error: offersError } = await supabase
             .from('offers')
-            .select('id')
+            .select('id, subject_name, price, is_free, status, booked_count')
             .eq('teacher_id', teacher_id);
 
         if (offersError) throw offersError;
 
         if (!offers || offers.length === 0) {
-            return res.json({ success: true, bookings: [] });
+            return res.json({ success: true, bookings: [], pending_total: 0 });
         }
 
         const offerIds = offers.map(o => o.id);
@@ -354,9 +524,25 @@ router.get('/teacher/:teacher_id', authenticate, authorize(['teacher']), async (
 
         if (error) throw error;
 
+        // ✅ حساب إجمالي الرصيد المعلق
+        let pendingTotal = 0;
+        const formattedBookings = (bookings || []).map(booking => {
+            const isPending = booking.payment_status === 'pending_stream';
+            if (isPending) {
+                pendingTotal += (booking.pending_balance || booking.payment_amount || 0);
+            }
+            return {
+                ...booking,
+                is_pending_stream: isPending,
+                pending_balance: booking.pending_balance || 0
+            };
+        });
+
         return res.json({
             success: true,
-            bookings: bookings || []
+            bookings: formattedBookings,
+            pending_total: pendingTotal,
+            offers: offers
         });
     } catch (error) {
         console.error('خطأ في جلب حجوزات المدرس:', error.message);
@@ -365,7 +551,7 @@ router.get('/teacher/:teacher_id', authenticate, authorize(['teacher']), async (
 });
 
 // ============================================================
-// ✅ إلغاء حجز
+// ✅ إلغاء حجز (مع استرداد الرصيد المعلق)
 // ============================================================
 router.post('/cancel', authenticate, [
     body('session_id').isInt().withMessage('معرف الجلسة غير صالح'),
@@ -379,12 +565,12 @@ router.post('/cancel', authenticate, [
 
         const { session_id, student_id } = req.body;
 
-        // التحقق من الصلاحية
+        // ✅ التحقق من الصلاحية
         if (req.user.userId !== student_id && req.user.role !== 'admin') {
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
 
-        // جلب الجلسة
+        // ✅ جلب الجلسة
         const session = await getOne('sessions', 'id', session_id);
         if (!session) {
             return res.status(404).json({ success: false, error: 'الجلسة غير موجودة' });
@@ -394,7 +580,7 @@ router.post('/cancel', authenticate, [
             return res.status(403).json({ success: false, error: 'هذه الجلسة ليست لك' });
         }
 
-        // التحقق من أن الحجز ليس منتهياً أو قيد البث
+        // ✅ التحقق من أن الحجز ليس منتهياً أو قيد البث
         const offer = await getOne('offers', 'id', session.offer_id);
         if (offer && (offer.status === 'live' || offer.status === 'teacher_ready')) {
             return res.status(400).json({ 
@@ -403,23 +589,32 @@ router.post('/cancel', authenticate, [
             });
         }
 
-        // ✅ إلغاء الحجز
-        await update('sessions', session_id, {
-            payment_status: 'cancelled',
-            cancelled_at: new Date().toISOString()
-        });
+        // ✅ استرداد الرصيد المعلق إذا كان موجوداً
+        let refundAmount = 0;
+        if (session.payment_status === 'pending_stream' || session.payment_status === 'paid') {
+            refundAmount = session.pending_balance || session.payment_amount || 0;
+            
+            if (refundAmount > 0) {
+                // ✅ إعادة المبلغ للطالب
+                const student = await getOne('students', 'id', student_id);
+                if (student) {
+                    await update('students', student_id, {
+                        wallet_balance: (student.wallet_balance || 0) + refundAmount
+                    });
+                }
 
-        // ✅ إعادة المبلغ للطالب إذا كان مدفوعاً
-        if (session.payment_status === 'paid' && session.payment_amount > 0) {
-            const student = await getOne('students', 'id', student_id);
-            if (student) {
-                await update('students', student_id, {
-                    wallet_balance: (student.wallet_balance || 0) + session.payment_amount
-                });
+                // ✅ إزالة الرصيد المعلق من الأستاذ
+                const teacher = await getOne('teachers', 'id', offer?.teacher_id);
+                if (teacher && offer) {
+                    await update('teachers', offer.teacher_id, {
+                        pending_withdraw: Math.max(0, (teacher.pending_withdraw || 0) - refundAmount)
+                    });
+                }
 
+                // ✅ تسجيل معاملة الاسترداد
                 await insert('wallet_transactions', {
                     student_id: student_id,
-                    amount: session.payment_amount,
+                    amount: refundAmount,
                     type: 'refund',
                     status: 'completed',
                     description: `استرداد مبلغ حجز "${offer?.subject_name || 'غير معروف'}"`,
@@ -428,6 +623,13 @@ router.post('/cancel', authenticate, [
             }
         }
 
+        // ✅ إلغاء الحجز
+        await update('sessions', session_id, {
+            payment_status: 'cancelled',
+            cancelled_at: new Date().toISOString(),
+            pending_balance: 0
+        });
+
         // ✅ إزالة من غرفة الانتظار
         await supabase
             .from('waiting_room')
@@ -435,12 +637,97 @@ router.post('/cancel', authenticate, [
             .eq('offer_id', session.offer_id)
             .eq('student_id', student_id);
 
+        // ✅ تحديث عدد الطلاب في العرض
+        if (offer) {
+            const { count: bookedCount } = await supabase
+                .from('sessions')
+                .select('*', { count: 'exact', head: true })
+                .eq('offer_id', offer.id)
+                .in('payment_status', ['paid', 'pending_stream']);
+
+            await update('offers', offer.id, {
+                booked_count: bookedCount || 0
+            });
+        }
+
         return res.json({
             success: true,
-            message: 'تم إلغاء الحجز بنجاح'
+            message: 'تم إلغاء الحجز واسترداد الرصيد بنجاح',
+            refund_amount: refundAmount
         });
     } catch (error) {
         console.error('خطأ في إلغاء الحجز:', error.message);
+        return res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// ✅ جلب إحصائيات الحجوزات للمدرس
+// ============================================================
+router.get('/stats/:teacher_id', authenticate, authorize(['teacher']), async (req, res) => {
+    try {
+        const teacher_id = parseInt(req.params.teacher_id);
+        
+        if (req.user.userId !== teacher_id) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        // ✅ جلب جميع العروض
+        const { data: offers, error: offersError } = await supabase
+            .from('offers')
+            .select('id')
+            .eq('teacher_id', teacher_id);
+
+        if (offersError) throw offersError;
+
+        if (!offers || offers.length === 0) {
+            return res.json({
+                success: true,
+                total_bookings: 0,
+                pending_bookings: 0,
+                completed_bookings: 0,
+                pending_amount: 0,
+                completed_amount: 0
+            });
+        }
+
+        const offerIds = offers.map(o => o.id);
+
+        // ✅ جلب إحصائيات الجلسات
+        const { data: stats, error: statsError } = await supabase
+            .from('sessions')
+            .select('payment_status, payment_amount, pending_balance, teacher_earned')
+            .in('offer_id', offerIds);
+
+        if (statsError) throw statsError;
+
+        let totalBookings = 0;
+        let pendingBookings = 0;
+        let completedBookings = 0;
+        let pendingAmount = 0;
+        let completedAmount = 0;
+
+        for (const stat of (stats || [])) {
+            totalBookings++;
+            if (stat.payment_status === 'pending_stream') {
+                pendingBookings++;
+                pendingAmount += (stat.pending_balance || stat.payment_amount || 0);
+            } else if (stat.payment_status === 'paid') {
+                completedBookings++;
+                completedAmount += (stat.teacher_earned || stat.payment_amount || 0);
+            }
+        }
+
+        return res.json({
+            success: true,
+            total_bookings: totalBookings,
+            pending_bookings: pendingBookings,
+            completed_bookings: completedBookings,
+            pending_amount: pendingAmount,
+            completed_amount: completedAmount
+        });
+    } catch (error) {
+        console.error('خطأ في جلب إحصائيات الحجوزات:', error.message);
         return res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
