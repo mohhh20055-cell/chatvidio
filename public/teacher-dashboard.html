@@ -52,11 +52,139 @@
         ::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: var(--gray-100); border-radius: 10px; }
         ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--primary-dark); }
 
-        /* ============================================================
-           تحذير المستوى التعليمي - Teaching Level Required Banner
-        ============================================================ */
+        /* ===== TIMER / STREAM CONTROL ===== */
+        .stream-timer-container {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: var(--radius-md);
+            padding: 20px 24px;
+            margin-bottom: 20px;
+            color: white;
+            border: 2px solid rgba(239, 68, 68, 0.3);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        .stream-timer-container .timer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .stream-timer-container .timer-header .stream-title {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: #60a5fa;
+        }
+        .stream-timer-container .timer-header .stream-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+        .stream-timer-container .timer-header .stream-status .live-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ef4444;
+            animation: pulse-dot 1.5s infinite;
+        }
+        .stream-timer-container .timer-header .stream-status .live-dot.paused {
+            background: #f59e0b;
+            animation: none;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        .stream-timer-container .timer-display {
+            text-align: center;
+            padding: 16px 0;
+        }
+        .stream-timer-container .timer-display .time {
+            font-size: 3.5rem;
+            font-weight: 900;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 4px;
+            color: #60a5fa;
+            text-shadow: 0 0 30px rgba(96, 165, 250, 0.3);
+        }
+        .stream-timer-container .timer-display .time.warning {
+            color: #f59e0b;
+            text-shadow: 0 0 30px rgba(245, 158, 11, 0.3);
+        }
+        .stream-timer-container .timer-display .time.danger {
+            color: #ef4444;
+            text-shadow: 0 0 30px rgba(239, 68, 68, 0.3);
+            animation: pulse-time 1s infinite;
+        }
+        @keyframes pulse-time {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .stream-timer-container .timer-display .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            margin-top: 12px;
+            overflow: hidden;
+        }
+        .stream-timer-container .timer-display .progress-bar .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #f59e0b, #ef4444);
+            border-radius: 10px;
+            transition: width 1s linear;
+            width: 100%;
+        }
+        .stream-timer-container .timer-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 8px;
+        }
+        .stream-timer-container .timer-actions button {
+            padding: 8px 24px;
+            border: none;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Cairo', sans-serif;
+        }
+        .stream-timer-container .timer-actions .btn-pause {
+            background: #f59e0b;
+            color: white;
+        }
+        .stream-timer-container .timer-actions .btn-pause:hover { background: #d97706; transform: translateY(-2px); }
+        .stream-timer-container .timer-actions .btn-resume {
+            background: #10b981;
+            color: white;
+        }
+        .stream-timer-container .timer-actions .btn-resume:hover { background: #059669; transform: translateY(-2px); }
+        .stream-timer-container .timer-actions .btn-end {
+            background: #ef4444;
+            color: white;
+        }
+        .stream-timer-container .timer-actions .btn-end:hover { background: #dc2626; transform: translateY(-2px); }
+        .stream-timer-container .timer-actions .btn-jitsi {
+            background: #0f5cbf;
+            color: white;
+        }
+        .stream-timer-container .timer-actions .btn-jitsi:hover { background: #0b4a9c; transform: translateY(-2px); }
+        .stream-timer-container .timer-actions button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* ===== TEACHING LEVEL BANNER ===== */
         .teaching-level-banner {
             background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
             border: 2px solid var(--gold);
@@ -70,26 +198,10 @@
             gap: 12px;
             box-shadow: 0 4px 16px rgba(245, 158, 11, 0.15);
         }
-        .teaching-level-banner .banner-icon {
-            font-size: 1.8rem;
-            color: var(--gold-dark);
-            flex-shrink: 0;
-        }
-        .teaching-level-banner .banner-content {
-            flex: 1;
-            min-width: 200px;
-        }
-        .teaching-level-banner .banner-content h4 {
-            color: var(--gold-dark);
-            font-size: 1rem;
-            font-weight: 800;
-            margin-bottom: 2px;
-        }
-        .teaching-level-banner .banner-content p {
-            color: #78350f;
-            font-size: 0.85rem;
-            font-weight: 500;
-        }
+        .teaching-level-banner .banner-icon { font-size: 1.8rem; color: var(--gold-dark); flex-shrink: 0; }
+        .teaching-level-banner .banner-content { flex: 1; min-width: 200px; }
+        .teaching-level-banner .banner-content h4 { color: var(--gold-dark); font-size: 1rem; font-weight: 800; }
+        .teaching-level-banner .banner-content p { color: #78350f; font-size: 0.85rem; font-weight: 500; }
         .teaching-level-banner .banner-btn {
             background: var(--gradient-gold);
             color: white;
@@ -106,15 +218,9 @@
             align-items: center;
             gap: 8px;
         }
-        .teaching-level-banner .banner-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
-        }
-        .teaching-level-banner .banner-btn i { font-size: 0.9rem; }
+        .teaching-level-banner .banner-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4); }
 
-        /* ============================================================
-           NAVBAR
-        ============================================================ */
+        /* ===== NAVBAR ===== */
         .navbar {
             position: fixed;
             top: 0;
@@ -123,7 +229,6 @@
             z-index: 1000;
             background: rgba(255,255,255,0.96);
             backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
             border-bottom: 1px solid rgba(0,0,0,0.05);
             box-shadow: 0 1px 8px rgba(0,0,0,0.04);
             height: 64px;
@@ -140,7 +245,6 @@
             justify-content: space-between;
             gap: 8px;
         }
-
         .nav-logo {
             display: flex;
             align-items: center;
@@ -149,27 +253,9 @@
             flex-shrink: 0;
             cursor: pointer;
         }
-        .nav-logo i { 
-            font-size: 1.5rem;
-            background: var(--gradient-main);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .nav-logo span { 
-            font-size: 1.05rem; 
-            font-weight: 900; 
-            background: var(--gradient-main);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .nav-logo .highlight {
-            background: var(--gradient-secondary);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
+        .nav-logo i { font-size: 1.5rem; background: var(--gradient-main); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .nav-logo span { font-size: 1.05rem; font-weight: 900; background: var(--gradient-main); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .nav-logo .highlight { background: var(--gradient-secondary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
         .nav-tabs {
             display: flex;
@@ -202,15 +288,8 @@
             position: relative;
         }
         .nav-tab i { font-size: 0.95rem; }
-        .nav-tab:hover {
-            background: var(--primary-light);
-            color: var(--primary);
-        }
-        .nav-tab.active {
-            background: var(--primary);
-            color: white;
-            box-shadow: 0 4px 14px rgba(15, 92, 191, 0.3);
-        }
+        .nav-tab:hover { background: var(--primary-light); color: var(--primary); }
+        .nav-tab.active { background: var(--primary); color: white; box-shadow: 0 4px 14px rgba(15, 92, 191, 0.3); }
         .nav-tab .nav-badge {
             background: var(--danger);
             color: white;
@@ -235,14 +314,10 @@
             box-shadow: 0 2px 12px rgba(15, 92, 191, 0.25);
             cursor: pointer;
             transition: var(--transition);
-            border: 1px solid rgba(255,255,255,0.1);
         }
-        .nav-balance:hover {
-            transform: scale(1.04);
-            box-shadow: 0 4px 20px rgba(15, 92, 191, 0.35);
-        }
+        .nav-balance:hover { transform: scale(1.04); box-shadow: 0 4px 20px rgba(15, 92, 191, 0.35); }
         .nav-balance i { font-size: 0.9rem; opacity: 0.8; }
-        .nav-balance .currency { font-size: 0.7rem; opacity: 0.7; margin-right: 2px; }
+        .nav-balance .currency { font-size: 0.7rem; opacity: 0.7; }
 
         .nav-notifications {
             position: relative;
@@ -263,11 +338,7 @@
             justify-content: center;
             position: relative;
         }
-        .nav-notifications-btn:hover {
-            background: var(--primary-light);
-            color: var(--primary);
-            transform: translateY(-1px);
-        }
+        .nav-notifications-btn:hover { background: var(--primary-light); color: var(--primary); transform: translateY(-1px); }
         .nav-notifications-btn .notif-badge {
             position: absolute;
             top: -4px;
@@ -358,28 +429,10 @@
         .notif-item .notif-icon.info { background: var(--gradient-main); }
         .notif-item .notif-icon.danger { background: var(--gradient-danger); }
         .notif-item .notif-content { flex: 1; min-width: 0; }
-        .notif-item .notif-title {
-            font-weight: 700;
-            font-size: 0.82rem;
-            color: var(--gray-800);
-        }
-        .notif-item .notif-message {
-            font-size: 0.75rem;
-            color: var(--gray-500);
-            margin-top: 2px;
-            line-height: 1.4;
-            word-wrap: break-word;
-        }
-        .notif-item .notif-time {
-            font-size: 0.6rem;
-            color: var(--gray-400);
-            margin-top: 4px;
-        }
-        .notif-empty {
-            padding: 30px 20px;
-            text-align: center;
-            color: var(--gray-400);
-        }
+        .notif-item .notif-title { font-weight: 700; font-size: 0.82rem; color: var(--gray-800); }
+        .notif-item .notif-message { font-size: 0.75rem; color: var(--gray-500); margin-top: 2px; line-height: 1.4; }
+        .notif-item .notif-time { font-size: 0.6rem; color: var(--gray-400); margin-top: 4px; }
+        .notif-empty { padding: 30px 20px; text-align: center; color: var(--gray-400); }
         .notif-empty i { font-size: 2rem; margin-bottom: 8px; display: block; }
 
         .nav-profile {
@@ -394,32 +447,10 @@
             flex-shrink: 0;
             border: 1px solid transparent;
         }
-        .nav-profile:hover {
-            border-color: var(--primary);
-            box-shadow: 0 2px 12px rgba(15, 92, 191, 0.08);
-        }
-        .nav-profile img {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid white;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
-        }
-        .nav-profile .profile-name {
-            font-weight: 700;
-            font-size: 0.78rem;
-            color: var(--gray-700);
-            max-width: 70px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .nav-profile .profile-chevron {
-            font-size: 0.55rem;
-            color: var(--gray-400);
-            transition: var(--transition);
-        }
+        .nav-profile:hover { border-color: var(--primary); box-shadow: 0 2px 12px rgba(15, 92, 191, 0.08); }
+        .nav-profile img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.06); }
+        .nav-profile .profile-name { font-weight: 700; font-size: 0.78rem; color: var(--gray-700); max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .nav-profile .profile-chevron { font-size: 0.55rem; color: var(--gray-400); transition: var(--transition); }
         .nav-profile:hover .profile-chevron { color: var(--primary); }
 
         .profile-dropdown {
@@ -452,29 +483,13 @@
             text-align: right;
         }
         .profile-dropdown .dropdown-item:hover { background: var(--gray-50); }
-        .profile-dropdown .dropdown-item i {
-            width: 20px;
-            color: var(--gray-400);
-            font-size: 0.95rem;
-        }
-        .profile-dropdown .dropdown-divider {
-            height: 1px;
-            background: var(--gray-200);
-            margin: 4px 0;
-        }
+        .profile-dropdown .dropdown-item i { width: 20px; color: var(--gray-400); font-size: 0.95rem; }
+        .profile-dropdown .dropdown-divider { height: 1px; background: var(--gray-200); margin: 4px 0; }
         .profile-dropdown .dropdown-item.danger { color: var(--danger); }
         .profile-dropdown .dropdown-item.danger i { color: var(--danger); }
 
-        /* ============================================================
-           MAIN CONTENT
-        ============================================================ */
-        .main-wrapper {
-            max-width: 1300px;
-            margin: 0 auto;
-            padding: 16px;
-            width: 100%;
-        }
-
+        /* ===== MAIN CONTENT ===== */
+        .main-wrapper { max-width: 1300px; margin: 0 auto; padding: 16px; width: 100%; }
         .content-area {
             background: white;
             border-radius: var(--radius-md);
@@ -533,7 +548,7 @@
             border-color: var(--primary-light);
         }
         .offer-card.expired { opacity: 0.6; border: 2px solid var(--danger); }
-        .offer-title { font-weight: 700; font-size: 1rem; margin-bottom: 6px; color: var(--primary); }
+        .offer-card .offer-title { font-weight: 700; font-size: 1rem; margin-bottom: 6px; color: var(--primary); }
 
         .teacher-avatar {
             width: 60px;
@@ -559,10 +574,7 @@
         .status-live { background: var(--danger); color: white; animation: pulse 1.5s infinite; }
         .status-completed { background: var(--gray-500); color: white; }
         .status-teacher-ready { background: #8b5cf6; color: white; }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.7; transform: scale(1.02); }
-        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
         .expired-label {
             position: absolute;
             top: 10px;
@@ -592,16 +604,9 @@
             box-shadow: 0 4px 12px rgba(15, 92, 191, 0.3);
         }
         .start-stream-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(15, 92, 191, 0.4); }
-        .delete-btn {
-            background: var(--gradient-danger);
-            color: white;
-        }
+        .delete-btn { background: var(--gradient-danger); color: white; }
         .delete-btn:hover { transform: translateY(-2px); }
-        .message-btn {
-            background: var(--gradient-secondary);
-            color: white;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
-        }
+        .message-btn { background: var(--gradient-secondary); color: white; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); }
         .message-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3); }
 
         .btn-primary, .btn-danger {
@@ -616,25 +621,12 @@
             align-items: center;
             gap: 6px;
         }
-        .btn-primary {
-            background: var(--gradient-secondary);
-            color: white;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
-        }
+        .btn-primary { background: var(--gradient-secondary); color: white; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); }
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3); }
-        .btn-danger {
-            background: var(--gradient-danger);
-            color: white;
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
-        }
+        .btn-danger { background: var(--gradient-danger); color: white; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2); }
         .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(239, 68, 68, 0.3); }
 
-        .section-actions {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-bottom: 16px;
-        }
+        .section-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
 
         /* ===== REFERRAL ===== */
         .referral-card {
@@ -697,7 +689,6 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
         }
 
         /* ===== EARNINGS ===== */
@@ -712,11 +703,7 @@
             text-align: right;
             border-bottom: 1px solid var(--gray-200);
         }
-        .earnings-table th {
-            background: var(--gray-50);
-            font-weight: 700;
-            color: var(--gray-800);
-        }
+        .earnings-table th { background: var(--gray-50); font-weight: 700; color: var(--gray-800); }
         .earnings-table tr:hover td { background: var(--gray-50); }
 
         .requests-list { max-height: 300px; overflow-y: auto; }
@@ -774,15 +761,8 @@
             font-size: 0.85rem;
             box-shadow: 0 1px 4px rgba(0,0,0,0.04);
         }
-        .message-bubble.sent .message-content {
-            background: var(--gradient-main);
-            color: white;
-        }
-        .message-bubble.received .message-content {
-            background: white;
-            color: var(--gray-800);
-            border: 1px solid var(--gray-200);
-        }
+        .message-bubble.sent .message-content { background: var(--gradient-main); color: white; }
+        .message-bubble.received .message-content { background: white; color: var(--gray-800); border: 1px solid var(--gray-200); }
         .message-time { font-size: 0.6rem; margin-top: 5px; opacity: 0.6; }
 
         .chat-input-area {
@@ -832,11 +812,8 @@
         }
         .back-to-list:hover { text-decoration: underline; }
 
-        /* ===== PROFILE SECTION ===== */
-        .profile-display {
-            text-align: center;
-            padding: 12px 0;
-        }
+        /* ===== PROFILE ===== */
+        .profile-display { text-align: center; padding: 12px 0; }
         .profile-display .profile-avatar {
             width: 120px;
             height: 120px;
@@ -846,24 +823,9 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
             margin-bottom: 12px;
         }
-        .profile-display .profile-name {
-            font-size: 1.4rem;
-            font-weight: 800;
-            color: var(--gray-800);
-            margin-bottom: 4px;
-        }
-        .profile-display .profile-specialty {
-            color: var(--gray-500);
-            font-size: 0.95rem;
-            margin-bottom: 6px;
-        }
-        .profile-display .profile-bio {
-            color: var(--gray-600);
-            font-size: 0.9rem;
-            max-width: 500px;
-            margin: 8px auto;
-            line-height: 1.6;
-        }
+        .profile-display .profile-name { font-size: 1.4rem; font-weight: 800; color: var(--gray-800); margin-bottom: 4px; }
+        .profile-display .profile-specialty { color: var(--gray-500); font-size: 0.95rem; margin-bottom: 6px; }
+        .profile-display .profile-bio { color: var(--gray-600); font-size: 0.9rem; max-width: 500px; margin: 8px auto; line-height: 1.6; }
 
         .profile-info-grid {
             display: grid;
@@ -879,20 +841,9 @@
             text-align: center;
             border: 1px solid var(--gray-200);
         }
-        .profile-info-item .label {
-            font-size: 0.65rem;
-            color: var(--gray-400);
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        .profile-info-item .value {
-            font-size: 0.95rem;
-            font-weight: 700;
-            color: var(--gray-800);
-            margin-top: 2px;
-        }
+        .profile-info-item .label { font-size: 0.65rem; color: var(--gray-400); font-weight: 600; text-transform: uppercase; }
+        .profile-info-item .value { font-size: 0.95rem; font-weight: 700; color: var(--gray-800); margin-top: 2px; }
 
-        /* ===== روابط التواصل الاجتماعي ===== */
         .social-links-section {
             margin: 20px auto;
             padding: 16px;
@@ -901,19 +852,8 @@
             border: 1px solid var(--gray-200);
             max-width: 600px;
         }
-        .social-links-section .social-title {
-            font-weight: 700;
-            font-size: 1rem;
-            color: var(--gray-800);
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-        .social-links-section .social-title i {
-            color: var(--primary);
-        }
+        .social-links-section .social-title { font-weight: 700; font-size: 1rem; color: var(--gray-800); margin-bottom: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .social-links-section .social-title i { color: var(--primary); }
         .social-links-grid {
             display: flex;
             flex-wrap: wrap;
@@ -933,13 +873,8 @@
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
-        .social-link-item:hover {
-            transform: translateY(-3px) scale(1.05);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-        }
-        .social-link-item i {
-            font-size: 1.1rem;
-        }
+        .social-link-item:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 6px 20px rgba(0,0,0,0.2); }
+        .social-link-item i { font-size: 1.1rem; }
         .social-link-item.facebook { background: #1877f2; }
         .social-link-item.instagram { background: #e4405f; }
         .social-link-item.linkedin { background: #0a66c2; }
@@ -947,13 +882,7 @@
         .social-link-item.twitter { background: #1da1f2; }
         .social-link-item.website { background: var(--secondary); }
         .social-link-item.whatsapp { background: #25d366; }
-
-        .no-social-links {
-            color: var(--gray-400);
-            font-size: 0.85rem;
-            text-align: center;
-            padding: 8px 0;
-        }
+        .no-social-links { color: var(--gray-400); font-size: 0.85rem; text-align: center; padding: 8px 0; }
 
         /* ===== MODALS ===== */
         .modal-overlay {
@@ -1036,26 +965,9 @@
         .modal-body .social-input-group .social-icon.website { background: var(--secondary); }
         .modal-body .social-input-group .social-icon.whatsapp { background: #25d366; }
         .modal-body .social-input-group input { flex: 1; margin: 0; }
-        .modal-body .social-divider {
-            border: none;
-            border-top: 2px dashed var(--gray-200);
-            margin: 16px 0;
-        }
-        .modal-body .social-label {
-            font-weight: 700;
-            color: var(--gray-800);
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 4px;
-        }
-        .free-checkbox {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin: 10px 0;
-        }
+        .modal-body .social-divider { border: none; border-top: 2px dashed var(--gray-200); margin: 16px 0; }
+        .modal-body .social-label { font-weight: 700; color: var(--gray-800); font-size: 0.9rem; display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+        .free-checkbox { display: flex; align-items: center; gap: 10px; margin: 10px 0; }
         .free-checkbox input { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
         .free-checkbox label { font-size: 0.9rem; font-weight: 600; color: var(--gray-600); cursor: pointer; }
 
@@ -1081,11 +993,7 @@
             font-weight: 700;
             transition: var(--transition);
         }
-        .save-btn {
-            background: var(--gradient-main);
-            color: white;
-            box-shadow: 0 4px 12px rgba(15, 92, 191, 0.2);
-        }
+        .save-btn { background: var(--gradient-main); color: white; box-shadow: 0 4px 12px rgba(15, 92, 191, 0.2); }
         .save-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(15, 92, 191, 0.3); }
         .cancel-btn { background: var(--gray-200); color: var(--gray-600); }
         .cancel-btn:hover { background: var(--gray-300); }
@@ -1102,13 +1010,7 @@
         .close-modal:hover { color: var(--gray-800); }
 
         .education-level-group { margin: 10px 0; }
-        .education-level-group label {
-            display: block;
-            margin-bottom: 4px;
-            font-weight: 700;
-            color: var(--gray-800);
-            font-size: 0.9rem;
-        }
+        .education-level-group label { display: block; margin-bottom: 4px; font-weight: 700; color: var(--gray-800); font-size: 0.9rem; }
         .education-level-group label i { color: var(--primary); margin-left: 6px; }
 
         /* ===== TOAST ===== */
@@ -1150,9 +1052,7 @@
         .loading { text-align: center; padding: 30px; color: var(--gray-400); }
         .loading i { color: var(--primary); }
 
-        /* ============================================================
-           RESPONSIVE
-        ============================================================ */
+        /* ===== RESPONSIVE ===== */
         @media (max-width: 767px) {
             body { padding-top: 56px; }
             .navbar { height: 56px; padding: 0 10px; }
@@ -1182,6 +1082,9 @@
             .profile-display .profile-avatar { width: 90px; height: 90px; }
             .teaching-level-banner { flex-direction: column; text-align: center; padding: 14px; }
             .teaching-level-banner .banner-btn { width: 100%; justify-content: center; }
+            .stream-timer-container { padding: 14px 16px; }
+            .stream-timer-container .timer-display .time { font-size: 2.5rem; }
+            .stream-timer-container .timer-actions button { padding: 6px 16px; font-size: 0.75rem; }
         }
 
         @media (min-width: 768px) {
@@ -1203,6 +1106,7 @@
             .nav-balance { font-size: 0.6rem; padding: 2px 8px; }
             .notif-dropdown { width: 92vw; }
             .profile-dropdown { width: 92vw; }
+            .stream-timer-container .timer-display .time { font-size: 2rem; }
         }
 
         @media (max-height: 500px) and (orientation: landscape) {
@@ -1210,6 +1114,8 @@
             body { padding-top: 48px; }
             .main-wrapper { padding: 8px; }
             .modal { max-height: 85vh; }
+            .stream-timer-container { padding: 10px 14px; }
+            .stream-timer-container .timer-display .time { font-size: 2rem; }
         }
     </style>
 </head>
@@ -1310,6 +1216,41 @@
 ================================================================ -->
 <div class="main-wrapper">
     <div class="content-area">
+        
+        <!-- ===== STREAM TIMER - يظهر فقط عند وجود بث نشط ===== -->
+        <div id="streamTimerContainer" class="stream-timer-container" style="display: none;">
+            <div class="timer-header">
+                <div class="stream-title" id="streamTitle">📚 البث المباشر</div>
+                <div class="stream-status">
+                    <span class="live-dot" id="streamStatusDot"></span>
+                    <span id="streamStatusText">مباشر</span>
+                </div>
+            </div>
+            <div class="timer-display">
+                <div class="time" id="timerDisplay">00:00:00</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="timerProgress" style="width: 100%;"></div>
+                </div>
+                <div style="font-size: 0.75rem; color: rgba(255,255,255,0.5); margin-top: 6px;">
+                    <span id="timerRemainingLabel">الوقت المتبقي</span>
+                </div>
+            </div>
+            <div class="timer-actions">
+                <button class="btn-jitsi" onclick="openJitsiStream()">
+                    <i class="fas fa-video"></i> فتح Jitsi Meet
+                </button>
+                <button class="btn-pause" id="pauseBtn" onclick="pauseStream()">
+                    <i class="fas fa-pause"></i> إيقاف مؤقت
+                </button>
+                <button class="btn-resume" id="resumeBtn" onclick="resumeStream()" style="display: none;">
+                    <i class="fas fa-play"></i> استئناف
+                </button>
+                <button class="btn-end" onclick="endStream()">
+                    <i class="fas fa-stop"></i> إنهاء البث
+                </button>
+            </div>
+        </div>
+
         <!-- PROFILE SECTION -->
         <div id="profileSection">
             <div class="section-title"><i class="fas fa-user"></i> ملفي الشخصي</div>
@@ -1319,7 +1260,6 @@
         <!-- OFFERS SECTION -->
         <div id="offersSection" style="display: none;">
             <div class="section-title"><i class="fas fa-calendar-alt"></i> عروضي</div>
-            <!-- ===== تحذير المستوى التعليمي ===== -->
             <div id="teachingLevelBanner" class="teaching-level-banner" style="display: none;">
                 <div class="banner-icon"><i class="fas fa-exclamation-triangle"></i></div>
                 <div class="banner-content">
@@ -1416,8 +1356,6 @@
             <p style="color: var(--danger); margin-bottom: 10px; font-size: 0.8rem; font-weight: 600;">
                 <i class="fas fa-exclamation-triangle"></i> لا يمكن تغيير المعلومات الشخصية (الاسم، التخصص، الخبرة، المستوى الدراسي) إلا عبر الإدارة
             </p>
-            
-            <!-- ===== عرض المستوى التعليمي فقط (للقراءة) ===== -->
             <div class="education-level-group" style="margin-top: 12px;">
                 <label style="color: var(--gray-500);">
                     <i class="fas fa-graduation-cap" style="color: var(--primary);"></i> المستوى الدراسي الحالي <span style="color: var(--gray-400); font-weight: 400; font-size: 0.8rem;">(للقراءة فقط)</span>
@@ -1429,7 +1367,6 @@
                     </span>
                 </div>
             </div>
-
             <div style="margin-top: 12px;">
                 <label style="font-weight: 700; color: var(--gray-800); display: block; margin-bottom: 6px;">
                     <i class="fas fa-camera" style="color: var(--primary);"></i> الصورة الشخصية
@@ -1506,7 +1443,7 @@
     </div>
     <div class="modal-body">
         <input type="text" id="subjectName" placeholder="اسم المادة" required>
-        <input type="number" id="duration" placeholder="المدة (بالدقائق)" value="60">
+        <input type="number" id="duration" placeholder="المدة (بالدقائق)" value="60" min="5">
         <input type="datetime-local" id="offerDate" required>
         <div class="education-level-group">
             <label><i class="fas fa-graduation-cap"></i> المستوى التعليمي</label>
@@ -1547,7 +1484,7 @@
 
 <script>
     // ================================================================
-    // ✅ تم إصلاح مشكلة التوكن بشكل كامل
+    // ✅ نظام البث المباشر مع عداد الوقت والرصيد المعلق
     // ================================================================
 
     let userData = null;
@@ -1560,7 +1497,15 @@
     let authToken = null;
     let csrfToken = null;
 
-    // ✅ تحديد رابط API الأساسي - متوافق مع الخادم
+    // ===== متغيرات البث =====
+    let activeStream = null;           // بيانات البث النشط
+    let streamTimer = null;            // معرف الـ Interval
+    let streamRemainingSeconds = 0;    // الوقت المتبقي بالثواني
+    let streamTotalSeconds = 0;        // الوقت الكلي بالثواني
+    let streamPaused = false;          // هل البث في حالة إيقاف مؤقت؟
+    let streamOfferId = null;          // معرف العرض
+    let streamIntervalId = null;       // معرف الـ setInterval
+
     const API_BASE_URL = window.location.hostname === 'localhost' 
         ? 'http://localhost:3000' 
         : 'https://chatvidio.onrender.com';
@@ -1591,9 +1536,7 @@
         if (response.status === 401) {
             showToast('⏳ انتهت صلاحية الجلسة، جاري إعادة التوجيه...', 'error');
             localStorage.clear();
-            setTimeout(() => {
-                window.location.href = '/';
-            }, 1500);
+            setTimeout(() => { window.location.href = '/'; }, 1500);
             throw new Error('انتهت صلاحية الجلسة');
         }
 
@@ -1603,9 +1546,7 @@
                 if (data.banned) {
                     showToast('⚠️ تم حظر حسابك من المنصة', 'error');
                     localStorage.clear();
-                    setTimeout(() => {
-                        window.location.href = '/';
-                    }, 2000);
+                    setTimeout(() => { window.location.href = '/'; }, 2000);
                     throw new Error('حساب محظور');
                 }
                 if (data.error && data.error.includes('CSRF')) {
@@ -1617,9 +1558,7 @@
                             'X-CSRF-Token': csrfToken
                         }
                     });
-                    if (retryResponse.ok) {
-                        return retryResponse;
-                    }
+                    if (retryResponse.ok) return retryResponse;
                 }
                 throw new Error(data.error || 'غير مصرح به');
             } catch (e) {
@@ -1646,7 +1585,7 @@
     }
 
     // ================================================================
-    // NOTIFICATIONS SYSTEM
+    // NOTIFICATIONS
     // ================================================================
 
     async function loadNotifications() {
@@ -1677,48 +1616,28 @@
     function renderNotifications() {
         const list = document.getElementById('notifList');
         if (!notifications || notifications.length === 0) {
-            list.innerHTML = `
-                <div class="notif-empty">
-                    <i class="fas fa-bell-slash"></i>
-                    لا توجد إشعارات
-                </div>
-            `;
+            list.innerHTML = `<div class="notif-empty"><i class="fas fa-bell-slash"></i>لا توجد إشعارات</div>`;
             return;
         }
-
         let html = '';
         for (const notif of notifications) {
             const isUnread = !notif.is_read;
             const time = new Date(notif.created_at);
             const timeStr = time.toLocaleString('ar', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' });
-
-            let iconClass = 'info';
-            let icon = 'fa-bell';
+            let iconClass = 'info', icon = 'fa-bell';
             const title = notif.title || '';
-            if (title.includes('سحب') || title.includes('صرف')) {
-                iconClass = 'warning';
-                icon = 'fa-hand-holding-usd';
-            } else if (title.includes('دفع') || title.includes('إضافة') || title.includes('شحن')) {
-                iconClass = 'success';
-                icon = 'fa-check-circle';
-            } else if (title.includes('عرض') || title.includes('بث') || title.includes('حصة')) {
-                iconClass = 'info';
-                icon = 'fa-calendar-alt';
-            } else if (title.includes('حظر') || title.includes('إلغاء') || title.includes('رفض')) {
-                iconClass = 'danger';
-                icon = 'fa-exclamation-circle';
-            }
-
-            html += `
-                <div class="notif-item ${isUnread ? 'unread' : ''}" onclick="markNotificationRead('${notif.id}')">
-                    <div class="notif-icon ${iconClass}"><i class="fas ${icon}"></i></div>
-                    <div class="notif-content">
-                        <div class="notif-title">${escapeHtml(notif.title)}</div>
-                        <div class="notif-message">${escapeHtml(notif.message)}</div>
-                        <div class="notif-time">${timeStr}</div>
-                    </div>
+            if (title.includes('سحب') || title.includes('صرف')) { iconClass = 'warning'; icon = 'fa-hand-holding-usd'; }
+            else if (title.includes('دفع') || title.includes('إضافة') || title.includes('شحن')) { iconClass = 'success'; icon = 'fa-check-circle'; }
+            else if (title.includes('عرض') || title.includes('بث') || title.includes('حصة')) { iconClass = 'info'; icon = 'fa-calendar-alt'; }
+            else if (title.includes('حظر') || title.includes('إلغاء') || title.includes('رفض')) { iconClass = 'danger'; icon = 'fa-exclamation-circle'; }
+            html += `<div class="notif-item ${isUnread ? 'unread' : ''}" onclick="markNotificationRead('${notif.id}')">
+                <div class="notif-icon ${iconClass}"><i class="fas ${icon}"></i></div>
+                <div class="notif-content">
+                    <div class="notif-title">${escapeHtml(notif.title)}</div>
+                    <div class="notif-message">${escapeHtml(notif.message)}</div>
+                    <div class="notif-time">${timeStr}</div>
                 </div>
-            `;
+            </div>`;
         }
         list.innerHTML = html;
     }
@@ -1727,16 +1646,12 @@
         const dropdown = document.getElementById('notifDropdown');
         dropdown.classList.toggle('open');
         document.getElementById('profileDropdown').classList.remove('open');
-        if (dropdown.classList.contains('open')) {
-            loadNotifications();
-        }
+        if (dropdown.classList.contains('open')) loadNotifications();
     }
 
     async function markNotificationRead(notifId) {
         try {
-            const res = await fetchWithAuth(`/api/notifications/read/${notifId}`, {
-                method: 'POST'
-            });
+            const res = await fetchWithAuth(`/api/notifications/read/${notifId}`, { method: 'POST' });
             if (res.ok) {
                 const notif = notifications.find(n => n.id == notifId);
                 if (notif) notif.is_read = true;
@@ -1745,23 +1660,16 @@
                 renderNotifications();
             }
         } catch (e) {
-            if (e.message !== 'انتهت صلاحية الجلسة') {
-                console.error('خطأ في تحديث الإشعار:', e);
-            }
+            if (e.message !== 'انتهت صلاحية الجلسة') console.error(e);
         }
     }
 
     async function markAllNotifications() {
-        const unreadNotifs = notifications.filter(n => !n.is_read);
-        for (const notif of unreadNotifs) {
+        for (const notif of notifications.filter(n => !n.is_read)) {
             try {
-                await fetchWithAuth(`/api/notifications/read/${notif.id}`, {
-                    method: 'POST'
-                });
+                await fetchWithAuth(`/api/notifications/read/${notif.id}`, { method: 'POST' });
                 notif.is_read = true;
-            } catch(e) { 
-                if (e.message !== 'انتهت صلاحية الجلسة') console.error(e); 
-            }
+            } catch(e) { if (e.message !== 'انتهت صلاحية الجلسة') console.error(e); }
         }
         unreadCount = 0;
         updateNotifBadge();
@@ -1785,17 +1693,12 @@
     }
 
     // ================================================================
-    // TOAST NOTIFICATIONS
+    // TOAST
     // ================================================================
 
     function showToast(message, type = 'success') {
         const container = document.getElementById('toastContainer');
-        const icons = {
-            success: 'fa-check-circle',
-            error: 'fa-exclamation-circle',
-            warning: 'fa-triangle-exclamation',
-            info: 'fa-info-circle'
-        };
+        const icons = { success: 'fa-check-circle', error: 'fa-exclamation-circle', warning: 'fa-triangle-exclamation', info: 'fa-info-circle' };
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
         toast.innerHTML = `<i class="fas ${icons[type] || icons.info}"></i> ${message}`;
@@ -1819,14 +1722,7 @@
         document.getElementById('teachersSection').style.display = 'none';
         document.getElementById('messagesSection').style.display = 'none';
 
-        const sectionMap = {
-            'profile': 'profileSection',
-            'offers': 'offersSection',
-            'earnings': 'earningsSection',
-            'referral': 'referralSection',
-            'teachers': 'teachersSection',
-            'messages': 'messagesSection'
-        };
+        const sectionMap = { 'profile': 'profileSection', 'offers': 'offersSection', 'earnings': 'earningsSection', 'referral': 'referralSection', 'teachers': 'teachersSection', 'messages': 'messagesSection' };
         const target = document.getElementById(sectionMap[section]);
         if (target) target.style.display = 'block';
 
@@ -1852,59 +1748,37 @@
         try {
             const storedData = localStorage.getItem('userData');
             const token = localStorage.getItem('token');
-            
-            if (storedData) {
-                userData = JSON.parse(storedData);
-                teacherId = userData.id;
-            }
-            
-            if (token) {
-                authToken = token;
-            }
-            
-            if (!teacherId || !authToken) {
-                console.log('⚠️ لا يوجد توكن أو معرف أستاذ، جاري التوجيه إلى الصفحة الرئيسية');
-                window.location.href = '/';
-                return;
-            }
-
+            if (storedData) { userData = JSON.parse(storedData); teacherId = userData.id; }
+            if (token) authToken = token;
+            if (!teacherId || !authToken) { window.location.href = '/'; return; }
             await getCsrfToken();
-
             const res = await fetchWithAuth(`/api/teacher/${teacherId}`);
             const data = await res.json();
-            if (!data.error) {
-                userData = data;
-                localStorage.setItem('userData', JSON.stringify(data));
-            }
+            if (!data.error) { userData = data; localStorage.setItem('userData', JSON.stringify(data)); }
             updateUI();
             loadBalance();
             loadReferralData();
             loadNotifications();
             checkTeachingLevel();
+            checkActiveStream();
         } catch(e) {
             console.error('خطأ في تحميل بيانات المستخدم:', e);
-            if (e.message === 'انتهت صلاحية الجلسة') {
-                window.location.href = '/';
-            }
+            if (e.message === 'انتهت صلاحية الجلسة') window.location.href = '/';
         }
     }
 
-    // ===== التحقق من وجود المستوى التعليمي =====
     function checkTeachingLevel() {
         const banner = document.getElementById('teachingLevelBanner');
         const createOfferBtn = document.querySelector('.btn-primary');
-        
         if (userData && userData.teaching_level) {
             banner.style.display = 'none';
             if (createOfferBtn) createOfferBtn.disabled = false;
         } else {
             banner.style.display = 'flex';
             if (createOfferBtn) createOfferBtn.disabled = true;
-            showToast('⚠️ قم بإدخال المستوى الدراسي في ملفك الشخصي لتتمكن من إضافة عروض', 'warning');
         }
     }
 
-    // ===== دالة عرض روابط التواصل الاجتماعي =====
     function renderSocialLinks(userData) {
         const socialLinks = [
             { url: userData.facebook_url, icon: 'fab fa-facebook-f', label: 'فيسبوك', cls: 'facebook' },
@@ -1915,27 +1789,14 @@
             { url: userData.website_url, icon: 'fas fa-globe', label: 'الموقع', cls: 'website' },
             { url: userData.whatsapp_url, icon: 'fab fa-whatsapp', label: 'واتساب', cls: 'whatsapp' }
         ];
-
-        let html = '';
-        let hasLinks = false;
-
+        let html = '', hasLinks = false;
         for (const link of socialLinks) {
             if (link.url && link.url.trim() !== '') {
-                html += `
-                    <a href="${link.url}" target="_blank" class="social-link-item ${link.cls}" 
-                       title="${link.label}">
-                        <i class="${link.icon}"></i>
-                        <span>${link.label}</span>
-                    </a>
-                `;
+                html += `<a href="${link.url}" target="_blank" class="social-link-item ${link.cls}" title="${link.label}"><i class="${link.icon}"></i><span>${link.label}</span></a>`;
                 hasLinks = true;
             }
         }
-
-        if (!hasLinks) {
-            return '<div class="no-social-links"><i class="fas fa-link" style="margin-left:6px;"></i>لا توجد روابط تواصل اجتماعي مضاف</div>';
-        }
-
+        if (!hasLinks) return '<div class="no-social-links"><i class="fas fa-link" style="margin-left:6px;"></i>لا توجد روابط تواصل اجتماعي مضاف</div>';
         return `<div class="social-links-grid">${html}</div>`;
     }
 
@@ -1943,93 +1804,30 @@
         if (!userData) return;
         const userName = userData.full_name || 'أستاذ';
         const userImage = userData.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(userName) + '&background=0f5cbf&color=fff&size=120';
-
         document.getElementById('navProfileName').textContent = userName.split(' ')[0];
         document.getElementById('navProfileImg').src = userImage;
 
-        // خريطة المستويات
-        const levelMap = {
-            '5eme_pri': 'خامسة ابتدائي',
-            '1ere_am': 'أولى متوسط',
-            '2eme_am': 'ثانية متوسط',
-            '3eme_am': 'ثالثة متوسط',
-            '4eme_am': 'رابعة متوسط',
-            '5eme_am': 'خامسة متوسط',
-            '1ere_as': 'أولى ثانوي',
-            '2eme_as': 'ثانية ثانوي',
-            '3eme_as': 'ثالثة ثانوي',
-            'bac': 'بكالوريا',
-            '1ere_uni': 'أولى جامعي',
-            '2eme_uni': 'ثانية جامعي',
-            '3eme_uni': 'ثالثة جامعي',
-            'master': 'ماستر',
-            'doctorat': 'دكتوراه'
-        };
+        const levelMap = { '5eme_pri': 'خامسة ابتدائي', '1ere_am': 'أولى متوسط', '2eme_am': 'ثانية متوسط', '3eme_am': 'ثالثة متوسط', '4eme_am': 'رابعة متوسط', '5eme_am': 'خامسة متوسط', '1ere_as': 'أولى ثانوي', '2eme_as': 'ثانية ثانوي', '3eme_as': 'ثالثة ثانوي', 'bac': 'بكالوريا', '1ere_uni': 'أولى جامعي', '2eme_uni': 'ثانية جامعي', '3eme_uni': 'ثالثة جامعي', 'master': 'ماستر', 'doctorat': 'دكتوراه' };
         const teachingLevelDisplay = userData.teaching_level ? levelMap[userData.teaching_level] || userData.teaching_level : 'لم يحدد بعد';
 
         document.getElementById('profileInfo').innerHTML = `
             <div class="profile-display">
-                <img src="${userImage}" alt="صورة الملف الشخصي" class="profile-avatar" 
-                     onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=0f5cbf&color=fff&size=120'">
+                <img src="${userImage}" alt="صورة الملف الشخصي" class="profile-avatar" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=0f5cbf&color=fff&size=120'">
                 <div class="profile-name">${escapeHtml(userData.full_name)}</div>
-                <div class="profile-specialty">
-                    <i class="fas fa-book" style="color:var(--primary);"></i> 
-                    ${escapeHtml(userData.specialization || 'تخصص غير محدد')}
-                </div>
+                <div class="profile-specialty"><i class="fas fa-book" style="color:var(--primary);"></i> ${escapeHtml(userData.specialization || 'تخصص غير محدد')}</div>
                 <div class="profile-bio">${escapeHtml(userData.bio || 'لا توجد نبذة تعريفية')}</div>
-                
                 <div class="profile-info-grid">
-                    <div class="profile-info-item">
-                        <div class="label">📧 البريد الإلكتروني</div>
-                        <div class="value">${userData.email || 'غير محدد'}</div>
-                    </div>
-                    <div class="profile-info-item">
-                        <div class="label">📞 الهاتف</div>
-                        <div class="value">${userData.phone || 'غير محدد'}</div>
-                    </div>
-                    <div class="profile-info-item">
-                        <div class="label">💼 الخبرة</div>
-                        <div class="value">${userData.experience || '0'} سنة</div>
-                    </div>
-                    <div class="profile-info-item">
-                        <div class="label">📊 الحالة</div>
-                        <div class="value" style="color:${userData.status === 'approved' ? 'var(--secondary)' : 'var(--gold)'}">
-                            ${userData.status === 'approved' ? '✅ معتمد' : '⏳ قيد المراجعة'}
-                        </div>
-                    </div>
-                    <div class="profile-info-item" style="border-color: var(--gold);">
-                        <div class="label">🎓 المستوى الدراسي</div>
-                        <div class="value" style="color: var(--gold-dark); font-weight: 800;">
-                            ${teachingLevelDisplay}
-                            ${!userData.teaching_level ? '<span style="font-size: 0.7rem; color: var(--danger); display: block;">⚠️ مطلوب لإضافة عروض</span>' : ''}
-                        </div>
-                    </div>
+                    <div class="profile-info-item"><div class="label">📧 البريد الإلكتروني</div><div class="value">${userData.email || 'غير محدد'}</div></div>
+                    <div class="profile-info-item"><div class="label">📞 الهاتف</div><div class="value">${userData.phone || 'غير محدد'}</div></div>
+                    <div class="profile-info-item"><div class="label">💼 الخبرة</div><div class="value">${userData.experience || '0'} سنة</div></div>
+                    <div class="profile-info-item"><div class="label">📊 الحالة</div><div class="value" style="color:${userData.status === 'approved' ? 'var(--secondary)' : 'var(--gold)'}">${userData.status === 'approved' ? '✅ معتمد' : '⏳ قيد المراجعة'}</div></div>
+                    <div class="profile-info-item" style="border-color: var(--gold);"><div class="label">🎓 المستوى الدراسي</div><div class="value" style="color: var(--gold-dark); font-weight: 800;">${teachingLevelDisplay}${!userData.teaching_level ? '<span style="font-size: 0.7rem; color: var(--danger); display: block;">⚠️ مطلوب لإضافة عروض</span>' : ''}</div></div>
                 </div>
-
-                <div class="social-links-section">
-                    <div class="social-title">
-                        <i class="fas fa-share-alt"></i>
-                        روابط التواصل الاجتماعي
-                    </div>
-                    ${renderSocialLinks(userData)}
-                </div>
-
-                <button onclick="showEditProfileModal()" 
-                        style="background: var(--gradient-main); color: white; 
-                               border: none; padding: 10px 30px; border-radius: 30px; 
-                               cursor: pointer; font-weight: 700; font-size: 0.9rem;
-                               transition: all 0.3s ease; box-shadow: 0 4px 16px rgba(15,92,191,0.25);
-                               display: inline-flex; align-items: center; gap: 10px;
-                               margin-top: 8px;"
-                        onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 28px rgba(15,92,191,0.35)';"
-                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 16px rgba(15,92,191,0.25)';">
-                    <i class="fas fa-edit"></i>
-                    تعديل الملف الشخصي وإضافة الروابط
+                <div class="social-links-section"><div class="social-title"><i class="fas fa-share-alt"></i>روابط التواصل الاجتماعي</div>${renderSocialLinks(userData)}</div>
+                <button onclick="showEditProfileModal()" style="background: var(--gradient-main); color: white; border: none; padding: 10px 30px; border-radius: 30px; cursor: pointer; font-weight: 700; font-size: 0.9rem; transition: all 0.3s ease; box-shadow: 0 4px 16px rgba(15,92,191,0.25); display: inline-flex; align-items: center; gap: 10px; margin-top: 8px;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 28px rgba(15,92,191,0.35)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 16px rgba(15,92,191,0.25)';">
+                    <i class="fas fa-edit"></i> تعديل الملف الشخصي وإضافة الروابط
                 </button>
-
-                <p style="color: var(--gray-400); margin-top: 16px; font-size: 0.7rem;">
-                    <i class="fas fa-lock"></i> لا يمكن تعديل المعلومات الشخصية (الاسم، التخصص، الخبرة، المستوى الدراسي) إلا عبر الإدارة
-                </p>
+                <p style="color: var(--gray-400); margin-top: 16px; font-size: 0.7rem;"><i class="fas fa-lock"></i> لا يمكن تعديل المعلومات الشخصية (الاسم، التخصص، الخبرة، المستوى الدراسي) إلا عبر الإدارة</p>
             </div>
         `;
     }
@@ -2052,34 +1850,32 @@
                         <div>
                             <h3 style="font-size: 1rem; color: var(--gray-800);">💰 إجمالي الأرباح: ${data.total_earned || 0} دج</h3>
                             <p style="font-size: 0.9rem; color: var(--gray-600);">الرصيد المتاح للسحب: ${balance} دج</p>
+                            <p style="font-size: 0.85rem; color: var(--gold-dark);">⏳ الرصيد المعلق: ${data.pending_withdraw || 0} دج (في انتظار انتهاء البث)</p>
                         </div>
-                        <button class="btn-primary" onclick="showWithdrawModal()" style="font-size:0.75rem; padding:6px 16px;">
-                            <i class="fas fa-hand-holding-usd"></i> سحب الأرباح
-                        </button>
+                        <button class="btn-primary" onclick="showWithdrawModal()" style="font-size:0.75rem; padding:6px 16px;"><i class="fas fa-hand-holding-usd"></i> سحب الأرباح</button>
                     </div>
                     <p style="font-size: 0.7rem; color: var(--gray-400); margin-top: 4px;">* الحد الأدنى للسحب: 100 دج</p>
                 </div>
                 <h4 style="font-size: 0.95rem; color: var(--gray-800); margin-bottom:10px;">المدفوعات المستحقة:</h4>
-                <div style="overflow-x: auto;">
-                    <table class="earnings-table">
-                        <thead><tr><th>المادة</th><th>المبلغ</th><th>التاريخ</th></tr></thead>
-                        <tbody>
+                <div style="overflow-x: auto;"><table class="earnings-table"><thead><tr><th>المادة</th><th>المبلغ</th><th>التاريخ</th><th>الحالة</th></tr></thead><tbody>
             `;
             if (data.sessions && data.sessions.length > 0) {
                 for (const s of data.sessions) {
-                    earningsHtml += `<tr><td>${escapeHtml(s.offers?.subject_name || 'غير معروف')}</td><td>${s.teacher_earned || s.payment_amount} دج</td><td>${new Date(s.created_at).toLocaleDateString()}</td></tr>`;
+                    const isPending = s.payment_status === 'pending' || s.payment_status === 'pending_stream';
+                    earningsHtml += `<tr>
+                        <td>${escapeHtml(s.offers?.subject_name || 'غير معروف')}</td>
+                        <td>${s.teacher_earned || s.payment_amount} دج</td>
+                        <td>${new Date(s.created_at).toLocaleDateString()}</td>
+                        <td>${isPending ? '⏳ معلق (في انتظار البث)' : '✅ مدفوع'}</td>
+                    </tr>`;
                 }
             } else {
-                earningsHtml += `<tr><td colspan="3" style="text-align:center; color:var(--gray-400);">لا توجد مدفوعات حتى الآن</td></tr>`;
+                earningsHtml += `<tr><td colspan="4" style="text-align:center; color:var(--gray-400);">لا توجد مدفوعات حتى الآن</td></tr>`;
             }
             earningsHtml += `</tbody></table></div>`;
             document.getElementById('earningsInfo').innerHTML = earningsHtml;
             loadWithdrawRequests();
-        } catch(e) { 
-            if (e.message !== 'انتهت صلاحية الجلسة') {
-                console.error(e);
-            }
-        }
+        } catch(e) { if (e.message !== 'انتهت صلاحية الجلسة') console.error(e); }
     }
 
     async function loadWithdrawRequests() {
@@ -2097,24 +1893,17 @@
                 else if (req.status === 'completed') { statusClass = 'status-completed'; statusText = '✅ تم الدفع'; }
                 else { statusClass = 'status-rejected'; statusText = '❌ مرفوض'; }
                 html += `<div class="request-item">
-                    <div>
-                        <strong style="color:var(--gray-800);">${req.amount} دج</strong>
-                        <br><small style="font-size:0.65rem; color:var(--gray-400);">CCP: ${req.ccp_account}</small>
-                    </div>
+                    <div><strong style="color:var(--gray-800);">${req.amount} دج</strong><br><small style="font-size:0.65rem; color:var(--gray-400);">CCP: ${req.ccp_account}</small></div>
                     <span class="request-status ${statusClass}">${statusText}</span>
                 </div>`;
             }
             html += '</div>';
             document.getElementById('withdrawRequestsList').innerHTML = html;
-        } catch(e) { 
-            if (e.message !== 'انتهت صلاحية الجلسة') {
-                console.error(e);
-            }
-        }
+        } catch(e) { if (e.message !== 'انتهت صلاحية الجلسة') console.error(e); }
     }
 
     // ================================================================
-    // REFERRAL SYSTEM
+    // REFERRAL
     // ================================================================
 
     async function loadReferralData() {
@@ -2124,9 +1913,7 @@
                 body: JSON.stringify({ user_id: teacherId, role: 'teacher' })
             });
             const createData = await createRes.json();
-            if (createData.success) {
-                document.getElementById('referralCodeText').textContent = createData.referral_code || 'غير متوفر';
-            }
+            if (createData.success) document.getElementById('referralCodeText').textContent = createData.referral_code || 'غير متوفر';
 
             const infoRes = await fetchWithAuth(`/api/referral/info/${teacherId}/teacher`);
             const infoData = await infoRes.json();
@@ -2136,11 +1923,7 @@
                 document.getElementById('referralBalance').textContent = (infoData.total_reward || 0) + ' دج';
                 renderRewardHistory(infoData.rewards || []);
             }
-        } catch(e) {
-            if (e.message !== 'انتهت صلاحية الجلسة') {
-                console.error('خطأ في تحميل بيانات الإحالة:', e);
-            }
-        }
+        } catch(e) { if (e.message !== 'انتهت صلاحية الجلسة') console.error(e); }
     }
 
     function renderRewardHistory(rewards) {
@@ -2153,15 +1936,7 @@
         for (const reward of rewards) {
             const date = new Date(reward.created_at);
             const amount = reward.amount || 0;
-            html += `
-                <div class="reward-item">
-                    <div>
-                        <span style="font-weight:600;">💰 مكافأة إحالة</span>
-                        <div style="font-size:0.65rem; opacity:0.6;">${date.toLocaleDateString('ar')}</div>
-                    </div>
-                    <div style="font-weight:700; color:#fcd34d;">+${amount} دج</div>
-                </div>
-            `;
+            html += `<div class="reward-item"><div><span style="font-weight:600;">💰 مكافأة إحالة</span><div style="font-size:0.65rem; opacity:0.6;">${date.toLocaleDateString('ar')}</div></div><div style="font-weight:700; color:#fcd34d;">+${amount} دج</div></div>`;
         }
         container.innerHTML = html;
     }
@@ -2169,17 +1944,8 @@
     function copyReferralCode() {
         const code = document.getElementById('referralCodeText').textContent;
         if (code && code !== 'جاري التحميل...') {
-            navigator.clipboard.writeText(code).then(() => {
-                showToast('✅ تم نسخ رمز الإحالة!', 'success');
-            }).catch(() => {
-                const textArea = document.createElement('textarea');
-                textArea.value = code;
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
-                showToast('✅ تم نسخ رمز الإحالة!', 'success');
-            });
+            navigator.clipboard.writeText(code).then(() => showToast('✅ تم نسخ رمز الإحالة!', 'success'))
+                .catch(() => { const ta = document.createElement('textarea'); ta.value = code; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast('✅ تم نسخ رمز الإحالة!', 'success'); });
         }
     }
 
@@ -2187,23 +1953,10 @@
         const code = document.getElementById('referralCodeText').textContent;
         const link = `${window.location.origin}?ref=${code}`;
         if (navigator.share) {
-            navigator.share({
-                title: 'انضم إلى ZoomDz',
-                text: `استخدم رمز الإحالة الخاص بي: ${code} واحصل على مكافآت!`,
-                url: link
-            }).catch(() => {});
+            navigator.share({ title: 'انضم إلى ZoomDz', text: `استخدم رمز الإحالة الخاص بي: ${code} واحصل على مكافآت!`, url: link }).catch(() => {});
         } else {
-            navigator.clipboard.writeText(link).then(() => {
-                showToast('✅ تم نسخ رابط الإحالة! شاركه مع طلابك', 'success');
-            }).catch(() => {
-                const textArea = document.createElement('textarea');
-                textArea.value = link;
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
-                showToast('✅ تم نسخ رابط الإحالة!', 'success');
-            });
+            navigator.clipboard.writeText(link).then(() => showToast('✅ تم نسخ رابط الإحالة! شاركه مع طلابك', 'success'))
+                .catch(() => { const ta = document.createElement('textarea'); ta.value = link; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast('✅ تم نسخ رابط الإحالة!', 'success'); });
         }
     }
 
@@ -2216,9 +1969,7 @@
         container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
         try {
             const res = await fetch(`${API_BASE_URL}/api/teachers`);
-            if (!res.ok) {
-                throw new Error(`HTTP error! status: ${res.status}`);
-            }
+            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
             const teachers = await res.json();
             if (!teachers || teachers.length === 0) {
                 container.innerHTML = '<p style="text-align:center; padding:25px; color:var(--gray-400);">لا يوجد أساتذة معتمدون حالياً</p>';
@@ -2228,25 +1979,17 @@
             for (const teacher of teachers) {
                 if (teacher.id == teacherId) continue;
                 const teacherImage = teacher.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(teacher.full_name) + '&background=0f5cbf&color=fff&size=60';
-                html += `
-                    <div class="teacher-card">
-                        <img src="${teacherImage}" class="teacher-avatar" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${escapeHtml(teacher.full_name)}')+'&background=0f5cbf&color=fff&size=60'">
-                        <div class="teacher-name">${escapeHtml(teacher.full_name)}</div>
-                        <div class="teacher-specialty"><i class="fas fa-book"></i> ${teacher.specialization || 'تخصص عام'}</div>
-                        <div class="teacher-specialty"><i class="fas fa-briefcase"></i> ${teacher.experience || '0'} سنة خبرة</div>
-                        ${teacher.bio ? `<div style="font-size:0.75rem; color:var(--gray-500); margin-top:6px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${escapeHtml(teacher.bio)}</div>` : ''}
-                        <button class="message-btn" onclick="startChatWithTeacher(${teacher.id}, '${escapeHtml(teacher.full_name)}', '${teacherImage}')">
-                            <i class="fas fa-envelope"></i> مراسلة
-                        </button>
-                    </div>
-                `;
+                html += `<div class="teacher-card">
+                    <img src="${teacherImage}" class="teacher-avatar" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${escapeHtml(teacher.full_name)}')+'&background=0f5cbf&color=fff&size=60'">
+                    <div class="teacher-name">${escapeHtml(teacher.full_name)}</div>
+                    <div class="teacher-specialty"><i class="fas fa-book"></i> ${teacher.specialization || 'تخصص عام'}</div>
+                    <div class="teacher-specialty"><i class="fas fa-briefcase"></i> ${teacher.experience || '0'} سنة خبرة</div>
+                    ${teacher.bio ? `<div style="font-size:0.75rem; color:var(--gray-500); margin-top:6px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${escapeHtml(teacher.bio)}</div>` : ''}
+                    <button class="message-btn" onclick="startChatWithTeacher(${teacher.id}, '${escapeHtml(teacher.full_name)}', '${teacherImage}')"><i class="fas fa-envelope"></i> مراسلة</button>
+                </div>`;
             }
             container.innerHTML = html;
-        } catch(e) { 
-            console.error('خطأ في تحميل الأساتذة:', e);
-            showToast('حدث خطأ في تحميل الأساتذة', 'error');
-            container.innerHTML = '<p style="text-align:center; padding:25px; color:var(--gray-400);">حدث خطأ في تحميل الأساتذة</p>';
-        }
+        } catch(e) { console.error('خطأ في تحميل الأساتذة:', e); showToast('حدث خطأ في تحميل الأساتذة', 'error'); container.innerHTML = '<p style="text-align:center; padding:25px; color:var(--gray-400);">حدث خطأ في تحميل الأساتذة</p>'; }
     }
 
     // ================================================================
@@ -2254,20 +1997,13 @@
     // ================================================================
 
     function startChatWithTeacher(otherId, otherName, otherImage) {
-        currentChatTeacher = {
-            id: otherId,
-            name: otherName,
-            image: otherImage || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(otherName) + '&background=0f5cbf&color=fff&size=40'
-        };
+        currentChatTeacher = { id: otherId, name: otherName, image: otherImage || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(otherName) + '&background=0f5cbf&color=fff&size=40' };
         document.getElementById('conversationsList').style.display = 'none';
         document.getElementById('chatView').style.display = 'block';
         document.getElementById('chatHeader').innerHTML = `
             <div style="display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 2px solid var(--gray-200);">
                 <img src="${currentChatTeacher.image}" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary);">
-                <div>
-                    <div style="font-weight: 700; font-size: 0.95rem; color:var(--gray-800);">${escapeHtml(currentChatTeacher.name)}</div>
-                    <div style="font-size: 0.7rem; color: var(--gray-500);">أستاذ</div>
-                </div>
+                <div><div style="font-weight: 700; font-size: 0.95rem; color:var(--gray-800);">${escapeHtml(currentChatTeacher.name)}</div><div style="font-size: 0.7rem; color: var(--gray-500);">أستاذ</div></div>
             </div>
         `;
         document.getElementById('messageInput').value = '';
@@ -2282,12 +2018,7 @@
             const res = await fetchWithAuth(`/api/messages/${teacherId}/teacher/${otherId}/teacher`);
             const messages = await res.json();
             renderChatMessages(messages);
-        } catch(e) {
-            if (e.message !== 'انتهت صلاحية الجلسة') {
-                console.log(e);
-                container.innerHTML = '<p style="text-align:center; padding:20px; color:var(--danger);">حدث خطأ في تحميل الرسائل</p>';
-            }
-        }
+        } catch(e) { if (e.message !== 'انتهت صلاحية الجلسة') { console.log(e); container.innerHTML = '<p style="text-align:center; padding:20px; color:var(--danger);">حدث خطأ في تحميل الرسائل</p>'; } }
     }
 
     function renderChatMessages(messages) {
@@ -2300,14 +2031,7 @@
         for (const msg of messages) {
             const isSent = msg.sender_id == teacherId;
             const date = new Date(msg.created_at);
-            html += `
-                <div class="message-bubble ${isSent ? 'sent' : 'received'}">
-                    <div class="message-content">
-                        ${escapeHtml(msg.message)}
-                        <div class="message-time">${date.toLocaleTimeString('ar')}</div>
-                    </div>
-                </div>
-            `;
+            html += `<div class="message-bubble ${isSent ? 'sent' : 'received'}"><div class="message-content">${escapeHtml(msg.message)}<div class="message-time">${date.toLocaleTimeString('ar')}</div></div></div>`;
         }
         container.innerHTML = html;
         container.scrollTop = container.scrollHeight;
@@ -2315,38 +2039,20 @@
 
     async function sendMessageToTeacher() {
         const message = document.getElementById('messageInput').value.trim();
-        if (!message) {
-            showToast('الرجاء كتابة رسالة', 'warning');
-            return;
-        }
-        if (!currentChatTeacher) {
-            showToast('الرجاء اختيار مستلم الرسالة', 'warning');
-            return;
-        }
+        if (!message) { showToast('الرجاء كتابة رسالة', 'warning'); return; }
+        if (!currentChatTeacher) { showToast('الرجاء اختيار مستلم الرسالة', 'warning'); return; }
         try {
             const res = await fetchWithAuth('/api/messages/send', {
                 method: 'POST',
-                body: JSON.stringify({
-                    sender_id: teacherId,
-                    sender_type: 'teacher',
-                    receiver_id: currentChatTeacher.id,
-                    receiver_type: 'teacher',
-                    message: message
-                })
+                body: JSON.stringify({ sender_id: teacherId, sender_type: 'teacher', receiver_id: currentChatTeacher.id, receiver_type: 'teacher', message: message })
             });
             const data = await res.json();
             if (data.success) {
                 document.getElementById('messageInput').value = '';
                 await loadConversationMessages(currentChatTeacher.id);
                 loadConversations();
-            } else {
-                showToast(data.error || 'حدث خطأ', 'error');
-            }
-        } catch(e) {
-            if (e.message !== 'انتهت صلاحية الجلسة') {
-                showToast('حدث خطأ في الإرسال', 'error');
-            }
-        }
+            } else { showToast(data.error || 'حدث خطأ', 'error'); }
+        } catch(e) { if (e.message !== 'انتهت صلاحية الجلسة') showToast('حدث خطأ في الإرسال', 'error'); }
     }
 
     async function loadConversations() {
@@ -2357,12 +2063,7 @@
             const conversations = await res.json();
             currentConversations = conversations;
             renderConversations(conversations);
-        } catch(e) {
-            if (e.message !== 'انتهت صلاحية الجلسة') {
-                console.log(e);
-                container.innerHTML = '<p style="text-align:center; padding:20px; color:var(--danger);">حدث خطأ</p>';
-            }
-        }
+        } catch(e) { if (e.message !== 'انتهت صلاحية الجلسة') { console.log(e); container.innerHTML = '<p style="text-align:center; padding:20px; color:var(--danger);">حدث خطأ</p>'; } }
     }
 
     function renderConversations(conversations) {
@@ -2375,34 +2076,25 @@
         for (const conv of conversations) {
             const date = new Date(conv.last_message_date);
             const isUnread = conv.unread_count > 0;
-            html += `
-                <div class="conversation-item ${isUnread ? 'conversation-unread' : ''}" onclick="openConversation(${conv.other_id}, '${escapeHtml(conv.other_name)}', '${conv.other_image || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(conv.other_name) + '&background=0f5cbf&color=fff&size=40'}')">
-                    <div class="conversation-name">${escapeHtml(conv.other_name)}</div>
-                    <div class="conversation-last">${escapeHtml(conv.last_message)}</div>
-                    <div style="font-size: 0.6rem; color: var(--gray-400); margin-top: 4px;">${date.toLocaleString('ar')}</div>
-                </div>
-            `;
+            html += `<div class="conversation-item ${isUnread ? 'conversation-unread' : ''}" onclick="openConversation(${conv.other_id}, '${escapeHtml(conv.other_name)}', '${conv.other_image || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(conv.other_name) + '&background=0f5cbf&color=fff&size=40'}')">
+                <div class="conversation-name">${escapeHtml(conv.other_name)}</div>
+                <div class="conversation-last">${escapeHtml(conv.last_message)}</div>
+                <div style="font-size: 0.6rem; color: var(--gray-400); margin-top: 4px;">${date.toLocaleString('ar')}</div>
+            </div>`;
         }
         html += '</div>';
         container.innerHTML = html;
     }
 
     async function openConversation(otherId, otherName, otherImage) {
-        currentChatTeacher = {
-            id: otherId,
-            name: otherName,
-            image: otherImage || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(otherName) + '&background=0f5cbf&color=fff&size=40'
-        };
+        currentChatTeacher = { id: otherId, name: otherName, image: otherImage || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(otherName) + '&background=0f5cbf&color=fff&size=40' };
         await loadConversationMessages(otherId);
         document.getElementById('conversationsList').style.display = 'none';
         document.getElementById('chatView').style.display = 'block';
         document.getElementById('chatHeader').innerHTML = `
             <div style="display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 2px solid var(--gray-200);">
                 <img src="${currentChatTeacher.image}" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary);">
-                <div>
-                    <div style="font-weight: 700; font-size: 0.95rem; color:var(--gray-800);">${escapeHtml(currentChatTeacher.name)}</div>
-                    <div style="font-size: 0.7rem; color: var(--gray-500);">أستاذ</div>
-                </div>
+                <div><div style="font-weight: 700; font-size: 0.95rem; color:var(--gray-800);">${escapeHtml(currentChatTeacher.name)}</div><div style="font-size: 0.7rem; color: var(--gray-500);">أستاذ</div></div>
             </div>
         `;
     }
@@ -2414,7 +2106,7 @@
     }
 
     // ================================================================
-    // OFFERS
+    // ✅ OFFERS - مع دعم البث والعداد
     // ================================================================
 
     async function loadOffers() {
@@ -2424,11 +2116,7 @@
             const res = await fetchWithAuth(`/api/teacher/offers/${teacherId}`);
             const offers = await res.json();
             renderOffers(offers);
-        } catch(e) { 
-            if (e.message !== 'انتهت صلاحية الجلسة') {
-                showToast('حدث خطأ', 'error');
-            }
-        }
+        } catch(e) { if (e.message !== 'انتهت صلاحية الجلسة') showToast('حدث خطأ', 'error'); }
     }
 
     function renderOffers(offers) {
@@ -2441,31 +2129,22 @@
         const now = new Date();
         let html = '';
         const levelMap = {
-            '5eme_pri': 'خامسة ابتدائي',
-            '1ere_am': 'أولى متوسط',
-            '2eme_am': 'ثانية متوسط',
-            '3eme_am': 'ثالثة متوسط',
-            '4eme_am': 'رابعة متوسط',
-            '5eme_am': 'خامسة متوسط',
-            '1ere_as': 'أولى ثانوي',
-            '2eme_as': 'ثانية ثانوي',
-            '3eme_as': 'ثالثة ثانوي',
-            'bac': 'بكالوريا',
-            '1ere_uni': 'أولى جامعي',
-            '2eme_uni': 'ثانية جامعي',
-            '3eme_uni': 'ثالثة جامعي',
-            'master': 'ماستر',
-            'doctorat': 'دكتوراه'
+            '5eme_pri': 'خامسة ابتدائي', '1ere_am': 'أولى متوسط', '2eme_am': 'ثانية متوسط',
+            '3eme_am': 'ثالثة متوسط', '4eme_am': 'رابعة متوسط', '5eme_am': 'خامسة متوسط',
+            '1ere_as': 'أولى ثانوي', '2eme_as': 'ثانية ثانوي', '3eme_as': 'ثالثة ثانوي',
+            'bac': 'بكالوريا', '1ere_uni': 'أولى جامعي', '2eme_uni': 'ثانية جامعي',
+            '3eme_uni': 'ثالثة جامعي', 'master': 'ماستر', 'doctorat': 'دكتوراه'
         };
 
         for (const offer of offers) {
             const offerDate = new Date(offer.offer_date);
-            const isExpired = offerDate < now && offer.status !== 'live' && offer.status !== 'teacher_ready';
+            const isExpired = offerDate < now && offer.status !== 'live' && offer.status !== 'teacher_ready' && offer.status !== 'paused';
 
             let statusText = '', statusClass = '';
             if (offer.status === 'upcoming' && !isExpired) { statusText = '⏳ قادم'; statusClass = 'status-upcoming'; }
             else if (offer.status === 'teacher_ready') { statusText = '🎥 جاهز للبث'; statusClass = 'status-teacher-ready'; }
             else if (offer.status === 'live') { statusText = '🔴 بث مباشر'; statusClass = 'status-live'; }
+            else if (offer.status === 'paused') { statusText = '⏸ متوقف مؤقتاً'; statusClass = 'status-teacher-ready'; }
             else if (offer.status === 'completed' || isExpired) { statusText = '✅ منتهية'; statusClass = 'status-completed'; }
             else { statusText = '⏳ قادم'; statusClass = 'status-upcoming'; }
 
@@ -2480,11 +2159,25 @@
 
             let streamButton = '';
             let addStudentsButton = '';
+            const isLiveOrReady = offer.status === 'live' || offer.status === 'teacher_ready' || offer.status === 'paused';
+            
             if (!isExpired && offer.status === 'upcoming') {
                 streamButton = `<button class="start-stream-btn" onclick="startStreamNow(${offer.id})"><i class="fas fa-play"></i> بدء البث</button>`;
-            } else if (!isExpired && (offer.status === 'teacher_ready' || offer.status === 'live')) {
+            } else if (!isExpired && isLiveOrReady) {
                 streamButton = `<button class="start-stream-btn" onclick="joinTeacherStream(${offer.id})"><i class="fas fa-video"></i> دخول البث</button>`;
                 addStudentsButton = `<button class="message-btn" style="margin-top:8px;" onclick="addStudentsToStream(${offer.id})"><i class="fas fa-user-plus"></i> إضافة الطلاب</button>`;
+            }
+
+            // عرض كلمة المرور إذا كانت موجودة
+            let passwordDisplay = '';
+            if (offer.room_password) {
+                passwordDisplay = `
+                    <div style="margin-top: 8px; font-size: 0.8rem; background: rgba(15,92,191,0.05); padding: 6px 10px; border-radius: 8px;">
+                        <span style="color: var(--gray-500);">🔑 كلمة المرور:</span>
+                        <span style="font-family: 'Courier New', monospace; font-weight: 700; color: var(--primary); letter-spacing: 2px; direction: ltr; display: inline-block;">${offer.room_password}</span>
+                        <button onclick="copyPassword('${offer.room_password}')" style="background:transparent; border:none; color:var(--primary); cursor:pointer; font-size:0.7rem; font-weight:700;"><i class="fas fa-copy"></i> نسخ</button>
+                    </div>
+                `;
             }
 
             html += `<div class="offer-card ${isExpired ? 'expired' : ''}">
@@ -2494,6 +2187,7 @@
                 <div style="font-size:0.85rem; color:var(--gray-600);"><i class="fas fa-clock" style="color:var(--primary);"></i> ${offer.duration} دقيقة</div>
                 <div style="font-size:0.85rem; color:var(--gray-600);">${priceDisplay}</div>
                 ${levelDisplay}
+                ${passwordDisplay}
                 <span class="status-badge ${statusClass}">${statusText}</span>
                 ${streamButton}
                 ${addStudentsButton}
@@ -2503,48 +2197,277 @@
         container.innerHTML = html;
     }
 
-    async function deleteExpiredOffers() {
-        const res = await fetchWithAuth(`/api/teacher/offers/${teacherId}`);
-        const offers = await res.json();
-        const now = new Date();
-        const expiredOffers = offers.filter(o => {
-            const offerDate = new Date(o.offer_date);
-            return offerDate < now && o.status !== 'live' && o.status !== 'teacher_ready';
-        });
+    function copyPassword(password) {
+        navigator.clipboard.writeText(password).then(() => showToast('✅ تم نسخ كلمة المرور!', 'success'))
+            .catch(() => { const ta = document.createElement('textarea'); ta.value = password; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast('✅ تم نسخ كلمة المرور!', 'success'); });
+    }
 
-        if (expiredOffers.length === 0) {
-            showToast('لا توجد عروض منتهية للحذف', 'warning');
+    // ================================================================
+    // ✅ SYSTEME DE STREAM AVEC TIMER ET PENDING BALANCE
+    // ================================================================
+
+    async function checkActiveStream() {
+        try {
+            const res = await fetchWithAuth(`/api/teacher/offers/${teacherId}`);
+            const offers = await res.json();
+            const activeOffer = offers.find(o => o.status === 'live' || o.status === 'teacher_ready' || o.status === 'paused');
+            
+            if (activeOffer) {
+                activeStream = activeOffer;
+                streamOfferId = activeOffer.id;
+                startStreamTimer(activeOffer);
+            } else {
+                hideStreamTimer();
+            }
+        } catch(e) { if (e.message !== 'انتهت صلاحية الجلسة') console.error(e); }
+    }
+
+    function startStreamTimer(offer) {
+        const container = document.getElementById('streamTimerContainer');
+        container.style.display = 'block';
+        
+        document.getElementById('streamTitle').textContent = `📚 ${offer.subject_name}`;
+        
+        // حساب الوقت المتبقي
+        const offerDate = new Date(offer.offer_date);
+        const now = new Date();
+        const elapsedSeconds = Math.floor((now - offerDate) / 1000);
+        const totalSeconds = offer.duration * 60; // تحويل الدقائق إلى ثواني
+        
+        // إذا كان البث متوقف مؤقتاً، استخدم الوقت المتبقي المحفوظ
+        let remainingSeconds;
+        if (offer.status === 'paused' && offer.remaining_time) {
+            remainingSeconds = parseInt(offer.remaining_time);
+        } else if (offer.status === 'teacher_ready') {
+            remainingSeconds = totalSeconds;
+        } else {
+            remainingSeconds = Math.max(0, totalSeconds - elapsedSeconds);
+        }
+        
+        streamTotalSeconds = totalSeconds;
+        streamRemainingSeconds = remainingSeconds;
+        streamPaused = (offer.status === 'paused');
+        
+        updateTimerDisplay();
+        updateTimerButtons();
+        
+        // بدء العداد
+        if (streamIntervalId) clearInterval(streamIntervalId);
+        
+        streamIntervalId = setInterval(() => {
+            if (!streamPaused) {
+                streamRemainingSeconds--;
+                updateTimerDisplay();
+                
+                // عند انتهاء الوقت
+                if (streamRemainingSeconds <= 0) {
+                    clearInterval(streamIntervalId);
+                    streamIntervalId = null;
+                    completeStream();
+                }
+            }
+        }, 1000);
+        
+        // تحديث الحالة كل 30 ثانية للحفاظ على المزامنة مع الخادم
+        if (streamSyncInterval) clearInterval(streamSyncInterval);
+        streamSyncInterval = setInterval(syncStreamStatus, 30000);
+    }
+
+    let streamSyncInterval = null;
+
+    function updateTimerDisplay() {
+        const display = document.getElementById('timerDisplay');
+        const progress = document.getElementById('timerProgress');
+        const remainingLabel = document.getElementById('timerRemainingLabel');
+        
+        const hours = Math.floor(streamRemainingSeconds / 3600);
+        const minutes = Math.floor((streamRemainingSeconds % 3600) / 60);
+        const seconds = streamRemainingSeconds % 60;
+        
+        const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        display.textContent = timeStr;
+        
+        // تغيير اللون حسب الوقت المتبقي
+        display.className = 'time';
+        const percentage = (streamRemainingSeconds / streamTotalSeconds) * 100;
+        if (percentage < 10) display.classList.add('danger');
+        else if (percentage < 30) display.classList.add('warning');
+        
+        // تحديث شريط التقدم
+        progress.style.width = `${percentage}%`;
+        
+        // تحديث النص
+        const elapsed = streamTotalSeconds - streamRemainingSeconds;
+        const elapsedMinutes = Math.floor(elapsed / 60);
+        const totalMinutes = Math.floor(streamTotalSeconds / 60);
+        remainingLabel.textContent = streamPaused ? '⏸ متوقف مؤقتاً' : `⏱ ${elapsedMinutes}/${totalMinutes} دقيقة`;
+        
+        // تحديث حالة البث
+        const statusText = document.getElementById('streamStatusText');
+        const statusDot = document.getElementById('streamStatusDot');
+        if (streamPaused) {
+            statusText.textContent = '⏸ متوقف مؤقتاً';
+            statusDot.className = 'live-dot paused';
+        } else {
+            statusText.textContent = '🔴 مباشر';
+            statusDot.className = 'live-dot';
+        }
+    }
+
+    function updateTimerButtons() {
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resumeBtn = document.getElementById('resumeBtn');
+        
+        if (streamPaused) {
+            pauseBtn.style.display = 'none';
+            resumeBtn.style.display = 'flex';
+        } else {
+            pauseBtn.style.display = 'flex';
+            resumeBtn.style.display = 'none';
+        }
+    }
+
+    function hideStreamTimer() {
+        const container = document.getElementById('streamTimerContainer');
+        container.style.display = 'none';
+        if (streamIntervalId) {
+            clearInterval(streamIntervalId);
+            streamIntervalId = null;
+        }
+        if (streamSyncInterval) {
+            clearInterval(streamSyncInterval);
+            streamSyncInterval = null;
+        }
+    }
+
+    async function syncStreamStatus() {
+        try {
+            const res = await fetchWithAuth(`/api/teacher/offer/${streamOfferId}`);
+            const data = await res.json();
+            if (data.status === 'completed' || data.status === 'cancelled') {
+                hideStreamTimer();
+                loadOffers();
+                loadBalance();
+                showToast('✅ تم إنهاء البث', 'success');
+            }
+        } catch(e) { if (e.message !== 'انتهت صلاحية الجلسة') console.error(e); }
+    }
+
+    async function pauseStream() {
+        if (!streamOfferId || streamPaused) return;
+        
+        try {
+            const res = await fetchWithAuth(`/api/stream/pause/${streamOfferId}`, {
+                method: 'POST',
+                body: JSON.stringify({ remaining_time: streamRemainingSeconds })
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                streamPaused = true;
+                updateTimerButtons();
+                updateTimerDisplay();
+                showToast('⏸ تم إيقاف البث مؤقتاً', 'warning');
+                
+                // تحديث حالة العرض
+                await fetchWithAuth(`/api/offer/update-status/${streamOfferId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ status: 'paused', remaining_time: streamRemainingSeconds })
+                });
+                loadOffers();
+            } else {
+                showToast(data.error || 'حدث خطأ', 'error');
+            }
+        } catch(e) { if (e.message !== 'انتهت صلاحية الجلسة') showToast('حدث خطأ', 'error'); }
+    }
+
+    async function resumeStream() {
+        if (!streamOfferId || !streamPaused) return;
+        
+        if (streamRemainingSeconds <= 0) {
+            showToast('⚠️ انتهى وقت البث', 'warning');
             return;
         }
-
-        if (!confirm(`⚠️ هل أنت متأكد من حذف ${expiredOffers.length} عرض(عروض) منتهية؟`)) return;
-
-        let deletedCount = 0;
-        for (const offer of expiredOffers) {
-            try {
-                const deleteRes = await fetchWithAuth(`/api/offer/delete/${offer.id}`, {
-                    method: 'DELETE',
-                    body: JSON.stringify({ teacher_id: teacherId })
+        
+        try {
+            const res = await fetchWithAuth(`/api/stream/resume/${streamOfferId}`, {
+                method: 'POST',
+                body: JSON.stringify({ remaining_time: streamRemainingSeconds })
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                streamPaused = false;
+                updateTimerButtons();
+                updateTimerDisplay();
+                showToast('▶️ تم استئناف البث', 'success');
+                
+                // تحديث حالة العرض
+                await fetchWithAuth(`/api/offer/update-status/${streamOfferId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ status: 'live' })
                 });
-                const data = await deleteRes.json();
-                if (data.success) deletedCount++;
-            } catch(e) { 
-                if (e.message !== 'انتهت صلاحية الجلسة') console.log(e); 
+                loadOffers();
+            } else {
+                showToast(data.error || 'حدث خطأ', 'error');
             }
-        }
+        } catch(e) { if (e.message !== 'انتهت صلاحية الجلسة') showToast('حدث خطأ', 'error'); }
+    }
 
-        showToast(`✅ تم حذف ${deletedCount} عرض منتهٍ`, 'success');
-        loadOffers();
+    async function completeStream() {
+        if (!streamOfferId) return;
+        
+        try {
+            // إنهاء البث وتحويل الرصيد المعلق إلى رصيد قابل للسحب
+            const res = await fetchWithAuth(`/api/stream/complete/${streamOfferId}`, {
+                method: 'POST',
+                body: JSON.stringify({ teacher_id: teacherId })
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                hideStreamTimer();
+                loadOffers();
+                loadBalance();
+                showToast('✅ تم إنهاء البث! تم تحويل الرصيد المعلق إلى رصيدك', 'success');
+            } else {
+                showToast(data.error || 'حدث خطأ', 'error');
+            }
+        } catch(e) { if (e.message !== 'انتهت صلاحية الجلسة') showToast('حدث خطأ', 'error'); }
+    }
+
+    async function endStream() {
+        if (!streamOfferId) return;
+        if (!confirm('⚠️ هل أنت متأكد من إنهاء البث؟ سيتم تحويل الرصيد المعلق إلى رصيدك القابل للسحب.')) return;
+        
+        try {
+            const res = await fetchWithAuth(`/api/stream/end/${streamOfferId}`, {
+                method: 'POST',
+                body: JSON.stringify({ teacher_id: teacherId, remaining_time: streamRemainingSeconds })
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                hideStreamTimer();
+                loadOffers();
+                loadBalance();
+                showToast('✅ تم إنهاء البث! تم تحويل الرصيد المعلق إلى رصيدك', 'success');
+            } else {
+                showToast(data.error || 'حدث خطأ', 'error');
+            }
+        } catch(e) { if (e.message !== 'انتهت صلاحية الجلسة') showToast('حدث خطأ', 'error'); }
+    }
+
+    function openJitsiStream() {
+        if (!streamOfferId) {
+            showToast('⚠️ لا يوجد بث نشط', 'warning');
+            return;
+        }
+        joinTeacherStream(streamOfferId);
     }
 
     async function startStreamNow(offerId) {
         if (!confirm('⚠️ هل تريد بدء البث المباشر؟')) return;
-
-        const token = localStorage.getItem('token');
-        if (!token) {
-            showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
-            return;
-        }
 
         try {
             const res = await fetchWithAuth('/api/start-jitsi-stream', {
@@ -2555,6 +2478,13 @@
 
             if (data.success) {
                 showToast('✅ تم بدء البث بنجاح!', 'success');
+                streamOfferId = offerId;
+                
+                // جلب بيانات العرض لبدء العداد
+                const offerRes = await fetchWithAuth(`/api/teacher/offer/${offerId}`);
+                const offer = await offerRes.json();
+                startStreamTimer(offer);
+                
                 const newWindow = window.open(data.room_url, '_blank');
                 if (newWindow) {
                     setTimeout(() => {
@@ -2617,6 +2547,38 @@
         }
     }
 
+    async function deleteExpiredOffers() {
+        const res = await fetchWithAuth(`/api/teacher/offers/${teacherId}`);
+        const offers = await res.json();
+        const now = new Date();
+        const expiredOffers = offers.filter(o => {
+            const offerDate = new Date(o.offer_date);
+            return offerDate < now && o.status !== 'live' && o.status !== 'teacher_ready' && o.status !== 'paused';
+        });
+
+        if (expiredOffers.length === 0) {
+            showToast('لا توجد عروض منتهية للحذف', 'warning');
+            return;
+        }
+
+        if (!confirm(`⚠️ هل أنت متأكد من حذف ${expiredOffers.length} عرض(عروض) منتهية؟`)) return;
+
+        let deletedCount = 0;
+        for (const offer of expiredOffers) {
+            try {
+                const deleteRes = await fetchWithAuth(`/api/offer/delete/${offer.id}`, {
+                    method: 'DELETE',
+                    body: JSON.stringify({ teacher_id: teacherId })
+                });
+                const data = await deleteRes.json();
+                if (data.success) deletedCount++;
+            } catch(e) { if (e.message !== 'انتهت صلاحية الجلسة') console.log(e); }
+        }
+
+        showToast(`✅ تم حذف ${deletedCount} عرض منتهٍ`, 'success');
+        loadOffers();
+    }
+
     async function deleteOffer(offerId) {
         if (confirm('⚠️ هل أنت متأكد من حذف هذا العرض؟')) {
             const res = await fetchWithAuth(`/api/offer/delete/${offerId}`, {
@@ -2638,13 +2600,11 @@
     // ================================================================
 
     function showCreateOfferModal() {
-        // التحقق من وجود المستوى التعليمي قبل فتح النافذة
         if (!userData || !userData.teaching_level) {
             showToast('⚠️ قم بإدخال المستوى الدراسي في ملفك الشخصي أولاً', 'warning');
             showEditProfileModal();
             return;
         }
-
         document.getElementById('subjectName').value = '';
         document.getElementById('duration').value = '60';
         document.getElementById('offerDate').value = '';
@@ -2776,7 +2736,6 @@
 
     function showEditProfileModal() {
         if (userData) {
-            // تعبئة حقول الروابط الاجتماعية
             document.getElementById('facebookUrl').value = userData.facebook_url || '';
             document.getElementById('instagramUrl').value = userData.instagram_url || '';
             document.getElementById('linkedinUrl').value = userData.linkedin_url || '';
@@ -2785,23 +2744,12 @@
             document.getElementById('websiteUrl').value = userData.website_url || '';
             document.getElementById('whatsappUrl').value = userData.whatsapp_url || '';
             
-            // عرض المستوى التعليمي الحالي (للقراءة فقط)
             const levelMap = {
-                '5eme_pri': 'خامسة ابتدائي',
-                '1ere_am': 'أولى متوسط',
-                '2eme_am': 'ثانية متوسط',
-                '3eme_am': 'ثالثة متوسط',
-                '4eme_am': 'رابعة متوسط',
-                '5eme_am': 'خامسة متوسط',
-                '1ere_as': 'أولى ثانوي',
-                '2eme_as': 'ثانية ثانوي',
-                '3eme_as': 'ثالثة ثانوي',
-                'bac': 'بكالوريا',
-                '1ere_uni': 'أولى جامعي',
-                '2eme_uni': 'ثانية جامعي',
-                '3eme_uni': 'ثالثة جامعي',
-                'master': 'ماستر',
-                'doctorat': 'دكتوراه'
+                '5eme_pri': 'خامسة ابتدائي', '1ere_am': 'أولى متوسط', '2eme_am': 'ثانية متوسط',
+                '3eme_am': 'ثالثة متوسط', '4eme_am': 'رابعة متوسط', '5eme_am': 'خامسة متوسط',
+                '1ere_as': 'أولى ثانوي', '2eme_as': 'ثانية ثانوي', '3eme_as': 'ثالثة ثانوي',
+                'bac': 'بكالوريا', '1ere_uni': 'أولى جامعي', '2eme_uni': 'ثانية جامعي',
+                '3eme_uni': 'ثالثة جامعي', 'master': 'ماستر', 'doctorat': 'دكتوراه'
             };
             const currentLevel = userData.teaching_level ? levelMap[userData.teaching_level] || userData.teaching_level : 'لم يحدد بعد';
             document.getElementById('currentTeachingLevelDisplay').textContent = currentLevel;
@@ -2814,15 +2762,9 @@
         const formData = new FormData();
         formData.append('teacher_id', teacherId);
 
-        // ✅ الصورة الشخصية
         const imageFile = document.getElementById('editProfileImage').files[0];
-        if (imageFile) {
-            formData.append('profile_image', imageFile);
-        }
+        if (imageFile) formData.append('profile_image', imageFile);
 
-        // ❌ تم إزالة teaching_level - لا يمكن للأستاذ تعديله
-        
-        // ✅ روابط التواصل الاجتماعي فقط
         const socialData = {
             facebook_url: document.getElementById('facebookUrl').value.trim() || null,
             instagram_url: document.getElementById('instagramUrl').value.trim() || null,
@@ -2919,14 +2861,8 @@
         showSection('profile');
     });
 
-    setInterval(() => {
-        if (teacherId) loadNotifications();
-    }, 30000);
-
-    setInterval(() => {
-        if (teacherId) loadBalance();
-    }, 60000);
-
+    setInterval(() => { if (teacherId) loadNotifications(); }, 30000);
+    setInterval(() => { if (teacherId) loadBalance(); }, 60000);
     setInterval(() => {
         const visibleSection = document.querySelector('.nav-tab.active');
         if (visibleSection) {
