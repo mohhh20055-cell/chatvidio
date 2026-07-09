@@ -1822,47 +1822,65 @@
     // ✅ USER DATA
     // ================================================================
 
-    async function loadUserData() {
-        try {
-            const storedData = localStorage.getItem('userData');
-            const token = localStorage.getItem('token');
-            
-            if (storedData) {
-                userData = JSON.parse(storedData);
-                studentId = userData.id;
-            }
-            
-            if (token) {
-                authToken = token;
-            }
-            
-            if (!studentId || !authToken) {
-                console.log('⚠️ لا يوجد توكن أو معرف طالب، جاري التوجيه إلى الصفحة الرئيسية');
-                window.location.href = '/';
-                return;
-            }
+   async function loadUserData() {
+    try {
+        const storedData = localStorage.getItem('userData');
+        const token = localStorage.getItem('token');
+        
+        console.log('🔍 التحقق من التوكن:', token ? 'موجود ✅' : 'غير موجود ❌');
+        
+        if (storedData) {
+            userData = JSON.parse(storedData);
+            studentId = userData.id;
+            console.log('👤 بيانات المستخدم من localStorage:', userData);
+        }
+        
+        if (token) {
+            authToken = token;
+        }
+        
+        if (!authToken) {
+            console.log('⚠️ لا يوجد توكن، جاري التوجيه إلى الصفحة الرئيسية');
+            window.location.href = '/';
+            return;
+        }
 
-            await getCsrfToken();
+        await getCsrfToken();
 
-            const res = await fetchWithAuth(`/api/student/${studentId}`);
-            const data = await res.json();
-            if (!data.error) {
-                userData = data;
-                localStorage.setItem('userData', JSON.stringify(data));
-            }
+        // ✅ استخدم مسار /me بدلاً من /:student_id
+        console.log('📥 جلب بيانات الطالب من الخادم...');
+        const res = await fetchWithAuth(`/api/student/me`);
+        console.log('📥 حالة الاستجابة:', res.status);
+        
+        if (!res.ok) {
+            console.error('❌ فشل جلب بيانات الطالب:', res.status);
+            // ❌ لا تقم بإعادة التوجيه هنا
+            showToast('حدث خطأ في جلب البيانات', 'error');
+            return;
+        }
+        
+        const data = await res.json();
+        console.log('📥 بيانات الطالب من الخادم:', data);
+        
+        if (!data.error) {
+            userData = data;
+            studentId = data.id;
+            localStorage.setItem('userData', JSON.stringify(data));
             updateUI();
             loadWallet();
             loadNotifications();
             loadReferralData();
             loadOffers();
-        } catch(e) {
-            console.error('خطأ في تحميل بيانات المستخدم:', e);
-            if (e.message === 'انتهت صلاحية الجلسة' || e.message === 'حساب محظور') {
-                window.location.href = '/';
-            }
+        } else {
+            console.error('❌ خطأ في بيانات الطالب:', data.error);
+            showToast(data.error, 'error');
         }
+    } catch(e) {
+        console.error('❌ خطأ في تحميل بيانات المستخدم:', e);
+        // ❌ لا تقم بإعادة التوجيه هنا
+        showToast('حدث خطأ في تحميل البيانات', 'error');
     }
-
+}
     function updateUI() {
         if (!userData) return;
         const userName = userData.full_name || 'طالب';
