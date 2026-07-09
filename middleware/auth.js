@@ -406,10 +406,3 @@ module.exports = {
     checkNoActiveStream,
     checkStudentInStream
 };
-
-// ✅ رسالة تأكيد التحميل
-console.log('✅ middleware/auth.js تم تحميله بنجاح');
-console.log('✅ authorize هي:', typeof authorize);
-console.log('✅ authenticate هي:', typeof authenticate);
-console.log('✅ checkActiveStream هي:', typeof checkActiveStream);
-console.log('✅ checkNoActiveStream هي:', typeof checkNoActiveStream);

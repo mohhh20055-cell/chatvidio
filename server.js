@@ -19,8 +19,11 @@ const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const fs = require('fs');
+
+// ✅ استيراد الدوال المساعدة من ملفات منفصلة
+const { generateToken, verifyToken } = require('./utils/jwt');
+const { encrypt, maskIP } = require('./utils/encryption');
 
 // ============================================================
 // ✅ استيراد Middleware من الملف الخارجي
@@ -73,46 +76,8 @@ try {
 // دوال مساعدة عامة
 // ============================================================
 
-function generateToken(userId, role, email) {
-    return jwt.sign(
-        { userId, role, email },
-        JWT_SECRET,
-        { expiresIn: JWT_EXPIRY }
-    );
-}
-
-function verifyToken(token) {
-    try {
-        return jwt.verify(token, JWT_SECRET);
-    } catch (error) {
-        return null;
-    }
-}
-
-function encrypt(text) {
-    if (!text) return null;
-    try {
-        const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
-        const ENCRYPTION_IV = process.env.ENCRYPTION_IV || crypto.randomBytes(16).toString('hex');
-        const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY, 'hex'), Buffer.from(ENCRYPTION_IV, 'hex'));
-        let encrypted = cipher.update(text, 'utf8', 'hex');
-        encrypted += cipher.final('hex');
-        return encrypted;
-    } catch (error) {
-        console.error('خطأ في التشفير:', error.message);
-        return null;
-    }
-}
-
-function maskIP(ip) {
-    if (!ip) return null;
-    const parts = ip.split('.');
-    if (parts.length === 4) {
-        parts[3] = 'xxx';
-        return parts.join('.');
-    }
-    return ip;
-}
+// ⚠️ دوال JWT متوفرة الآن في utils/jwt.js
+// ⚠️ دوال التشفير متوفرة الآن في utils/encryption.js
 
 function sanitizeInput(input) {
     if (typeof input === 'string') {
@@ -890,10 +855,10 @@ module.exports = app;
 if (require.main === module) {
     app.listen(PORT, '0.0.0.0', () => {
         console.log(`🚀 الخادم يعمل على http://localhost:${PORT}`);
-        console.log('=' .repeat(60));
+        console.log('='.repeat(60));
         console.log('📅 التاريخ:', new Date().toLocaleString('ar-EG'));
         console.log('✅ نظام البث: Jitsi Meet (مجاني 100%)');
         console.log('✅ مسارات المصادقة: /api/student/register و /api/teacher/register');
-        console.log('=' .repeat(60));
+        console.log('='.repeat(60));
     });
 }

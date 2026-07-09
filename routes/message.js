@@ -84,22 +84,23 @@ router.get('/conversations/:user_id/:user_type', authenticate, [
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        const { user_id, user_type } = req.params;
+        const userId = parseInt(req.params.user_id);
+        const { user_type } = req.params;
 
-        if (req.user.userId !== parseInt(user_id) || req.user.role !== user_type) {
+        if (req.user.userId !== userId || req.user.role !== user_type) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه المحادثات' });
         }
 
         const { data } = await supabase
             .from('messages')
             .select('*')
-            .or(`sender_id.eq.${user_id},receiver_id.eq.${user_id}`)
+            .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
             .order('created_at', { ascending: false });
 
         const conversations = {};
         for (const msg of data || []) {
-            const otherId = msg.sender_id == user_id ? msg.receiver_id : msg.sender_id;
-            const otherType = msg.sender_id == user_id ? msg.receiver_type : msg.sender_type;
+            const otherId = msg.sender_id == userId ? msg.receiver_id : msg.sender_id;
+            const otherType = msg.sender_id == userId ? msg.receiver_type : msg.sender_type;
             const key = `${otherId}-${otherType}`;
 
             if (!conversations[key] || msg.created_at > conversations[key].last_message_date) {
@@ -119,9 +120,9 @@ router.get('/conversations/:user_id/:user_type', authenticate, [
                     other_image: null,
                     last_message: msg.message,
                     last_message_date: msg.created_at,
-                    unread_count: (!msg.is_read && msg.receiver_id == user_id) ? 1 : 0
+                    unread_count: (!msg.is_read && msg.receiver_id == userId) ? 1 : 0
                 };
-            } else if (!msg.is_read && msg.receiver_id == user_id) {
+            } else if (!msg.is_read && msg.receiver_id == userId) {
                 conversations[key].unread_count++;
             }
         }
@@ -148,23 +149,25 @@ router.get('/:user_id/:user_type/:other_id/:other_type', authenticate, [
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        const { user_id, user_type, other_id, other_type } = req.params;
+        const userId = parseInt(req.params.user_id);
+        const otherId = parseInt(req.params.other_id);
+        const { user_type } = req.params;
 
-        if (req.user.userId !== parseInt(user_id) || req.user.role !== user_type) {
+        if (req.user.userId !== userId || req.user.role !== user_type) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه المحادثة' });
         }
 
         const { data } = await supabase
             .from('messages')
             .select('*')
-            .or(`and(sender_id.eq.${user_id},receiver_id.eq.${other_id}),and(sender_id.eq.${other_id},receiver_id.eq.${user_id})`)
+            .or(`and(sender_id.eq.${userId},receiver_id.eq.${otherId}),and(sender_id.eq.${otherId},receiver_id.eq.${userId})`)
             .order('created_at', { ascending: true });
 
         await supabase
             .from('messages')
             .update({ is_read: true })
-            .eq('receiver_id', user_id)
-            .eq('sender_id', other_id);
+            .eq('receiver_id', userId)
+            .eq('sender_id', otherId);
 
         res.json(data || []);
     } catch (error) {

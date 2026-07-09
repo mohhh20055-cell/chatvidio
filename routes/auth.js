@@ -9,7 +9,6 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const multer = require('multer');
 const path = require('path');
-const jwt = require('jsonwebtoken');
 
 const { supabase } = require('../config/database');
 const { authenticate, authorize, checkBanned } = require('../middleware/auth');
@@ -20,28 +19,7 @@ const { sendVerificationEmail, sendResetEmail, sendTeacherApprovalEmail, sendTea
 const { processReferralOnRegister } = require('../utils/referral');
 const { uploadToSupabase, validateUploadedFiles } = require('../utils/upload');
 const { verifyRecaptcha } = require('../utils/validation');
-
-// ============================================================
-// ✅ دوال JWT معرفة محلياً
-// ============================================================
-const JWT_SECRET = process.env.JWT_SECRET || 'zoomdz_secret_key_2024_for_testing_only';
-const JWT_EXPIRY = '24h';
-
-function generateToken(userId, role, email) {
-    return jwt.sign(
-        { userId, role, email },
-        JWT_SECRET,
-        { expiresIn: JWT_EXPIRY }
-    );
-}
-
-function verifyToken(token) {
-    try {
-        return jwt.verify(token, JWT_SECRET);
-    } catch (error) {
-        return null;
-    }
-}
+const { generateToken, verifyToken } = require('../utils/jwt');
 
 // ============================================================
 // الثوابت
