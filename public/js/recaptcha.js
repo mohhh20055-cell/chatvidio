@@ -1,29 +1,7 @@
 // =============================================
-// تعيين مفاتيح reCAPTCHA من متغيرات البيئة
+// تعيين مفتاح reCAPTCHA مباشرة
 // =============================================
-
-// محاولة الحصول على المفتاح من متغيرات البيئة المختلفة
-window.RECAPTCHA_SITE_KEY = 
-    window.RECAPTCHA_SITE_KEY ||                           // إذا تم تعيينه مسبقاً
-    process.env.RECAPTCHA_SITE_KEY ||                     // لـ Node.js / Render / Vercel
-    process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ||         // لـ Next.js على Vercel
-    process.env.VITE_RECAPTCHA_SITE_KEY ||                // لـ Vite
-    import.meta.env?.VITE_RECAPTCHA_SITE_KEY ||           // لـ Vite (طريقة أخرى)
-    '6Lcv8kctAAAAAHcoWBv_e87vrjP7I6IzQJSV6THf';           // القيمة الافتراضية للتجربة
-
-// المفتاح السري - يستخدم فقط في الخادم (API routes)
-// لا تستخدمه في الكود الأمامي أبداً!
-// window.RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY;
-
-// =============================================
-// التحقق من وجود المفتاح وعرض رسالة مناسبة
-// =============================================
-console.log('🔑 بيئة التشغيل:', 
-    typeof process !== 'undefined' ? 'Node.js' : 
-    typeof import.meta !== 'undefined' ? 'ES Module' : 
-    'Browser'
-);
-console.log('🔑 مفتاح reCAPTCHA:', window.RECAPTCHA_SITE_KEY ? '✅ موجود' : '❌ غير موجود');
+window.RECAPTCHA_SITE_KEY = '6Lcv8kctAAAAAHcoWBv_e87vrjP7I6IzQJSV6THf';
 
 // =============================================
 // حالة reCAPTCHA
@@ -81,8 +59,11 @@ function onRecaptchaExpired() {
 // دالة تحميل reCAPTCHA
 // =============================================
 function onRecaptchaLoaded() {
+    console.log('✅ onRecaptchaLoaded تم استدعاؤها');
+    console.log('🔑 قيمة RECAPTCHA_SITE_KEY:', window.RECAPTCHA_SITE_KEY);
+    
     if (typeof window.RECAPTCHA_SITE_KEY === 'undefined' || !window.RECAPTCHA_SITE_KEY) {
-        console.warn('⚠️ RECAPTCHA_SITE_KEY غير مضبوط. سيتم عرض رسالة للمسؤول.');
+        console.warn('⚠️ RECAPTCHA_SITE_KEY غير مضبوط.');
         renderRecaptchaMissing();
         return;
     }
@@ -94,13 +75,19 @@ function onRecaptchaLoaded() {
 // دالة عرض عنصر reCAPTCHA
 // =============================================
 function renderRecaptchaWidget(type, containerId) {
+    console.log('🔄 محاولة عرض reCAPTCHA لنوع:', type);
+    
     if (typeof grecaptcha === 'undefined') {
         console.warn('⚠️ grecaptcha غير محمل بعد');
         return;
     }
     
     if (!window.RECAPTCHA_SITE_KEY) {
-        console.warn('⚠️ RECAPTCHA_SITE_KEY غير موجود');
+        console.error('❌ RECAPTCHA_SITE_KEY غير موجود!');
+        var container = document.getElementById(containerId);
+        if (container) {
+            container.innerHTML = '<div style="color:#ef4444;font-size:0.85rem;padding:10px;background:#fef2f2;border-radius:8px;border:1px solid #fca5a5;">⚠️ مفتاح reCAPTCHA غير مضبوط. تم تعيين المفتاح مباشرة في الكود</div>';
+        }
         return;
     }
     
@@ -110,7 +97,6 @@ function renderRecaptchaWidget(type, containerId) {
         return;
     }
 
-    // إذا كان الـ widget موجوداً بالفعل، نقوم بإعادة تعيينه
     if (recaptchaWidgets[type] !== null) {
         try {
             grecaptcha.reset(recaptchaWidgets[type]);
@@ -137,7 +123,7 @@ function renderRecaptchaWidget(type, containerId) {
         console.log('✅ تم عرض reCAPTCHA لنوع: ' + type + ' (ID: ' + widgetId + ')');
     } catch (err) {
         console.error('❌ خطأ في عرض reCAPTCHA:', err);
-        container.innerHTML = '<div style="color:#ef4444;font-size:0.85rem;padding:10px;background:#fef2f2;border-radius:8px;border:1px solid #fca5a5;">⚠️ تأكد من ضبط RECAPTCHA_SITE_KEY في متغيرات البيئة</div>';
+        container.innerHTML = '<div style="color:#ef4444;font-size:0.85rem;padding:10px;background:#fef2f2;border-radius:8px;border:1px solid #fca5a5;">⚠️ خطأ في عرض reCAPTCHA</div>';
     }
 }
 
@@ -149,7 +135,7 @@ function renderRecaptchaMissing() {
     ids.forEach(function (id) {
         var el = document.getElementById(id);
         if (el) {
-            el.innerHTML = '<div style="color:#ef4444;font-size:0.85rem;text-align:center;padding:15px;background:#fef2f2;border-radius:8px;border:1px solid #fca5a5;">⚠️ مفتاح reCAPTCHA غير مضبوط.<br>أضف RECAPTCHA_SITE_KEY في متغيرات البيئة</div>';
+            el.innerHTML = '<div style="color:#ef4444;font-size:0.85rem;text-align:center;padding:15px;background:#fef2f2;border-radius:8px;border:1px solid #fca5a5;">⚠️ مفتاح reCAPTCHA غير مضبوط.<br>تم تعيين المفتاح: ' + window.RECAPTCHA_SITE_KEY + '</div>';
         }
     });
 }
@@ -158,6 +144,7 @@ function renderRecaptchaMissing() {
 // دالة عرض جميع عناصر reCAPTCHA
 // =============================================
 function renderAllRecaptchaWidgets() {
+    console.log('🔄 جاري عرض جميع عناصر reCAPTCHA');
     renderRecaptchaWidget('login', 'loginRecaptcha');
     renderRecaptchaWidget('student', 'studentRecaptcha');
     renderRecaptchaWidget('teacher', 'teacherRecaptcha');
@@ -215,51 +202,18 @@ function isRecaptchaVerified(type) {
 }
 
 // =============================================
-// دالة للحصول على حالة reCAPTCHA كنص
-// =============================================
-function getRecaptchaStatus() {
-    return {
-        login: recaptchaState.login ? '✅ تم التحقق' : '❌ لم يتم التحقق',
-        student: recaptchaState.student ? '✅ تم التحقق' : '❌ لم يتم التحقق',
-        teacher: recaptchaState.teacher ? '✅ تم التحقق' : '❌ لم يتم التحقق'
-    };
-}
-
-// =============================================
 // تهيئة reCAPTCHA عند تحميل الصفحة
 // =============================================
 document.addEventListener('DOMContentLoaded', function() {
     console.log('📄 تم تحميل الصفحة - جاري تهيئة reCAPTCHA');
-    console.log('🔑 مفتاح reCAPTCHA المستخدم:', window.RECAPTCHA_SITE_KEY ? '✅ موجود' : '❌ غير موجود');
+    console.log('🔑 مفتاح reCAPTCHA المباشر:', window.RECAPTCHA_SITE_KEY);
     
-    // إذا كان grecaptcha محمل بالفعل
     if (typeof grecaptcha !== 'undefined') {
         onRecaptchaLoaded();
     } else {
         console.log('⏳ في انتظار تحميل grecaptcha...');
-        // سيتم استدعاء onRecaptchaLoaded بواسطة Google
     }
 });
 
-// =============================================
-// تصدير الدوال للاستخدام الخارجي (اختياري)
-// =============================================
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        recaptchaState: recaptchaState,
-        recaptchaWidgets: recaptchaWidgets,
-        onLoginCaptchaSuccess: onLoginCaptchaSuccess,
-        onStudentCaptchaSuccess: onStudentCaptchaSuccess,
-        onTeacherCaptchaSuccess: onTeacherCaptchaSuccess,
-        onRecaptchaExpired: onRecaptchaExpired,
-        onRecaptchaLoaded: onRecaptchaLoaded,
-        renderRecaptchaWidget: renderRecaptchaWidget,
-        renderRecaptchaMissing: renderRecaptchaMissing,
-        renderAllRecaptchaWidgets: renderAllRecaptchaWidgets,
-        resetRecaptchaWidget: resetRecaptchaWidget,
-        resetRecaptchaState: resetRecaptchaState,
-        switchTabRecaptcha: switchTabRecaptcha,
-        isRecaptchaVerified: isRecaptchaVerified,
-        getRecaptchaStatus: getRecaptchaStatus
-    };
-}
+console.log('✅ تم تحميل سكريبت reCAPTCHA');
+console.log('🔑 المفتاح الحالي:', window.RECAPTCHA_SITE_KEY);
