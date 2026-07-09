@@ -1,5 +1,5 @@
 // ============================================================
-// مسارات الإدارة - Admin Routes
+// مسارات الإدارة - Admin Routes (معدل لدعم المستوى التعليمي)
 // ============================================================
 
 const express = require('express');
@@ -7,7 +7,7 @@ const router = express.Router();
 const { body, param, validationResult } = require('express-validator');
 const bcrypt = require('bcryptjs');
 
-// استيراد الدوال - ✅ لا نستورد authorize من middleware
+// استيراد الدوال
 const { supabase } = require('../config/database');
 const { authenticate, checkBanned } = require('../middleware/auth');
 const { getOne, insert, update, remove } = require('../utils/helpers');
@@ -32,7 +32,7 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@platform.com';
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || bcrypt.hashSync('admin123', 12);
 
 // ============================================================
-// جلب جميع الطلاب
+// جلب جميع الطلاب (مع المستوى التعليمي)
 // ============================================================
 router.get('/students', authenticate, authorize(['admin']), async (req, res) => {
     try {
@@ -48,7 +48,7 @@ router.get('/students', authenticate, authorize(['admin']), async (req, res) => 
 });
 
 // ============================================================
-// جلب جميع الأساتذة المعلقين
+// جلب جميع الأساتذة المعلقين (مع المستوى التعليمي)
 // ============================================================
 router.get('/pending-teachers', authenticate, authorize(['admin']), async (req, res) => {
     try {
@@ -65,7 +65,7 @@ router.get('/pending-teachers', authenticate, authorize(['admin']), async (req, 
 });
 
 // ============================================================
-// جلب جميع الأساتذة المقبولين
+// جلب جميع الأساتذة المقبولين (مع المستوى التعليمي)
 // ============================================================
 router.get('/approved-teachers', authenticate, authorize(['admin']), async (req, res) => {
     try {
@@ -82,7 +82,7 @@ router.get('/approved-teachers', authenticate, authorize(['admin']), async (req,
 });
 
 // ============================================================
-// قبول الأستاذ
+// قبول الأستاذ (يحتفظ بالمستوى التعليمي)
 // ============================================================
 router.post('/approve-teacher/:id', [
     authenticate,
@@ -97,8 +97,20 @@ router.post('/approve-teacher/:id', [
 
         const teacherId = req.params.id;
 
-        await update('teachers', teacherId, { status: 'approved' });
+        // ✅ جلب بيانات الأستاذ للتحقق من وجود teaching_level
+        const teacher = await getOne('teachers', 'id', teacherId);
+        if (!teacher) {
+            return res.status(404).json({ success: false, error: 'الأستاذ غير موجود' });
+        }
 
+        // ✅ تحديث الحالة مع الاحتفاظ بـ teaching_level
+        await update('teachers', teacherId, { 
+            status: 'approved',
+            // الاحتفاظ بـ teaching_level إذا كان موجوداً
+            teaching_level: teacher.teaching_level || null
+        });
+
+        // ✅ معالجة مكافأة الإحالة
         const { data: referral } = await supabase
             .from('referrals')
             .select('*')
@@ -112,7 +124,11 @@ router.post('/approve-teacher/:id', [
             console.log(`✅ تم منح مكافأة الإحالة للأستاذ المحيل فور قبول الأستاذ ${teacherId}`);
         }
 
-        res.json({ success: true, message: 'تم قبول الأستاذ ومنح مكافأة الإحالة إن وجدت' });
+        res.json({ 
+            success: true, 
+            message: 'تم قبول الأستاذ ومنح مكافأة الإحالة إن وجدت',
+            teaching_level: teacher.teaching_level || null
+        });
     } catch (error) {
         console.error('خطأ في قبول الأستاذ:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
@@ -182,7 +198,7 @@ router.delete('/delete-teacher/:id', [
 });
 
 // ============================================================
-// حذف المستخدم (طالب أو أستاذ)
+// حذف المستخدم (طالب أو أستاذ) - مع دعم المستوى التعليمي
 // ============================================================
 router.post('/delete-user', [
     authenticate,
