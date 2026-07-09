@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
+        /* ===== RESET & BASE ===== */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
             --primary: #0f5cbf;
@@ -58,9 +59,7 @@
         ::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--gray-400); }
 
-        /* ================================================================
-           PASSWORD BADGE
-        ================================================================ */
+        /* ===== PASSWORD BADGE ===== */
         .password-badge {
             display: inline-block;
             background: #0f3460;
@@ -81,9 +80,7 @@
             margin-left: 4px;
         }
 
-        /* ================================================================
-           JOIN STREAM BUTTON
-        ================================================================ */
+        /* ===== JOIN STREAM BUTTON ===== */
         .join-stream-btn {
             background: var(--gradient-main);
             color: white;
@@ -105,10 +102,13 @@
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(15, 92, 191, 0.4);
         }
+        .join-stream-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
 
-        /* ================================================================
-           NAVBAR
-        ================================================================ */
+        /* ===== NAVBAR ===== */
         .navbar {
             position: fixed;
             top: 0;
@@ -476,9 +476,7 @@
         .profile-dropdown .dropdown-item.danger { color: var(--danger); }
         .profile-dropdown .dropdown-item.danger i { color: var(--danger); }
 
-        /* ================================================================
-           MAIN CONTENT
-        ================================================================ */
+        /* ===== MAIN CONTENT ===== */
         .main-wrapper {
             max-width: 1400px;
             margin: 0 auto;
@@ -603,7 +601,6 @@
             cursor: not-allowed;
             transform: none !important;
             box-shadow: none !important;
-            border: none !important;
         }
 
         .teacher-avatar {
@@ -904,7 +901,6 @@
         }
         .card-title i { color: var(--primary); }
 
-        /* ===== EDUCATION LEVEL DISPLAY ===== */
         .education-level-badge {
             display: inline-block;
             background: var(--primary-light);
@@ -918,9 +914,7 @@
         }
         .education-level-badge i { margin-left: 6px; }
 
-        /* ================================================================
-           MODALS
-        ================================================================ */
+        /* ===== MODALS ===== */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -1035,9 +1029,7 @@
         .gift-result .result-amount.green { color: var(--secondary); }
         .gift-result .result-amount.gray { color: var(--gray-400); }
 
-        /* ================================================================
-           TOAST
-        ================================================================ */
+        /* ===== TOAST ===== */
         .toast-container {
             position: fixed;
             bottom: 24px;
@@ -1076,9 +1068,7 @@
         .loading { text-align: center; padding: 40px; color: var(--gray-400); font-weight: 600; }
         .loading i { color: var(--primary); margin-left: 8px; }
 
-        /* ================================================================
-           RESPONSIVE
-        ================================================================ */
+        /* ===== RESPONSIVE ===== */
         @media (max-width: 767px) {
             body { padding-top: 70px; }
             .navbar { height: 64px; padding: 0 12px; }
@@ -1152,9 +1142,7 @@
 </head>
 <body>
 
-<!-- ================================================================
-     NAVBAR
-================================================================ -->
+<!-- ===== NAVBAR ===== -->
 <nav class="navbar">
     <div class="navbar-inner">
         <a class="nav-logo" onclick="showSection('offers')">
@@ -1237,9 +1225,7 @@
     </div>
 </nav>
 
-<!-- ================================================================
-     MAIN CONTENT
-================================================================ -->
+<!-- ===== MAIN CONTENT ===== -->
 <div class="main-wrapper">
     <!-- LEFT SIDEBAR -->
     <div class="left-sidebar">
@@ -1247,7 +1233,6 @@
             <img id="sidebarAvatar" class="profile-avatar" src="https://ui-avatars.com/api/?name=طالب&background=0f5cbf&color=fff&size=80" alt="صورة الملف الشخصي">
             <div class="profile-name" id="sidebarName"></div>
             <div class="profile-email" id="sidebarEmail"></div>
-            <!-- عرض المستوى التعليمي -->
             <div id="educationLevelDisplay" class="education-level-badge" style="display:none;">
                 <i class="fas fa-graduation-cap"></i> <span id="educationLevelText">لم يحدد</span>
             </div>
@@ -1375,14 +1360,10 @@
     </div>
 </div>
 
-<!-- ================================================================
-     TOAST CONTAINER
-================================================================ -->
+<!-- ===== TOAST CONTAINER ===== -->
 <div class="toast-container" id="toastContainer"></div>
 
-<!-- ================================================================
-     MODALS
-================================================================ -->
+<!-- ===== MODALS ===== -->
 <div class="modal-overlay" id="modalOverlay"></div>
 
 <!-- EDIT PROFILE MODAL -->
@@ -1395,7 +1376,6 @@
         <input type="text" id="editFullName" placeholder="الاسم الكامل">
         <input type="tel" id="editPhone" placeholder="رقم الهاتف">
         
-        <!-- ===== حقل المستوى الدراسي ===== -->
         <div style="margin: 12px 0;">
             <label style="display: block; margin-bottom: 6px; font-weight: 700; color: var(--gray-800); font-size: 0.9rem;">
                 <i class="fas fa-graduation-cap" style="color: var(--primary); margin-left: 6px;"></i>
@@ -1484,7 +1464,7 @@
 
 <script>
     // ================================================================
-    // ✅ تم إصلاح جميع الدوال للعمل مع Jitsi Meet + كلمات المرور
+    // ✅ إعدادات أساسية
     // ================================================================
 
     let userData = null;
@@ -1496,14 +1476,12 @@
     let authToken = null;
     let csrfToken = null;
 
-    // ✅ تحديد رابط API الأساسي
     const API_BASE_URL = window.location.hostname === 'localhost' 
         ? 'http://localhost:3000' 
-        : 'https://chatvidio.onrender.com';
+        : window.location.origin;
 
     console.log('🌐 API Base URL:', API_BASE_URL);
 
-    // خريطة المستويات للعرض
     const levelMap = {
         '5eme_pri': 'خامسة ابتدائي',
         '1ere_am': 'أولى متوسط',
@@ -1524,8 +1502,19 @@
     };
 
     // ================================================================
-    // دوال المصادقة والأمان
+    // ✅ دوال المصادقة
     // ================================================================
+
+    function getCsrfTokenFromCookies() {
+        const cookies = document.cookie.split(';');
+        for (const cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'csrf_token') {
+                return value;
+            }
+        }
+        return null;
+    }
 
     async function fetchWithAuth(url, options = {}) {
         const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
@@ -1533,7 +1522,7 @@
         const isFormData = options.body instanceof FormData;
         const headers = {
             'Authorization': `Bearer ${authToken}`,
-            'X-CSRF-Token': csrfToken || '',
+            'X-CSRF-Token': csrfToken || getCsrfTokenFromCookies() || '',
             ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
             ...options.headers
         };
@@ -1603,7 +1592,7 @@
     }
 
     // ================================================================
-    // NOTIFICATIONS SYSTEM
+    // ✅ NOTIFICATIONS
     // ================================================================
 
     async function loadNotifications() {
@@ -1614,7 +1603,7 @@
             renderNotifications();
             updateNotifBadge();
         } catch (e) {
-            if (e.message !== 'انتهت صلاحية الجلسة') {
+            if (e.message !== 'انتهت صلاحية الجلسة' && e.message !== 'حساب محظور') {
                 console.error('خطأ في جلب الإشعارات:', e);
             }
         }
@@ -1767,7 +1756,7 @@
     }
 
     // ================================================================
-    // PROFILE DROPDOWN
+    // ✅ PROFILE DROPDOWN
     // ================================================================
 
     function toggleProfileDropdown() {
@@ -1782,7 +1771,7 @@
     }
 
     // ================================================================
-    // TOAST NOTIFICATIONS
+    // ✅ TOAST
     // ================================================================
 
     function showToast(message, type = 'success') {
@@ -1805,7 +1794,7 @@
     }
 
     // ================================================================
-    // NAVIGATION
+    // ✅ NAVIGATION
     // ================================================================
 
     function showSection(section) {
@@ -1830,7 +1819,7 @@
     }
 
     // ================================================================
-    // USER DATA
+    // ✅ USER DATA
     // ================================================================
 
     async function loadUserData() {
@@ -1865,9 +1854,10 @@
             loadWallet();
             loadNotifications();
             loadReferralData();
+            loadOffers();
         } catch(e) {
             console.error('خطأ في تحميل بيانات المستخدم:', e);
-            if (e.message === 'انتهت صلاحية الجلسة') {
+            if (e.message === 'انتهت صلاحية الجلسة' || e.message === 'حساب محظور') {
                 window.location.href = '/';
             }
         }
@@ -1884,7 +1874,6 @@
         document.getElementById('sidebarEmail').textContent = userData.email || '';
         document.getElementById('sidebarAvatar').src = userImage;
 
-        // عرض المستوى التعليمي
         const levelDisplay = document.getElementById('educationLevelDisplay');
         const levelText = document.getElementById('educationLevelText');
         if (userData.education_level) {
@@ -1896,16 +1885,15 @@
     }
 
     // ================================================================
-    // WALLET
+    // ✅ WALLET
     // ================================================================
 
     async function loadWallet() {
         try {
-            const res = await fetchWithAuth(`/api/student/wallet/${studentId}`);
+            const res = await fetchWithAuth(`/api/student/balance/${studentId}`);
             const data = await res.json();
             currentBalance = data.balance || 0;
-            const balanceText = currentBalance + ' دج';
-            document.getElementById('walletAmount').textContent = balanceText;
+            document.getElementById('walletAmount').textContent = currentBalance + ' دج';
             document.getElementById('navBalanceAmount').textContent = currentBalance;
         } catch(e) { 
             if (e.message !== 'انتهت صلاحية الجلسة') {
@@ -1915,7 +1903,7 @@
     }
 
     // ================================================================
-    // OFFERS - فلترة حسب المستوى الدراسي
+    // ✅ OFFERS - مع فلترة حسب المستوى الدراسي
     // ================================================================
 
     async function loadOffers() {
@@ -1925,13 +1913,10 @@
             const res = await fetch(`${API_BASE_URL}/api/offers`);
             const offers = await res.json();
             
-            // ✅ فلترة العروض حسب المستوى الدراسي للطالب
             let filteredOffers = offers;
             if (userData && userData.education_level) {
                 filteredOffers = offers.filter(offer => {
-                    // إذا كان العرض ليس له مستوى محدد، يظهر للجميع
                     if (!offer.education_level || offer.education_level === '') return true;
-                    // إذا كان مستوى الطالب مطابقاً لمستوى العرض
                     return offer.education_level === userData.education_level;
                 });
             }
@@ -1946,7 +1931,7 @@
 
     function renderOffers(offers) {
         const container = document.getElementById('offersList');
-        if (offers.length === 0) {
+        if (!offers || offers.length === 0) {
             let message = 'لا توجد عروض متاحة حالياً';
             if (userData && userData.education_level) {
                 message = `لا توجد عروض متاحة لمستواك الدراسي (${levelMap[userData.education_level] || userData.education_level})`;
@@ -1959,7 +1944,7 @@
             const offerDate = new Date(offer.offer_date);
             const isFree = offer.is_free === true || offer.is_free === 1;
 
-            const teacherImage = offer.teacher_profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(offer.teacher_name) + '&background=0f5cbf&color=fff&size=40';
+            const teacherImage = offer.teacher_profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(offer.teacher_name || '') + '&background=0f5cbf&color=fff&size=40';
             
             let levelDisplay = '';
             if (offer.education_level) {
@@ -1967,13 +1952,15 @@
                 levelDisplay = `<div class="offer-info"><i class="fas fa-graduation-cap"></i> المستوى: ${levelName}</div>`;
             }
 
+            const canBook = isFree || currentBalance >= (offer.price || 0);
+
             html += `
                 <div class="offer-card">
                     <div>
                         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                            <img src="${teacherImage}" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border:2px solid white; box-shadow:var(--shadow-sm);" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${escapeHtml(offer.teacher_name)}')+'&background=0f5cbf&color=fff&size=40'">
+                            <img src="${teacherImage}" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border:2px solid white; box-shadow:var(--shadow-sm);" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${escapeHtml(offer.teacher_name || '')}')+'&background=0f5cbf&color=fff&size=40'">
                             <div>
-                                <div style="font-weight: 800; font-size: 0.9rem; color:var(--gray-900);">${escapeHtml(offer.teacher_name)}</div>
+                                <div style="font-weight: 800; font-size: 0.9rem; color:var(--gray-900);">${escapeHtml(offer.teacher_name || 'غير معروف')}</div>
                                 <div style="font-size: 0.72rem; color: var(--gray-500);">${offer.teacher_specialization || 'تخصص عام'}</div>
                             </div>
                         </div>
@@ -1982,10 +1969,10 @@
                         <div class="offer-info"><i class="fas fa-clock"></i> ${offerDate.toLocaleTimeString('ar', {hour: '2-digit', minute:'2-digit'})} | ${offer.duration} دقيقة</div>
                         ${levelDisplay}
                         <div class="offer-info">${isFree ? '<span class="free-badge"><i class="fas fa-gift"></i> مجانية</span>' : `<span class="paid-badge"><i class="fas fa-money-bill"></i> ${offer.price} دج</span>`}</div>
-                        ${!isFree && currentBalance < offer.price ? `<div class="insufficient-balance"><i class="fas fa-exclamation-triangle"></i> رصيدك: ${currentBalance} دج</div>` : ''}
+                        ${!isFree && currentBalance < (offer.price || 0) ? `<div class="insufficient-balance"><i class="fas fa-exclamation-triangle"></i> رصيدك: ${currentBalance} دج</div>` : ''}
                     </div>
-                    <button class="book-btn ${isFree ? 'free' : ''}" onclick="bookOffer(${offer.id}, ${isFree}, ${offer.price})" ${(!isFree && currentBalance < offer.price) ? 'disabled' : ''}>
-                        ${isFree ? 'تسجيل مجاني' : (currentBalance >= offer.price ? 'حجز (باستخدام الرصيد)' : 'رصيد غير كافٍ')}
+                    <button class="book-btn ${isFree ? 'free' : ''}" onclick="bookOffer(${offer.id}, ${isFree}, ${offer.price || 0})" ${!canBook ? 'disabled' : ''}>
+                        ${isFree ? 'تسجيل مجاني' : (canBook ? 'حجز (باستخدام الرصيد)' : 'رصيد غير كافٍ')}
                     </button>
                 </div>
             `;
@@ -2018,7 +2005,7 @@
                 loadNotifications();
             } else {
                 if (data.insufficient_balance) {
-                    showToast(`⚠️ رصيدك غير كافٍ! المبلغ المتبقي: ${data.needed} دج`, 'error');
+                    showToast(`⚠️ رصيدك غير كافٍ! المبلغ المطلوب: ${data.needed} دج`, 'error');
                 } else {
                     showToast(data.error || 'حدث خطأ', 'error');
                 }
@@ -2031,7 +2018,7 @@
     }
 
     // ================================================================
-    // TEACHERS - فلترة حسب المستوى الدراسي
+    // ✅ TEACHERS - مع فلترة حسب المستوى الدراسي
     // ================================================================
 
     async function loadTeachers() {
@@ -2044,12 +2031,9 @@
             }
             let teachers = await res.json();
             
-            // ✅ فلترة الأساتذة حسب المستوى الدراسي للطالب
             if (userData && userData.education_level) {
                 teachers = teachers.filter(teacher => {
-                    // إذا لم يكن للأستاذ مستوى محدد، يظهر للجميع
                     if (!teacher.teaching_level || teacher.teaching_level === '') return true;
-                    // إذا كان مستوى الأستاذ مطابقاً لمستوى الطالب
                     return teacher.teaching_level === userData.education_level;
                 });
             }
@@ -2074,7 +2058,7 @@
         }
         let html = '';
         for (const teacher of teachers) {
-            const teacherImage = teacher.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(teacher.full_name) + '&background=0f5cbf&color=fff&size=60';
+            const teacherImage = teacher.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(teacher.full_name || '') + '&background=0f5cbf&color=fff&size=60';
             
             let levelDisplay = '';
             if (teacher.teaching_level) {
@@ -2085,8 +2069,8 @@
             html += `
                 <div class="teacher-card" onclick="showTeacherProfile(${teacher.id})">
                     <div style="text-align: center;">
-                        <img src="${teacherImage}" class="teacher-avatar" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${escapeHtml(teacher.full_name)}')+'&background=0f5cbf&color=fff&size=60'">
-                        <div class="teacher-name">${escapeHtml(teacher.full_name)}</div>
+                        <img src="${teacherImage}" class="teacher-avatar" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${escapeHtml(teacher.full_name || '')}')+'&background=0f5cbf&color=fff&size=60'">
+                        <div class="teacher-name">${escapeHtml(teacher.full_name || 'غير معروف')}</div>
                         <div class="teacher-specialty"><i class="fas fa-book" style="color: var(--gray-400); margin-left:6px;"></i> ${teacher.specialization || 'تخصص عام'}</div>
                         <div class="teacher-specialty"><i class="fas fa-briefcase" style="color: var(--gray-400); margin-left:6px;"></i> ${teacher.experience || '0'} سنة خبرة</div>
                         ${levelDisplay}
@@ -2100,14 +2084,14 @@
     }
 
     // ================================================================
-    // TEACHER PROFILE
+    // ✅ TEACHER PROFILE
     // ================================================================
 
     async function showTeacherProfile(teacherId) {
         try {
             const res = await fetchWithAuth(`/api/teacher/${teacherId}`);
             const teacher = await res.json();
-            const teacherImage = teacher.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(teacher.full_name) + '&background=0f5cbf&color=fff&size=100';
+            const teacherImage = teacher.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(teacher.full_name || '') + '&background=0f5cbf&color=fff&size=100';
             
             let socialHtml = '';
             const socialLinks = [
@@ -2125,17 +2109,16 @@
                 }
             }
             
-            // عرض مستوى تدريس الأستاذ
             let teachingLevelDisplay = '';
             if (teacher.teaching_level) {
                 const levelName = levelMap[teacher.teaching_level] || teacher.teaching_level;
                 teachingLevelDisplay = `<p style="margin:8px 0; font-size: 0.9rem; color:var(--gray-700);"><strong><i class="fas fa-graduation-cap" style="color:var(--primary); margin-left: 6px; width: 18px;"></i> يدرس المستوى:</strong> ${levelName}</p>`;
             }
             
-            document.getElementById('teacherModalName').textContent = teacher.full_name;
+            document.getElementById('teacherModalName').textContent = teacher.full_name || 'أستاذ';
             document.getElementById('teacherModalBody').innerHTML = `
                 <div style="text-align: center;">
-                    <img src="${teacherImage}" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 16px; border: 3px solid white; box-shadow:var(--shadow-md);" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${escapeHtml(teacher.full_name)}')+'&background=0f5cbf&color=fff&size=100'">
+                    <img src="${teacherImage}" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 16px; border: 3px solid white; box-shadow:var(--shadow-md);" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${escapeHtml(teacher.full_name || '')}')+'&background=0f5cbf&color=fff&size=100'">
                     <div style="text-align: right; margin-top: 10px;">
                         <p style="margin:8px 0; font-size: 0.9rem; color:var(--gray-700);"><strong><i class="fas fa-graduation-cap" style="color:var(--primary); margin-left: 6px; width: 18px;"></i> التخصص:</strong> ${teacher.specialization || 'غير محدد'}</p>
                         <p style="margin:8px 0; font-size: 0.9rem; color:var(--gray-700);"><strong><i class="fas fa-briefcase" style="color:var(--primary); margin-left: 6px; width: 18px;"></i> الخبرة:</strong> ${teacher.experience || '0'} سنة</p>
@@ -2165,14 +2148,14 @@
     }
 
     // ================================================================
-    // BOOKINGS
+    // ✅ BOOKINGS - مع عرض كلمة المرور
     // ================================================================
 
     async function loadMyBookings() {
         const container = document.getElementById('bookingsList');
         container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
         try {
-            const res = await fetchWithAuth(`/api/student/bookings/${studentId}`);
+            const res = await fetchWithAuth(`/api/student/sessions/${studentId}`);
             const bookings = await res.json();
             renderBookings(bookings);
             loadUpcomingBookings(bookings);
@@ -2185,17 +2168,16 @@
 
     function renderBookings(bookings) {
         const container = document.getElementById('bookingsList');
-        if (bookings.length === 0) {
+        if (!bookings || bookings.length === 0) {
             container.innerHTML = '<p style="text-align:center; padding:30px; color:var(--gray-400);">لا توجد حجوزات حالياً</p>';
             return;
         }
         let html = '';
         for (const booking of bookings) {
             const offerDate = new Date(booking.offer_date);
-            const isPaid = booking.is_free === 1 || booking.payment_status === 'paid';
+            const isPaid = booking.payment_status === 'paid' || booking.is_free === true;
             const isLive = booking.offer_status === 'live';
-            const isUpcoming = booking.offer_status === 'upcoming';
-            const teacherImage = booking.teacher_image_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(booking.teacher_name) + '&background=0f5cbf&color=fff&size=40';
+            const isUpcoming = booking.offer_status === 'upcoming' || booking.offer_status === 'pending';
             
             let statusText = '';
             let statusColor = '';
@@ -2227,23 +2209,26 @@
                 `;
             }
 
+            const canJoin = isLive && isPaid && booking.stream_url;
+
             html += `
                 <div class="booking-item">
                     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
                         <div style="margin-right: auto; font-size: 0.72rem; font-weight: 800; color: ${statusColor}; background: ${statusBg}; padding: 4px 10px; border-radius:20px;">${statusText}</div>
                     </div>
                     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                        <img src="${teacherImage}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border:2px solid white; box-shadow:var(--shadow-sm);" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${escapeHtml(booking.teacher_name)}')+'&background=0f5cbf&color=fff&size=40'">
+                        <img src="${booking.teacher_profile || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(booking.teacher_name || '') + '&background=0f5cbf&color=fff&size=40'}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border:2px solid white; box-shadow:var(--shadow-sm);" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${escapeHtml(booking.teacher_name || '')}')+'&background=0f5cbf&color=fff&size=40'">
                         <div>
-                            <div style="font-weight: 800; font-size: 0.95rem; color:var(--gray-900);">${escapeHtml(booking.teacher_name)}</div>
-                            <div style="font-size: 0.72rem; color: var(--gray-500);">${escapeHtml(booking.subject_name)}</div>
+                            <div style="font-weight: 800; font-size: 0.95rem; color:var(--gray-900);">${escapeHtml(booking.teacher_name || 'غير معروف')}</div>
+                            <div style="font-size: 0.72rem; color: var(--gray-500);">${escapeHtml(booking.subject_name || '')}</div>
                         </div>
                     </div>
-                    <div style="font-size: 0.85rem; margin: 6px 0; color: var(--gray-700);"><i class="fas fa-calendar-alt" style="color:var(--gray-400); margin-left: 8px;"></i> ${offerDate.toLocaleString('ar')}</div>
-                    <div style="font-size: 0.85rem; margin: 6px 0; color: var(--gray-700);"><i class="fas fa-clock" style="color:var(--gray-400); margin-left: 8px;"></i> ${booking.duration} دقيقة</div>
-                    <div style="font-size: 0.85rem; color: var(--gray-700); font-weight:700;"><i class="fas fa-tags" style="color:var(--gray-400); margin-left: 8px;"></i> ${booking.is_free ? '🎁 مجانية' : `💰 ${booking.price} دج`}</div>
+                    <div style="font-size: 0.85rem; margin: 6px 0; color: var(--gray-700);"><i class="fas fa-calendar-alt" style="color:var(--gray-400); margin-left: 8px;"></i> ${offerDate ? offerDate.toLocaleString('ar') : 'غير محدد'}</div>
+                    <div style="font-size: 0.85rem; margin: 6px 0; color: var(--gray-700);"><i class="fas fa-clock" style="color:var(--gray-400); margin-left: 8px;"></i> ${booking.duration || '0'} دقيقة</div>
+                    <div style="font-size: 0.85rem; color: var(--gray-700); font-weight:700;"><i class="fas fa-tags" style="color:var(--gray-400); margin-left: 8px;"></i> ${booking.is_free ? '🎁 مجانية' : `💰 ${booking.price || 0} دج`}</div>
                     ${passwordDisplay}
-                    ${isLive && isPaid ? `<button class="join-stream-btn" style="margin-top: 12px; width: 100%;" onclick="joinLiveStream(${booking.offer_id})"><i class="fas fa-video"></i> انضم للبث المباشر</button>` : ''}
+                    ${canJoin ? `<button class="join-stream-btn" style="margin-top: 12px; width: 100%;" onclick="joinLiveStream('${booking.stream_url}', '${booking.room_password || ''}')"><i class="fas fa-video"></i> انضم للبث المباشر</button>` : ''}
+                    ${!canJoin && isLive ? '<div style="color:var(--gray-500); font-size:0.75rem; margin-top:8px;">⏳ انتظر بدء البث...</div>' : ''}
                 </div>
             `;
         }
@@ -2264,43 +2249,28 @@
         });
     }
 
-    function joinLiveStream(offerId) {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            showToast('⚠️ يرجى تسجيل الدخول أولاً', 'error');
+    function joinLiveStream(streamUrl, password) {
+        if (!streamUrl) {
+            showToast('⚠️ رابط البث غير متاح', 'error');
             return;
         }
-        
-        fetchWithAuth(`/api/student/stream-status/${offerId}/${studentId}`)
-            .then(res => res.json())
-            .then(data => {
-                if (data.can_join && data.stream_url) {
-                    const newWindow = window.open(data.stream_url, '_blank');
-                    if (newWindow && data.room_password) {
-                        setTimeout(() => {
-                            alert(`🔑 كلمة مرور البث: ${data.room_password}\nأدخلها عند الطلب في صفحة البث`);
-                        }, 2000);
-                    }
-                } else if (data.is_waiting) {
-                    showToast('⏳ جاري التحضير للبث، انتظر قليلاً...', 'warning');
-                } else {
-                    showToast('البث غير متاح حالياً', 'warning');
-                }
-            })
-            .catch(() => {
-                showToast('حدث خطأ', 'error');
-            });
+        const newWindow = window.open(streamUrl, '_blank');
+        if (newWindow && password) {
+            setTimeout(() => {
+                alert(`🔑 كلمة مرور البث: ${password}\nأدخلها عند الطلب في صفحة البث`);
+            }, 2000);
+        }
     }
 
     // ================================================================
-    // TRANSACTIONS
+    // ✅ TRANSACTIONS
     // ================================================================
 
     async function loadTransactions() {
         const container = document.getElementById('transactionsList');
         container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
         try {
-            const res = await fetchWithAuth(`/api/student/wallet/${studentId}`);
+            const res = await fetchWithAuth(`/api/student/balance/${studentId}`);
             const data = await res.json();
             const transactions = data.transactions || [];
             if (transactions.length === 0) {
@@ -2310,8 +2280,8 @@
             let html = '';
             for (const t of transactions) {
                 const date = new Date(t.created_at);
-                const isDeposit = t.type === 'deposit';
-                const isReferral = t.type === 'referral_gift';
+                const isDeposit = t.type === 'deposit' || t.type === 'credit';
+                const isReferral = t.type === 'referral_gift' || t.type === 'gift_reward';
                 let icon = isDeposit ? 'fa-arrow-up' : 'fa-arrow-down';
                 let color = isDeposit ? 'var(--secondary)' : 'var(--danger-dark)';
                 let bg = isDeposit ? 'var(--secondary-light)' : 'rgba(239, 68, 68, 0.05)';
@@ -2337,7 +2307,7 @@
                             </div>
                         </div>
                         <div style="font-size: 1.15rem; font-weight: 900; color: ${color}">
-                            ${isDeposit || isReferral ? '+' : '-'} ${t.amount} دج
+                            ${isDeposit || isReferral ? '+' : '-'} ${t.amount || 0} دج
                         </div>
                     </div>
                 `;
@@ -2351,13 +2321,13 @@
     }
 
     // ================================================================
-    // SIDEBAR HELPERS
+    // ✅ SIDEBAR HELPERS
     // ================================================================
 
     function loadFreeOffersSidebar(offers) {
-        const freeOffers = offers.filter(o => o.is_free === 1).slice(0, 5);
+        const freeOffers = (offers || []).filter(o => o.is_free === 1 || o.is_free === true).slice(0, 5);
         const container = document.getElementById('freeOffersSidebar');
-        if (freeOffers.length === 0) {
+        if (!freeOffers || freeOffers.length === 0) {
             container.innerHTML = '<p style="font-size:0.75rem; color:var(--gray-400);">لا توجد عروض مجانية</p>';
             return;
         }
@@ -2367,7 +2337,7 @@
             html += `
                 <div style="padding: 10px 0; border-bottom: 1px solid var(--gray-100); display: flex; flex-direction: column; gap:4px;">
                     <div style="font-weight: 700; font-size: 0.8rem; color:var(--gray-900);">${escapeHtml(offer.subject_name)}</div>
-                    <div style="font-size: 0.7rem; color: var(--gray-500);"><i class="fas fa-clock" style="margin-left: 4px;"></i>${offerDate.toLocaleDateString('ar')}</div>
+                    <div style="font-size: 0.7rem; color: var(--gray-500);"><i class="fas fa-clock" style="margin-left: 4px;"></i>${offerDate ? offerDate.toLocaleDateString('ar') : 'غير محدد'}</div>
                     <button style="background:var(--gradient-secondary); color:white; border:none; padding:4px 12px; border-radius:20px; font-size:0.7rem; margin-top:4px; cursor:pointer; font-weight:700; font-family:'Cairo'; transition:var(--transition); align-self: flex-start;" onclick="quickBookFree(${offer.id})">حجز مجاني</button>
                 </div>
             `;
@@ -2380,12 +2350,12 @@
     }
 
     function loadUpcomingBookings(bookings) {
-        const upcoming = bookings.filter(b => {
+        const upcoming = (bookings || []).filter(b => {
             const date = new Date(b.offer_date);
-            return date > new Date() && (b.is_free === 1 || b.payment_status === 'paid');
+            return date > new Date() && (b.payment_status === 'paid' || b.is_free === true);
         }).slice(0, 5);
         const container = document.getElementById('upcomingBookings');
-        if (upcoming.length === 0) {
+        if (!upcoming || upcoming.length === 0) {
             container.innerHTML = '<p style="font-size:0.75rem; color:var(--gray-400);">لا توجد حصص قادمة</p>';
             return;
         }
@@ -2395,9 +2365,9 @@
             const isLive = b.offer_status === 'live';
             html += `
                 <div style="padding: 10px 0; border-bottom: 1px solid var(--gray-100);">
-                    <div style="font-weight: 700; font-size: 0.8rem; color:var(--gray-900);">${escapeHtml(b.subject_name)}</div>
-                    <div style="font-size: 0.7rem; color: var(--gray-500);"><i class="fas fa-calendar-alt" style="margin-left:4px;"></i>${offerDate.toLocaleDateString('ar')}</div>
-                    ${isLive ? `<button class="join-stream-btn" style="margin-top:6px; font-size:0.65rem; padding:4px 12px;" onclick="joinLiveStream(${b.offer_id})">انضم</button>` : ''}
+                    <div style="font-weight: 700; font-size: 0.8rem; color:var(--gray-900);">${escapeHtml(b.subject_name || '')}</div>
+                    <div style="font-size: 0.7rem; color: var(--gray-500);"><i class="fas fa-calendar-alt" style="margin-left:4px;"></i>${offerDate ? offerDate.toLocaleDateString('ar') : 'غير محدد'}</div>
+                    ${isLive && b.stream_url ? `<button class="join-stream-btn" style="margin-top:6px; font-size:0.65rem; padding:4px 12px;" onclick="joinLiveStream('${b.stream_url}', '${b.room_password || ''}')">انضم</button>` : ''}
                 </div>
             `;
         }
@@ -2405,7 +2375,7 @@
     }
 
     // ================================================================
-    // REFERRAL SYSTEM
+    // ✅ REFERRAL SYSTEM
     // ================================================================
 
     async function loadReferralData() {
@@ -2497,7 +2467,7 @@
                         <span class="reward-icon">${icon}</span>
                         <div>
                             <span style="font-weight:700; color:var(--gray-800); font-size:0.85rem;">${label}</span>
-                            <div style="font-size:0.7rem; color:var(--gray-400); margin-top:2px;">${date.toLocaleDateString('ar')}</div>
+                            <div style="font-size:0.7rem; color:var(--gray-400); margin-top:2px;">${date ? date.toLocaleDateString('ar') : ''}</div>
                         </div>
                     </div>
                     <div class="reward-amount">${amountText}</div>
@@ -2509,7 +2479,7 @@
 
     function copyReferralCode() {
         const code = document.getElementById('referralCodeText').textContent;
-        if (code && code !== 'جاري التحميل...') {
+        if (code && code !== 'جاري التحميل...' && code !== 'غير متوفر') {
             navigator.clipboard.writeText(code).then(() => {
                 showToast('✅ تم نسخ رمز الإحالة!', 'success');
             }).catch(() => {
@@ -2521,6 +2491,8 @@
                 document.body.removeChild(textArea);
                 showToast('✅ تم نسخ رمز الإحالة!', 'success');
             });
+        } else {
+            showToast('⚠️ يرجى تسجيل الدخول للحصول على رمز الإحالة', 'warning');
         }
     }
 
@@ -2549,7 +2521,7 @@
     }
 
     // ================================================================
-    // GIFT BOX
+    // ✅ GIFT BOX
     // ================================================================
 
     async function openGiftBox() {
@@ -2616,7 +2588,7 @@
     }
 
     // ================================================================
-    // DEPOSIT
+    // ✅ DEPOSIT
     // ================================================================
 
     function showDepositModal() {
@@ -2662,7 +2634,7 @@
     }
 
     // ================================================================
-    // EDIT PROFILE - مع إمكانية تغيير المستوى الدراسي
+    // ✅ EDIT PROFILE
     // ================================================================
 
     function showEditProfileModal() {
@@ -2671,11 +2643,10 @@
             document.getElementById('editPhone').value = userData.phone || '';
             document.getElementById('editEducationLevel').value = userData.education_level || '';
             
-            // إظهار/إخفاء حقل "آخر"
             const otherGroup = document.getElementById('editOtherLevelGroup');
-            if (userData.education_level === 'other') {
+            if (userData.education_level === 'other' || !levelMap[userData.education_level]) {
                 otherGroup.style.display = 'block';
-                document.getElementById('editOtherLevelText').value = userData.education_level_other || '';
+                document.getElementById('editOtherLevelText').value = userData.education_level || '';
             } else {
                 otherGroup.style.display = 'none';
             }
@@ -2684,16 +2655,18 @@
         document.getElementById('editProfileModal').style.display = 'block';
     }
 
-    // إظهار/إخفاء حقل "آخر" عند تغيير المستوى
     document.addEventListener('DOMContentLoaded', function() {
-        document.getElementById('editEducationLevel').addEventListener('change', function() {
-            const otherGroup = document.getElementById('editOtherLevelGroup');
-            if (this.value === 'other') {
-                otherGroup.style.display = 'block';
-            } else {
-                otherGroup.style.display = 'none';
-            }
-        });
+        const levelSelect = document.getElementById('editEducationLevel');
+        if (levelSelect) {
+            levelSelect.addEventListener('change', function() {
+                const otherGroup = document.getElementById('editOtherLevelGroup');
+                if (this.value === 'other') {
+                    otherGroup.style.display = 'block';
+                } else {
+                    otherGroup.style.display = 'none';
+                }
+            });
+        }
     });
 
     async function updateProfile() {
@@ -2702,7 +2675,6 @@
         formData.append('full_name', document.getElementById('editFullName').value);
         formData.append('phone', document.getElementById('editPhone').value);
         
-        // ✅ إرسال المستوى الدراسي
         let educationLevel = document.getElementById('editEducationLevel').value;
         if (educationLevel === 'other') {
             const otherText = document.getElementById('editOtherLevelText').value.trim();
@@ -2728,7 +2700,6 @@
                 localStorage.setItem('userData', JSON.stringify(data.user));
                 updateUI();
                 closeModal();
-                // إعادة تحميل العروض والأساتذة حسب المستوى الجديد
                 loadOffers();
                 loadTeachers();
             } else {
@@ -2752,7 +2723,7 @@
     }
 
     // ================================================================
-    // LOGOUT
+    // ✅ LOGOUT
     // ================================================================
 
     function logout() {
@@ -2762,7 +2733,7 @@
     }
 
     // ================================================================
-    // UTILITY
+    // ✅ UTILITY
     // ================================================================
 
     function escapeHtml(text) {
@@ -2773,7 +2744,7 @@
     }
 
     // ================================================================
-    // CLOSE DROPDOWNS ON CLICK OUTSIDE
+    // ✅ CLOSE DROPDOWNS ON CLICK OUTSIDE
     // ================================================================
 
     document.addEventListener('click', function(e) {
@@ -2791,7 +2762,7 @@
     });
 
     // ================================================================
-    // INIT
+    // ✅ INIT
     // ================================================================
 
     loadUserData().then(() => {
