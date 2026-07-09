@@ -437,7 +437,8 @@ const csrfExcludedPaths = [
     '/api/wallet/chargily-webhook',
     '/api/chargily-webhook',
     '/api/start-jitsi-stream',
-    '/api/join-jitsi'
+    '/api/join-jitsi',
+    '/api/support/send'
 ];
 
 app.use((req, res, next) => {
