@@ -1,7 +1,13 @@
 // =============================================
 // تعيين مفتاح reCAPTCHA مباشرة
 // =============================================
+// هذا هو المفتاح العام (Site Key) - آمن للاستخدام في المتصفح
 window.RECAPTCHA_SITE_KEY = '6Lcv8kctAAAAAHcoWBv_e87vrjP7I6IzQJSV6THf';
+
+// =============================================
+// التحقق من وجود المفتاح
+// =============================================
+console.log('🔑 تم تعيين مفتاح reCAPTCHA:', window.RECAPTCHA_SITE_KEY);
 
 // =============================================
 // حالة reCAPTCHA
@@ -62,7 +68,7 @@ function onRecaptchaLoaded() {
     console.log('✅ onRecaptchaLoaded تم استدعاؤها');
     console.log('🔑 قيمة RECAPTCHA_SITE_KEY:', window.RECAPTCHA_SITE_KEY);
     
-    if (typeof window.RECAPTCHA_SITE_KEY === 'undefined' || !window.RECAPTCHA_SITE_KEY) {
+    if (!window.RECAPTCHA_SITE_KEY) {
         console.warn('⚠️ RECAPTCHA_SITE_KEY غير مضبوط.');
         renderRecaptchaMissing();
         return;
@@ -86,7 +92,7 @@ function renderRecaptchaWidget(type, containerId) {
         console.error('❌ RECAPTCHA_SITE_KEY غير موجود!');
         var container = document.getElementById(containerId);
         if (container) {
-            container.innerHTML = '<div style="color:#ef4444;font-size:0.85rem;padding:10px;background:#fef2f2;border-radius:8px;border:1px solid #fca5a5;">⚠️ مفتاح reCAPTCHA غير مضبوط. تم تعيين المفتاح مباشرة في الكود</div>';
+            container.innerHTML = '<div style="color:#ef4444;font-size:0.85rem;padding:10px;background:#fef2f2;border-radius:8px;border:1px solid #fca5a5;">⚠️ مفتاح reCAPTCHA غير مضبوط</div>';
         }
         return;
     }
@@ -135,7 +141,7 @@ function renderRecaptchaMissing() {
     ids.forEach(function (id) {
         var el = document.getElementById(id);
         if (el) {
-            el.innerHTML = '<div style="color:#ef4444;font-size:0.85rem;text-align:center;padding:15px;background:#fef2f2;border-radius:8px;border:1px solid #fca5a5;">⚠️ مفتاح reCAPTCHA غير مضبوط.<br>تم تعيين المفتاح: ' + window.RECAPTCHA_SITE_KEY + '</div>';
+            el.innerHTML = '<div style="color:#ef4444;font-size:0.85rem;text-align:center;padding:15px;background:#fef2f2;border-radius:8px;border:1px solid #fca5a5;">⚠️ مفتاح reCAPTCHA غير مضبوط.<br>تم تعيين المفتاح: ' + (window.RECAPTCHA_SITE_KEY || 'غير موجود') + '</div>';
         }
     });
 }
@@ -204,16 +210,5 @@ function isRecaptchaVerified(type) {
 // =============================================
 // تهيئة reCAPTCHA عند تحميل الصفحة
 // =============================================
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('📄 تم تحميل الصفحة - جاري تهيئة reCAPTCHA');
-    console.log('🔑 مفتاح reCAPTCHA المباشر:', window.RECAPTCHA_SITE_KEY);
-    
-    if (typeof grecaptcha !== 'undefined') {
-        onRecaptchaLoaded();
-    } else {
-        console.log('⏳ في انتظار تحميل grecaptcha...');
-    }
-});
-
 console.log('✅ تم تحميل سكريبت reCAPTCHA');
 console.log('🔑 المفتاح الحالي:', window.RECAPTCHA_SITE_KEY);
