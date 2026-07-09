@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes, viewport-fit=cover">
-    <title>ZoomDz | لوحة الطالب - Jitsi Meet</title>
+    <title>ZoomDz | لوحة الطالب</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
@@ -35,7 +35,6 @@
             --gradient-gold: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
             --gradient-gift: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
             --gradient-danger: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-            --gradient-jitsi: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
             --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
             --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
             --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
@@ -58,23 +57,6 @@
         ::-webkit-scrollbar-track { background: var(--gray-100); }
         ::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--gray-400); }
-
-        /* ================================================================
-           JITSI MEET BADGE
-        ================================================================ */
-        .jitsi-badge {
-            display: inline-block;
-            background: var(--gradient-jitsi);
-            color: white;
-            padding: 4px 16px;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            font-weight: 700;
-            margin-bottom: 8px;
-            border: 1px solid rgba(255,255,255,0.2);
-            box-shadow: 0 2px 8px rgba(26, 115, 232, 0.3);
-        }
-        .jitsi-badge i { margin-left: 6px; }
 
         /* ================================================================
            PASSWORD BADGE
@@ -100,10 +82,10 @@
         }
 
         /* ================================================================
-           JOIN STREAM BUTTON - JITSI
+           JOIN STREAM BUTTON
         ================================================================ */
         .join-stream-btn {
-            background: var(--gradient-jitsi);
+            background: var(--gradient-main);
             color: white;
             border: none;
             padding: 10px 18px;
@@ -113,7 +95,7 @@
             font-family: 'Cairo', sans-serif;
             cursor: pointer;
             transition: var(--transition);
-            box-shadow: 0 4px 14px rgba(26, 115, 232, 0.3);
+            box-shadow: 0 4px 14px rgba(15, 92, 191, 0.3);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -121,7 +103,7 @@
         }
         .join-stream-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(26, 115, 232, 0.4);
+            box-shadow: 0 6px 20px rgba(15, 92, 191, 0.4);
         }
 
         /* ================================================================
@@ -388,7 +370,7 @@
             margin-top: 6px;
         }
         .notif-item .notif-action button {
-            background: var(--gradient-jitsi);
+            background: var(--gradient-main);
             color: white;
             border: none;
             padding: 4px 14px;
@@ -922,6 +904,20 @@
         }
         .card-title i { color: var(--primary); }
 
+        /* ===== EDUCATION LEVEL DISPLAY ===== */
+        .education-level-badge {
+            display: inline-block;
+            background: var(--primary-light);
+            color: var(--primary);
+            padding: 4px 16px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            border: 1px solid rgba(15, 92, 191, 0.15);
+            margin-top: 8px;
+        }
+        .education-level-badge i { margin-left: 6px; }
+
         /* ================================================================
            MODALS
         ================================================================ */
@@ -964,7 +960,7 @@
         .modal-header h3 { font-size: 1.05rem; color: var(--gray-900); font-weight: 800; }
         .modal-header h3 i { color: var(--primary); margin-left: 8px; }
         .modal-body { padding: 20px; }
-        .modal-body input, .modal-body textarea {
+        .modal-body input, .modal-body textarea, .modal-body select {
             width: 100%;
             padding: 11px 16px;
             margin: 8px 0;
@@ -976,7 +972,7 @@
             background: var(--gray-50);
             color: var(--gray-800);
         }
-        .modal-body input:focus, .modal-body textarea:focus {
+        .modal-body input:focus, .modal-body textarea:focus, .modal-body select:focus {
             border-color: var(--primary);
             outline: none;
             background: white;
@@ -1248,11 +1244,14 @@
     <!-- LEFT SIDEBAR -->
     <div class="left-sidebar">
         <div class="profile-card">
-            <div class="jitsi-badge"><i class="fas fa-video"></i> Jitsi Meet - مجاني 100%</div>
             <img id="sidebarAvatar" class="profile-avatar" src="https://ui-avatars.com/api/?name=طالب&background=0f5cbf&color=fff&size=80" alt="صورة الملف الشخصي">
             <div class="profile-name" id="sidebarName"></div>
             <div class="profile-email" id="sidebarEmail"></div>
-            <button class="edit-profile-btn" onclick="showEditProfileModal()"><i class="fas fa-camera"></i> تغيير الصورة</button>
+            <!-- عرض المستوى التعليمي -->
+            <div id="educationLevelDisplay" class="education-level-badge" style="display:none;">
+                <i class="fas fa-graduation-cap"></i> <span id="educationLevelText">لم يحدد</span>
+            </div>
+            <button class="edit-profile-btn" onclick="showEditProfileModal()"><i class="fas fa-camera"></i> تعديل الملف الشخصي</button>
         </div>
         <div class="wallet-card">
             <i class="fas fa-wallet" style="font-size: 1.3rem; opacity:0.8;"></i>
@@ -1294,7 +1293,7 @@
 
         <!-- TEACHERS SECTION -->
         <div id="teachersSection" style="display: none;">
-            <div class="section-title"><i class="fas fa-chalkboard-user"></i> الأساتذة</div>
+            <div class="section-title"><i class="fas fa-chalkboard-user"></i> الأساتذة المتوافقون مع مستواك</div>
             <div id="teachersList" class="teachers-grid"></div>
         </div>
 
@@ -1395,6 +1394,40 @@
     <div class="modal-body">
         <input type="text" id="editFullName" placeholder="الاسم الكامل">
         <input type="tel" id="editPhone" placeholder="رقم الهاتف">
+        
+        <!-- ===== حقل المستوى الدراسي ===== -->
+        <div style="margin: 12px 0;">
+            <label style="display: block; margin-bottom: 6px; font-weight: 700; color: var(--gray-800); font-size: 0.9rem;">
+                <i class="fas fa-graduation-cap" style="color: var(--primary); margin-left: 6px;"></i>
+                المستوى الدراسي
+            </label>
+            <select id="editEducationLevel" style="width: 100%; padding: 11px 16px; border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm); font-family: 'Cairo', sans-serif; font-size: 0.88rem; transition: var(--transition); background: var(--gray-50); color: var(--gray-800);">
+                <option value="">-- اختر المستوى --</option>
+                <option value="5eme_pri">خامسة ابتدائي</option>
+                <option value="1ere_am">أولى متوسط</option>
+                <option value="2eme_am">ثانية متوسط</option>
+                <option value="3eme_am">ثالثة متوسط</option>
+                <option value="4eme_am">رابعة متوسط</option>
+                <option value="5eme_am">خامسة متوسط</option>
+                <option value="1ere_as">أولى ثانوي</option>
+                <option value="2eme_as">ثانية ثانوي</option>
+                <option value="3eme_as">ثالثة ثانوي</option>
+                <option value="bac">بكالوريا</option>
+                <option value="1ere_uni">أولى جامعي</option>
+                <option value="2eme_uni">ثانية جامعي</option>
+                <option value="3eme_uni">ثالثة جامعي</option>
+                <option value="master">ماستر</option>
+                <option value="doctorat">دكتوراه</option>
+                <option value="other">آخر</option>
+            </select>
+            <div id="editOtherLevelGroup" style="display: none; margin-top: 8px;">
+                <input type="text" id="editOtherLevelText" placeholder="أدخل المستوى التعليمي...">
+            </div>
+            <p style="font-size: 0.7rem; color: var(--gray-400); margin-top: 4px;">
+                <i class="fas fa-info-circle"></i> سيتم عرض الأساتذة المتوافقين مع مستواك الدراسي
+            </p>
+        </div>
+
         <input type="file" id="editProfileImage" accept="image/*">
     </div>
     <div class="modal-footer">
@@ -1469,22 +1502,30 @@
         : 'https://chatvidio.onrender.com';
 
     console.log('🌐 API Base URL:', API_BASE_URL);
-    console.log('🎥 نظام البث: Jitsi Meet (مجاني 100%)');
+
+    // خريطة المستويات للعرض
+    const levelMap = {
+        '5eme_pri': 'خامسة ابتدائي',
+        '1ere_am': 'أولى متوسط',
+        '2eme_am': 'ثانية متوسط',
+        '3eme_am': 'ثالثة متوسط',
+        '4eme_am': 'رابعة متوسط',
+        '5eme_am': 'خامسة متوسط',
+        '1ere_as': 'أولى ثانوي',
+        '2eme_as': 'ثانية ثانوي',
+        '3eme_as': 'ثالثة ثانوي',
+        'bac': 'بكالوريا',
+        '1ere_uni': 'أولى جامعي',
+        '2eme_uni': 'ثانية جامعي',
+        '3eme_uni': 'ثالثة جامعي',
+        'master': 'ماستر',
+        'doctorat': 'دكتوراه',
+        'other': 'آخر'
+    };
 
     // ================================================================
     // دوال المصادقة والأمان
     // ================================================================
-
-    function getAuthHeaders(hasBody = true) {
-        const headers = {
-            'Authorization': `Bearer ${authToken}`,
-            'X-CSRF-Token': csrfToken || ''
-        };
-        if (hasBody) {
-            headers['Content-Type'] = 'application/json';
-        }
-        return headers;
-    }
 
     async function fetchWithAuth(url, options = {}) {
         const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
@@ -1627,7 +1668,7 @@
                         ${notif.offer_id ? `
                             <div class="notif-action">
                                 <button onclick="event.stopPropagation(); joinFromNotification(${notif.offer_id})">
-                                    <i class="fas fa-video"></i> انضم الآن (Jitsi)
+                                    <i class="fas fa-video"></i> انضم الآن
                                 </button>
                             </div>
                         ` : ''}
@@ -1700,25 +1741,16 @@
         showToast('تم تحديد جميع الإشعارات كمقروءة', 'success');
     }
 
-    // ✅ جوجل ميت تم إزالته - Jitsi Meet مع كلمة المرور
     async function joinFromNotification(offerId) {
         try {
             const res = await fetchWithAuth(`/api/student/stream-status/${offerId}/${studentId}`);
             const data = await res.json();
             if (data.can_join && data.stream_url) {
-                if (data.platform === 'jitsi' && data.room_password) {
-                    const password = data.room_password;
-                    const confirmJoin = confirm(`🔐 هذا البث يستخدم Jitsi Meet مع كلمة مرور\n\n🔑 كلمة المرور: ${password}\n\nهل تريد فتح البث الآن؟`);
-                    if (confirmJoin) {
-                        const newWindow = window.open(data.stream_url, '_blank');
-                        if (newWindow) {
-                            setTimeout(() => {
-                                alert(`🔑 كلمة مرور البث: ${password}\nأدخلها عند الطلب في صفحة Jitsi`);
-                            }, 2000);
-                        }
-                    }
-                } else {
-                    window.open(data.stream_url, '_blank');
+                const newWindow = window.open(data.stream_url, '_blank');
+                if (newWindow && data.room_password) {
+                    setTimeout(() => {
+                        alert(`🔑 كلمة مرور البث: ${data.room_password}\nأدخلها عند الطلب في صفحة البث`);
+                    }, 2000);
                 }
             } else if (data.is_waiting) {
                 showToast('⏳ جاري التحضير للبث، انتظر قليلاً...', 'warning');
@@ -1851,6 +1883,16 @@
         document.getElementById('sidebarName').textContent = userName;
         document.getElementById('sidebarEmail').textContent = userData.email || '';
         document.getElementById('sidebarAvatar').src = userImage;
+
+        // عرض المستوى التعليمي
+        const levelDisplay = document.getElementById('educationLevelDisplay');
+        const levelText = document.getElementById('educationLevelText');
+        if (userData.education_level) {
+            levelDisplay.style.display = 'inline-block';
+            levelText.textContent = levelMap[userData.education_level] || userData.education_level;
+        } else {
+            levelDisplay.style.display = 'none';
+        }
     }
 
     // ================================================================
@@ -1873,7 +1915,7 @@
     }
 
     // ================================================================
-    // OFFERS
+    // OFFERS - فلترة حسب المستوى الدراسي
     // ================================================================
 
     async function loadOffers() {
@@ -1882,8 +1924,20 @@
         try {
             const res = await fetch(`${API_BASE_URL}/api/offers`);
             const offers = await res.json();
-            renderOffers(offers);
-            loadFreeOffersSidebar(offers);
+            
+            // ✅ فلترة العروض حسب المستوى الدراسي للطالب
+            let filteredOffers = offers;
+            if (userData && userData.education_level) {
+                filteredOffers = offers.filter(offer => {
+                    // إذا كان العرض ليس له مستوى محدد، يظهر للجميع
+                    if (!offer.education_level || offer.education_level === '') return true;
+                    // إذا كان مستوى الطالب مطابقاً لمستوى العرض
+                    return offer.education_level === userData.education_level;
+                });
+            }
+            
+            renderOffers(filteredOffers);
+            loadFreeOffersSidebar(filteredOffers);
         } catch(e) { 
             console.error('خطأ في تحميل العروض:', e);
             showToast('حدث خطأ في تحميل العروض', 'error'); 
@@ -1893,7 +1947,11 @@
     function renderOffers(offers) {
         const container = document.getElementById('offersList');
         if (offers.length === 0) {
-            container.innerHTML = '<p style="text-align:center; padding:30px; color:var(--gray-400);">لا توجد عروض متاحة حالياً</p>';
+            let message = 'لا توجد عروض متاحة حالياً';
+            if (userData && userData.education_level) {
+                message = `لا توجد عروض متاحة لمستواك الدراسي (${levelMap[userData.education_level] || userData.education_level})`;
+            }
+            container.innerHTML = `<p style="text-align:center; padding:30px; color:var(--gray-400);">${message}</p>`;
             return;
         }
         let html = '';
@@ -1905,13 +1963,6 @@
             
             let levelDisplay = '';
             if (offer.education_level) {
-                const levelMap = {
-                    'primary': 'خامسة ابتدائي',
-                    'middle': 'شهادة التعليم المتوسط',
-                    'high': 'بكالوريا',
-                    'university': 'تعليم جامعي',
-                    'other': 'آخر'
-                };
                 const levelName = levelMap[offer.education_level] || offer.education_level;
                 levelDisplay = `<div class="offer-info"><i class="fas fa-graduation-cap"></i> المستوى: ${levelName}</div>`;
             }
@@ -1919,7 +1970,6 @@
             html += `
                 <div class="offer-card">
                     <div>
-                        <div class="jitsi-badge"><i class="fas fa-video"></i> Jitsi Meet</div>
                         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
                             <img src="${teacherImage}" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border:2px solid white; box-shadow:var(--shadow-sm);" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${escapeHtml(offer.teacher_name)}')+'&background=0f5cbf&color=fff&size=40'">
                             <div>
@@ -1958,9 +2008,9 @@
             const data = await res.json();
             if (data.success) {
                 if (isFree || data.is_free) {
-                    showToast('✅ تم حجز الحصة المجانية بنجاح! سيتم إشعارك عند بدء البث عبر Jitsi', 'success');
+                    showToast('✅ تم حجز الحصة المجانية بنجاح! سيتم إشعارك عند بدء البث', 'success');
                 } else {
-                    showToast(`✅ تم الحجز! تم خصم ${price} دج. سيتم إشعارك عند بدء البث عبر Jitsi`, 'success');
+                    showToast(`✅ تم الحجز! تم خصم ${price} دج. سيتم إشعارك عند بدء البث`, 'success');
                 }
                 loadWallet();
                 loadMyBookings();
@@ -1981,7 +2031,7 @@
     }
 
     // ================================================================
-    // TEACHERS
+    // TEACHERS - فلترة حسب المستوى الدراسي
     // ================================================================
 
     async function loadTeachers() {
@@ -1992,7 +2042,18 @@
             if (!res.ok) {
                 throw new Error(`HTTP error! status: ${res.status}`);
             }
-            const teachers = await res.json();
+            let teachers = await res.json();
+            
+            // ✅ فلترة الأساتذة حسب المستوى الدراسي للطالب
+            if (userData && userData.education_level) {
+                teachers = teachers.filter(teacher => {
+                    // إذا لم يكن للأستاذ مستوى محدد، يظهر للجميع
+                    if (!teacher.teaching_level || teacher.teaching_level === '') return true;
+                    // إذا كان مستوى الأستاذ مطابقاً لمستوى الطالب
+                    return teacher.teaching_level === userData.education_level;
+                });
+            }
+            
             renderTeachers(teachers);
         } catch(e) { 
             console.error('خطأ في تحميل الأساتذة:', e);
@@ -2004,12 +2065,23 @@
     function renderTeachers(teachers) {
         const container = document.getElementById('teachersList');
         if (!teachers || teachers.length === 0) {
-            container.innerHTML = '<p style="text-align:center; padding:30px; color:var(--gray-400);">لا يوجد أساتذة معتمدون حالياً</p>';
+            let message = 'لا يوجد أساتذة معتمدون حالياً';
+            if (userData && userData.education_level) {
+                message = `لا يوجد أساتذة متوافقون مع مستواك الدراسي (${levelMap[userData.education_level] || userData.education_level})`;
+            }
+            container.innerHTML = `<p style="text-align:center; padding:30px; color:var(--gray-400);">${message}</p>`;
             return;
         }
         let html = '';
         for (const teacher of teachers) {
             const teacherImage = teacher.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(teacher.full_name) + '&background=0f5cbf&color=fff&size=60';
+            
+            let levelDisplay = '';
+            if (teacher.teaching_level) {
+                const levelName = levelMap[teacher.teaching_level] || teacher.teaching_level;
+                levelDisplay = `<div style="font-size:0.7rem; color:var(--accent); margin-top:2px;"><i class="fas fa-graduation-cap"></i> يدرس: ${levelName}</div>`;
+            }
+            
             html += `
                 <div class="teacher-card" onclick="showTeacherProfile(${teacher.id})">
                     <div style="text-align: center;">
@@ -2017,6 +2089,7 @@
                         <div class="teacher-name">${escapeHtml(teacher.full_name)}</div>
                         <div class="teacher-specialty"><i class="fas fa-book" style="color: var(--gray-400); margin-left:6px;"></i> ${teacher.specialization || 'تخصص عام'}</div>
                         <div class="teacher-specialty"><i class="fas fa-briefcase" style="color: var(--gray-400); margin-left:6px;"></i> ${teacher.experience || '0'} سنة خبرة</div>
+                        ${levelDisplay}
                         ${teacher.bio ? `<div style="font-size:0.75rem; color:var(--gray-500); margin-top:6px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${escapeHtml(teacher.bio)}</div>` : ''}
                     </div>
                     <button class="view-btn" onclick="event.stopPropagation(); showTeacherProfile(${teacher.id})"><i class="fas fa-eye"></i> عرض الملف الشخصي</button>
@@ -2052,6 +2125,13 @@
                 }
             }
             
+            // عرض مستوى تدريس الأستاذ
+            let teachingLevelDisplay = '';
+            if (teacher.teaching_level) {
+                const levelName = levelMap[teacher.teaching_level] || teacher.teaching_level;
+                teachingLevelDisplay = `<p style="margin:8px 0; font-size: 0.9rem; color:var(--gray-700);"><strong><i class="fas fa-graduation-cap" style="color:var(--primary); margin-left: 6px; width: 18px;"></i> يدرس المستوى:</strong> ${levelName}</p>`;
+            }
+            
             document.getElementById('teacherModalName').textContent = teacher.full_name;
             document.getElementById('teacherModalBody').innerHTML = `
                 <div style="text-align: center;">
@@ -2059,6 +2139,7 @@
                     <div style="text-align: right; margin-top: 10px;">
                         <p style="margin:8px 0; font-size: 0.9rem; color:var(--gray-700);"><strong><i class="fas fa-graduation-cap" style="color:var(--primary); margin-left: 6px; width: 18px;"></i> التخصص:</strong> ${teacher.specialization || 'غير محدد'}</p>
                         <p style="margin:8px 0; font-size: 0.9rem; color:var(--gray-700);"><strong><i class="fas fa-briefcase" style="color:var(--primary); margin-left: 6px; width: 18px;"></i> الخبرة:</strong> ${teacher.experience || '0'} سنة</p>
+                        ${teachingLevelDisplay}
                         <p style="margin:8px 0; font-size: 0.9rem; color:var(--gray-700);"><strong><i class="fas fa-envelope" style="color:var(--primary); margin-left: 6px; width: 18px;"></i> البريد الإلكتروني:</strong> ${teacher.email || 'غير محدد'}</p>
                         <p style="margin:12px 0 6px 0; font-size: 0.9rem; color:var(--gray-700);"><strong><i class="fas fa-align-left" style="color:var(--primary); margin-left: 6px; width: 18px;"></i> نبذة:</strong></p>
                         <p style="font-size: 0.85rem; color: var(--gray-600); line-height: 1.6; background: var(--gray-50); padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--gray-200);">${teacher.bio || 'لا توجد نبذة'}</p>
@@ -2084,7 +2165,7 @@
     }
 
     // ================================================================
-    // BOOKINGS - مع دعم كلمة المرور لـ Jitsi
+    // BOOKINGS
     // ================================================================
 
     async function loadMyBookings() {
@@ -2133,7 +2214,6 @@
                 statusBg = 'var(--gray-100)';
             }
 
-            // ✅ عرض كلمة المرور الخاصة بالطالب
             let passwordDisplay = '';
             if (booking.room_password) {
                 passwordDisplay = `
@@ -2150,7 +2230,6 @@
             html += `
                 <div class="booking-item">
                     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                        <div class="jitsi-badge"><i class="fas fa-video"></i> Jitsi Meet</div>
                         <div style="margin-right: auto; font-size: 0.72rem; font-weight: 800; color: ${statusColor}; background: ${statusBg}; padding: 4px 10px; border-radius:20px;">${statusText}</div>
                     </div>
                     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
@@ -2164,14 +2243,13 @@
                     <div style="font-size: 0.85rem; margin: 6px 0; color: var(--gray-700);"><i class="fas fa-clock" style="color:var(--gray-400); margin-left: 8px;"></i> ${booking.duration} دقيقة</div>
                     <div style="font-size: 0.85rem; color: var(--gray-700); font-weight:700;"><i class="fas fa-tags" style="color:var(--gray-400); margin-left: 8px;"></i> ${booking.is_free ? '🎁 مجانية' : `💰 ${booking.price} دج`}</div>
                     ${passwordDisplay}
-                    ${isLive && isPaid ? `<button class="join-stream-btn" style="margin-top: 12px; width: 100%;" onclick="joinLiveStream(${booking.offer_id})"><i class="fas fa-video"></i> انضم للبث المباشر (Jitsi)</button>` : ''}
+                    ${isLive && isPaid ? `<button class="join-stream-btn" style="margin-top: 12px; width: 100%;" onclick="joinLiveStream(${booking.offer_id})"><i class="fas fa-video"></i> انضم للبث المباشر</button>` : ''}
                 </div>
             `;
         }
         container.innerHTML = html;
     }
 
-    // ✅ دالة نسخ كلمة المرور
     function copyPassword(password) {
         navigator.clipboard.writeText(password).then(() => {
             showToast('✅ تم نسخ كلمة المرور!', 'success');
@@ -2186,7 +2264,6 @@
         });
     }
 
-    // ✅ دالة الانضمام للبث المباشر - Jitsi Meet مع كلمة المرور
     function joinLiveStream(offerId) {
         const token = localStorage.getItem('token');
         if (!token) {
@@ -2198,19 +2275,11 @@
             .then(res => res.json())
             .then(data => {
                 if (data.can_join && data.stream_url) {
-                    if (data.platform === 'jitsi' && data.room_password) {
-                        const password = data.room_password;
-                        const confirmJoin = confirm(`🔐 هذا البث يستخدم Jitsi Meet مع كلمة مرور\n\n🔑 كلمة المرور: ${password}\n\nهل تريد فتح البث الآن؟`);
-                        if (confirmJoin) {
-                            const newWindow = window.open(data.stream_url, '_blank');
-                            if (newWindow) {
-                                setTimeout(() => {
-                                    alert(`🔑 كلمة مرور البث: ${password}\nأدخلها عند الطلب في صفحة Jitsi`);
-                                }, 2000);
-                            }
-                        }
-                    } else {
-                        window.open(data.stream_url, '_blank');
+                    const newWindow = window.open(data.stream_url, '_blank');
+                    if (newWindow && data.room_password) {
+                        setTimeout(() => {
+                            alert(`🔑 كلمة مرور البث: ${data.room_password}\nأدخلها عند الطلب في صفحة البث`);
+                        }, 2000);
                     }
                 } else if (data.is_waiting) {
                     showToast('⏳ جاري التحضير للبث، انتظر قليلاً...', 'warning');
@@ -2328,7 +2397,7 @@
                 <div style="padding: 10px 0; border-bottom: 1px solid var(--gray-100);">
                     <div style="font-weight: 700; font-size: 0.8rem; color:var(--gray-900);">${escapeHtml(b.subject_name)}</div>
                     <div style="font-size: 0.7rem; color: var(--gray-500);"><i class="fas fa-calendar-alt" style="margin-left:4px;"></i>${offerDate.toLocaleDateString('ar')}</div>
-                    ${isLive ? `<button class="join-stream-btn" style="margin-top:6px; font-size:0.65rem; padding:4px 12px;" onclick="joinLiveStream(${b.offer_id})">انضم (Jitsi)</button>` : ''}
+                    ${isLive ? `<button class="join-stream-btn" style="margin-top:6px; font-size:0.65rem; padding:4px 12px;" onclick="joinLiveStream(${b.offer_id})">انضم</button>` : ''}
                 </div>
             `;
         }
@@ -2593,23 +2662,56 @@
     }
 
     // ================================================================
-    // EDIT PROFILE
+    // EDIT PROFILE - مع إمكانية تغيير المستوى الدراسي
     // ================================================================
 
     function showEditProfileModal() {
         if (userData) {
             document.getElementById('editFullName').value = userData.full_name || '';
             document.getElementById('editPhone').value = userData.phone || '';
+            document.getElementById('editEducationLevel').value = userData.education_level || '';
+            
+            // إظهار/إخفاء حقل "آخر"
+            const otherGroup = document.getElementById('editOtherLevelGroup');
+            if (userData.education_level === 'other') {
+                otherGroup.style.display = 'block';
+                document.getElementById('editOtherLevelText').value = userData.education_level_other || '';
+            } else {
+                otherGroup.style.display = 'none';
+            }
         }
         document.getElementById('modalOverlay').style.display = 'block';
         document.getElementById('editProfileModal').style.display = 'block';
     }
+
+    // إظهار/إخفاء حقل "آخر" عند تغيير المستوى
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('editEducationLevel').addEventListener('change', function() {
+            const otherGroup = document.getElementById('editOtherLevelGroup');
+            if (this.value === 'other') {
+                otherGroup.style.display = 'block';
+            } else {
+                otherGroup.style.display = 'none';
+            }
+        });
+    });
 
     async function updateProfile() {
         const formData = new FormData();
         formData.append('student_id', studentId);
         formData.append('full_name', document.getElementById('editFullName').value);
         formData.append('phone', document.getElementById('editPhone').value);
+        
+        // ✅ إرسال المستوى الدراسي
+        let educationLevel = document.getElementById('editEducationLevel').value;
+        if (educationLevel === 'other') {
+            const otherText = document.getElementById('editOtherLevelText').value.trim();
+            if (otherText) {
+                educationLevel = otherText;
+            }
+        }
+        formData.append('education_level', educationLevel);
+        
         const imageFile = document.getElementById('editProfileImage').files[0];
         if (imageFile) {
             formData.append('profile_image', imageFile);
@@ -2621,11 +2723,14 @@
             });
             const data = await res.json();
             if (data.success) {
-                showToast('تم تحديث الملف الشخصي', 'success');
+                showToast('تم تحديث الملف الشخصي والمستوى الدراسي بنجاح', 'success');
                 userData = data.user;
                 localStorage.setItem('userData', JSON.stringify(data.user));
                 updateUI();
                 closeModal();
+                // إعادة تحميل العروض والأساتذة حسب المستوى الجديد
+                loadOffers();
+                loadTeachers();
             } else {
                 showToast(data.error || 'حدث خطأ', 'error');
             }
