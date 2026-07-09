@@ -1,5 +1,5 @@
 // ============================================================
-// مسارات الإدارة - Admin Routes (معدل بالكامل - مع إرسال البريد عند قبول/رفض الأستاذ)
+// مسارات الإدارة - Admin Routes (معدل بالكامل مع دعم نظام البث والرصيد المعلق)
 // ============================================================
 
 const express = require('express');
@@ -110,6 +110,88 @@ router.get('/approved-teachers', authenticate, authorize(['admin']), async (req,
 });
 
 // ============================================================
+// ✅ جلب جميع الأساتذة (جميع الحالات) مع إحصائيات البث
+// ============================================================
+router.get('/all-teachers', authenticate, authorize(['admin']), async (req, res) => {
+    try {
+        console.log('📥 جلب جميع الأساتذة...');
+        
+        const { data: teachers, error } = await supabase
+            .from('teachers')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('❌ خطأ في جلب الأساتذة:', error);
+            return res.status(500).json({ success: false, error: error.message });
+        }
+
+        // ✅ جلب إحصائيات البث لكل أستاذ
+        const teacherIds = teachers.map(t => t.id);
+        let streamStats = {};
+        
+        if (teacherIds.length > 0) {
+            const { data: offers, error: offersError } = await supabase
+                .from('offers')
+                .select('teacher_id, status, booked_count, total_seconds, remaining_seconds, is_paused')
+                .in('teacher_id', teacherIds)
+                .in('status', ['live', 'teacher_ready', 'paused']);
+
+            if (!offersError && offers) {
+                for (const offer of offers) {
+                    if (!streamStats[offer.teacher_id]) {
+                        streamStats[offer.teacher_id] = {
+                            active_streams: 0,
+                            total_students: 0,
+                            total_pending: 0
+                        };
+                    }
+                    streamStats[offer.teacher_id].active_streams++;
+                    streamStats[offer.teacher_id].total_students += (offer.booked_count || 0);
+                }
+            }
+
+            // ✅ جلب الرصيد المعلق لكل أستاذ
+            const { data: sessions, error: sessionsError } = await supabase
+                .from('sessions')
+                .select('teacher_id, pending_balance, offers!inner(teacher_id)')
+                .eq('payment_status', 'pending_stream');
+
+            if (!sessionsError && sessions) {
+                for (const session of sessions) {
+                    const tid = session.offers?.teacher_id || session.teacher_id;
+                    if (tid && streamStats[tid]) {
+                        streamStats[tid].total_pending += (session.pending_balance || 0);
+                    }
+                }
+            }
+        }
+
+        // ✅ تنسيق البيانات
+        const formatted = teachers.map(teacher => {
+            const stats = streamStats[teacher.id] || {
+                active_streams: 0,
+                total_students: 0,
+                total_pending: 0
+            };
+            
+            return {
+                ...teacher,
+                active_streams: stats.active_streams,
+                total_students: stats.total_students,
+                total_pending_balance: stats.total_pending
+            };
+        });
+
+        console.log(`✅ تم جلب ${formatted.length} أستاذ مع إحصائياتهم`);
+        res.json(formatted);
+    } catch (error) {
+        console.error('❌ خطأ في جلب الأساتذة:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
 // ✅ قبول الأستاذ (مع إرسال بريد قبول)
 // ============================================================
 router.post('/approve-teacher/:id', [
@@ -180,6 +262,16 @@ router.post('/approve-teacher/:id', [
             console.warn('⚠️ خطأ في معالجة مكافأة الإحالة:', referralError.message);
         }
 
+        // ✅ إرسال إشعار للمدير
+        await insert('notifications', {
+            user_id: 1,
+            user_type: 'admin',
+            title: '✅ تم قبول أستاذ جديد',
+            message: `تم قبول الأستاذ ${teacher.full_name}. البريد الإلكتروني: ${teacher.email}`,
+            is_read: false,
+            created_at: new Date().toISOString()
+        });
+
         console.log(`✅ تم قبول الأستاذ ${teacherId} بنجاح`);
         res.json({ 
             success: true, 
@@ -247,6 +339,16 @@ router.post('/reject-teacher/:id', [
             console.error('❌ خطأ في إرسال بريد الرفض:', emailError.message);
         }
 
+        // ✅ إرسال إشعار للمدير
+        await insert('notifications', {
+            user_id: 1,
+            user_type: 'admin',
+            title: '❌ تم رفض طلب أستاذ',
+            message: `تم رفض طلب الأستاذ ${teacher.full_name}. السبب: ${reason || 'لم يتم تحديد سبب'}`,
+            is_read: false,
+            created_at: new Date().toISOString()
+        });
+
         console.log(`✅ تم رفض الأستاذ ${teacherId}`);
         res.json({ 
             success: true,
@@ -256,6 +358,322 @@ router.post('/reject-teacher/:id', [
     } catch (error) {
         console.error('❌ خطأ في رفض الأستاذ:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// ✅ جلب إحصائيات المنصة (مع دعم البث والرصيد المعلق)
+// ============================================================
+router.get('/stats', authenticate, authorize(['admin']), async (req, res) => {
+    try {
+        console.log('📥 جلب إحصائيات المنصة...');
+
+        // ✅ عدد الطلاب
+        const { count: studentsCount, error: studentsError } = await supabase
+            .from('students')
+            .select('*', { count: 'exact', head: true });
+
+        if (studentsError) {
+            console.error('❌ خطأ في جلب عدد الطلاب:', studentsError);
+        }
+
+        // ✅ عدد الأساتذة
+        const { count: teachersCount, error: teachersError } = await supabase
+            .from('teachers')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'approved');
+
+        if (teachersError) {
+            console.error('❌ خطأ في جلب عدد الأساتذة:', teachersError);
+        }
+
+        // ✅ عدد الأساتذة المعلقين
+        const { count: pendingTeachers, error: pendingError } = await supabase
+            .from('teachers')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'pending');
+
+        if (pendingError) {
+            console.error('❌ خطأ في جلب عدد الأساتذة المعلقين:', pendingError);
+        }
+
+        // ✅ عدد البث المباشر
+        const { count: liveStreams, error: liveError } = await supabase
+            .from('offers')
+            .select('*', { count: 'exact', head: true })
+            .in('status', ['live', 'teacher_ready']);
+
+        if (liveError) {
+            console.error('❌ خطأ في جلب عدد البث المباشر:', liveError);
+        }
+
+        // ✅ عدد البث المتوقف مؤقتاً
+        const { count: pausedStreams, error: pausedError } = await supabase
+            .from('offers')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'paused');
+
+        if (pausedError) {
+            console.error('❌ خطأ في جلب عدد البث المتوقف:', pausedError);
+        }
+
+        // ✅ إجمالي الرصيد المعلق
+        const { data: pendingData, error: pendingBalanceError } = await supabase
+            .from('sessions')
+            .select('pending_balance')
+            .eq('payment_status', 'pending_stream');
+
+        let totalPendingBalance = 0;
+        if (!pendingBalanceError && pendingData) {
+            totalPendingBalance = pendingData.reduce((sum, s) => sum + (s.pending_balance || 0), 0);
+        }
+
+        // ✅ إجمالي الأرباح المدفوعة
+        const { data: paidData, error: paidError } = await supabase
+            .from('sessions')
+            .select('teacher_earned')
+            .eq('payment_status', 'paid');
+
+        let totalPaid = 0;
+        if (!paidError && paidData) {
+            totalPaid = paidData.reduce((sum, s) => sum + (s.teacher_earned || 0), 0);
+        }
+
+        // ✅ عدد الطلاب في البث
+        const { count: activeStudents, error: activeError } = await supabase
+            .from('active_stream')
+            .select('*', { count: 'exact', head: true });
+
+        if (activeError) {
+            console.error('❌ خطأ في جلب عدد الطلاب النشطين:', activeError);
+        }
+
+        // ✅ عدد العروض الكلي
+        const { count: totalOffers, error: offersError } = await supabase
+            .from('offers')
+            .select('*', { count: 'exact', head: true });
+
+        if (offersError) {
+            console.error('❌ خطأ في جلب عدد العروض:', offersError);
+        }
+
+        // ✅ عدد الحجوزات الكلي
+        const { count: totalSessions, error: sessionsError } = await supabase
+            .from('sessions')
+            .select('*', { count: 'exact', head: true });
+
+        if (sessionsError) {
+            console.error('❌ خطأ في جلب عدد الحجوزات:', sessionsError);
+        }
+
+        res.json({
+            success: true,
+            stats: {
+                students: studentsCount || 0,
+                teachers: teachersCount || 0,
+                pending_teachers: pendingTeachers || 0,
+                live_streams: liveStreams || 0,
+                paused_streams: pausedStreams || 0,
+                total_streams: (liveStreams || 0) + (pausedStreams || 0),
+                active_students_in_stream: activeStudents || 0,
+                total_pending_balance: totalPendingBalance,
+                total_paid_earnings: totalPaid,
+                total_offers: totalOffers || 0,
+                total_sessions: totalSessions || 0
+            }
+        });
+    } catch (error) {
+        console.error('❌ خطأ في جلب إحصائيات المنصة:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
+// ✅ جلب جميع العروض (للمدير)
+// ============================================================
+router.get('/all-offers', authenticate, authorize(['admin']), async (req, res) => {
+    try {
+        console.log('📥 جلب جميع العروض...');
+        
+        const { data: offers, error } = await supabase
+            .from('offers')
+            .select('*, teachers:teacher_id (full_name, email, specialization)')
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('❌ خطأ في جلب العروض:', error);
+            return res.status(500).json({ success: false, error: error.message });
+        }
+
+        // ✅ جلب عدد الطلاب لكل عرض
+        for (const offer of offers || []) {
+            const { count, error: countError } = await supabase
+                .from('sessions')
+                .select('*', { count: 'exact', head: true })
+                .eq('offer_id', offer.id)
+                .in('payment_status', ['paid', 'pending_stream']);
+
+            if (!countError) {
+                offer.students_count = count || 0;
+            }
+
+            // ✅ حساب الوقت المتبقي
+            let remainingSeconds = offer.remaining_seconds || 0;
+            if (offer.status === 'live' && !offer.is_paused && offer.stream_started_at) {
+                const startedAt = new Date(offer.stream_started_at);
+                const now = new Date();
+                const elapsed = Math.floor((now - startedAt) / 1000);
+                const total = offer.total_seconds || (offer.duration * 60);
+                remainingSeconds = Math.max(0, total - elapsed);
+            }
+            offer.remaining_seconds = remainingSeconds;
+        }
+
+        console.log(`✅ تم جلب ${offers?.length || 0} عرض`);
+        res.json(offers || []);
+    } catch (error) {
+        console.error('❌ خطأ في جلب العروض:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
+// ✅ إلغاء عرض (من قبل المدير)
+// ============================================================
+router.post('/cancel-offer/:id', [
+    authenticate,
+    authorize(['admin']),
+    param('id').isInt().withMessage('معرف العرض غير صالح'),
+    body('reason').optional().isString().withMessage('سبب الإلغاء غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const offerId = parseInt(req.params.id);
+        const { reason } = req.body;
+
+        console.log(`📥 إلغاء العرض ID: ${offerId}, السبب: ${reason || 'غير محدد'}`);
+
+        const offer = await getOne('offers', 'id', offerId);
+        if (!offer) {
+            return res.status(404).json({ success: false, error: 'العرض غير موجود' });
+        }
+
+        // ✅ تحديث حالة العرض إلى cancelled
+        await supabase
+            .from('offers')
+            .update({
+                status: 'cancelled',
+                cancelled_by_admin: true,
+                cancellation_reason: reason || 'تم إلغاء العرض من قبل الإدارة',
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', offerId);
+
+        // ✅ استرداد الرصيد المعلق للطلاب
+        const { data: sessions } = await supabase
+            .from('sessions')
+            .select('student_id, pending_balance')
+            .eq('offer_id', offerId)
+            .eq('payment_status', 'pending_stream');
+
+        if (sessions && sessions.length > 0) {
+            for (const session of sessions) {
+                if (session.pending_balance > 0) {
+                    // ✅ إعادة المبلغ للطالب
+                    const student = await getOne('students', 'id', session.student_id);
+                    if (student) {
+                        await update('students', session.student_id, {
+                            wallet_balance: (student.wallet_balance || 0) + session.pending_balance
+                        });
+                    }
+
+                    // ✅ تحديث الجلسة إلى cancelled
+                    await update('sessions', session.id, {
+                        payment_status: 'cancelled',
+                        pending_balance: 0,
+                        cancelled_by_admin: true
+                    });
+                }
+            }
+        }
+
+        // ✅ تنظيف الجداول المؤقتة
+        await supabase.from('active_stream').delete().eq('offer_id', offerId);
+        await supabase.from('waiting_room').delete().eq('offer_id', offerId);
+
+        // ✅ إرسال إشعارات للطلاب
+        const { data: allSessions } = await supabase
+            .from('sessions')
+            .select('student_id')
+            .eq('offer_id', offerId)
+            .in('payment_status', ['paid', 'pending_stream']);
+
+        if (allSessions && allSessions.length > 0) {
+            const notifications = allSessions.map(s => ({
+                user_id: s.student_id,
+                user_type: 'student',
+                title: '❌ تم إلغاء الحصة',
+                message: `تم إلغاء الحصة "${offer.subject_name}" من قبل الإدارة. السبب: ${reason || 'لم يتم تحديد سبب'}`,
+                offer_id: offerId,
+                is_read: false,
+                created_at: new Date().toISOString()
+            }));
+            await supabase.from('notifications').insert(notifications);
+        }
+
+        // ✅ إرسال إشعار للأستاذ
+        await insert('notifications', {
+            user_id: offer.teacher_id,
+            user_type: 'teacher',
+            title: '❌ تم إلغاء عرضك',
+            message: `تم إلغاء عرض "${offer.subject_name}" من قبل الإدارة. السبب: ${reason || 'لم يتم تحديد سبب'}`,
+            offer_id: offerId,
+            is_read: false,
+            created_at: new Date().toISOString()
+        });
+
+        res.json({
+            success: true,
+            message: '✅ تم إلغاء العرض واسترداد المبالغ للطلاب'
+        });
+    } catch (error) {
+        console.error('❌ خطأ في إلغاء العرض:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
+// ✅ جلب سجل العمليات (للمدير)
+// ============================================================
+router.get('/logs', authenticate, authorize(['admin']), async (req, res) => {
+    try {
+        console.log('📥 جلب سجل العمليات...');
+        
+        const { data: loginLogs, error } = await supabase
+            .from('login_logs')
+            .select('*, users:user_id (full_name, email)')
+            .order('created_at', { ascending: false })
+            .limit(100);
+
+        if (error) {
+            console.error('❌ خطأ في جلب السجل:', error);
+            return res.status(500).json({ success: false, error: error.message });
+        }
+
+        const formatted = (loginLogs || []).map(log => ({
+            ...log,
+            user_name: log.users?.full_name || 'غير معروف',
+            user_email: log.users?.email || 'غير معروف'
+        }));
+
+        res.json(formatted);
+    } catch (error) {
+        console.error('❌ خطأ في جلب السجل:', error.message);
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
@@ -482,8 +900,7 @@ router.post('/ban-user', [
             banned_by: 'admin'
         });
         
-        const { error } = await supabase
-            .from(tableName)
+        const { error } = await supabase            .from(tableName)
             .update({ is_banned: true, ban_reason: reason || 'لم يتم تحديد سبب' })
             .eq('id', user_id);
 
@@ -926,7 +1343,7 @@ router.delete('/delete-notification/:id', [
 });
 
 // ============================================================
-// ✅ مراقبة الأداء
+// ✅ مراقبة الأداء (معدلة مع دعم البث)
 // ============================================================
 router.get('/performance', authenticate, authorize(['admin']), async (req, res) => {
     try {
@@ -948,6 +1365,26 @@ router.get('/performance', authenticate, authorize(['admin']), async (req, res) 
             console.error('❌ خطأ في جلب الجلسات:', sessError);
         }
 
+        // ✅ جلب عدد العروض المباشرة
+        const { count: liveOffers, error: liveError } = await supabase
+            .from('offers')
+            .select('count', { count: 'exact' })
+            .in('status', ['live', 'teacher_ready']);
+
+        if (liveError) {
+            console.error('❌ خطأ في جلب العروض المباشرة:', liveError);
+        }
+
+        // ✅ جلب عدد العروض المتوقفة مؤقتاً
+        const { count: pausedOffers, error: pausedError } = await supabase
+            .from('offers')
+            .select('count', { count: 'exact' })
+            .eq('status', 'paused');
+
+        if (pausedError) {
+            console.error('❌ خطأ في جلب العروض المتوقفة:', pausedError);
+        }
+
         const memoryUsage = process.memoryUsage();
         const uptime = process.uptime();
 
@@ -960,6 +1397,8 @@ router.get('/performance', authenticate, authorize(['admin']), async (req, res) 
                 rss: Math.round(memoryUsage.rss / 1024 / 1024)
             },
             active_streams: connections?.count || 0,
+            live_offers: liveOffers || 0,
+            paused_offers: pausedOffers || 0,
             total_sessions: sessions?.count || 0
         });
     } catch (error) {
