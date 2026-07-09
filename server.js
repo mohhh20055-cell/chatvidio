@@ -1,5 +1,5 @@
 // ============================================================
-// خادم منصة التعليم - الملف الرئيسي (معدل بالكامل - Jitsi Meet فقط)
+// خادم منصة التعليم - الملف الرئيسي (معدل بالكامل)
 // ============================================================
 
 require('dotenv').config();
@@ -21,6 +21,11 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
+
+// ============================================================
+// ✅ استيراد Middleware من الملف الخارجي
+// ============================================================
+const { authenticate, authorize, checkBanned, checkActiveStream, validateOfferOwnership, validateStudentAccess, checkStreamActive, checkNoActiveStream } = require('./middleware/auth');
 
 // ============================================================
 // الثوابت والإعدادات الأساسية
@@ -324,81 +329,6 @@ app.use(express.static('public', {
 }));
 
 // ============================================================
-// Middleware المصادقة (معرفة محلياً)
-// ============================================================
-
-async function authenticate(req, res, next) {
-    let token = req.headers.authorization?.substring(7);
-    if (!token && req.query.token) {
-        token = req.query.token;
-    }
-    
-    if (!token) {
-        return res.status(401).json({ success: false, error: 'غير مصرح به، يرجى تسجيل الدخول' });
-    }
-
-    const decoded = verifyToken(token);
-    
-    if (!decoded) {
-        return res.status(401).json({ success: false, error: 'انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى' });
-    }
-
-    req.user = decoded;
-    req.token = token;
-    next();
-}
-
-function authorize(roles = []) {
-    return (req, res, next) => {
-        if (!req.user) {
-            return res.status(401).json({ success: false, error: 'غير مصرح به' });
-        }
-        if (roles.length > 0 && !roles.includes(req.user.role)) {
-            return res.status(403).json({ success: false, error: 'صلاحيات غير كافية' });
-        }
-        next();
-    };
-}
-
-async function checkBanned(req, res, next) {
-    let ip = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'];
-    
-    if (ip && typeof ip === 'string' && ip.includes(',')) {
-        ip = ip.split(',')[0].trim();
-    }
-    
-    if (ip && typeof ip === 'string') {
-        ip = ip.replace(/:\d+[^:]*$/, '');
-    }
-    
-    if (!ip) {
-        return next();
-    }
-    
-    try {
-        const encryptedIP = encrypt(ip);
-        
-        const { data } = await supabase
-            .from('banned_users')
-            .select('*')
-            .eq('ip_address_encrypted', encryptedIP)
-            .single();
-        
-        if (data) {
-            return res.status(403).json({
-                success: false,
-                error: 'تم حظر عنوان IP الخاص بك من المنصة',
-                banned: true,
-                reason: data.ban_reason || 'انتهاك شروط الاستخدام'
-            });
-        }
-        next();
-    } catch (error) {
-        next();
-    }
-}
-
-// ============================================================
 // CSRF Protection
 // ============================================================
 
@@ -448,7 +378,6 @@ const csrfExcludedPaths = [
 app.use((req, res, next) => {
     const publicMethods = ['GET', 'HEAD', 'OPTIONS'];
     
-    // ✅ استثناء جميع مسارات الإدارة (/api/admin/*)
     const isAdminPath = req.path.startsWith('/api/admin');
     
     const isPublicPath = csrfExcludedPaths.some(path => {
@@ -459,7 +388,6 @@ app.use((req, res, next) => {
     
     const isPublicMethod = publicMethods.includes(req.method);
     
-    // ✅ إذا كان المسار إدارياً أو عاماً أو طريقة GET، تجاوز التحقق
     if (isAdminPath || isPublicPath || isPublicMethod) {
         return next();
     }
@@ -526,7 +454,7 @@ app.get('/api/get-csrf-token', authenticate, (req, res) => {
 });
 
 // ============================================================
-// ✅ نظام البث المباشر باستخدام Jitsi Meet فقط (مجاني 100%)
+// ✅ نظام البث المباشر باستخدام Jitsi Meet
 // ============================================================
 
 function escapeHtml(text) {
@@ -554,12 +482,10 @@ app.post('/api/start-jitsi-stream', authenticate, authorize(['teacher']), [
             return res.status(404).json({ success: false, error: 'العرض غير موجود' });
         }
         
-        // ✅ إنشاء غرفة Jitsi
         const roomName = `zoomdz_${offer_id}_${Date.now()}`;
         const password = crypto.randomBytes(6).toString('hex').toUpperCase();
         const roomUrl = `https://meet.jit.si/${roomName}`;
         
-        // ✅ حفظ بيانات البث في جدول العروض مباشرة
         await supabase
             .from('offers')
             .update({
@@ -572,7 +498,6 @@ app.post('/api/start-jitsi-stream', authenticate, authorize(['teacher']), [
             })
             .eq('id', offer_id);
         
-        // ✅ إرسال إشعارات للطلاب
         const { data: sessions } = await supabase
             .from('sessions')
             .select('student_id')
@@ -647,7 +572,6 @@ app.get('/api/join-jitsi/:offer_id', authenticate, async (req, res) => {
         const { offer_id } = req.params;
         const studentId = decoded.userId;
         
-        // ✅ التحقق من الحجز المدفوع
         const session = await getOne('sessions', 'offer_id', offer_id);
         if (!session || session.student_id !== studentId || session.payment_status !== 'paid') {
             return res.status(403).send(`
@@ -674,7 +598,6 @@ app.get('/api/join-jitsi/:offer_id', authenticate, async (req, res) => {
             `);
         }
         
-        // ✅ عرض صفحة دخول Jitsi
         res.send(generateJitsiJoinPage(offer));
     } catch (error) {
         console.error('❌ خطأ:', error.message);
@@ -811,14 +734,12 @@ const notificationRoutes = require('./routes/notification');
 app.use('/api', publicRoutes);
 
 // ✅ 2. مسارات المصادقة (تسجيل الدخول، تسجيل طالب، تسجيل أستاذ)
-// هذه المسارات يجب أن تأتي قبل /api/student و /api/teacher
 app.use('/api', authRoutes);
 
 // ✅ 3. مسارات الإدارة (تحتاج مصادقة إدارية)
 app.use('/api/admin', adminRoutes);
 
 // ✅ 4. مسارات الأستاذ والطالب (تحتاج مصادقة)
-// ملاحظة: هذه المسارات لا تحتوي على /register لأنها موجودة في authRoutes
 app.use('/api/teacher', authenticate, teacherRoutes);
 app.use('/api/student', authenticate, studentRoutes);
 
