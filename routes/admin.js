@@ -32,7 +32,7 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@platform.com';
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || bcrypt.hashSync('admin123', 12);
 
 // ============================================================
-// ✅ جلب جميع الطلاب (مع المستوى التعليمي) - مع معالجة الأخطاء
+// ✅ جلب جميع الطلاب (مع المستوى التعليمي)
 // ============================================================
 router.get('/students', authenticate, authorize(['admin']), async (req, res) => {
     try {
@@ -125,7 +125,6 @@ router.post('/approve-teacher/:id', [
         const teacherId = parseInt(req.params.id);
         console.log(`📥 قبول الأستاذ ID: ${teacherId}`);
 
-        // ✅ جلب بيانات الأستاذ
         const teacher = await getOne('teachers', 'id', teacherId);
         if (!teacher) {
             return res.status(404).json({ success: false, error: 'الأستاذ غير موجود' });
@@ -133,7 +132,6 @@ router.post('/approve-teacher/:id', [
 
         console.log(`👤 الأستاذ: ${teacher.full_name}, المستوى: ${teacher.teaching_level || 'غير محدد'}`);
 
-        // ✅ تحديث الحالة مع الاحتفاظ بـ teaching_level
         const { error: updateError } = await supabase
             .from('teachers')
             .update({ 
@@ -147,7 +145,6 @@ router.post('/approve-teacher/:id', [
             return res.status(500).json({ success: false, error: updateError.message });
         }
 
-        // ✅ معالجة مكافأة الإحالة
         try {
             const { data: referral } = await supabase
                 .from('referrals')
@@ -239,7 +236,6 @@ router.delete('/delete-teacher/:id', [
             return res.status(404).json({ success: false, error: 'الأستاذ غير موجود' });
         }
 
-        // حذف الصورة إذا وجدت
         if (teacher?.profile_image) {
             try {
                 await supabase.storage.from('profiles').remove([`teachers/${teacher.profile_image}`]);
@@ -248,7 +244,6 @@ router.delete('/delete-teacher/:id', [
             }
         }
 
-        // حذف البيانات المرتبطة
         const tables = ['sessions', 'waiting_room', 'active_stream', 'offers', 'withdraw_requests'];
         for (const table of tables) {
             try {
@@ -258,10 +253,8 @@ router.delete('/delete-teacher/:id', [
             }
         }
 
-        // حذف الإشعارات
         await supabase.from('notifications').delete().eq('user_id', teacherId).eq('user_type', 'teacher');
 
-        // حذف الأستاذ
         const { error } = await supabase.from('teachers').delete().eq('id', teacherId);
 
         if (error) {
@@ -278,7 +271,7 @@ router.delete('/delete-teacher/:id', [
 });
 
 // ============================================================
-// ✅ حذف المستخدم (طالب أو أستاذ) - معدل لاستخدام ip_address
+// ✅ حذف المستخدم (طالب أو أستاذ)
 // ============================================================
 router.post('/delete-user', [
     authenticate,
@@ -302,7 +295,6 @@ router.post('/delete-user', [
             return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
         }
         
-        // ✅ جلب IP المستخدم باستخدام ip_address
         let userIp = null;
         try {
             const { data: loginLog } = await supabase
@@ -319,7 +311,6 @@ router.post('/delete-user', [
             console.warn('⚠️ لا يوجد سجل دخول لهذا المستخدم:', logError.message);
         }
         
-        // ✅ حذف المستخدم
         const { error } = await supabase
             .from(tableName)
             .delete()
@@ -330,7 +321,6 @@ router.post('/delete-user', [
             return res.status(500).json({ success: false, error: error.message });
         }
         
-        // ✅ حظر IP إذا تم الطلب
         if (ban && userIp) {
             const { data: existingBan } = await supabase
                 .from('banned_users')
@@ -366,7 +356,7 @@ router.post('/delete-user', [
 });
 
 // ============================================================
-// ✅ حظر المستخدم - معدل لاستخدام ip_address
+// ✅ حظر المستخدم
 // ============================================================
 router.post('/ban-user', [
     authenticate,
@@ -390,7 +380,6 @@ router.post('/ban-user', [
             return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
         }
         
-        // ✅ محاولة جلب IP المستخدم باستخدام ip_address
         let userIp = null;
         try {
             const { data: loginLog } = await supabase
@@ -407,13 +396,11 @@ router.post('/ban-user', [
             console.warn('⚠️ لا يوجد سجل دخول لهذا المستخدم:', logError.message);
         }
         
-        // ✅ إذا لم يوجد IP، نستخدم معرف المستخدم كمعرف فريد للحظر
         if (!userIp) {
             console.log(`⚠️ لا يمكن تحديد IP للمستخدم ${user_id}, سيتم استخدام معرف المستخدم للحظر`);
             userIp = `user_${user_id}_${role}_${Date.now()}`;
         }
         
-        // ✅ التحقق من عدم وجود حظر سابق باستخدام ip_address
         const { data: existingBan } = await supabase
             .from('banned_users')
             .select('*')
@@ -421,7 +408,6 @@ router.post('/ban-user', [
             .single();
         
         if (existingBan) {
-            // ✅ إذا كان محظوراً بالفعل، قم بتحديث السبب والتاريخ
             await supabase
                 .from('banned_users')
                 .update({
@@ -431,7 +417,6 @@ router.post('/ban-user', [
                 })
                 .eq('id', existingBan.id);
             
-            // ✅ تحديث حالة المستخدم في جدول الطلاب/الأساتذة
             await supabase
                 .from(tableName)
                 .update({ is_banned: true, ban_reason: reason || 'لم يتم تحديد سبب' })
@@ -441,7 +426,6 @@ router.post('/ban-user', [
             return res.json({ success: true, message: 'تم تحديث حظر المستخدم بنجاح' });
         }
         
-        // ✅ إنشاء سجل حظر جديد باستخدام ip_address
         await insert('banned_users', {
             user_id: user_id,
             user_role: role,
@@ -453,7 +437,6 @@ router.post('/ban-user', [
             banned_by: 'admin'
         });
         
-        // ✅ تحديث حالة المستخدم
         const { error } = await supabase
             .from(tableName)
             .update({ is_banned: true, ban_reason: reason || 'لم يتم تحديد سبب' })
@@ -599,7 +582,6 @@ router.post('/withdraw-requests/:id/approve', [
             return res.status(404).json({ success: false, error: 'الطلب غير موجود' });
         }
 
-        // تحديث حالة الطلب
         const { error: updateError } = await supabase
             .from('withdraw_requests')
             .update({
@@ -613,7 +595,6 @@ router.post('/withdraw-requests/:id/approve', [
             return res.status(500).json({ success: false, error: updateError.message });
         }
 
-        // تحديث رصيد الأستاذ
         const teacher = await getOne('teachers', 'id', request.teacher_id);
         if (teacher) {
             await supabase
@@ -625,7 +606,6 @@ router.post('/withdraw-requests/:id/approve', [
                 .eq('id', request.teacher_id);
         }
 
-        // إرسال إشعار للأستاذ
         await insert('notifications', {
             user_id: request.teacher_id,
             user_type: 'teacher',
@@ -667,7 +647,6 @@ router.post('/withdraw-requests/:id/reject', [
             return res.status(404).json({ success: false, error: 'الطلب غير موجود' });
         }
 
-        // تحديث حالة الطلب
         const { error: updateError } = await supabase
             .from('withdraw_requests')
             .update({
@@ -682,7 +661,6 @@ router.post('/withdraw-requests/:id/reject', [
             return res.status(500).json({ success: false, error: updateError.message });
         }
 
-        // إعادة المبلغ إلى رصيد الأستاذ
         const teacher = await getOne('teachers', 'id', request.teacher_id);
         if (teacher) {
             await supabase
@@ -694,7 +672,6 @@ router.post('/withdraw-requests/:id/reject', [
                 .eq('id', request.teacher_id);
         }
 
-        // إرسال إشعار للأستاذ
         await insert('notifications', {
             user_id: request.teacher_id,
             user_type: 'teacher',
@@ -777,6 +754,68 @@ router.post('/send-notification-to-all-students', [
             success: true,
             students_count: students.length,
             message: `تم إرسال الإشعار إلى ${students.length} طالب`
+        });
+    } catch (error) {
+        console.error('❌ خطأ في إرسال الإشعار:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// ✅ إرسال إشعار لمستخدم محدد (طالب أو أستاذ)
+// ============================================================
+router.post('/send-notification-to-user', [
+    authenticate,
+    authorize(['admin']),
+    body('user_id').isInt().withMessage('معرف المستخدم مطلوب'),
+    body('user_type').isIn(['student', 'teacher']).withMessage('نوع المستخدم غير صالح'),
+    body('title').notEmpty().withMessage('العنوان مطلوب').isLength({ max: 100 }),
+    body('message').notEmpty().withMessage('المحتوى مطلوب').isLength({ max: 500 })
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { user_id, user_type, title, message } = req.body;
+        const tableName = user_type === 'student' ? 'students' : 'teachers';
+        
+        console.log(`📥 إرسال إشعار لمستخدم ${user_id} (${user_type}): ${title}`);
+
+        // ✅ التحقق من وجود المستخدم
+        const user = await getOne(tableName, 'id', user_id);
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
+        }
+
+        // ✅ إنشاء الإشعار
+        await insert('notifications', {
+            user_id: user_id,
+            user_type: user_type,
+            title: title.trim(),
+            message: message.trim(),
+            is_read: false,
+            created_at: new Date().toISOString()
+        });
+
+        // ✅ تسجيل الإشعار المرسل في جدول admin_notifications
+        await supabase
+            .from('admin_notifications')
+            .insert({
+                title: title.trim(),
+                message: message.trim(),
+                sent_to_all: false,
+                user_id: user_id,
+                user_type: user_type,
+                students_count: 1,
+                created_at: new Date().toISOString()
+            });
+
+        console.log(`✅ تم إرسال الإشعار إلى المستخدم ${user_id} (${user_type})`);
+        res.json({
+            success: true,
+            message: `تم إرسال الإشعار إلى ${user.full_name} بنجاح`
         });
     } catch (error) {
         console.error('❌ خطأ في إرسال الإشعار:', error.message);
@@ -894,7 +933,6 @@ router.get('/support-messages', authenticate, authorize(['admin']), async (req, 
     try {
         console.log('📥 جلب رسائل الدعم...');
         
-        // استخدام جدول messages بدلاً من support_messages
         const { data, error } = await supabase
             .from('messages')
             .select('*')
@@ -905,7 +943,6 @@ router.get('/support-messages', authenticate, authorize(['admin']), async (req, 
             return res.status(500).json({ success: false, error: error.message });
         }
 
-        // تحويل البيانات لتتناسب مع تنسيق رسائل الدعم
         const formattedMessages = (data || []).map(msg => ({
             id: msg.id,
             name: msg.sender_type === 'teacher' ? 'أستاذ' : 'مستخدم',
