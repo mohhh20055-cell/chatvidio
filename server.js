@@ -438,19 +438,14 @@ const csrfExcludedPaths = [
     '/api/chargily-webhook',
     '/api/start-jitsi-stream',
     '/api/join-jitsi',
-    '/api/support/send',
-    '/api/admin/send-notification-to-all-students',  // ✅ إرسال الإشعارات للطلاب
-    '/api/admin/students',  // ✅ جلب الطلاب (قد يكون مفيداً)
-    '/api/admin/approved-teachers',  // ✅ جلب الأساتذة المقبولين
-    '/api/admin/pending-teachers',  // ✅ جلب الأساتذة المعلقين
-    '/api/admin/banned-users',  // ✅ جلب المحظورين
-    '/api/admin/withdraw-requests',  // ✅ طلبات السحب
-    '/api/admin/support-messages',  // ✅ رسائل الدعم
-    '/api/admin/sent-notifications'  // ✅ الإشعارات المرسلة
+    '/api/support/send'
 ];
 
 app.use((req, res, next) => {
     const publicMethods = ['GET', 'HEAD', 'OPTIONS'];
+    
+    // ✅ استثناء جميع مسارات الإدارة (/api/admin/*)
+    const isAdminPath = req.path.startsWith('/api/admin');
     
     const isPublicPath = csrfExcludedPaths.some(path => {
         if (path === req.path) return true;
@@ -460,7 +455,8 @@ app.use((req, res, next) => {
     
     const isPublicMethod = publicMethods.includes(req.method);
     
-    if (isPublicPath || isPublicMethod) {
+    // ✅ إذا كان المسار إدارياً أو عاماً أو طريقة GET، تجاوز التحقق
+    if (isAdminPath || isPublicPath || isPublicMethod) {
         return next();
     }
     
