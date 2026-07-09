@@ -278,7 +278,7 @@ router.delete('/delete-teacher/:id', [
 });
 
 // ============================================================
-// ✅ حذف المستخدم (طالب أو أستاذ)
+// ✅ حذف المستخدم (طالب أو أستاذ) - معدل لاستخدام ip_address
 // ============================================================
 router.post('/delete-user', [
     authenticate,
@@ -302,24 +302,24 @@ router.post('/delete-user', [
             return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
         }
         
-        // جلب IP المستخدم
+        // ✅ جلب IP المستخدم باستخدام ip_address
         let userIp = null;
         try {
             const { data: loginLog } = await supabase
                 .from('login_logs')
-                .select('ip_address_encrypted')
+                .select('ip_address')
                 .eq('user_id', user_id)
                 .eq('user_role', role)
                 .order('created_at', { ascending: false })
                 .limit(1)
                 .single();
             
-            userIp = loginLog?.ip_address_encrypted || null;
+            userIp = loginLog?.ip_address || null;
         } catch (logError) {
             console.warn('⚠️ لا يوجد سجل دخول لهذا المستخدم:', logError.message);
         }
         
-        // حذف المستخدم
+        // ✅ حذف المستخدم
         const { error } = await supabase
             .from(tableName)
             .delete()
@@ -330,12 +330,12 @@ router.post('/delete-user', [
             return res.status(500).json({ success: false, error: error.message });
         }
         
-        // حظر IP إذا تم الطلب
+        // ✅ حظر IP إذا تم الطلب
         if (ban && userIp) {
             const { data: existingBan } = await supabase
                 .from('banned_users')
                 .select('*')
-                .eq('ip_address_encrypted', userIp)
+                .eq('ip_address', userIp)
                 .single();
             
             if (!existingBan) {
@@ -344,7 +344,7 @@ router.post('/delete-user', [
                     user_role: role,
                     full_name: user.full_name,
                     email: user.email,
-                    ip_address_encrypted: userIp,
+                    ip_address: userIp,
                     ban_reason: 'تم حظر المستخدم تلقائياً عند حذف الحساب',
                     banned_at: new Date().toISOString(),
                     banned_by: 'admin'
@@ -366,7 +366,7 @@ router.post('/delete-user', [
 });
 
 // ============================================================
-// ✅ حظر المستخدم - معدل للتعامل مع حالة عدم وجود IP
+// ✅ حظر المستخدم - معدل لاستخدام ip_address
 // ============================================================
 router.post('/ban-user', [
     authenticate,
@@ -390,19 +390,19 @@ router.post('/ban-user', [
             return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
         }
         
-        // ✅ محاولة جلب IP المستخدم
+        // ✅ محاولة جلب IP المستخدم باستخدام ip_address
         let userIp = null;
         try {
             const { data: loginLog } = await supabase
                 .from('login_logs')
-                .select('ip_address_encrypted')
+                .select('ip_address')
                 .eq('user_id', user_id)
                 .eq('user_role', role)
                 .order('created_at', { ascending: false })
                 .limit(1)
                 .single();
             
-            userIp = loginLog?.ip_address_encrypted || null;
+            userIp = loginLog?.ip_address || null;
         } catch (logError) {
             console.warn('⚠️ لا يوجد سجل دخول لهذا المستخدم:', logError.message);
         }
@@ -410,15 +410,14 @@ router.post('/ban-user', [
         // ✅ إذا لم يوجد IP، نستخدم معرف المستخدم كمعرف فريد للحظر
         if (!userIp) {
             console.log(`⚠️ لا يمكن تحديد IP للمستخدم ${user_id}, سيتم استخدام معرف المستخدم للحظر`);
-            // إنشاء معرف فريد للمستخدم
             userIp = `user_${user_id}_${role}_${Date.now()}`;
         }
         
-        // ✅ التحقق من عدم وجود حظر سابق
+        // ✅ التحقق من عدم وجود حظر سابق باستخدام ip_address
         const { data: existingBan } = await supabase
             .from('banned_users')
             .select('*')
-            .eq('ip_address_encrypted', userIp)
+            .eq('ip_address', userIp)
             .single();
         
         if (existingBan) {
@@ -442,13 +441,13 @@ router.post('/ban-user', [
             return res.json({ success: true, message: 'تم تحديث حظر المستخدم بنجاح' });
         }
         
-        // ✅ إنشاء سجل حظر جديد
+        // ✅ إنشاء سجل حظر جديد باستخدام ip_address
         await insert('banned_users', {
             user_id: user_id,
             user_role: role,
             full_name: user.full_name,
             email: user.email,
-            ip_address_encrypted: userIp,
+            ip_address: userIp,
             ban_reason: reason || 'لم يتم تحديد سبب',
             banned_at: new Date().toISOString(),
             banned_by: 'admin'
@@ -909,7 +908,7 @@ router.get('/support-messages', authenticate, authorize(['admin']), async (req, 
         // تحويل البيانات لتتناسب مع تنسيق رسائل الدعم
         const formattedMessages = (data || []).map(msg => ({
             id: msg.id,
-            name: 'مستخدم',
+            name: msg.sender_type === 'teacher' ? 'أستاذ' : 'مستخدم',
             email: 'غير محدد',
             phone: null,
             subject: 'رسالة دعم',
