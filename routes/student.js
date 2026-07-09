@@ -1,5 +1,5 @@
 // ============================================================
-// مسارات الطالب - Student Routes (مبسط - بدون دوال غير موجودة)
+// مسارات الطالب - Student Routes (مبسط ومستقر)
 // ============================================================
 
 const express = require('express');
@@ -35,49 +35,30 @@ const upload = multer({
 });
 
 // ============================================================
-// ✅ جلب معلومات الطالب الحالي
+// ✅ مسار /me أولاً (لتجنب التعارض مع /:student_id)
 // ============================================================
 router.get('/me', authenticate, authorize(['student']), async (req, res) => {
     try {
+        console.log('📥 جلب معلومات الطالب الحالي:', req.user.userId);
+        
         const student = await getOne('students', 'id', req.user.userId);
         if (!student) {
+            console.log('❌ الطالب غير موجود:', req.user.userId);
             return res.status(404).json({ success: false, error: 'الطالب غير موجود' });
         }
 
         delete student.password;
-
-        // جلب البث النشط الذي يشارك فيه الطالب
-        const { data: activeSessions, error: activeError } = await supabase
-            .from('active_stream')
-            .select('offer_id, offers:offer_id (subject_name, status, stream_url, room_password, teacher_id, teachers:teacher_id (full_name, profile_url))')
-            .eq('student_id', req.user.userId);
-
-        let activeStream = null;
-        if (!activeError && activeSessions && activeSessions.length > 0) {
-            const session = activeSessions[0];
-            activeStream = {
-                offer_id: session.offer_id,
-                subject_name: session.offers?.subject_name || 'غير معروف',
-                status: session.offers?.status || 'unknown',
-                stream_url: session.offers?.stream_url || null,
-                room_password: session.offers?.room_password || null,
-                teacher_name: session.offers?.teachers?.full_name || 'غير معروف',
-                teacher_profile: session.offers?.teachers?.profile_url || null
-            };
-        }
-
-        res.json({
-            ...student,
-            active_stream: activeStream
-        });
+        
+        console.log('✅ تم جلب بيانات الطالب:', student.full_name);
+        res.json(student);
     } catch (error) {
-        console.error('خطأ في جلب معلومات الطالب:', error.message);
+        console.error('❌ خطأ في جلب معلومات الطالب:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
 
 // ============================================================
-// جلب بيانات الطالب
+// جلب بيانات الطالب (بعد مسار /me)
 // ============================================================
 router.get('/:student_id', authenticate, [
     param('student_id').isInt().withMessage('معرف الطالب غير صالح')
@@ -89,6 +70,8 @@ router.get('/:student_id', authenticate, [
         }
 
         const student_id = parseInt(req.params.student_id);
+        
+        console.log(`📥 جلب بيانات الطالب ID: ${student_id}`);
 
         if (req.user.userId !== student_id && req.user.role !== 'admin') {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه المعلومات' });
