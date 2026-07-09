@@ -1839,23 +1839,34 @@
             authToken = token;
         }
         
-        if (!authToken) {
-            console.log('⚠️ لا يوجد توكن، جاري التوجيه إلى الصفحة الرئيسية');
+        // ✅ تحقق من وجود التوكن والـ ID
+        if (!authToken || !studentId) {
+            console.log('⚠️ لا يوجد توكن أو معرف طالب، جاري التوجيه للصفحة الرئيسية');
+            localStorage.removeItem('token');
+            localStorage.removeItem('userData');
             window.location.href = '/';
             return;
         }
 
         await getCsrfToken();
 
-        // ✅ استخدم مسار /me بدلاً من /:student_id
+        // ✅ استخدم مسار /:student_id بدلاً من /me للتحقق من التوكن
         console.log('📥 جلب بيانات الطالب من الخادم...');
-        const res = await fetchWithAuth(`/api/student/me`);
+        const res = await fetchWithAuth(`/api/student/${studentId}`);
         console.log('📥 حالة الاستجابة:', res.status);
         
         if (!res.ok) {
             console.error('❌ فشل جلب بيانات الطالب:', res.status);
-            // ❌ لا تقم بإعادة التوجيه هنا
-            showToast('حدث خطأ في جلب البيانات', 'error');
+            // ❌ إعادة التوجيه فقط إذا كانت هناك مشكلة في التوكن
+            const data = await res.json().catch(() => ({}));
+            if (res.status === 401 || res.status === 403) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('userData');
+                showToast('انتهت صلاحية الجلسة، جاري إعادة التوجيه...', 'error');
+                setTimeout(() => { window.location.href = '/'; }, 1500);
+            } else {
+                showToast('حدث خطأ في جلب البيانات', 'error');
+            }
             return;
         }
         
@@ -1877,7 +1888,6 @@
         }
     } catch(e) {
         console.error('❌ خطأ في تحميل بيانات المستخدم:', e);
-        // ❌ لا تقم بإعادة التوجيه هنا
         showToast('حدث خطأ في تحميل البيانات', 'error');
     }
 }
