@@ -1,5 +1,5 @@
 // ============================================================
-// مسارات الإدارة - Admin Routes (معدل لدعم المستوى التعليمي مع معالجة أفضل للأخطاء)
+// مسارات الإدارة - Admin Routes (معدل بالكامل - مع إرسال البريد عند قبول/رفض الأستاذ)
 // ============================================================
 
 const express = require('express');
@@ -13,6 +13,7 @@ const { authenticate, checkBanned } = require('../middleware/auth');
 const { getOne, insert, update, remove } = require('../utils/helpers');
 const { encrypt, maskIP } = require('../utils/encryption');
 const { processReferralReward } = require('../utils/referral');
+const { sendTeacherApprovalEmail, sendTeacherRejectionEmail } = require('../utils/email');
 
 // ✅ تعريف authorize محلياً
 function authorize(roles = []) {
@@ -109,7 +110,7 @@ router.get('/approved-teachers', authenticate, authorize(['admin']), async (req,
 });
 
 // ============================================================
-// ✅ قبول الأستاذ (يحتفظ بالمستوى التعليمي)
+// ✅ قبول الأستاذ (مع إرسال بريد قبول)
 // ============================================================
 router.post('/approve-teacher/:id', [
     authenticate,
@@ -125,18 +126,25 @@ router.post('/approve-teacher/:id', [
         const teacherId = parseInt(req.params.id);
         console.log(`📥 قبول الأستاذ ID: ${teacherId}`);
 
+        // ✅ جلب بيانات الأستاذ
         const teacher = await getOne('teachers', 'id', teacherId);
         if (!teacher) {
             return res.status(404).json({ success: false, error: 'الأستاذ غير موجود' });
         }
 
+        if (teacher.status === 'approved') {
+            return res.status(400).json({ success: false, error: 'هذا الأستاذ مقبول بالفعل' });
+        }
+
         console.log(`👤 الأستاذ: ${teacher.full_name}, المستوى: ${teacher.teaching_level || 'غير محدد'}`);
 
+        // ✅ تحديث حالة الأستاذ إلى approved
         const { error: updateError } = await supabase
             .from('teachers')
             .update({ 
                 status: 'approved',
-                teaching_level: teacher.teaching_level || null
+                teaching_level: teacher.teaching_level || null,
+                updated_at: new Date().toISOString()
             })
             .eq('id', teacherId);
 
@@ -145,6 +153,16 @@ router.post('/approve-teacher/:id', [
             return res.status(500).json({ success: false, error: updateError.message });
         }
 
+        // ✅ إرسال بريد قبول للأستاذ
+        let emailSent = false;
+        try {
+            emailSent = await sendTeacherApprovalEmail(teacher.email, teacher.full_name);
+            console.log(`📧 بريد القبول: ${emailSent ? 'تم الإرسال ✅' : 'فشل الإرسال ❌'}`);
+        } catch (emailError) {
+            console.error('❌ خطأ في إرسال بريد القبول:', emailError.message);
+        }
+
+        // ✅ معالجة مكافأة الإحالة
         try {
             const { data: referral } = await supabase
                 .from('referrals')
@@ -165,7 +183,8 @@ router.post('/approve-teacher/:id', [
         console.log(`✅ تم قبول الأستاذ ${teacherId} بنجاح`);
         res.json({ 
             success: true, 
-            message: 'تم قبول الأستاذ ومنح مكافأة الإحالة إن وجدت',
+            message: '✅ تم قبول الأستاذ بنجاح! تم إرسال بريد إعلامي إليه.',
+            email_sent: emailSent,
             teaching_level: teacher.teaching_level || null
         });
     } catch (error) {
@@ -175,12 +194,13 @@ router.post('/approve-teacher/:id', [
 });
 
 // ============================================================
-// ✅ رفض الأستاذ
+// ✅ رفض الأستاذ (مع إرسال بريد رفض)
 // ============================================================
 router.post('/reject-teacher/:id', [
     authenticate,
     authorize(['admin']),
-    param('id').isInt().withMessage('معرف الأستاذ غير صالح')
+    param('id').isInt().withMessage('معرف الأستاذ غير صالح'),
+    body('reason').optional().isString().withMessage('سبب الرفض غير صالح')
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -193,21 +213,46 @@ router.post('/reject-teacher/:id', [
 
         console.log(`📥 رفض الأستاذ ID: ${teacherId}, السبب: ${reason || 'غير محدد'}`);
 
-        const { error } = await supabase
+        // ✅ جلب بيانات الأستاذ
+        const teacher = await getOne('teachers', 'id', teacherId);
+        if (!teacher) {
+            return res.status(404).json({ success: false, error: 'الأستاذ غير موجود' });
+        }
+
+        if (teacher.status === 'rejected') {
+            return res.status(400).json({ success: false, error: 'هذا الأستاذ مرفوض بالفعل' });
+        }
+
+        // ✅ تحديث حالة الأستاذ إلى rejected
+        const { error: updateError } = await supabase
             .from('teachers')
             .update({
                 status: 'rejected',
-                rejection_reason: reason || 'لم يتم تحديد سبب'
+                rejection_reason: reason || 'لم يتم تحديد سبب',
+                updated_at: new Date().toISOString()
             })
             .eq('id', teacherId);
 
-        if (error) {
-            console.error('❌ خطأ في رفض الأستاذ:', error);
-            return res.status(500).json({ success: false, error: error.message });
+        if (updateError) {
+            console.error('❌ خطأ في رفض الأستاذ:', updateError);
+            return res.status(500).json({ success: false, error: updateError.message });
+        }
+
+        // ✅ إرسال بريد رفض للأستاذ
+        let emailSent = false;
+        try {
+            emailSent = await sendTeacherRejectionEmail(teacher.email, teacher.full_name, reason);
+            console.log(`📧 بريد الرفض: ${emailSent ? 'تم الإرسال ✅' : 'فشل الإرسال ❌'}`);
+        } catch (emailError) {
+            console.error('❌ خطأ في إرسال بريد الرفض:', emailError.message);
         }
 
         console.log(`✅ تم رفض الأستاذ ${teacherId}`);
-        res.json({ success: true });
+        res.json({ 
+            success: true,
+            message: '❌ تم رفض الأستاذ! تم إرسال بريد إعلامي إليه.',
+            email_sent: emailSent
+        });
     } catch (error) {
         console.error('❌ خطأ في رفض الأستاذ:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
@@ -609,7 +654,7 @@ router.post('/withdraw-requests/:id/approve', [
         await insert('notifications', {
             user_id: request.teacher_id,
             user_type: 'teacher',
-            title: 'تمت معالجة طلب السحب',
+            title: '💰 تمت معالجة طلب السحب',
             message: `تم تحويل مبلغ ${request.amount} دج إلى حسابك ${request.ccp_account}`,
             is_read: false,
             created_at: new Date().toISOString()
@@ -675,7 +720,7 @@ router.post('/withdraw-requests/:id/reject', [
         await insert('notifications', {
             user_id: request.teacher_id,
             user_type: 'teacher',
-            title: 'تم رفض طلب السحب',
+            title: '❌ تم رفض طلب السحب',
             message: `تم رفض طلب سحب مبلغ ${request.amount} دج. السبب: ${reason || 'لم يتم تحديد سبب'}`,
             is_read: false,
             created_at: new Date().toISOString()
@@ -783,13 +828,11 @@ router.post('/send-notification-to-user', [
         
         console.log(`📥 إرسال إشعار لمستخدم ${user_id} (${user_type}): ${title}`);
 
-        // ✅ التحقق من وجود المستخدم
         const user = await getOne(tableName, 'id', user_id);
         if (!user) {
             return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
         }
 
-        // ✅ إنشاء الإشعار
         await insert('notifications', {
             user_id: user_id,
             user_type: user_type,
@@ -799,7 +842,6 @@ router.post('/send-notification-to-user', [
             created_at: new Date().toISOString()
         });
 
-        // ✅ تسجيل الإشعار المرسل في جدول admin_notifications
         await supabase
             .from('admin_notifications')
             .insert({
