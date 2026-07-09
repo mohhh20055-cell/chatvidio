@@ -1,5 +1,5 @@
 // ============================================================
-// مسارات الإدارة - Admin Routes (معدل لدعم المستوى التعليمي)
+// مسارات الإدارة - Admin Routes (معدل لدعم المستوى التعليمي مع معالجة أفضل للأخطاء)
 // ============================================================
 
 const express = require('express');
@@ -32,57 +32,84 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@platform.com';
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || bcrypt.hashSync('admin123', 12);
 
 // ============================================================
-// جلب جميع الطلاب (مع المستوى التعليمي)
+// ✅ جلب جميع الطلاب (مع المستوى التعليمي) - مع معالجة الأخطاء
 // ============================================================
 router.get('/students', authenticate, authorize(['admin']), async (req, res) => {
     try {
-        const { data } = await supabase
+        console.log('📥 جلب جميع الطلاب...');
+        
+        const { data, error } = await supabase
             .from('students')
             .select('*')
             .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('❌ خطأ في جلب الطلاب:', error);
+            return res.status(500).json({ success: false, error: error.message });
+        }
+
+        console.log(`✅ تم جلب ${data?.length || 0} طالب`);
         res.json(data || []);
     } catch (error) {
-        console.error('خطأ في جلب الطلاب:', error.message);
-        res.status(500).json([]);
+        console.error('❌ خطأ في جلب الطلاب:', error.message);
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
 // ============================================================
-// جلب جميع الأساتذة المعلقين (مع المستوى التعليمي)
+// ✅ جلب جميع الأساتذة المعلقين (مع المستوى التعليمي)
 // ============================================================
 router.get('/pending-teachers', authenticate, authorize(['admin']), async (req, res) => {
     try {
-        const { data } = await supabase
+        console.log('📥 جلب الأساتذة المعلقين...');
+        
+        const { data, error } = await supabase
             .from('teachers')
             .select('*')
             .eq('status', 'pending')
             .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('❌ خطأ في جلب الأساتذة المعلقين:', error);
+            return res.status(500).json({ success: false, error: error.message });
+        }
+
+        console.log(`✅ تم جلب ${data?.length || 0} أستاذ معلق`);
         res.json(data || []);
     } catch (error) {
-        console.error('خطأ في جلب الأساتذة المعلقين:', error.message);
-        res.status(500).json([]);
+        console.error('❌ خطأ في جلب الأساتذة المعلقين:', error.message);
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
 // ============================================================
-// جلب جميع الأساتذة المقبولين (مع المستوى التعليمي)
+// ✅ جلب جميع الأساتذة المقبولين (مع المستوى التعليمي)
 // ============================================================
 router.get('/approved-teachers', authenticate, authorize(['admin']), async (req, res) => {
     try {
-        const { data } = await supabase
+        console.log('📥 جلب الأساتذة المقبولين...');
+        
+        const { data, error } = await supabase
             .from('teachers')
             .select('*')
             .eq('status', 'approved')
             .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('❌ خطأ في جلب الأساتذة المقبولين:', error);
+            return res.status(500).json({ success: false, error: error.message });
+        }
+
+        console.log(`✅ تم جلب ${data?.length || 0} أستاذ مقبول`);
         res.json(data || []);
     } catch (error) {
-        console.error('خطأ في جلب الأساتذة المقبولين:', error.message);
-        res.status(500).json([]);
+        console.error('❌ خطأ في جلب الأساتذة المقبولين:', error.message);
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
 // ============================================================
-// قبول الأستاذ (يحتفظ بالمستوى التعليمي)
+// ✅ قبول الأستاذ (يحتفظ بالمستوى التعليمي)
 // ============================================================
 router.post('/approve-teacher/:id', [
     authenticate,
@@ -95,48 +122,63 @@ router.post('/approve-teacher/:id', [
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        const teacherId = req.params.id;
+        const teacherId = parseInt(req.params.id);
+        console.log(`📥 قبول الأستاذ ID: ${teacherId}`);
 
-        // ✅ جلب بيانات الأستاذ للتحقق من وجود teaching_level
+        // ✅ جلب بيانات الأستاذ
         const teacher = await getOne('teachers', 'id', teacherId);
         if (!teacher) {
             return res.status(404).json({ success: false, error: 'الأستاذ غير موجود' });
         }
 
+        console.log(`👤 الأستاذ: ${teacher.full_name}, المستوى: ${teacher.teaching_level || 'غير محدد'}`);
+
         // ✅ تحديث الحالة مع الاحتفاظ بـ teaching_level
-        await update('teachers', teacherId, { 
-            status: 'approved',
-            // الاحتفاظ بـ teaching_level إذا كان موجوداً
-            teaching_level: teacher.teaching_level || null
-        });
+        const { error: updateError } = await supabase
+            .from('teachers')
+            .update({ 
+                status: 'approved',
+                teaching_level: teacher.teaching_level || null
+            })
+            .eq('id', teacherId);
 
-        // ✅ معالجة مكافأة الإحالة
-        const { data: referral } = await supabase
-            .from('referrals')
-            .select('*')
-            .eq('referred_user_id', teacherId)
-            .eq('referred_user_role', 'teacher')
-            .eq('status', 'pending_verification')
-            .single();
-
-        if (referral) {
-            await processReferralReward(teacherId, 'teacher');
-            console.log(`✅ تم منح مكافأة الإحالة للأستاذ المحيل فور قبول الأستاذ ${teacherId}`);
+        if (updateError) {
+            console.error('❌ خطأ في تحديث حالة الأستاذ:', updateError);
+            return res.status(500).json({ success: false, error: updateError.message });
         }
 
+        // ✅ معالجة مكافأة الإحالة
+        try {
+            const { data: referral } = await supabase
+                .from('referrals')
+                .select('*')
+                .eq('referred_user_id', teacherId)
+                .eq('referred_user_role', 'teacher')
+                .eq('status', 'pending_verification')
+                .single();
+
+            if (referral) {
+                await processReferralReward(teacherId, 'teacher');
+                console.log(`✅ تم منح مكافأة الإحالة للأستاذ المحيل فور قبول الأستاذ ${teacherId}`);
+            }
+        } catch (referralError) {
+            console.warn('⚠️ خطأ في معالجة مكافأة الإحالة:', referralError.message);
+        }
+
+        console.log(`✅ تم قبول الأستاذ ${teacherId} بنجاح`);
         res.json({ 
             success: true, 
             message: 'تم قبول الأستاذ ومنح مكافأة الإحالة إن وجدت',
             teaching_level: teacher.teaching_level || null
         });
     } catch (error) {
-        console.error('خطأ في قبول الأستاذ:', error.message);
+        console.error('❌ خطأ في قبول الأستاذ:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
 
 // ============================================================
-// رفض الأستاذ
+// ✅ رفض الأستاذ
 // ============================================================
 router.post('/reject-teacher/:id', [
     authenticate,
@@ -149,20 +191,34 @@ router.post('/reject-teacher/:id', [
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
+        const teacherId = parseInt(req.params.id);
         const { reason } = req.body;
-        await update('teachers', req.params.id, {
-            status: 'rejected',
-            rejection_reason: reason || 'لم يتم تحديد سبب'
-        });
+
+        console.log(`📥 رفض الأستاذ ID: ${teacherId}, السبب: ${reason || 'غير محدد'}`);
+
+        const { error } = await supabase
+            .from('teachers')
+            .update({
+                status: 'rejected',
+                rejection_reason: reason || 'لم يتم تحديد سبب'
+            })
+            .eq('id', teacherId);
+
+        if (error) {
+            console.error('❌ خطأ في رفض الأستاذ:', error);
+            return res.status(500).json({ success: false, error: error.message });
+        }
+
+        console.log(`✅ تم رفض الأستاذ ${teacherId}`);
         res.json({ success: true });
     } catch (error) {
-        console.error('خطأ في رفض الأستاذ:', error.message);
+        console.error('❌ خطأ في رفض الأستاذ:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
 
 // ============================================================
-// حذف الأستاذ
+// ✅ حذف الأستاذ
 // ============================================================
 router.delete('/delete-teacher/:id', [
     authenticate,
@@ -175,30 +231,54 @@ router.delete('/delete-teacher/:id', [
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        const teacherId = req.params.id;
+        const teacherId = parseInt(req.params.id);
+        console.log(`📥 حذف الأستاذ ID: ${teacherId}`);
 
         const teacher = await getOne('teachers', 'id', teacherId);
-        if (teacher?.profile_image) {
-            await supabase.storage.from('profiles').remove([`teachers/${teacher.profile_image}`]);
+        if (!teacher) {
+            return res.status(404).json({ success: false, error: 'الأستاذ غير موجود' });
         }
 
-        await supabase.from('sessions').delete().eq('teacher_id', teacherId);
-        await supabase.from('waiting_room').delete().eq('teacher_id', teacherId);
-        await supabase.from('active_stream').delete().eq('teacher_id', teacherId);
-        await supabase.from('offers').delete().eq('teacher_id', teacherId);
-        await supabase.from('withdraw_requests').delete().eq('teacher_id', teacherId);
-        await supabase.from('notifications').delete().eq('user_id', teacherId).eq('user_type', 'teacher');
-        await supabase.from('teachers').delete().eq('id', teacherId);
+        // حذف الصورة إذا وجدت
+        if (teacher?.profile_image) {
+            try {
+                await supabase.storage.from('profiles').remove([`teachers/${teacher.profile_image}`]);
+            } catch (storageError) {
+                console.warn('⚠️ خطأ في حذف الصورة:', storageError.message);
+            }
+        }
 
+        // حذف البيانات المرتبطة
+        const tables = ['sessions', 'waiting_room', 'active_stream', 'offers', 'withdraw_requests'];
+        for (const table of tables) {
+            try {
+                await supabase.from(table).delete().eq('teacher_id', teacherId);
+            } catch (e) {
+                console.warn(`⚠️ خطأ في حذف بيانات ${table}:`, e.message);
+            }
+        }
+
+        // حذف الإشعارات
+        await supabase.from('notifications').delete().eq('user_id', teacherId).eq('user_type', 'teacher');
+
+        // حذف الأستاذ
+        const { error } = await supabase.from('teachers').delete().eq('id', teacherId);
+
+        if (error) {
+            console.error('❌ خطأ في حذف الأستاذ:', error);
+            return res.status(500).json({ success: false, error: error.message });
+        }
+
+        console.log(`✅ تم حذف الأستاذ ${teacherId}`);
         res.json({ success: true });
     } catch (error) {
-        console.error('خطأ في حذف الأستاذ:', error.message);
+        console.error('❌ خطأ في حذف الأستاذ:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
 
 // ============================================================
-// حذف المستخدم (طالب أو أستاذ) - مع دعم المستوى التعليمي
+// ✅ حذف المستخدم (طالب أو أستاذ)
 // ============================================================
 router.post('/delete-user', [
     authenticate,
@@ -215,11 +295,14 @@ router.post('/delete-user', [
         const { user_id, role, ban } = req.body;
         const tableName = role === 'student' ? 'students' : 'teachers';
         
+        console.log(`📥 حذف المستخدم ID: ${user_id}, الدور: ${role}, حظر: ${ban}`);
+
         const user = await getOne(tableName, 'id', user_id);
         if (!user) {
             return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
         }
         
+        // جلب IP المستخدم
         const { data: loginLog } = await supabase
             .from('login_logs')
             .select('ip_address_encrypted')
@@ -231,11 +314,18 @@ router.post('/delete-user', [
         
         const userIp = loginLog?.ip_address_encrypted || null;
         
-        await supabase
+        // حذف المستخدم
+        const { error } = await supabase
             .from(tableName)
             .delete()
             .eq('id', user_id);
+
+        if (error) {
+            console.error('❌ خطأ في حذف المستخدم:', error);
+            return res.status(500).json({ success: false, error: error.message });
+        }
         
+        // حظر IP إذا تم الطلب
         if (ban && userIp) {
             const { data: existingBan } = await supabase
                 .from('banned_users')
@@ -254,22 +344,24 @@ router.post('/delete-user', [
                     banned_at: new Date().toISOString(),
                     banned_by: 'admin'
                 });
+                console.log(`🔒 تم حظر IP المستخدم ${user_id}`);
             }
         }
         
+        console.log(`✅ تم حذف المستخدم ${user_id}`);
         res.json({ 
             success: true, 
             message: 'تم حذف المستخدم بنجاح',
             banned: ban && userIp ? true : false
         });
     } catch (error) {
-        console.error('خطأ في حذف المستخدم:', error.message);
+        console.error('❌ خطأ في حذف المستخدم:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
 
 // ============================================================
-// حظر المستخدم
+// ✅ حظر المستخدم
 // ============================================================
 router.post('/ban-user', [
     authenticate,
@@ -286,6 +378,8 @@ router.post('/ban-user', [
         const { user_id, role, reason } = req.body;
         const tableName = role === 'student' ? 'students' : 'teachers';
         
+        console.log(`📥 حظر المستخدم ID: ${user_id}, الدور: ${role}`);
+
         const user = await getOne(tableName, 'id', user_id);
         if (!user) {
             return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
@@ -327,20 +421,26 @@ router.post('/ban-user', [
             banned_by: 'admin'
         });
         
-        await supabase
+        const { error } = await supabase
             .from(tableName)
             .update({ is_banned: true, ban_reason: reason || 'لم يتم تحديد سبب' })
             .eq('id', user_id);
+
+        if (error) {
+            console.error('❌ خطأ في حظر المستخدم:', error);
+            return res.status(500).json({ success: false, error: error.message });
+        }
         
+        console.log(`🔒 تم حظر المستخدم ${user_id}`);
         res.json({ success: true, message: 'تم حظر المستخدم بنجاح' });
     } catch (error) {
-        console.error('خطأ في حظر المستخدم:', error.message);
+        console.error('❌ خطأ في حظر المستخدم:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
 
 // ============================================================
-// إلغاء حظر المستخدم
+// ✅ إلغاء حظر المستخدم
 // ============================================================
 router.post('/unban-user', [
     authenticate,
@@ -356,6 +456,8 @@ router.post('/unban-user', [
 
         const { user_id, role } = req.body;
         const tableName = role === 'student' ? 'students' : 'teachers';
+        
+        console.log(`📥 إلغاء حظر المستخدم ID: ${user_id}, الدور: ${role}`);
         
         const { data: banRecord } = await supabase
             .from('banned_users')
@@ -373,53 +475,77 @@ router.post('/unban-user', [
             .delete()
             .eq('id', banRecord.id);
         
-        await supabase
+        const { error } = await supabase
             .from(tableName)
             .update({ is_banned: false, ban_reason: null })
             .eq('id', user_id);
+
+        if (error) {
+            console.error('❌ خطأ في إلغاء حظر المستخدم:', error);
+            return res.status(500).json({ success: false, error: error.message });
+        }
         
+        console.log(`✅ تم إلغاء حظر المستخدم ${user_id}`);
         res.json({ success: true, message: 'تم إلغاء حظر المستخدم بنجاح' });
     } catch (error) {
-        console.error('خطأ في إلغاء الحظر:', error.message);
+        console.error('❌ خطأ في إلغاء الحظر:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
 
 // ============================================================
-// جلب المستخدمين المحظورين
+// ✅ جلب المستخدمين المحظورين
 // ============================================================
 router.get('/banned-users', authenticate, authorize(['admin']), async (req, res) => {
     try {
-        const { data } = await supabase
+        console.log('📥 جلب المستخدمين المحظورين...');
+        
+        const { data, error } = await supabase
             .from('banned_users')
             .select('*')
             .order('banned_at', { ascending: false });
+
+        if (error) {
+            console.error('❌ خطأ في جلب المحظورين:', error);
+            return res.status(500).json({ success: false, error: error.message });
+        }
+
+        console.log(`✅ تم جلب ${data?.length || 0} مستخدم محظور`);
         res.json(data || []);
     } catch (error) {
-        console.error('خطأ في جلب المحظورين:', error.message);
-        res.status(500).json([]);
+        console.error('❌ خطأ في جلب المحظورين:', error.message);
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
 // ============================================================
-// طلبات السحب
+// ✅ طلبات السحب
 // ============================================================
 router.get('/withdraw-requests', authenticate, authorize(['admin']), async (req, res) => {
     try {
-        const { data } = await supabase
+        console.log('📥 جلب طلبات السحب...');
+        
+        const { data, error } = await supabase
             .from('withdraw_requests')
             .select('*, teachers:teacher_id (full_name, email, phone)')
             .eq('status', 'pending')
             .order('created_at', { ascending: true });
+
+        if (error) {
+            console.error('❌ خطأ في جلب طلبات السحب:', error);
+            return res.status(500).json({ success: false, error: error.message });
+        }
+
+        console.log(`✅ تم جلب ${data?.length || 0} طلب سحب`);
         res.json(data || []);
     } catch (error) {
-        console.error('خطأ في جلب طلبات السحب:', error.message);
-        res.status(500).json([]);
+        console.error('❌ خطأ في جلب طلبات السحب:', error.message);
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
 // ============================================================
-// قبول طلب سحب
+// ✅ قبول طلب سحب
 // ============================================================
 router.post('/withdraw-requests/:id/approve', [
     authenticate,
@@ -433,21 +559,40 @@ router.post('/withdraw-requests/:id/approve', [
         }
 
         const { id } = req.params;
+        console.log(`📥 قبول طلب سحب ID: ${id}`);
 
         const request = await getOne('withdraw_requests', 'id', id);
-        if (!request) return res.status(404).json({ success: false, error: 'الطلب غير موجود' });
+        if (!request) {
+            return res.status(404).json({ success: false, error: 'الطلب غير موجود' });
+        }
 
-        await update('withdraw_requests', id, {
-            status: 'completed',
-            processed_at: new Date().toISOString()
-        });
+        // تحديث حالة الطلب
+        const { error: updateError } = await supabase
+            .from('withdraw_requests')
+            .update({
+                status: 'completed',
+                processed_at: new Date().toISOString()
+            })
+            .eq('id', id);
 
+        if (updateError) {
+            console.error('❌ خطأ في تحديث طلب السحب:', updateError);
+            return res.status(500).json({ success: false, error: updateError.message });
+        }
+
+        // تحديث رصيد الأستاذ
         const teacher = await getOne('teachers', 'id', request.teacher_id);
-        await update('teachers', request.teacher_id, {
-            total_withdrawn: (teacher.total_withdrawn || 0) + request.amount,
-            pending_withdraw: (teacher.pending_withdraw || 0) - request.amount
-        });
+        if (teacher) {
+            await supabase
+                .from('teachers')
+                .update({
+                    total_withdrawn: (teacher.total_withdrawn || 0) + request.amount,
+                    pending_withdraw: (teacher.pending_withdraw || 0) - request.amount
+                })
+                .eq('id', request.teacher_id);
+        }
 
+        // إرسال إشعار للأستاذ
         await insert('notifications', {
             user_id: request.teacher_id,
             user_type: 'teacher',
@@ -457,15 +602,16 @@ router.post('/withdraw-requests/:id/approve', [
             created_at: new Date().toISOString()
         });
 
+        console.log(`✅ تم قبول طلب السحب ${id}`);
         res.json({ success: true });
     } catch (error) {
-        console.error('خطأ في قبول طلب سحب:', error.message);
+        console.error('❌ خطأ في قبول طلب سحب:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
 
 // ============================================================
-// رفض طلب سحب
+// ✅ رفض طلب سحب
 // ============================================================
 router.post('/withdraw-requests/:id/reject', [
     authenticate,
@@ -480,22 +626,42 @@ router.post('/withdraw-requests/:id/reject', [
 
         const { id } = req.params;
         const { reason } = req.body;
+        
+        console.log(`📥 رفض طلب سحب ID: ${id}, السبب: ${reason || 'غير محدد'}`);
 
         const request = await getOne('withdraw_requests', 'id', id);
-        if (!request) return res.status(404).json({ success: false, error: 'الطلب غير موجود' });
+        if (!request) {
+            return res.status(404).json({ success: false, error: 'الطلب غير موجود' });
+        }
 
-        await update('withdraw_requests', id, {
-            status: 'rejected',
-            rejection_reason: reason || 'لم يتم تحديد سبب',
-            processed_at: new Date().toISOString()
-        });
+        // تحديث حالة الطلب
+        const { error: updateError } = await supabase
+            .from('withdraw_requests')
+            .update({
+                status: 'rejected',
+                rejection_reason: reason || 'لم يتم تحديد سبب',
+                processed_at: new Date().toISOString()
+            })
+            .eq('id', id);
 
+        if (updateError) {
+            console.error('❌ خطأ في تحديث طلب السحب:', updateError);
+            return res.status(500).json({ success: false, error: updateError.message });
+        }
+
+        // إعادة المبلغ إلى رصيد الأستاذ
         const teacher = await getOne('teachers', 'id', request.teacher_id);
-        await update('teachers', request.teacher_id, {
-            balance: (teacher.balance || 0) + request.amount,
-            pending_withdraw: (teacher.pending_withdraw || 0) - request.amount
-        });
+        if (teacher) {
+            await supabase
+                .from('teachers')
+                .update({
+                    balance: (teacher.balance || 0) + request.amount,
+                    pending_withdraw: (teacher.pending_withdraw || 0) - request.amount
+                })
+                .eq('id', request.teacher_id);
+        }
 
+        // إرسال إشعار للأستاذ
         await insert('notifications', {
             user_id: request.teacher_id,
             user_type: 'teacher',
@@ -505,15 +671,16 @@ router.post('/withdraw-requests/:id/reject', [
             created_at: new Date().toISOString()
         });
 
+        console.log(`✅ تم رفض طلب السحب ${id}`);
         res.json({ success: true });
     } catch (error) {
-        console.error('خطأ في رفض طلب سحب:', error.message);
+        console.error('❌ خطأ في رفض طلب سحب:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
 
 // ============================================================
-// إرسال إشعار لجميع الطلاب
+// ✅ إرسال إشعار لجميع الطلاب
 // ============================================================
 router.post('/send-notification-to-all-students', [
     authenticate,
@@ -528,11 +695,17 @@ router.post('/send-notification-to-all-students', [
         }
 
         const { title, message } = req.body;
+        console.log(`📥 إرسال إشعار لجميع الطلاب: ${title}`);
 
-        const { data: students } = await supabase
+        const { data: students, error: studentsError } = await supabase
             .from('students')
             .select('id')
             .eq('email_verified', true);
+
+        if (studentsError) {
+            console.error('❌ خطأ في جلب الطلاب:', studentsError);
+            return res.status(500).json({ success: false, error: studentsError.message });
+        }
 
         if (!students || students.length === 0) {
             return res.status(404).json({ success: false, error: 'لا يوجد طلاب مسجلين' });
@@ -552,7 +725,7 @@ router.post('/send-notification-to-all-students', [
             .insert(notifications);
 
         if (error) {
-            console.error('خطأ في إرسال الإشعارات:', error);
+            console.error('❌ خطأ في إرسال الإشعارات:', error);
             return res.status(500).json({ success: false, error: error.message });
         }
 
@@ -566,36 +739,45 @@ router.post('/send-notification-to-all-students', [
                 created_at: new Date().toISOString()
             });
 
+        console.log(`✅ تم إرسال الإشعار إلى ${students.length} طالب`);
         res.json({
             success: true,
             students_count: students.length,
             message: `تم إرسال الإشعار إلى ${students.length} طالب`
         });
     } catch (error) {
-        console.error('خطأ في إرسال الإشعار:', error.message);
+        console.error('❌ خطأ في إرسال الإشعار:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
 
 // ============================================================
-// جلب الإشعارات المرسلة
+// ✅ جلب الإشعارات المرسلة
 // ============================================================
 router.get('/sent-notifications', authenticate, authorize(['admin']), async (req, res) => {
     try {
-        const { data } = await supabase
+        console.log('📥 جلب الإشعارات المرسلة...');
+        
+        const { data, error } = await supabase
             .from('admin_notifications')
             .select('*')
             .order('created_at', { ascending: false });
 
+        if (error) {
+            console.error('❌ خطأ في جلب الإشعارات المرسلة:', error);
+            return res.status(500).json({ success: false, error: error.message });
+        }
+
+        console.log(`✅ تم جلب ${data?.length || 0} إشعار مرسل`);
         res.json(data || []);
     } catch (error) {
-        console.error('خطأ في جلب الإشعارات المرسلة:', error.message);
-        res.status(500).json([]);
+        console.error('❌ خطأ في جلب الإشعارات المرسلة:', error.message);
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
 // ============================================================
-// حذف إشعار
+// ✅ حذف إشعار
 // ============================================================
 router.delete('/delete-notification/:id', [
     authenticate,
@@ -608,29 +790,49 @@ router.delete('/delete-notification/:id', [
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        await supabase
+        const id = parseInt(req.params.id);
+        console.log(`📥 حذف إشعار ID: ${id}`);
+
+        const { error } = await supabase
             .from('admin_notifications')
             .delete()
-            .eq('id', req.params.id);
+            .eq('id', id);
+
+        if (error) {
+            console.error('❌ خطأ في حذف الإشعار:', error);
+            return res.status(500).json({ success: false, error: error.message });
+        }
+
+        console.log(`✅ تم حذف الإشعار ${id}`);
         res.json({ success: true });
     } catch (error) {
-        console.error('خطأ في حذف الإشعار:', error.message);
+        console.error('❌ خطأ في حذف الإشعار:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
 
 // ============================================================
-// مراقبة الأداء
+// ✅ مراقبة الأداء
 // ============================================================
 router.get('/performance', authenticate, authorize(['admin']), async (req, res) => {
     try {
-        const { data: connections } = await supabase
+        console.log('📥 جلب معلومات الأداء...');
+        
+        const { data: connections, error: connError } = await supabase
             .from('active_stream')
             .select('count', { count: 'exact' });
 
-        const { data: sessions } = await supabase
+        if (connError) {
+            console.error('❌ خطأ في جلب البث المباشر:', connError);
+        }
+
+        const { data: sessions, error: sessError } = await supabase
             .from('sessions')
             .select('count', { count: 'exact' });
+
+        if (sessError) {
+            console.error('❌ خطأ في جلب الجلسات:', sessError);
+        }
 
         const memoryUsage = process.memoryUsage();
         const uptime = process.uptime();
@@ -647,27 +849,39 @@ router.get('/performance', authenticate, authorize(['admin']), async (req, res) 
             total_sessions: sessions?.count || 0
         });
     } catch (error) {
-        console.error('خطأ في مراقبة الأداء:', error.message);
+        console.error('❌ خطأ في مراقبة الأداء:', error.message);
         res.status(500).json({ status: 'error', error: error.message });
     }
 });
 
 // ============================================================
-// رسائل الدعم
+// ✅ رسائل الدعم
 // ============================================================
 router.get('/support-messages', authenticate, authorize(['admin']), async (req, res) => {
     try {
-        const { data } = await supabase
+        console.log('📥 جلب رسائل الدعم...');
+        
+        const { data, error } = await supabase
             .from('support_messages')
             .select('*')
             .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('❌ خطأ في جلب رسائل الدعم:', error);
+            return res.status(500).json({ success: false, error: error.message });
+        }
+
+        console.log(`✅ تم جلب ${data?.length || 0} رسالة دعم`);
         res.json(data || []);
     } catch (error) {
-        console.error('خطأ في جلب رسائل الدعم:', error.message);
-        res.status(500).json([]);
+        console.error('❌ خطأ في جلب رسائل الدعم:', error.message);
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
+// ============================================================
+// ✅ تحديث رسالة دعم كمقروءة
+// ============================================================
 router.put('/support-messages/:id/read', [
     authenticate,
     authorize(['admin']),
@@ -679,14 +893,30 @@ router.put('/support-messages/:id/read', [
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        await update('support_messages', req.params.id, { status: 'read' });
+        const id = parseInt(req.params.id);
+        console.log(`📥 تحديث رسالة دعم ID: ${id} كمقروءة`);
+
+        const { error } = await supabase
+            .from('support_messages')
+            .update({ status: 'read' })
+            .eq('id', id);
+
+        if (error) {
+            console.error('❌ خطأ في تحديث رسالة الدعم:', error);
+            return res.status(500).json({ success: false, error: error.message });
+        }
+
+        console.log(`✅ تم تحديث رسالة الدعم ${id}`);
         res.json({ success: true });
     } catch (error) {
-        console.error('خطأ في تحديث رسالة الدعم:', error.message);
+        console.error('❌ خطأ في تحديث رسالة الدعم:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
 
+// ============================================================
+// ✅ حذف رسالة دعم
+// ============================================================
 router.delete('/support-messages/:id', [
     authenticate,
     authorize(['admin']),
@@ -698,10 +928,23 @@ router.delete('/support-messages/:id', [
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        await remove('support_messages', 'id', req.params.id);
+        const id = parseInt(req.params.id);
+        console.log(`📥 حذف رسالة دعم ID: ${id}`);
+
+        const { error } = await supabase
+            .from('support_messages')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            console.error('❌ خطأ في حذف رسالة الدعم:', error);
+            return res.status(500).json({ success: false, error: error.message });
+        }
+
+        console.log(`✅ تم حذف رسالة الدعم ${id}`);
         res.json({ success: true });
     } catch (error) {
-        console.error('خطأ في حذف رسالة الدعم:', error.message);
+        console.error('❌ خطأ في حذف رسالة الدعم:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
