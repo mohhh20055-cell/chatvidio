@@ -1414,34 +1414,20 @@
     <div class="modal-body">
         <div style="background: var(--gray-50); padding: 14px; border-radius: var(--radius-sm); margin-bottom: 16px; border: 1px solid var(--gray-200);">
             <p style="color: var(--danger); margin-bottom: 10px; font-size: 0.8rem; font-weight: 600;">
-                <i class="fas fa-exclamation-triangle"></i> لا يمكن تغيير المعلومات الشخصية إلا عبر الإدارة
+                <i class="fas fa-exclamation-triangle"></i> لا يمكن تغيير المعلومات الشخصية (الاسم، التخصص، الخبرة، المستوى الدراسي) إلا عبر الإدارة
             </p>
             
-            <!-- ===== المستوى التعليمي ===== -->
+            <!-- ===== عرض المستوى التعليمي فقط (للقراءة) ===== -->
             <div class="education-level-group" style="margin-top: 12px;">
-                <label><i class="fas fa-graduation-cap"></i> المستوى الدراسي الذي تدرسه <span style="color: var(--danger);">*</span></label>
-                <select id="editTeachingLevel" style="width: 100%; padding: 10px 14px; border: 2px solid var(--gray-200); border-radius: var(--radius-sm); font-family: 'Cairo', sans-serif; font-size: 0.9rem; background: white;">
-                    <option value="">-- اختر المستوى --</option>
-                    <option value="5eme_pri">خامسة ابتدائي</option>
-                    <option value="1ere_am">أولى متوسط</option>
-                    <option value="2eme_am">ثانية متوسط</option>
-                    <option value="3eme_am">ثالثة متوسط</option>
-                    <option value="4eme_am">رابعة متوسط</option>
-                    <option value="5eme_am">خامسة متوسط</option>
-                    <option value="1ere_as">أولى ثانوي</option>
-                    <option value="2eme_as">ثانية ثانوي</option>
-                    <option value="3eme_as">ثالثة ثانوي</option>
-                    <option value="bac">بكالوريا</option>
-                    <option value="1ere_uni">أولى جامعي</option>
-                    <option value="2eme_uni">ثانية جامعي</option>
-                    <option value="3eme_uni">ثالثة جامعي</option>
-                    <option value="master">ماستر</option>
-                    <option value="doctorat">دكتوراه</option>
-                    <option value="other">آخر</option>
-                </select>
-                <p style="font-size: 0.7rem; color: var(--gray-400); margin-top: 4px;">
-                    <i class="fas fa-info-circle"></i> حدد المستوى الدراسي الذي تدرسه ليتمكن الطلاب من معرفة تخصصك
-                </p>
+                <label style="color: var(--gray-500);">
+                    <i class="fas fa-graduation-cap" style="color: var(--primary);"></i> المستوى الدراسي الحالي <span style="color: var(--gray-400); font-weight: 400; font-size: 0.8rem;">(للقراءة فقط)</span>
+                </label>
+                <div style="background: var(--gray-100); padding: 10px 14px; border-radius: var(--radius-sm); border: 2px solid var(--gray-200); color: var(--gray-600); font-weight: 600; cursor: not-allowed;">
+                    <span id="currentTeachingLevelDisplay">لم يحدد بعد</span>
+                    <span style="font-size: 0.7rem; color: var(--gray-400); margin-right: 8px;">
+                        <i class="fas fa-info-circle"></i> يمكن تغيير هذا فقط عبر الإدارة
+                    </span>
+                </div>
             </div>
 
             <div style="margin-top: 12px;">
@@ -1580,7 +1566,6 @@
         : 'https://chatvidio.onrender.com';
 
     console.log('🌐 API Base URL:', API_BASE_URL);
-    console.log('🎥 نظام البث: Jitsi Meet (مجاني 100%)');
 
     // ================================================================
     // دوال المصادقة والأمان
@@ -1962,7 +1947,7 @@
         document.getElementById('navProfileName').textContent = userName.split(' ')[0];
         document.getElementById('navProfileImg').src = userImage;
 
-        // عرض المستوى التعليمي في الملف الشخصي
+        // خريطة المستويات
         const levelMap = {
             '5eme_pri': 'خامسة ابتدائي',
             '1ere_am': 'أولى متوسط',
@@ -2043,7 +2028,7 @@
                 </button>
 
                 <p style="color: var(--gray-400); margin-top: 16px; font-size: 0.7rem;">
-                    <i class="fas fa-lock"></i> لا يمكن تعديل المعلومات الشخصية (الاسم، التخصص، الخبرة) إلا عبر الإدارة
+                    <i class="fas fa-lock"></i> لا يمكن تعديل المعلومات الشخصية (الاسم، التخصص، الخبرة، المستوى الدراسي) إلا عبر الإدارة
                 </p>
             </div>
         `;
@@ -2791,6 +2776,7 @@
 
     function showEditProfileModal() {
         if (userData) {
+            // تعبئة حقول الروابط الاجتماعية
             document.getElementById('facebookUrl').value = userData.facebook_url || '';
             document.getElementById('instagramUrl').value = userData.instagram_url || '';
             document.getElementById('linkedinUrl').value = userData.linkedin_url || '';
@@ -2798,7 +2784,27 @@
             document.getElementById('twitterUrl').value = userData.twitter_url || '';
             document.getElementById('websiteUrl').value = userData.website_url || '';
             document.getElementById('whatsappUrl').value = userData.whatsapp_url || '';
-            document.getElementById('editTeachingLevel').value = userData.teaching_level || '';
+            
+            // عرض المستوى التعليمي الحالي (للقراءة فقط)
+            const levelMap = {
+                '5eme_pri': 'خامسة ابتدائي',
+                '1ere_am': 'أولى متوسط',
+                '2eme_am': 'ثانية متوسط',
+                '3eme_am': 'ثالثة متوسط',
+                '4eme_am': 'رابعة متوسط',
+                '5eme_am': 'خامسة متوسط',
+                '1ere_as': 'أولى ثانوي',
+                '2eme_as': 'ثانية ثانوي',
+                '3eme_as': 'ثالثة ثانوي',
+                'bac': 'بكالوريا',
+                '1ere_uni': 'أولى جامعي',
+                '2eme_uni': 'ثانية جامعي',
+                '3eme_uni': 'ثالثة جامعي',
+                'master': 'ماستر',
+                'doctorat': 'دكتوراه'
+            };
+            const currentLevel = userData.teaching_level ? levelMap[userData.teaching_level] || userData.teaching_level : 'لم يحدد بعد';
+            document.getElementById('currentTeachingLevelDisplay').textContent = currentLevel;
         }
         document.getElementById('modalOverlay').style.display = 'block';
         document.getElementById('editProfileModal').style.display = 'block';
@@ -2808,16 +2814,15 @@
         const formData = new FormData();
         formData.append('teacher_id', teacherId);
 
+        // ✅ الصورة الشخصية
         const imageFile = document.getElementById('editProfileImage').files[0];
         if (imageFile) {
             formData.append('profile_image', imageFile);
         }
 
-        const teachingLevel = document.getElementById('editTeachingLevel').value;
-        if (teachingLevel) {
-            formData.append('teaching_level', teachingLevel);
-        }
-
+        // ❌ تم إزالة teaching_level - لا يمكن للأستاذ تعديله
+        
+        // ✅ روابط التواصل الاجتماعي فقط
         const socialData = {
             facebook_url: document.getElementById('facebookUrl').value.trim() || null,
             instagram_url: document.getElementById('instagramUrl').value.trim() || null,
