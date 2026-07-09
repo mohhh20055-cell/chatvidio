@@ -1,5 +1,5 @@
 // ============================================================
-// مسارات الطالب - Student Routes
+// مسارات الطالب - Student Routes (معدل لدعم المستوى التعليمي)
 // ============================================================
 
 const express = require('express');
@@ -49,7 +49,7 @@ const upload = multer({
 });
 
 // ============================================================
-// جلب بيانات الطالب
+// جلب بيانات الطالب (مع المستوى التعليمي)
 // ============================================================
 router.get('/:student_id', authenticate, [
     param('student_id').isInt().withMessage('معرف الطالب غير صالح')
@@ -79,7 +79,7 @@ router.get('/:student_id', authenticate, [
 });
 
 // ============================================================
-// تحديث ملف الطالب
+// ✅ تحديث ملف الطالب (مع المستوى التعليمي)
 // ============================================================
 router.post('/update-profile', authenticate, authorize(['student']), upload.single('profile_image'), validateUploadedFiles, [
     body('student_id').isInt().withMessage('معرف الطالب غير صالح')
@@ -90,9 +90,12 @@ router.post('/update-profile', authenticate, authorize(['student']), upload.sing
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        const { student_id, full_name, phone } = req.body;
+        const { student_id, full_name, phone, education_level } = req.body;
 
-        if (req.user.userId !== student_id) {
+        console.log('📝 تحديث ملف الطالب:', student_id);
+        console.log('🎓 المستوى التعليمي:', education_level);
+
+        if (req.user.userId !== parseInt(student_id)) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بتحديث هذا الملف' });
         }
 
@@ -100,6 +103,9 @@ router.post('/update-profile', authenticate, authorize(['student']), upload.sing
         let profile_url = null;
 
         const oldStudent = await getOne('students', 'id', student_id);
+        if (!oldStudent) {
+            return res.status(404).json({ success: false, error: 'طالب غير موجود' });
+        }
 
         if (req.file) {
             const uploaded = await uploadToSupabase(req.file, 'students', oldStudent?.profile_image);
@@ -114,6 +120,13 @@ router.post('/update-profile', authenticate, authorize(['student']), upload.sing
         if (phone) updateData.phone = phone.trim();
         if (profile_image) updateData.profile_image = profile_image;
         if (profile_url) updateData.profile_url = profile_url;
+        
+        // ✅ إضافة المستوى التعليمي إذا تم إرساله
+        if (education_level !== undefined && education_level !== null) {
+            updateData.education_level = education_level.trim() || null;
+        }
+
+        console.log('💾 البيانات المراد تحديثها:', updateData);
 
         const { data, error } = await supabase
             .from('students')
@@ -121,12 +134,26 @@ router.post('/update-profile', authenticate, authorize(['student']), upload.sing
             .eq('id', student_id)
             .select();
 
-        if (error) throw error;
+        if (error) {
+            console.error('❌ خطأ في تحديث قاعدة البيانات:', error);
+            throw error;
+        }
 
-        res.json({ success: true, message: 'تم تحديث الملف الشخصي', user: data[0] });
+        const updatedStudent = data ? data[0] : null;
+
+        console.log('✅ تم تحديث ملف الطالب بنجاح');
+        console.log('🎓 المستوى التعليمي المحفوظ:', updatedStudent?.education_level);
+
+        res.json({ 
+            success: true, 
+            message: 'تم تحديث الملف الشخصي والمستوى التعليمي بنجاح', 
+            user: updatedStudent,
+            education_level: updatedStudent?.education_level || null
+        });
     } catch (error) {
-        console.error('خطأ في تحديث ملف الطالب:', error.message);
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+        console.error('❌ خطأ في تحديث ملف الطالب:', error.message);
+        console.error('📚 Stack:', error.stack);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم: ' + error.message });
     }
 });
 
@@ -395,6 +422,214 @@ router.get('/wallet/:student_id', authenticate, authorize(['student']), [
         });
     } catch (error) {
         console.error('خطأ في جلب المحفظة:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// ✅ جلب الأساتذة المتوافقين مع مستوى الطالب
+// ============================================================
+router.get('/matching-teachers/:student_id', authenticate, authorize(['student']), [
+    param('student_id').isInt().withMessage('معرف الطالب غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const student_id = parseInt(req.params.student_id);
+
+        if (req.user.userId !== student_id) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        // ✅ جلب مستوى الطالب
+        const student = await getOne('students', 'id', student_id);
+        if (!student) {
+            return res.status(404).json({ success: false, error: 'طالب غير موجود' });
+        }
+
+        const studentLevel = student.education_level;
+
+        // ✅ جلب جميع الأساتذة المعتمدين
+        let query = supabase
+            .from('teachers')
+            .select('*')
+            .eq('status', 'approved')
+            .order('created_at', { ascending: false });
+
+        // ✅ إذا كان للطالب مستوى محدد، فلترة الأساتذة حسب المستوى
+        if (studentLevel) {
+            query = query.eq('teaching_level', studentLevel);
+        }
+
+        const { data: teachers, error } = await query;
+
+        if (error) throw error;
+
+        // إزالة كلمات المرور
+        const sanitized = (teachers || []).map(t => {
+            delete t.password;
+            return t;
+        });
+
+        res.json({
+            success: true,
+            student_level: studentLevel,
+            teachers: sanitized
+        });
+    } catch (error) {
+        console.error('خطأ في جلب الأساتذة المتوافقين:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// ✅ جلب العروض المتوافقة مع مستوى الطالب
+// ============================================================
+router.get('/matching-offers/:student_id', authenticate, authorize(['student']), [
+    param('student_id').isInt().withMessage('معرف الطالب غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const student_id = parseInt(req.params.student_id);
+
+        if (req.user.userId !== student_id) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        // ✅ جلب مستوى الطالب
+        const student = await getOne('students', 'id', student_id);
+        if (!student) {
+            return res.status(404).json({ success: false, error: 'طالب غير موجود' });
+        }
+
+        const studentLevel = student.education_level;
+
+        // ✅ جلب العروض القادمة
+        const now = new Date().toISOString();
+        let query = supabase
+            .from('offers')
+            .select('*')
+            .eq('status', 'upcoming')
+            .gt('offer_date', now)
+            .order('offer_date', { ascending: true });
+
+        // ✅ إذا كان للطالب مستوى محدد، فلترة العروض حسب المستوى
+        if (studentLevel) {
+            query = query.eq('education_level', studentLevel);
+        }
+
+        const { data: offers, error } = await query;
+
+        if (error) throw error;
+
+        if (!offers || offers.length === 0) {
+            return res.json({
+                success: true,
+                student_level: studentLevel,
+                offers: []
+            });
+        }
+
+        // ✅ جلب معلومات المعلمين
+        const teacherIds = [...new Set(offers.map(o => o.teacher_id))];
+        const { data: teachers, error: teachersError } = await supabase
+            .from('teachers')
+            .select('id, full_name, specialization, profile_image, profile_url')
+            .in('id', teacherIds);
+
+        if (teachersError) {
+            console.error('خطأ في جلب بيانات المعلمين:', teachersError.message);
+        }
+
+        const teachersMap = {};
+        if (teachers) {
+            for (const teacher of teachers) {
+                teachersMap[teacher.id] = teacher;
+            }
+        }
+
+        // ✅ تنسيق البيانات
+        const formatted = offers.map(offer => {
+            const teacher = teachersMap[offer.teacher_id] || {};
+
+            return {
+                id: offer.id,
+                teacher_id: offer.teacher_id,
+                subject_name: offer.subject_name,
+                duration: offer.duration,
+                offer_date: offer.offer_date,
+                price: offer.price,
+                is_free: offer.is_free,
+                status: offer.status,
+                education_level: offer.education_level,
+                room_password: offer.room_password || null,
+                room_name: offer.room_name || null,
+                created_at: offer.created_at,
+                teacher_name: teacher.full_name || 'غير معروف',
+                teacher_specialization: teacher.specialization || '',
+                teacher_profile_image: teacher.profile_image || null,
+                teacher_profile_url: teacher.profile_url || null
+            };
+        });
+
+        res.json({
+            success: true,
+            student_level: studentLevel,
+            offers: formatted
+        });
+    } catch (error) {
+        console.error('خطأ في جلب العروض المتوافقة:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// ✅ تحديث مستوى الطالب فقط
+// ============================================================
+router.put('/update-education-level', authenticate, authorize(['student']), [
+    body('student_id').isInt().withMessage('معرف الطالب غير صالح'),
+    body('education_level').notEmpty().withMessage('المستوى التعليمي مطلوب')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { student_id, education_level } = req.body;
+
+        if (req.user.userId !== parseInt(student_id)) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        const student = await getOne('students', 'id', student_id);
+        if (!student) {
+            return res.status(404).json({ success: false, error: 'طالب غير موجود' });
+        }
+
+        const { data, error } = await supabase
+            .from('students')
+            .update({ education_level: education_level.trim() })
+            .eq('id', student_id)
+            .select();
+
+        if (error) throw error;
+
+        res.json({
+            success: true,
+            message: 'تم تحديث المستوى التعليمي بنجاح',
+            education_level: education_level,
+            user: data ? data[0] : null
+        });
+    } catch (error) {
+        console.error('خطأ في تحديث المستوى التعليمي:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
