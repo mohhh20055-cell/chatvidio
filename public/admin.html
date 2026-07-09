@@ -50,6 +50,14 @@
         .nav-tab.notification-tab.active { background: #0f5cbf; color: white; }
         .nav-tab.banned-tab { background: #fecaca; color: #991b1b; }
         .nav-tab.banned-tab.active { background: #dc2626; color: white; }
+        .nav-tab .badge-count {
+            background: #ef4444;
+            color: white;
+            border-radius: 50%;
+            padding: 0 6px;
+            font-size: 0.6rem;
+            margin-right: 3px;
+        }
 
         .container { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
         .teachers-grid, .requests-grid, .messages-grid, .users-grid {
@@ -316,6 +324,18 @@
             font-size: 0.7rem;
             margin-right: 4px;
         }
+        .level-badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            background: #ede9fe;
+            color: #6d28d9;
+            border: 1px solid rgba(109, 40, 217, 0.15);
+            margin: 2px 0;
+        }
+        .level-badge i { margin-left: 4px; }
     </style>
 </head>
 <body>
@@ -463,12 +483,11 @@
 
     <script>
         // ============================================================
-        // ✅ التحقق من صلاحية المدير - يجب أن يكون في بداية الكود
+        // ✅ التحقق من صلاحية المدير
         // ============================================================
         (function checkAdminAccess() {
             console.log('🔐 التحقق من صلاحية المدير...');
             
-            // جلب بيانات المستخدم من localStorage
             const token = localStorage.getItem('token');
             const userDataStr = localStorage.getItem('userData');
             
@@ -485,7 +504,6 @@
                 const userData = JSON.parse(userDataStr);
                 console.log('UserData parsed:', userData);
                 
-                // التحقق من أن المستخدم هو مدير
                 if (userData.role !== 'admin') {
                     console.log('❌ المستخدم ليس مديراً - الدور:', userData.role);
                     window.location.href = '/';
@@ -508,6 +526,31 @@
         let currentActionRole = null;
         let currentActionId = null;
         let allStudents = [];
+
+        // خريطة المستويات للعرض
+        const levelMap = {
+            '5eme_pri': 'خامسة ابتدائي',
+            '1ere_am': 'أولى متوسط',
+            '2eme_am': 'ثانية متوسط',
+            '3eme_am': 'ثالثة متوسط',
+            '4eme_am': 'رابعة متوسط',
+            '5eme_am': 'خامسة متوسط',
+            '1ere_as': 'أولى ثانوي',
+            '2eme_as': 'ثانية ثانوي',
+            '3eme_as': 'ثالثة ثانوي',
+            'bac': 'بكالوريا',
+            '1ere_uni': 'أولى جامعي',
+            '2eme_uni': 'ثانية جامعي',
+            '3eme_uni': 'ثالثة جامعي',
+            'master': 'ماستر',
+            'doctorat': 'دكتوراه',
+            'other': 'آخر'
+        };
+
+        function getLevelDisplay(level) {
+            if (!level) return null;
+            return levelMap[level] || level;
+        }
 
         function showNotification(message, type = 'success') {
             const toast = document.getElementById('notificationToast');
@@ -860,7 +903,7 @@
             }
         }
 
-        // ===== جلب قائمة الطلاب =====
+        // ===== جلب قائمة الطلاب (مع المستوى التعليمي) =====
         async function loadStudents() {
             const container = document.getElementById('studentsList');
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
@@ -889,6 +932,7 @@
             for (const student of students) {
                 const isBanned = student.is_banned === true;
                 const imageUrl = student.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(student.full_name) + '&background=0f5cbf&color=fff&size=80';
+                const levelDisplay = student.education_level ? getLevelDisplay(student.education_level) : null;
                 
                 html += `
                     <div class="user-card ${isBanned ? 'banned' : ''}">
@@ -898,6 +942,7 @@
                         <p><i class="fas fa-envelope"></i> ${escapeHtml(student.email)}</p>
                         <p><i class="fas fa-phone"></i> ${escapeHtml(student.phone || 'غير محدد')}</p>
                         <p><span class="user-role-badge role-student">طالب</span></p>
+                        ${levelDisplay ? `<p><span class="level-badge"><i class="fas fa-graduation-cap"></i> ${levelDisplay}</span></p>` : ''}
                         <p><strong><i class="fas fa-wallet"></i> الرصيد:</strong> ${student.wallet_balance || 0} دج</p>
                         ${student.is_banned ? `<p style="font-size:0.7rem; color:#dc2626;"><i class="fas fa-ban"></i> محظور: ${escapeHtml(student.ban_reason || '')}</p>` : ''}
                         <div class="button-group">
@@ -935,7 +980,7 @@
             renderStudents(filtered);
         }
 
-        // ===== دوال الأساتذة =====
+        // ===== دوال الأساتذة (مع المستوى التعليمي) =====
         async function loadPendingTeachers() {
             const container = document.getElementById('pendingTeachers');
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
@@ -949,6 +994,7 @@
                 let html = '<div class="teachers-grid">';
                 for (const t of teachers) {
                     const imageUrl = t.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(t.full_name) + '&background=0f5cbf&color=fff&size=80';
+                    const levelDisplay = t.teaching_level ? getLevelDisplay(t.teaching_level) : null;
                     
                     html += `
                         <div class="teacher-card">
@@ -958,6 +1004,7 @@
                             <p><i class="fas fa-phone"></i> ${t.phone}</p>
                             <p><i class="fas fa-book"></i> ${escapeHtml(t.specialization)}</p>
                             <p><i class="fas fa-briefcase"></i> ${t.experience} سنة خبرة</p>
+                            ${levelDisplay ? `<p><span class="level-badge"><i class="fas fa-graduation-cap"></i> يدرس: ${levelDisplay}</span></p>` : ''}
                             <p><i class="fas fa-align-left"></i> ${escapeHtml(t.bio)}</p>
                             <div class="button-group">
                                 <button class="btn-approve" onclick="approveTeacher(${t.id})"><i class="fas fa-check"></i> قبول</button>
@@ -988,6 +1035,7 @@
                 for (const t of teachers) {
                     const isBanned = t.is_banned === true;
                     const imageUrl = t.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(t.full_name) + '&background=0f5cbf&color=fff&size=80';
+                    const levelDisplay = t.teaching_level ? getLevelDisplay(t.teaching_level) : null;
                     
                     html += `
                         <div class="teacher-card ${isBanned ? 'banned' : ''}">
@@ -998,6 +1046,7 @@
                             <p><i class="fas fa-phone"></i> ${t.phone}</p>
                             <p><i class="fas fa-book"></i> ${escapeHtml(t.specialization)}</p>
                             <p><i class="fas fa-briefcase"></i> ${t.experience} سنة خبرة</p>
+                            ${levelDisplay ? `<p><span class="level-badge"><i class="fas fa-graduation-cap"></i> يدرس: ${levelDisplay}</span></p>` : ''}
                             <p><strong><i class="fas fa-wallet"></i> الرصيد:</strong> ${t.balance || 0} دج</p>
                             ${isBanned ? `<p style="font-size:0.7rem; color:#dc2626;"><i class="fas fa-ban"></i> محظور: ${escapeHtml(t.ban_reason || '')}</p>` : ''}
                             <div class="button-group">
