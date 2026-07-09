@@ -2526,13 +2526,44 @@
             </div>
         </section>
 
-        <!-- ===== OFFERS SECTION ===== -->
+        <!-- ===== OFFERS SECTION - مع فلتر المستوى والمادة ===== -->
         <section id="offersSection" class="section-container" style="display: none;">
             <div class="section-header">
                 <span class="section-tag"><i class="fas fa-calendar-alt"></i> الدروس المتاحة</span>
                 <h2 class="section-title">الدروس المتاحة الآن <i class="fas fa-book"></i></h2>
                 <p class="section-subtitle">دروس خصوصية بأفضل الأسعار، اختر ما يناسب احتياجاتك</p>
             </div>
+            
+            <!-- ===== فلتر الدروس ===== -->
+            <div class="search-filter-container">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchOffer" placeholder="ابحث عن درس بالمادة..." oninput="filterOffers()">
+                </div>
+                <div class="filter-group">
+                    <select id="filterOfferLevel" onchange="filterOffers()">
+                        <option value="all">كل المستويات</option>
+                        <option value="5eme_pri">خامسة ابتدائي</option>
+                        <option value="1ere_am">أولى متوسط</option>
+                        <option value="2eme_am">ثانية متوسط</option>
+                        <option value="3eme_am">ثالثة متوسط</option>
+                        <option value="4eme_am">رابعة متوسط</option>
+                        <option value="5eme_am">خامسة متوسط</option>
+                        <option value="1ere_as">أولى ثانوي</option>
+                        <option value="2eme_as">ثانية ثانوي</option>
+                        <option value="bac">بكالوريا</option>
+                        <option value="1ere_uni">أولى جامعي</option>
+                        <option value="2eme_uni">ثانية جامعي</option>
+                        <option value="3eme_uni">ثالثة جامعي</option>
+                        <option value="master">ماستر</option>
+                        <option value="doctorat">دكتوراه</option>
+                    </select>
+                    <button class="clear-filters-btn" onclick="clearOfferFilters()">
+                        <i class="fas fa-undo"></i> مسح
+                    </button>
+                </div>
+            </div>
+            
             <div id="offersListPublic" class="offers-grid"></div>
         </section>
 
@@ -3069,6 +3100,8 @@
         var referralData = null;
         var allTeachers = [];
         var filteredTeachers = [];
+        var allOffers = [];
+        var filteredOffers = [];
 
         function readReferralFromURL() {
             try {
@@ -3319,7 +3352,6 @@
                 }
             });
 
-            // ✅ إعادة عرض reCAPTCHA بعد أن تصبح الحاوية مرئية
             switchTabRecaptcha(tab);
         }
 
@@ -3533,7 +3565,6 @@
                 return;
             }
             
-            // التحقق من المستوى الدراسي
             var teachingLevel = document.getElementById('teacherTeachingLevel').value;
             if (!teachingLevel) {
                 showNotification('⚠️ الرجاء اختيار المستوى الدراسي الذي ستدرسه', 'error');
@@ -3549,7 +3580,7 @@
             formData.append('specialization', document.getElementById('teacherSpecialization').value);
             formData.append('bio', document.getElementById('teacherBio').value);
             formData.append('experience', document.getElementById('teacherExperience').value);
-            formData.append('teaching_level', teachingLevel); // ✅ إرسال المستوى الدراسي
+            formData.append('teaching_level', teachingLevel);
             
             var profileImage = document.getElementById('profileImage');
             var diplomaImage = document.getElementById('diplomaImage');
@@ -3627,7 +3658,6 @@
             }
         }
 
-        // ===== عرض الأساتذة مع مستوى التدريس =====
         function renderTeachers(teachers) {
             var container = document.getElementById('teachersList');
             var emptyMsg = document.getElementById('teachersEmpty');
@@ -3639,7 +3669,6 @@
             }
             emptyMsg.style.display = 'none';
             
-            // خريطة المستويات
             var levelMap = {
                 '5eme_pri': 'خامسة ابتدائي',
                 '1ere_am': 'أولى متوسط',
@@ -3682,7 +3711,6 @@
             container.innerHTML = html;
         }
 
-        // ===== تصفية الأساتذة مع فلتر المستوى =====
         function filterTeachers() {
             var searchTerm = document.getElementById('searchTeacher').value.toLowerCase().trim();
             var experienceFilter = document.getElementById('filterExperience').value;
@@ -3736,7 +3764,7 @@
         }
 
         // ============================================================
-        // OFFERS
+        // OFFERS - مع فلتر المستوى والمادة
         // ============================================================
         async function loadPublicOffers() {
             var container = document.getElementById('offersListPublic');
@@ -3744,39 +3772,120 @@
             try {
                 var res = await fetch('/api/public/offers');
                 if (!res.ok) throw new Error('HTTP error! status: ' + res.status);
-                var offers = await res.json();
-                if (!offers || offers.length === 0) {
+                allOffers = await res.json();
+                filteredOffers = [...allOffers];
+                
+                if (!allOffers || allOffers.length === 0) {
                     container.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8;">لا توجد دروس متاحة حالياً</p>';
                     return;
                 }
-                var html = '';
-                offers.forEach(function(o) {
-                    var offerDate = new Date(o.offer_date);
-                    var imageUrl = o.teacher_profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(o.teacher_name) + '&background=0f5cbf&color=fff&size=50';
-                    html += '<div class="offer-card">' +
-                        '<div class="offer-teacher" onclick="viewTeacherProfile(' + o.teacher_id + ')">' +
-                            '<img src="' + imageUrl + '" onerror="this.src=\'https://ui-avatars.com/api/?name=' + encodeURIComponent(o.teacher_name) + '&background=0f5cbf&color=fff&size=50\'">' +
-                            '<div>' +
-                                '<h3>' + escapeHtml(o.teacher_name) + '</h3>' +
-                                '<p><i class="fas fa-book"></i> ' + escapeHtml(o.teacher_specialization || 'تخصص عام') + '</p>' +
-                            '</div>' +
-                        '</div>' +
-                        '<div class="offer-subject">' + escapeHtml(o.subject_name) + '</div>' +
-                        '<div class="offer-details"><i class="fas fa-calendar-alt"></i> ' + offerDate.toLocaleString('ar') + '</div>' +
-                        '<div class="offer-details"><i class="fas fa-clock"></i> ' + o.duration + ' دقيقة</div>' +
-                        '<div>' +
-                            (o.is_free ? '<span class="free-tag"><i class="fas fa-gift"></i> مجانية</span>' : '<span class="price-tag"><i class="fas fa-money-bill"></i> ' + o.price + ' دج</span>') +
-                        '</div>' +
-                        '<button class="view-profile-btn" onclick="viewTeacherProfile(' + o.teacher_id + ')" style="margin-top:14px;">' +
-                            '<i class="fas fa-eye"></i> زيارة صفحة الأستاذ' +
-                        '</button>' +
-                    '</div>';
-                });
-                container.innerHTML = html;
+                
+                renderOffers(allOffers);
             } catch(e) {
                 console.error(e);
                 container.innerHTML = '<p style="text-align:center; padding:40px; color:#ef4444;">حدث خطأ في تحميل البيانات</p>';
             }
+        }
+
+        function renderOffers(offers) {
+            var container = document.getElementById('offersListPublic');
+            
+            if (!offers || offers.length === 0) {
+                container.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8;">لا توجد دروس متاحة حالياً</p>';
+                return;
+            }
+            
+            var levelMap = {
+                '5eme_pri': 'خامسة ابتدائي',
+                '1ere_am': 'أولى متوسط',
+                '2eme_am': 'ثانية متوسط',
+                '3eme_am': 'ثالثة متوسط',
+                '4eme_am': 'رابعة متوسط',
+                '5eme_am': 'خامسة متوسط',
+                '1ere_as': 'أولى ثانوي',
+                '2eme_as': 'ثانية ثانوي',
+                '3eme_as': 'ثالثة ثانوي',
+                'bac': 'بكالوريا',
+                '1ere_uni': 'أولى جامعي',
+                '2eme_uni': 'ثانية جامعي',
+                '3eme_uni': 'ثالثة جامعي',
+                'master': 'ماستر',
+                'doctorat': 'دكتوراه'
+            };
+            
+            var html = '';
+            offers.forEach(function(o) {
+                var offerDate = new Date(o.offer_date);
+                var imageUrl = o.teacher_profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(o.teacher_name) + '&background=0f5cbf&color=fff&size=50';
+                
+                // عرض المستوى التعليمي للدرس
+                var levelDisplay = '';
+                if (o.education_level) {
+                    var levelName = levelMap[o.education_level] || o.education_level;
+                    levelDisplay = `<div class="offer-info"><i class="fas fa-graduation-cap" style="color:var(--accent);"></i> المستوى: ${levelName}</div>`;
+                }
+                
+                html += '<div class="offer-card">' +
+                    '<div class="offer-teacher" onclick="viewTeacherProfile(' + o.teacher_id + ')">' +
+                        '<img src="' + imageUrl + '" onerror="this.src=\'https://ui-avatars.com/api/?name=' + encodeURIComponent(o.teacher_name) + '&background=0f5cbf&color=fff&size=50\'">' +
+                        '<div>' +
+                            '<h3>' + escapeHtml(o.teacher_name) + '</h3>' +
+                            '<p><i class="fas fa-book"></i> ' + escapeHtml(o.teacher_specialization || 'تخصص عام') + '</p>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="offer-subject">' + escapeHtml(o.subject_name) + '</div>' +
+                    '<div class="offer-details"><i class="fas fa-calendar-alt"></i> ' + offerDate.toLocaleString('ar') + '</div>' +
+                    '<div class="offer-details"><i class="fas fa-clock"></i> ' + o.duration + ' دقيقة</div>' +
+                    levelDisplay +
+                    '<div>' +
+                        (o.is_free ? '<span class="free-tag"><i class="fas fa-gift"></i> مجانية</span>' : '<span class="price-tag"><i class="fas fa-money-bill"></i> ' + o.price + ' دج</span>') +
+                    '</div>' +
+                    '<button class="view-profile-btn" onclick="viewTeacherProfile(' + o.teacher_id + ')" style="margin-top:14px;">' +
+                        '<i class="fas fa-eye"></i> زيارة صفحة الأستاذ' +
+                    '</button>' +
+                '</div>';
+            });
+            container.innerHTML = html;
+        }
+
+        // ===== تصفية الدروس =====
+        function filterOffers() {
+            var searchTerm = document.getElementById('searchOffer').value.toLowerCase().trim();
+            var levelFilter = document.getElementById('filterOfferLevel').value;
+            
+            filteredOffers = allOffers.filter(function(o) {
+                var matchesSearch = true;
+                if (searchTerm) {
+                    var subject = (o.subject_name || '').toLowerCase();
+                    var teacher = (o.teacher_name || '').toLowerCase();
+                    matchesSearch = subject.includes(searchTerm) || teacher.includes(searchTerm);
+                }
+                
+                var matchesLevel = true;
+                if (levelFilter !== 'all') {
+                    matchesLevel = o.education_level === levelFilter;
+                }
+                
+                return matchesSearch && matchesLevel;
+            });
+            
+            renderOffers(filteredOffers);
+            
+            var resultsCount = document.querySelector('.results-count');
+            if (!resultsCount) {
+                var container = document.getElementById('offersListPublic');
+                var countDiv = document.createElement('div');
+                countDiv.className = 'results-count';
+                container.parentNode.insertBefore(countDiv, container);
+                resultsCount = countDiv;
+            }
+            resultsCount.innerHTML = 'عرض <span>' + filteredOffers.length + '</span> من <span>' + allOffers.length + '</span> درس';
+        }
+
+        function clearOfferFilters() {
+            document.getElementById('searchOffer').value = '';
+            document.getElementById('filterOfferLevel').value = 'all';
+            filterOffers();
         }
 
         // ============================================================
@@ -3970,7 +4079,6 @@
                     `;
                 }
                 
-                // عرض مستوى التدريس في الملف الشخصي
                 var levelMap = {
                     '5eme_pri': 'خامسة ابتدائي',
                     '1ere_am': 'أولى متوسط',
