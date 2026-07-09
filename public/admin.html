@@ -346,6 +346,134 @@
             display: block;
             margin-bottom: 10px;
         }
+        /* ===== إرسال إشعار لمستخدم محدد ===== */
+        .send-to-user-section {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .send-to-user-section h4 {
+            margin-bottom: 15px;
+            color: #1e3c72;
+            font-weight: 800;
+        }
+        .send-to-user-section h4 i { color: #8b5cf6; }
+        .user-select-wrapper {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        .user-select-wrapper select {
+            flex: 2;
+            min-width: 200px;
+            padding: 12px;
+            border: 1px solid #e4e6eb;
+            border-radius: 8px;
+            font-family: 'Cairo', sans-serif;
+            font-size: 0.9rem;
+            background: white;
+        }
+        .user-select-wrapper select:focus {
+            outline: none;
+            border-color: #0f5cbf;
+            box-shadow: 0 0 0 3px rgba(15, 92, 191, 0.1);
+        }
+        .user-select-wrapper .send-btn {
+            background: #8b5cf6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.9rem;
+            transition: 0.3s;
+            font-family: 'Cairo', sans-serif;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .user-select-wrapper .send-btn:hover {
+            background: #7c3aed;
+            transform: translateY(-1px);
+        }
+        .user-select-wrapper .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .user-type-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .user-type-tab {
+            padding: 6px 16px;
+            border: 2px solid #e4e6eb;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.8rem;
+            transition: 0.3s;
+            background: white;
+            font-family: 'Cairo', sans-serif;
+        }
+        .user-type-tab.active {
+            border-color: #0f5cbf;
+            background: #0f5cbf;
+            color: white;
+        }
+        .user-type-tab:hover:not(.active) {
+            border-color: #94a3b8;
+        }
+        .send-to-user-section .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .send-to-user-section .input-group input,
+        .send-to-user-section .input-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #e4e6eb;
+            border-radius: 8px;
+            font-family: 'Cairo', sans-serif;
+            font-size: 0.9rem;
+            transition: 0.3s;
+        }
+        .send-to-user-section .input-group input:focus,
+        .send-to-user-section .input-group textarea:focus {
+            border-color: #0f5cbf;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(15, 92, 191, 0.1);
+        }
+        .send-to-user-section .input-group textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        .selected-user-info {
+            background: var(--gray-50);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: #1e3c72;
+            border: 1px solid #e4e6eb;
+            display: none;
+        }
+        .selected-user-info .user-role-tag {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 0.6rem;
+            font-weight: 700;
+            margin-right: 6px;
+        }
+        .selected-user-info .user-role-tag.student { background: #dbeafe; color: #1d4ed8; }
+        .selected-user-info .user-role-tag.teacher { background: #dcfce7; color: #15803d; }
     </style>
 </head>
 <body>
@@ -390,12 +518,47 @@
         </div>
         <div id="notificationsTab" style="display: none;">
             <div class="notification-card" style="background: #fef3c7; border-color: #f59e0b;">
-                <h3 style="color: #92400e;"><i class="fas fa-info-circle"></i> إرسال إشعارات للطلاب</h3>
-                <p style="color: #78350f; font-size: 0.9rem;">يمكنك إرسال رسائل إشعارات لجميع الطلاب المسجلين في المنصة</p>
+                <h3 style="color: #92400e;"><i class="fas fa-info-circle"></i> إرسال إشعارات</h3>
+                <p style="color: #78350f; font-size: 0.9rem;">يمكنك إرسال إشعارات لجميع الطلاب أو لمستخدم محدد</p>
             </div>
             
+            <!-- ===== إرسال إشعار لمستخدم محدد ===== -->
+            <div class="send-to-user-section">
+                <h4><i class="fas fa-user-plus"></i> إرسال إشعار لمستخدم محدد</h4>
+                
+                <div class="user-type-tabs">
+                    <button class="user-type-tab active" data-type="student" onclick="switchUserType('student')">
+                        <i class="fas fa-user-graduate"></i> طلاب
+                    </button>
+                    <button class="user-type-tab" data-type="teacher" onclick="switchUserType('teacher')">
+                        <i class="fas fa-chalkboard-user"></i> أساتذة
+                    </button>
+                </div>
+
+                <div class="user-select-wrapper">
+                    <select id="targetUserSelect" onchange="updateSelectedUserInfo()">
+                        <option value="">-- اختر المستخدم --</option>
+                    </select>
+                    <button class="send-btn" onclick="sendNotificationToUser()">
+                        <i class="fas fa-paper-plane"></i> إرسال
+                    </button>
+                </div>
+                
+                <div id="selectedUserInfo" class="selected-user-info">
+                    <span id="selectedUserName"></span>
+                    <span id="selectedUserRoleTag"></span>
+                    <span id="selectedUserEmail" style="font-size:0.75rem; color:#64748b;"></span>
+                </div>
+
+                <div class="input-group">
+                    <input type="text" id="singleNotificationTitle" placeholder="عنوان الإشعار">
+                    <textarea id="singleNotificationMessage" placeholder="محتوى الإشعار"></textarea>
+                </div>
+            </div>
+
+            <!-- ===== إرسال إشعار للجميع ===== -->
             <div style="background: white; border-radius: 16px; padding: 20px; margin-top: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                <h4 style="margin-bottom: 15px; color: #1e3c72;"><i class="fas fa-pen"></i> إنشاء إشعار جديد</h4>
+                <h4 style="margin-bottom: 15px; color: #1e3c72;"><i class="fas fa-bullhorn"></i> إرسال إشعار للجميع</h4>
                 <input type="text" id="notificationTitle" placeholder="عنوان الإشعار" style="width:100%; padding:12px; border:1px solid #e4e6eb; border-radius:8px; margin-bottom:10px;">
                 <textarea id="notificationMessage" placeholder="محتوى الإشعار" style="width:100%; padding:12px; border:1px solid #e4e6eb; border-radius:8px; min-height:100px; margin-bottom:10px; font-family:'Cairo',sans-serif;"></textarea>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
@@ -408,6 +571,7 @@
                 </div>
             </div>
 
+            <!-- ===== الإشعارات المرسلة ===== -->
             <div style="background: white; border-radius: 16px; padding: 20px; margin-top: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                 <h4 style="margin-bottom: 15px; color: #1e3c72;"><i class="fas fa-history"></i> الإشعارات المرسلة</h4>
                 <div id="sentNotificationsList">
@@ -536,6 +700,9 @@
         let currentActionRole = null;
         let currentActionId = null;
         let allStudents = [];
+        let allTeachers = [];
+        let currentUserType = 'student';
+        let allUsers = [];
 
         // خريطة المستويات للعرض
         const levelMap = {
@@ -583,7 +750,6 @@
         // ✅ دوال جلب البيانات مع معالجة الأخطاء
         // ============================================================
 
-        // دالة مساعدة لجلب البيانات مع معالجة الأخطاء
         async function fetchData(url, errorMessage = 'حدث خطأ في تحميل البيانات') {
             try {
                 const token = localStorage.getItem('token');
@@ -641,10 +807,160 @@
             else if (tab === 'banned') loadBannedUsers();
             else if (tab === 'withdrawals') loadWithdrawals();
             else if (tab === 'support') loadSupportMessages();
-            else if (tab === 'notifications') loadSentNotifications();
+            else if (tab === 'notifications') {
+                loadSentNotifications();
+                loadUsersForNotification();
+            }
         }
 
-        // ===== إرسال إشعار لجميع الطلاب =====
+        // ============================================================
+        // ✅ جلب المستخدمين للإشعارات
+        // ============================================================
+        async function loadUsersForNotification() {
+            try {
+                const token = localStorage.getItem('token');
+                
+                // جلب الطلاب
+                const studentsRes = await fetch('/api/admin/students', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const students = await studentsRes.json();
+                allStudents = students || [];
+                
+                // جلب الأساتذة
+                const teachersRes = await fetch('/api/admin/approved-teachers', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const teachers = await teachersRes.json();
+                allTeachers = teachers || [];
+                
+                updateUserSelect();
+            } catch(e) {
+                console.error('❌ خطأ في جلب المستخدمين:', e);
+            }
+        }
+
+        function switchUserType(type) {
+            currentUserType = type;
+            document.querySelectorAll('.user-type-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.type === type);
+            });
+            document.getElementById('selectedUserInfo').style.display = 'none';
+            updateUserSelect();
+        }
+
+        function updateUserSelect() {
+            const select = document.getElementById('targetUserSelect');
+            const users = currentUserType === 'student' ? allStudents : allTeachers;
+            const roleLabel = currentUserType === 'student' ? 'طالب' : 'أستاذ';
+            
+            let html = `<option value="">-- اختر ${roleLabel} --</option>`;
+            for (const user of users) {
+                if (user.is_banned) continue;
+                html += `<option value="${user.id}|${currentUserType}">${user.full_name} (${user.email})</option>`;
+            }
+            select.innerHTML = html;
+        }
+
+        function updateSelectedUserInfo() {
+            const select = document.getElementById('targetUserSelect');
+            const value = select.value;
+            const infoDiv = document.getElementById('selectedUserInfo');
+            
+            if (!value) {
+                infoDiv.style.display = 'none';
+                return;
+            }
+            
+            const [id, type] = value.split('|');
+            const users = type === 'student' ? allStudents : allTeachers;
+            const user = users.find(u => u.id == id);
+            
+            if (user) {
+                const roleLabel = type === 'student' ? 'طالب' : 'أستاذ';
+                const roleClass = type === 'student' ? 'student' : 'teacher';
+                document.getElementById('selectedUserName').textContent = user.full_name;
+                document.getElementById('selectedUserRoleTag').innerHTML = `<span class="user-role-tag ${roleClass}">${roleLabel}</span>`;
+                document.getElementById('selectedUserEmail').textContent = user.email;
+                infoDiv.style.display = 'block';
+            }
+        }
+
+        // ============================================================
+        // ✅ إرسال إشعار لمستخدم محدد
+        // ============================================================
+        async function sendNotificationToUser() {
+            const select = document.getElementById('targetUserSelect');
+            const value = select.value;
+            const title = document.getElementById('singleNotificationTitle').value.trim();
+            const message = document.getElementById('singleNotificationMessage').value.trim();
+            
+            if (!value) {
+                showNotification('⚠️ الرجاء اختيار مستخدم', 'warning');
+                return;
+            }
+            
+            if (!title) {
+                showNotification('⚠️ الرجاء إدخال عنوان الإشعار', 'warning');
+                document.getElementById('singleNotificationTitle').focus();
+                return;
+            }
+            
+            if (!message) {
+                showNotification('⚠️ الرجاء إدخال محتوى الإشعار', 'warning');
+                document.getElementById('singleNotificationMessage').focus();
+                return;
+            }
+            
+            const [userId, userType] = value.split('|');
+            const userLabel = userType === 'student' ? 'الطالب' : 'الأستاذ';
+            
+            if (!confirm(`⚠️ هل أنت متأكد من إرسال الإشعار إلى ${userLabel}؟\n\nالعنوان: ${title}\nالمحتوى: ${message}`)) {
+                return;
+            }
+            
+            const btn = document.querySelector('.send-to-user-section .send-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإرسال...';
+            
+            try {
+                const token = localStorage.getItem('token');
+                const res = await fetch('/api/admin/send-notification-to-user', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ 
+                        user_id: parseInt(userId), 
+                        user_type: userType,
+                        title, 
+                        message 
+                    })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    showNotification(`✅ تم إرسال الإشعار إلى ${userLabel} بنجاح`, 'success');
+                    document.getElementById('singleNotificationTitle').value = '';
+                    document.getElementById('singleNotificationMessage').value = '';
+                    document.getElementById('selectedUserInfo').style.display = 'none';
+                    select.value = '';
+                    loadSentNotifications();
+                } else {
+                    showNotification(data.error || '❌ حدث خطأ', 'error');
+                }
+            } catch(e) {
+                showNotification('❌ حدث خطأ في الاتصال', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-paper-plane"></i> إرسال';
+            }
+        }
+
+        // ============================================================
+        // ✅ إرسال إشعار لجميع الطلاب
+        // ============================================================
         async function sendNotificationToAllStudents() {
             const title = document.getElementById('notificationTitle').value.trim();
             const message = document.getElementById('notificationMessage').value.trim();
@@ -696,7 +1012,9 @@
             }
         }
 
-        // ===== جلب الإشعارات المرسلة =====
+        // ============================================================
+        // ✅ جلب الإشعارات المرسلة
+        // ============================================================
         async function loadSentNotifications() {
             const container = document.getElementById('sentNotificationsList');
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
@@ -712,21 +1030,27 @@
                 let html = '';
                 for (const notif of data) {
                     const date = new Date(notif.created_at);
+                    const isToAll = notif.sent_to_all === true;
+                    const isToUser = notif.user_id && notif.user_type;
+                    
                     html += `
-                        <div class="notification-card" style="background: #f8fafc; border-right-color: ${notif.sent_to_all ? '#10b981' : '#0f5cbf'};">
+                        <div class="notification-card" style="background: #f8fafc; border-right-color: ${isToAll ? '#10b981' : '#8b5cf6'};">
                             <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap;">
                                 <div>
                                     <div class="notif-title">${escapeHtml(notif.title)}</div>
                                     <div style="font-size: 0.9rem; color: #334155; margin: 8px 0;">${escapeHtml(notif.message)}</div>
                                     <div style="display: flex; gap: 10px; flex-wrap: wrap; font-size: 0.75rem; color: #64748b;">
-                                        <span><i class="fas fa-users"></i> أرسل لـ ${notif.sent_to_all ? 'جميع الطلاب' : 'طلاب محددين'}</span>
+                                        <span><i class="fas fa-users"></i> 
+                                            ${isToAll ? 'جميع الطلاب' : 
+                                              (isToUser ? `مستخدم محدد (${notif.user_type === 'student' ? 'طالب' : 'أستاذ'})` : 'مستخدم محدد')}
+                                        </span>
                                         <span><i class="fas fa-clock"></i> ${date.toLocaleString('ar')}</span>
                                         ${notif.students_count ? `<span><i class="fas fa-user"></i> ${notif.students_count} طالب</span>` : ''}
                                     </div>
                                 </div>
                                 <div>
-                                    <span class="status-badge ${notif.sent_to_all ? 'status-read' : 'status-unread'}" style="font-size:0.6rem;">
-                                        ${notif.sent_to_all ? '✅ للجميع' : '👤 لمجموعة'}
+                                    <span class="status-badge ${isToAll ? 'status-read' : 'status-unread'}" style="font-size:0.6rem;">
+                                        ${isToAll ? '✅ للجميع' : '👤 لمستخدم'}
                                     </span>
                                 </div>
                             </div>
@@ -745,7 +1069,9 @@
             }
         }
 
-        // ===== حذف إشعار =====
+        // ============================================================
+        // ✅ حذف إشعار
+        // ============================================================
         async function deleteNotification(id) {
             if (!confirm('هل أنت متأكد من حذف هذا الإشعار؟')) return;
             
@@ -765,7 +1091,9 @@
             }
         }
 
-        // ===== دوال معالجة المستخدمين =====
+        // ============================================================
+        // ✅ دوال معالجة المستخدمين (حذف، حظر، إلخ)
+        // ============================================================
         function showDeleteUserModal(userId, userRole, userName) {
             currentActionId = userId;
             currentActionRole = userRole;
@@ -809,6 +1137,7 @@
                         loadStudents();
                     }
                     loadBannedUsers();
+                    loadUsersForNotification();
                 } else {
                     showNotification(data.error || '❌ حدث خطأ', 'error');
                 }
@@ -852,6 +1181,7 @@
                     loadStudents();
                     loadApprovedTeachers();
                     loadBannedUsers();
+                    loadUsersForNotification();
                 } else {
                     showNotification(data.error || '❌ حدث خطأ', 'error');
                 }
@@ -864,7 +1194,7 @@
             currentActionId = userId;
             currentActionRole = userRole;
             document.getElementById('unbanUserMessage').innerHTML = 
-                `هل أنت متأكد من إلغاء حظر <strong>${escapeHtml(userName)}</strong> (${userRole === 'student' ? 'طالب' : 'أستاذ'})؟<br><br>` +
+                `هل أنت متأكد من إلغاء حظر <strong>${escapeHtml(userName)}</strong> (${userRole === 'student' ? 'طالب' : 'أستاذ'})？<br><br>` +
                 `<span style="font-size:0.8rem; color:#64748b;">سبب الحظر: ${escapeHtml(banReason || 'غير محدد')}</span>`;
             document.getElementById('modalOverlay').style.display = 'block';
             document.getElementById('unbanUserModal').style.display = 'block';
@@ -892,6 +1222,7 @@
                     loadStudents();
                     loadApprovedTeachers();
                     loadBannedUsers();
+                    loadUsersForNotification();
                 } else {
                     showNotification(data.error || '❌ حدث خطأ', 'error');
                 }
@@ -926,7 +1257,9 @@
             document.getElementById('rejectModal').style.display = 'none';
         }
 
-        // ===== جلب قائمة المحظورين =====
+        // ============================================================
+        // ✅ جلب المحظورين
+        // ============================================================
         async function loadBannedUsers() {
             const container = document.getElementById('bannedUsersList');
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
@@ -971,7 +1304,9 @@
             }
         }
 
-        // ===== جلب قائمة الطلاب (مع المستوى التعليمي) =====
+        // ============================================================
+        // ✅ جلب الطلاب
+        // ============================================================
         async function loadStudents() {
             const container = document.getElementById('studentsList');
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
@@ -1046,7 +1381,9 @@
             renderStudents(filtered);
         }
 
-        // ===== دوال الأساتذة (مع المستوى التعليمي) =====
+        // ============================================================
+        // ✅ دوال الأساتذة
+        // ============================================================
         async function loadPendingTeachers() {
             const container = document.getElementById('pendingTeachers');
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
@@ -1092,6 +1429,7 @@
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
             try {
                 const data = await fetchData('/api/admin/approved-teachers', 'خطأ في تحميل الأساتذة');
+                allTeachers = data || [];
                 
                 if (!data || data.length === 0) {
                     container.innerHTML = '<div class="empty-state"><i class="fas fa-users"></i>لا توجد أساتذة مقبولون</div>';
@@ -1154,6 +1492,7 @@
                     showNotification('✅ تم قبول الأستاذ بنجاح', 'success');
                     loadPendingTeachers();
                     loadApprovedTeachers();
+                    loadUsersForNotification();
                 } else {
                     showNotification(data.error || '❌ حدث خطأ', 'error');
                 }
@@ -1198,7 +1537,9 @@
             }
         }
 
-        // ===== دوال طلبات السحب =====
+        // ============================================================
+        // ✅ دوال طلبات السحب
+        // ============================================================
         async function loadWithdrawals() {
             const container = document.getElementById('withdrawalsList');
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
@@ -1281,7 +1622,9 @@
             }
         }
 
-        // ===== دوال رسائل الدعم =====
+        // ============================================================
+        // ✅ دوال رسائل الدعم
+        // ============================================================
         async function loadSupportMessages() {
             const container = document.getElementById('supportMessagesList');
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
@@ -1375,7 +1718,9 @@
             return div.innerHTML; 
         }
 
-        // ===== بدء التشغيل =====
+        // ============================================================
+        // ✅ بدء التشغيل
+        // ============================================================
         showTab('pending');
     </script>
 </body>
