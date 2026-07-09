@@ -1335,14 +1335,25 @@ const walletRoutes = require('./routes/wallet');
 const notificationRoutes = require('./routes/notification');
 
 // ============================================================
-// استخدام المسارات
+// استخدام المسارات - الترتيب مهم جداً!
 // ============================================================
 
+// ✅ المسارات العامة (لا تحتاج مصادقة)
 app.use('/api', publicRoutes);
+
+// ✅ مسارات المصادقة (تسجيل الدخول، تسجيل طالب، تسجيل أستاذ)
+// هذه المسارات يجب أن تأتي قبل /api/student و /api/teacher
 app.use('/api', authRoutes);
+
+// ✅ مسارات الإدارة (تحتاج مصادقة إدارية)
 app.use('/api/admin', adminRoutes);
-app.use('/api/teacher', teacherRoutes);
-app.use('/api/student', studentRoutes);
+
+// ✅ مسارات الأستاذ والطالب (تحتاج مصادقة)
+// ملاحظة: هذه المسارات لا تحتوي على /register لأنها موجودة في authRoutes
+app.use('/api/teacher', authenticate, teacherRoutes);
+app.use('/api/student', authenticate, studentRoutes);
+
+// ✅ باقي المسارات
 app.use('/api', offerRoutes);
 app.use('/api/booking', bookingRoutes);
 app.use('/api/stream', streamRoutes);
@@ -1492,6 +1503,7 @@ if (require.main === module) {
         console.log('=' .repeat(60));
         console.log('📅 التاريخ:', new Date().toLocaleString('ar-EG'));
         console.log('✅ نظام البث: Jitsi Meet (مجاني 100%)');
+        console.log('✅ مسارات المصادقة: /api/student/register و /api/teacher/register');
         console.log('=' .repeat(60));
     });
 }
