@@ -965,14 +965,14 @@
         }
 
         /* ===== CARDS ===== */
-        .teachers-grid, .offers-grid, .developers-grid {
+        .teachers-grid, .developers-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 28px;
             margin-top: 10px;
         }
         
-        .teacher-card, .offer-card, .developer-card {
+        .teacher-card, .developer-card {
             background: white;
             border-radius: var(--radius-md);
             padding: 28px 24px;
@@ -985,7 +985,7 @@
             overflow: hidden;
         }
         
-        .teacher-card::before, .offer-card::before, .developer-card::before {
+        .teacher-card::before, .developer-card::before {
             content: '';
             position: absolute;
             top: 0;
@@ -997,25 +997,26 @@
             transition: var(--transition);
         }
         
-        .teacher-card:hover::before, .offer-card:hover::before, .developer-card:hover::before { 
+        .teacher-card:hover::before, .developer-card:hover::before { 
             opacity: 1; 
         }
         
-        .teacher-card:hover, .offer-card:hover, .developer-card:hover {
+        .teacher-card:hover, .developer-card:hover {
             transform: translateY(-8px);
             box-shadow: var(--shadow-lg);
             border-color: var(--primary-light);
         }
         
         .teacher-image, .developer-image {
-            width: 96px;
-            height: 96px;
+            width: 120px;
+            height: 120px;
             border-radius: 50%;
             object-fit: cover;
             margin-bottom: 14px;
             border: 4px solid white;
             box-shadow: 0 4px 16px rgba(0,0,0,0.08);
             transition: var(--transition);
+            cursor: pointer;
         }
         
         .teacher-card:hover .teacher-image,
@@ -1097,91 +1098,23 @@
             overflow: hidden;
         }
 
-        /* ===== TEACHER LEVEL BADGE ===== */
+        /* ===== TEACHER LEVEL BADGE - يظهر مباشرة في البطاقة ===== */
         .teacher-level-badge {
             display: inline-block;
             background: var(--accent-light);
             color: var(--accent);
-            padding: 3px 12px;
+            padding: 4px 14px;
             border-radius: 20px;
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             font-weight: 700;
-            margin: 4px 0;
-            border: 1px solid rgba(139, 92, 246, 0.15);
+            margin: 6px 0;
+            border: 1px solid rgba(139, 92, 246, 0.2);
         }
         .teacher-level-badge i {
-            margin-left: 4px;
+            margin-left: 5px;
         }
 
-        /* ===== OFFER CARDS ===== */
-        .offer-card .offer-teacher {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            margin-bottom: 14px;
-            text-align: right;
-        }
-        
-        .offer-card .offer-teacher img {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid white;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-        }
-        
-        .offer-card .offer-teacher h3 {
-            font-size: 0.95rem;
-            color: var(--primary);
-            margin-bottom: 2px;
-        }
-        
-        .offer-card .offer-teacher p {
-            font-size: 0.75rem;
-            color: var(--gray);
-        }
-        
-        .offer-card .offer-subject {
-            font-weight: 700;
-            font-size: 1.05rem;
-            color: var(--dark);
-            margin: 8px 0;
-        }
-        
-        .offer-card .offer-details {
-            font-size: 0.85rem;
-            color: var(--gray);
-            margin: 4px 0;
-        }
-        
-        .offer-card .offer-details i { 
-            color: var(--primary); 
-            width: 20px;
-        }
-        
-        .price-tag {
-            background: var(--gradient-secondary);
-            color: white;
-            padding: 4px 16px;
-            border-radius: 30px;
-            display: inline-block;
-            margin-top: 8px;
-            font-weight: 700;
-            font-size: 0.85rem;
-        }
-        
-        .free-tag {
-            background: var(--gold);
-            color: white;
-            padding: 4px 16px;
-            border-radius: 30px;
-            display: inline-block;
-            margin-top: 8px;
-            font-weight: 700;
-            font-size: 0.85rem;
-        }
-        
+        /* ===== LIVE BADGE ===== */
         .live-badge {
             background: var(--danger);
             color: white;
@@ -2173,7 +2106,7 @@
         @media (max-width: 768px) {
             .hero-content h1 { font-size: 2rem; }
             .nav-links a { padding: 6px 12px; font-size: 0.75rem; }
-            .teachers-grid, .offers-grid, .developers-grid { grid-template-columns: 1fr; }
+            .teachers-grid, .developers-grid { grid-template-columns: 1fr; }
             .stats-container { flex-direction: column; }
             .stat-card { min-width: auto; }
             .download-card { padding: 30px 20px; }
@@ -2296,10 +2229,6 @@
                     <i class="fas fa-chalkboard-user nav-icon"></i>
                     <span class="nav-label">الأساتذة</span>
                 </a>
-                <a onclick="showOffers()" id="offersTab">
-                    <i class="fas fa-book nav-icon"></i>
-                    <span class="nav-label">الدروس</span>
-                </a>
                 <a onclick="showLiveStreams()" id="liveTab">
                     <i class="fas fa-broadcast nav-icon"></i>
                     <span class="nav-label">مباشر</span>
@@ -2347,11 +2276,6 @@
                         <div class="label">أستاذ معتمد</div>
                     </div>
                     <div class="stat-card">
-                        <span class="icon"><i class="fas fa-book"></i></span>
-                        <div class="number" id="totalOffersCount">0</div>
-                        <div class="label">عدد الدروس</div>
-                    </div>
-                    <div class="stat-card">
                         <span class="icon"><i class="fas fa-video"></i></span>
                         <div class="number" id="liveCountStat">0</div>
                         <div class="label">بث مباشر الآن</div>
@@ -2367,10 +2291,6 @@
                     <button class="btn-primary" onclick="showTeachers()">
                         <i class="fas fa-users"></i>
                         تعرف على أساتذتنا
-                    </button>
-                    <button class="btn-outline" onclick="showOffers()">
-                        <i class="fas fa-calendar-alt"></i>
-                        استعرض الدروس
                     </button>
                     <button class="btn-success" onclick="showTeacherRegister()">
                         <i class="fas fa-chalkboard-user"></i>
@@ -2473,7 +2393,7 @@
             </div>
         </section>
 
-        <!-- ===== TEACHERS SECTION ===== -->
+        <!-- ===== TEACHERS SECTION - مع فلتر اسم المادة أو التخصص فقط ===== -->
         <section id="teachersSection" class="section-container" style="display: none;">
             <div class="section-header">
                 <span class="section-tag"><i class="fas fa-users"></i> نخبة الأساتذة</span>
@@ -2487,31 +2407,6 @@
                     <input type="text" id="searchTeacher" placeholder="ابحث عن أستاذ بالاسم أو التخصص..." oninput="filterTeachers()">
                 </div>
                 <div class="filter-group">
-                    <select id="filterExperience" onchange="filterTeachers()">
-                        <option value="all">كل الخبرات</option>
-                        <option value="0-2">أقل من سنتين</option>
-                        <option value="2-5">2 - 5 سنوات</option>
-                        <option value="5-10">5 - 10 سنوات</option>
-                        <option value="10+">أكثر من 10 سنوات</option>
-                    </select>
-                    <!-- ===== فلتر المستوى التعليمي ===== -->
-                    <select id="filterTeachingLevel" onchange="filterTeachers()">
-                        <option value="all">كل المستويات</option>
-                        <option value="5eme_pri">خامسة ابتدائي</option>
-                        <option value="1ere_am">أولى متوسط</option>
-                        <option value="2eme_am">ثانية متوسط</option>
-                        <option value="3eme_am">ثالثة متوسط</option>
-                        <option value="4eme_am">رابعة متوسط</option>
-                        <option value="5eme_am">خامسة متوسط</option>
-                        <option value="1ere_as">أولى ثانوي</option>
-                        <option value="2eme_as">ثانية ثانوي</option>
-                        <option value="bac">بكالوريا</option>
-                        <option value="1ere_uni">أولى جامعي</option>
-                        <option value="2eme_uni">ثانية جامعي</option>
-                        <option value="3eme_uni">ثالثة جامعي</option>
-                        <option value="master">ماستر</option>
-                        <option value="doctorat">دكتوراه</option>
-                    </select>
                     <button class="clear-filters-btn" onclick="clearFilters()">
                         <i class="fas fa-undo"></i> مسح
                     </button>
@@ -2522,49 +2417,8 @@
             <div id="teachersEmpty" style="display:none; text-align:center; padding:60px 20px; color:var(--gray);">
                 <i class="fas fa-search" style="font-size:3rem; display:block; margin-bottom:16px; opacity:0.4;"></i>
                 <h3 style="color:var(--dark); margin-bottom:8px;">لم يتم العثور على نتائج</h3>
-                <p>حاول تعديل معايير البحث أو التصفية</p>
+                <p>حاول تعديل معايير البحث</p>
             </div>
-        </section>
-
-        <!-- ===== OFFERS SECTION - مع فلتر المستوى والمادة ===== -->
-        <section id="offersSection" class="section-container" style="display: none;">
-            <div class="section-header">
-                <span class="section-tag"><i class="fas fa-calendar-alt"></i> الدروس المتاحة</span>
-                <h2 class="section-title">الدروس المتاحة الآن <i class="fas fa-book"></i></h2>
-                <p class="section-subtitle">دروس خصوصية بأفضل الأسعار، اختر ما يناسب احتياجاتك</p>
-            </div>
-            
-            <!-- ===== فلتر الدروس ===== -->
-            <div class="search-filter-container">
-                <div class="search-box">
-                    <i class="fas fa-search"></i>
-                    <input type="text" id="searchOffer" placeholder="ابحث عن درس بالمادة..." oninput="filterOffers()">
-                </div>
-                <div class="filter-group">
-                    <select id="filterOfferLevel" onchange="filterOffers()">
-                        <option value="all">كل المستويات</option>
-                        <option value="5eme_pri">خامسة ابتدائي</option>
-                        <option value="1ere_am">أولى متوسط</option>
-                        <option value="2eme_am">ثانية متوسط</option>
-                        <option value="3eme_am">ثالثة متوسط</option>
-                        <option value="4eme_am">رابعة متوسط</option>
-                        <option value="5eme_am">خامسة متوسط</option>
-                        <option value="1ere_as">أولى ثانوي</option>
-                        <option value="2eme_as">ثانية ثانوي</option>
-                        <option value="bac">بكالوريا</option>
-                        <option value="1ere_uni">أولى جامعي</option>
-                        <option value="2eme_uni">ثانية جامعي</option>
-                        <option value="3eme_uni">ثالثة جامعي</option>
-                        <option value="master">ماستر</option>
-                        <option value="doctorat">دكتوراه</option>
-                    </select>
-                    <button class="clear-filters-btn" onclick="clearOfferFilters()">
-                        <i class="fas fa-undo"></i> مسح
-                    </button>
-                </div>
-            </div>
-            
-            <div id="offersListPublic" class="offers-grid"></div>
         </section>
 
         <!-- ===== LIVE SECTION ===== -->
@@ -2574,7 +2428,7 @@
                 <h2 class="section-title">البث المباشر الآن <i class="fas fa-video"></i></h2>
                 <p class="section-subtitle">انضم إلى الدروس المباشرة وتفاعل مع الأساتذة في الوقت الفعلي</p>
             </div>
-            <div id="liveOffersList" class="offers-grid"></div>
+            <div id="liveOffersList" class="teachers-grid"></div>
         </section>
 
         <!-- ===== REFERRAL SECTION ===== -->
@@ -2684,7 +2538,7 @@
             </div>
         </section>
 
-        <!-- ===== DEVELOPERS SECTION ===== -->
+        <!-- ===== DEVELOPERS SECTION - صور أكبر مع إمكانية النقر ===== -->
         <section id="developersSection" class="section-container" style="display: none;">
             <div class="section-header">
                 <span class="section-tag"><i class="fas fa-code"></i> فريق الإبداع</span>
@@ -2695,54 +2549,57 @@
             <div id="developersList" class="developers-grid">
                 <div class="developer-card">
                     <img src="/images/othmaniya.jpg" class="developer-image" 
-                         onerror="this.src='https://ui-avatars.com/api/?name=عثمانية+محمد+الصالح&background=0f5cbf&color=fff&size=96'"
-                         alt="عثمانية محمد الصالح">
+                         onerror="this.src='https://ui-avatars.com/api/?name=عثمانية+محمد+الصالح&background=0f5cbf&color=fff&size=120'"
+                         alt="عثمانية محمد الصالح"
+                         onclick="showFullImage(this.src)">
                     <h3>عثمانية محمد الصالح</h3>
                     <p class="role"><i class="fas fa-server"></i> مطور الواجهة الخلفية</p>
                     <span class="developer-role backend"><i class="fas fa-code"></i> Backend Developer</span>
-                    <p style="font-size: 0.8rem; color: var(--gray); margin-top: 10px;">
+                    <p style="font-size: 0.85rem; color: var(--gray); margin-top: 10px; line-height: 1.6;">
                         <i class="fas fa-database"></i> مسؤول عن الخادم، APIs، وقاعدة البيانات
                     </p>
                     <div style="display: flex; justify-content: center; gap: 14px; margin-top: 12px;">
-                        <a href="#" style="color: var(--gray); font-size: 1.2rem; transition: var(--transition);"><i class="fab fa-github"></i></a>
-                        <a href="#" style="color: var(--gray); font-size: 1.2rem; transition: var(--transition);"><i class="fab fa-linkedin"></i></a>
-                        <a href="#" style="color: var(--gray); font-size: 1.2rem; transition: var(--transition);"><i class="fab fa-twitter"></i></a>
+                        <a href="#" style="color: var(--gray); font-size: 1.3rem; transition: var(--transition);"><i class="fab fa-github"></i></a>
+                        <a href="#" style="color: var(--gray); font-size: 1.3rem; transition: var(--transition);"><i class="fab fa-linkedin"></i></a>
+                        <a href="#" style="color: var(--gray); font-size: 1.3rem; transition: var(--transition);"><i class="fab fa-twitter"></i></a>
                     </div>
                 </div>
 
                 <div class="developer-card">
                     <img src="/images/melik.jpg" class="developer-image" 
-                         onerror="this.src='https://ui-avatars.com/api/?name=مليك+صالح&background=10b981&color=fff&size=96'"
-                         alt="مليك صالح">
+                         onerror="this.src='https://ui-avatars.com/api/?name=مليك+صالح&background=10b981&color=fff&size=120'"
+                         alt="مليك صالح"
+                         onclick="showFullImage(this.src)">
                     <h3>مليك صالح</h3>
                     <p class="role"><i class="fas fa-paint-brush"></i> مصمم الواجهة الأمامية ومدير التسويق</p>
                     <span class="developer-role frontend"><i class="fas fa-palette"></i> Frontend Designer</span>
                     <span class="developer-role marketing" style="margin-right: 6px;"><i class="fas fa-bullhorn"></i> Marketing</span>
-                    <p style="font-size: 0.8rem; color: var(--gray); margin-top: 10px;">
+                    <p style="font-size: 0.85rem; color: var(--gray); margin-top: 10px; line-height: 1.6;">
                         <i class="fas fa-mobile-alt"></i> مسؤول عن التصميم، UX/UI، والتسويق الرقمي
                     </p>
                     <div style="display: flex; justify-content: center; gap: 14px; margin-top: 12px;">
-                        <a href="#" style="color: var(--gray); font-size: 1.2rem; transition: var(--transition);"><i class="fab fa-github"></i></a>
-                        <a href="#" style="color: var(--gray); font-size: 1.2rem; transition: var(--transition);"><i class="fab fa-linkedin"></i></a>
-                        <a href="#" style="color: var(--gray); font-size: 1.2rem; transition: var(--transition);"><i class="fab fa-twitter"></i></a>
+                        <a href="#" style="color: var(--gray); font-size: 1.3rem; transition: var(--transition);"><i class="fab fa-github"></i></a>
+                        <a href="#" style="color: var(--gray); font-size: 1.3rem; transition: var(--transition);"><i class="fab fa-linkedin"></i></a>
+                        <a href="#" style="color: var(--gray); font-size: 1.3rem; transition: var(--transition);"><i class="fab fa-twitter"></i></a>
                     </div>
                 </div>
 
                 <div class="developer-card">
                     <img src="/images/zineb.jpg" class="developer-image" 
-                         onerror="this.src='https://ui-avatars.com/api/?name=زينب+لكفيفي&background=8b5cf6&color=fff&size=96'"
-                         alt="زينب لكفيفي">
+                         onerror="this.src='https://ui-avatars.com/api/?name=زينب+لكفيفي&background=8b5cf6&color=fff&size=120'"
+                         alt="زينب لكفيفي"
+                         onclick="showFullImage(this.src)">
                     <h3>زينب لكفيفي</h3>
                     <p class="role"><i class="fas fa-database"></i> مصممة قاعدة البيانات ومسؤولة الدعم</p>
                     <span class="developer-role database"><i class="fas fa-database"></i> Database Designer</span>
                     <span class="developer-role" style="background: var(--gold-light); color: #b45309; margin-right: 6px;"><i class="fas fa-headset"></i> Support</span>
-                    <p style="font-size: 0.8rem; color: var(--gray); margin-top: 10px;">
+                    <p style="font-size: 0.85rem; color: var(--gray); margin-top: 10px; line-height: 1.6;">
                         <i class="fas fa-shield-alt"></i> مسؤولة عن هيكلة البيانات، الأمان، ودعم المستخدمين
                     </p>
                     <div style="display: flex; justify-content: center; gap: 14px; margin-top: 12px;">
-                        <a href="#" style="color: var(--gray); font-size: 1.2rem; transition: var(--transition);"><i class="fab fa-github"></i></a>
-                        <a href="#" style="color: var(--gray); font-size: 1.2rem; transition: var(--transition);"><i class="fab fa-linkedin"></i></a>
-                        <a href="#" style="color: var(--gray); font-size: 1.2rem; transition: var(--transition);"><i class="fab fa-twitter"></i></a>
+                        <a href="#" style="color: var(--gray); font-size: 1.3rem; transition: var(--transition);"><i class="fab fa-github"></i></a>
+                        <a href="#" style="color: var(--gray); font-size: 1.3rem; transition: var(--transition);"><i class="fab fa-linkedin"></i></a>
+                        <a href="#" style="color: var(--gray); font-size: 1.3rem; transition: var(--transition);"><i class="fab fa-twitter"></i></a>
                     </div>
                 </div>
             </div>
@@ -2823,7 +2680,7 @@
                 </a>
             </div>
 
-            <!-- ===== STUDENT REGISTER - مع حقل المستوى الدراسي ===== -->
+            <!-- ===== STUDENT REGISTER ===== -->
             <div id="studentRegisterTab" class="form-container" style="display: none;">
                 <h3><i class="fas fa-user-plus"></i> تسجيل طالب جديد</h3>
                 
@@ -2838,7 +2695,6 @@
                 <input type="password" id="studentPassword" placeholder="كلمة المرور">
                 <input type="tel" id="studentPhone" placeholder="رقم الهاتف">
                 
-                <!-- ===== حقل المستوى الدراسي للطالب ===== -->
                 <div style="margin-bottom: 14px;">
                     <label style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--dark-light); font-size: 0.9rem;">
                         <i class="fas fa-graduation-cap" style="color: var(--primary); margin-left: 6px;"></i>
@@ -2860,12 +2716,6 @@
                         <option value="master">ماستر</option>
                         <option value="doctorat">دكتوراه</option>
                     </select>
-                    <div id="studentOtherLevelGroup" style="display: none; margin-top: 8px;">
-                        <input type="text" id="studentOtherLevelText" placeholder="أدخل المستوى التعليمي...">
-                    </div>
-                    <p style="font-size: 0.7rem; color: var(--gray); margin-top: 4px;">
-                        <i class="fas fa-info-circle"></i> اختر مستواك الدراسي الحالي
-                    </p>
                 </div>
                 
                 <div class="recaptcha-wrapper">
@@ -2878,7 +2728,7 @@
                 <button class="btn-primary" onclick="registerStudent()" style="width:100%; justify-content:center;">تسجيل</button>
             </div>
 
-            <!-- ===== TEACHER REGISTER - مع حقل المستوى الدراسي ===== -->
+            <!-- ===== TEACHER REGISTER ===== -->
             <div id="teacherRegisterTab" class="form-container" style="display: none;">
                 <h3><i class="fas fa-chalkboard-user"></i> تقديم طلب أستاذ</h3>
                 
@@ -2896,7 +2746,6 @@
                 <textarea id="teacherBio" placeholder="نبذة عنك" required></textarea>
                 <input type="text" id="teacherExperience" placeholder="سنوات الخبرة" required>
                 
-                <!-- ===== حقل المستوى الدراسي للأستاذ ===== -->
                 <div style="margin-bottom: 14px;">
                     <label style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--dark-light); font-size: 0.9rem;">
                         <i class="fas fa-graduation-cap" style="color: var(--primary); margin-left: 6px;"></i>
@@ -2911,7 +2760,6 @@
                         <option value="4eme_am">رابعة متوسط</option>
                         <option value="5eme_am">خامسة متوسط</option>
                         <option value="1ere_as">أولى ثانوي</option>
-                        <option value="2eme_as">ثانية ثانوي</option>
                         <option value="bac">بكالوريا</option>
                         <option value="1ere_uni">أولى جامعي</option>
                         <option value="2eme_uni">ثانية جامعي</option>
@@ -2919,12 +2767,6 @@
                         <option value="master">ماستر</option>
                         <option value="doctorat">دكتوراه</option>
                     </select>
-                    <div id="teacherOtherLevelGroup" style="display: none; margin-top: 8px;">
-                        <input type="text" id="teacherOtherLevelText" placeholder="أدخل المستوى التعليمي...">
-                    </div>
-                    <p style="font-size: 0.7rem; color: var(--gray); margin-top: 4px;">
-                        <i class="fas fa-info-circle"></i> سيتم إضافة هذا المستوى إلى ملفك الشخصي بعد قبول طلبك من الإدارة
-                    </p>
                 </div>
                 
                 <label><i class="fas fa-user"></i> الصورة الشخصية</label>
@@ -3047,7 +2889,24 @@
     <!-- ===== TOAST ===== -->
     <div id="notificationToast" class="notification-toast"></div>
 
+    <!-- ===== IMAGE MODAL ===== -->
+    <div id="imageModal" class="image-modal" style="display: none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.9); z-index:9999; justify-content:center; align-items:center; cursor:pointer;">
+        <img id="fullImage" src="" style="max-width:90%; max-height:90%; border-radius:12px; object-fit:contain;">
+    </div>
+
     <script>
+        // ============================================================
+        // IMAGE MODAL
+        // ============================================================
+        function showFullImage(src) {
+            document.getElementById('fullImage').src = src;
+            document.getElementById('imageModal').style.display = 'flex';
+        }
+
+        document.getElementById('imageModal').addEventListener('click', function() {
+            this.style.display = 'none';
+        });
+
         // ============================================================
         // reCAPTCHA MANAGED FROM /js/recaptcha.js
         // ============================================================
@@ -3100,8 +2959,6 @@
         var referralData = null;
         var allTeachers = [];
         var filteredTeachers = [];
-        var allOffers = [];
-        var filteredOffers = [];
 
         function readReferralFromURL() {
             try {
@@ -3155,7 +3012,6 @@
             document.getElementById('homeSection').style.display = 'flex';
             document.getElementById('aboutSection').style.display = 'block';
             document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
             document.getElementById('referralSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
@@ -3171,7 +3027,6 @@
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'block';
-            document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
             document.getElementById('referralSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
@@ -3183,27 +3038,10 @@
             loadPublicTeachers();
         }
 
-        function showOffers() {
-            document.getElementById('homeSection').style.display = 'none';
-            document.getElementById('aboutSection').style.display = 'none';
-            document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('offersSection').style.display = 'block';
-            document.getElementById('liveSection').style.display = 'none';
-            document.getElementById('referralSection').style.display = 'none';
-            document.getElementById('developersSection').style.display = 'none';
-            document.getElementById('profileSection').style.display = 'none';
-            document.getElementById('loginSection').style.display = 'none';
-            document.getElementById('downloadAppSection').style.display = 'none';
-            document.getElementById('supportSection').style.display = 'none';
-            setActiveTab('offersTab');
-            loadPublicOffers();
-        }
-
         function showLiveStreams() {
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'block';
             document.getElementById('referralSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
@@ -3219,7 +3057,6 @@
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
             document.getElementById('referralSection').style.display = 'block';
             document.getElementById('developersSection').style.display = 'none';
@@ -3235,7 +3072,6 @@
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
             document.getElementById('referralSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'block';
@@ -3250,7 +3086,6 @@
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
             document.getElementById('referralSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
@@ -3267,7 +3102,6 @@
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
             document.getElementById('referralSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
@@ -3282,7 +3116,6 @@
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
             document.getElementById('referralSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
@@ -3297,7 +3130,6 @@
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
             document.getElementById('referralSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
@@ -3321,7 +3153,7 @@
         }
 
         function setActiveTab(tabId) {
-            var tabs = ['homeTab', 'teachersTab', 'offersTab', 'liveTab', 'referralTab', 'developersTab', 'loginTabNav'];
+            var tabs = ['homeTab', 'teachersTab', 'liveTab', 'referralTab', 'developersTab', 'loginTabNav'];
             tabs.forEach(function(id) {
                 var el = document.getElementById(id);
                 if (el) el.classList.remove('active');
@@ -3378,12 +3210,7 @@
                 if (!res.ok) throw new Error('HTTP error! status: ' + res.status);
                 var stats = await res.json();
                 
-                var totalOffersRes = await fetch('/api/public/total-offers');
-                var totalOffersData = await totalOffersRes.json();
-                var totalOffers = totalOffersData.total || 0;
-                
                 document.getElementById('teacherCount').innerText = stats.teachers || 0;
-                document.getElementById('totalOffersCount').innerText = totalOffers;
                 document.getElementById('liveCountStat').innerText = stats.live || 0;
                 document.getElementById('studentCount').innerText = stats.students || 0;
                 
@@ -3484,7 +3311,7 @@
         }
 
         // ============================================================
-        // REGISTER STUDENT - مع إرسال المستوى الدراسي
+        // REGISTER STUDENT
         // ============================================================
         async function registerStudent() {
             if (!isNameValid('student')) {
@@ -3555,7 +3382,7 @@
         }
 
         // ============================================================
-        // REGISTER TEACHER - مع إرسال المستوى الدراسي
+        // REGISTER TEACHER
         // ============================================================
         async function registerTeacher() {
             if (!isNameValid('teacher')) {
@@ -3635,7 +3462,7 @@
         }
 
         // ============================================================
-        // TEACHERS - مع فلتر المستوى التعليمي
+        // TEACHERS - مع فلتر اسم المادة أو التخصص فقط
         // ============================================================
         async function loadPublicTeachers() {
             var container = document.getElementById('teachersList');
@@ -3658,6 +3485,7 @@
             }
         }
 
+        // ===== عرض الأساتذة مع مستوى التدريس مباشرة في البطاقة =====
         function renderTeachers(teachers) {
             var container = document.getElementById('teachersList');
             var emptyMsg = document.getElementById('teachersEmpty');
@@ -3677,8 +3505,6 @@
                 '4eme_am': 'رابعة متوسط',
                 '5eme_am': 'خامسة متوسط',
                 '1ere_as': 'أولى ثانوي',
-                '2eme_as': 'ثانية ثانوي',
-                '3eme_as': 'ثالثة ثانوي',
                 'bac': 'بكالوريا',
                 '1ere_uni': 'أولى جامعي',
                 '2eme_uni': 'ثانية جامعي',
@@ -3689,7 +3515,7 @@
             
             var html = '';
             teachers.forEach(function(t) {
-                var imageUrl = t.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(t.full_name) + '&background=0f5cbf&color=fff&size=90';
+                var imageUrl = t.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(t.full_name) + '&background=0f5cbf&color=fff&size=120';
                 var levelDisplay = '';
                 if (t.teaching_level) {
                     var levelName = levelMap[t.teaching_level] || t.teaching_level;
@@ -3697,7 +3523,7 @@
                 }
                 
                 html += '<div class="teacher-card" onclick="viewTeacherProfile(' + t.id + ')">' +
-                    '<img src="' + imageUrl + '" class="teacher-image" onerror="this.src=\'https://ui-avatars.com/api/?name=' + encodeURIComponent(t.full_name) + '&background=0f5cbf&color=fff&size=90\'">' +
+                    '<img src="' + imageUrl + '" class="teacher-image" onerror="this.src=\'https://ui-avatars.com/api/?name=' + encodeURIComponent(t.full_name) + '&background=0f5cbf&color=fff&size=120\'" onclick="event.stopPropagation(); showFullImage(this.src)">' +
                     '<h3>' + escapeHtml(t.full_name) + '</h3>' +
                     '<p class="specialization"><i class="fas fa-book"></i> ' + escapeHtml(t.specialization || 'تخصص عام') + '</p>' +
                     '<div class="teacher-experience"><i class="fas fa-briefcase"></i> ' + (t.experience || '0') + ' سنة خبرة</div>' +
@@ -3713,8 +3539,6 @@
 
         function filterTeachers() {
             var searchTerm = document.getElementById('searchTeacher').value.toLowerCase().trim();
-            var experienceFilter = document.getElementById('filterExperience').value;
-            var levelFilter = document.getElementById('filterTeachingLevel').value;
             
             filteredTeachers = allTeachers.filter(function(t) {
                 var matchesSearch = true;
@@ -3723,24 +3547,7 @@
                     var spec = (t.specialization || '').toLowerCase();
                     matchesSearch = name.includes(searchTerm) || spec.includes(searchTerm);
                 }
-                
-                var matchesExperience = true;
-                var exp = parseInt(t.experience) || 0;
-                if (experienceFilter !== 'all') {
-                    switch(experienceFilter) {
-                        case '0-2': matchesExperience = exp < 2; break;
-                        case '2-5': matchesExperience = exp >= 2 && exp <= 5; break;
-                        case '5-10': matchesExperience = exp > 5 && exp <= 10; break;
-                        case '10+': matchesExperience = exp > 10; break;
-                    }
-                }
-                
-                var matchesLevel = true;
-                if (levelFilter !== 'all') {
-                    matchesLevel = t.teaching_level === levelFilter;
-                }
-                
-                return matchesSearch && matchesExperience && matchesLevel;
+                return matchesSearch;
             });
             
             renderTeachers(filteredTeachers);
@@ -3758,134 +3565,7 @@
 
         function clearFilters() {
             document.getElementById('searchTeacher').value = '';
-            document.getElementById('filterExperience').value = 'all';
-            document.getElementById('filterTeachingLevel').value = 'all';
             filterTeachers();
-        }
-
-        // ============================================================
-        // OFFERS - مع فلتر المستوى والمادة
-        // ============================================================
-        async function loadPublicOffers() {
-            var container = document.getElementById('offersListPublic');
-            container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
-            try {
-                var res = await fetch('/api/public/offers');
-                if (!res.ok) throw new Error('HTTP error! status: ' + res.status);
-                allOffers = await res.json();
-                filteredOffers = [...allOffers];
-                
-                if (!allOffers || allOffers.length === 0) {
-                    container.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8;">لا توجد دروس متاحة حالياً</p>';
-                    return;
-                }
-                
-                renderOffers(allOffers);
-            } catch(e) {
-                console.error(e);
-                container.innerHTML = '<p style="text-align:center; padding:40px; color:#ef4444;">حدث خطأ في تحميل البيانات</p>';
-            }
-        }
-
-        function renderOffers(offers) {
-            var container = document.getElementById('offersListPublic');
-            
-            if (!offers || offers.length === 0) {
-                container.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8;">لا توجد دروس متاحة حالياً</p>';
-                return;
-            }
-            
-            var levelMap = {
-                '5eme_pri': 'خامسة ابتدائي',
-                '1ere_am': 'أولى متوسط',
-                '2eme_am': 'ثانية متوسط',
-                '3eme_am': 'ثالثة متوسط',
-                '4eme_am': 'رابعة متوسط',
-                '5eme_am': 'خامسة متوسط',
-                '1ere_as': 'أولى ثانوي',
-                '2eme_as': 'ثانية ثانوي',
-                '3eme_as': 'ثالثة ثانوي',
-                'bac': 'بكالوريا',
-                '1ere_uni': 'أولى جامعي',
-                '2eme_uni': 'ثانية جامعي',
-                '3eme_uni': 'ثالثة جامعي',
-                'master': 'ماستر',
-                'doctorat': 'دكتوراه'
-            };
-            
-            var html = '';
-            offers.forEach(function(o) {
-                var offerDate = new Date(o.offer_date);
-                var imageUrl = o.teacher_profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(o.teacher_name) + '&background=0f5cbf&color=fff&size=50';
-                
-                // عرض المستوى التعليمي للدرس
-                var levelDisplay = '';
-                if (o.education_level) {
-                    var levelName = levelMap[o.education_level] || o.education_level;
-                    levelDisplay = `<div class="offer-info"><i class="fas fa-graduation-cap" style="color:var(--accent);"></i> المستوى: ${levelName}</div>`;
-                }
-                
-                html += '<div class="offer-card">' +
-                    '<div class="offer-teacher" onclick="viewTeacherProfile(' + o.teacher_id + ')">' +
-                        '<img src="' + imageUrl + '" onerror="this.src=\'https://ui-avatars.com/api/?name=' + encodeURIComponent(o.teacher_name) + '&background=0f5cbf&color=fff&size=50\'">' +
-                        '<div>' +
-                            '<h3>' + escapeHtml(o.teacher_name) + '</h3>' +
-                            '<p><i class="fas fa-book"></i> ' + escapeHtml(o.teacher_specialization || 'تخصص عام') + '</p>' +
-                        '</div>' +
-                    '</div>' +
-                    '<div class="offer-subject">' + escapeHtml(o.subject_name) + '</div>' +
-                    '<div class="offer-details"><i class="fas fa-calendar-alt"></i> ' + offerDate.toLocaleString('ar') + '</div>' +
-                    '<div class="offer-details"><i class="fas fa-clock"></i> ' + o.duration + ' دقيقة</div>' +
-                    levelDisplay +
-                    '<div>' +
-                        (o.is_free ? '<span class="free-tag"><i class="fas fa-gift"></i> مجانية</span>' : '<span class="price-tag"><i class="fas fa-money-bill"></i> ' + o.price + ' دج</span>') +
-                    '</div>' +
-                    '<button class="view-profile-btn" onclick="viewTeacherProfile(' + o.teacher_id + ')" style="margin-top:14px;">' +
-                        '<i class="fas fa-eye"></i> زيارة صفحة الأستاذ' +
-                    '</button>' +
-                '</div>';
-            });
-            container.innerHTML = html;
-        }
-
-        // ===== تصفية الدروس =====
-        function filterOffers() {
-            var searchTerm = document.getElementById('searchOffer').value.toLowerCase().trim();
-            var levelFilter = document.getElementById('filterOfferLevel').value;
-            
-            filteredOffers = allOffers.filter(function(o) {
-                var matchesSearch = true;
-                if (searchTerm) {
-                    var subject = (o.subject_name || '').toLowerCase();
-                    var teacher = (o.teacher_name || '').toLowerCase();
-                    matchesSearch = subject.includes(searchTerm) || teacher.includes(searchTerm);
-                }
-                
-                var matchesLevel = true;
-                if (levelFilter !== 'all') {
-                    matchesLevel = o.education_level === levelFilter;
-                }
-                
-                return matchesSearch && matchesLevel;
-            });
-            
-            renderOffers(filteredOffers);
-            
-            var resultsCount = document.querySelector('.results-count');
-            if (!resultsCount) {
-                var container = document.getElementById('offersListPublic');
-                var countDiv = document.createElement('div');
-                countDiv.className = 'results-count';
-                container.parentNode.insertBefore(countDiv, container);
-                resultsCount = countDiv;
-            }
-            resultsCount.innerHTML = 'عرض <span>' + filteredOffers.length + '</span> من <span>' + allOffers.length + '</span> درس';
-        }
-
-        function clearOfferFilters() {
-            document.getElementById('searchOffer').value = '';
-            document.getElementById('filterOfferLevel').value = 'all';
-            filterOffers();
         }
 
         // ============================================================
@@ -3909,18 +3589,14 @@
                 }
                 var html = '';
                 offers.forEach(function(o) {
-                    var imageUrl = o.teacher_profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(o.teacher_name) + '&background=0f5cbf&color=fff&size=50';
-                    html += '<div class="offer-card">' +
-                        '<div class="offer-teacher" onclick="viewTeacherProfile(' + o.teacher_id + ')">' +
-                            '<img src="' + imageUrl + '" onerror="this.src=\'https://ui-avatars.com/api/?name=' + encodeURIComponent(o.teacher_name) + '&background=0f5cbf&color=fff&size=50\'">' +
-                            '<div>' +
-                                '<h3>' + escapeHtml(o.teacher_name) + '</h3>' +
-                                '<p><i class="fas fa-book"></i> ' + escapeHtml(o.teacher_specialization || 'تخصص عام') + '</p>' +
-                            '</div>' +
-                        '</div>' +
-                        '<div class="offer-subject">' + escapeHtml(o.subject_name) + '</div>' +
-                        '<span class="live-badge" style="display:inline-block; margin:8px 0;">🔴 بث مباشر</span>' +
-                        '<button class="view-profile-btn" onclick="viewTeacherProfile(' + o.teacher_id + ')" style="margin-top:10px;">' +
+                    var imageUrl = o.teacher_profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(o.teacher_name) + '&background=0f5cbf&color=fff&size=120';
+                    html += '<div class="teacher-card" onclick="viewTeacherProfile(' + o.teacher_id + ')">' +
+                        '<img src="' + imageUrl + '" class="teacher-image" onerror="this.src=\'https://ui-avatars.com/api/?name=' + encodeURIComponent(o.teacher_name) + '&background=0f5cbf&color=fff&size=120\'" onclick="event.stopPropagation(); showFullImage(this.src)">' +
+                        '<h3>' + escapeHtml(o.teacher_name) + '</h3>' +
+                        '<p class="specialization"><i class="fas fa-book"></i> ' + escapeHtml(o.teacher_specialization || 'تخصص عام') + '</p>' +
+                        '<div class="teacher-experience"><i class="fas fa-briefcase"></i> ' + (o.experience || '0') + ' سنة خبرة</div>' +
+                        '<span class="live-badge" style="display:inline-block; margin:6px 0;">🔴 بث مباشر</span>' +
+                        '<button class="view-profile-btn" onclick="event.stopPropagation(); viewTeacherProfile(' + o.teacher_id + ')" style="margin-top:10px;">' +
                             '<i class="fas fa-eye"></i> زيارة صفحة الأستاذ' +
                         '</button>' +
                     '</div>';
@@ -3939,7 +3615,6 @@
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('offersSection').style.display = 'none';
             document.getElementById('liveSection').style.display = 'none';
             document.getElementById('referralSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
@@ -4087,8 +3762,6 @@
                     '4eme_am': 'رابعة متوسط',
                     '5eme_am': 'خامسة متوسط',
                     '1ere_as': 'أولى ثانوي',
-                    '2eme_as': 'ثانية ثانوي',
-                    '3eme_as': 'ثالثة ثانوي',
                     'bac': 'بكالوريا',
                     '1ere_uni': 'أولى جامعي',
                     '2eme_uni': 'ثانية جامعي',
@@ -4112,6 +3785,7 @@
                         <div class="profile-header">
                             <img src="${imageUrl}" class="profile-image" 
                                  onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.full_name)}&background=0f5cbf&color=fff&size=140'"
+                                 onclick="showFullImage(this.src)"
                                  alt="${escapeHtml(teacher.full_name)}">
                             <div class="profile-info">
                                 <h2>${escapeHtml(teacher.full_name)}</h2>
@@ -4129,8 +3803,8 @@
                             <div>
                                 ${socialHtml}
                                 <div style="margin-top: 20px;">
-                                    <button class="btn-primary" onclick="showOffers()" style="width:100%; justify-content:center;">
-                                        <i class="fas fa-calendar-alt"></i> استعراض جميع الدروس
+                                    <button class="btn-primary" onclick="showTeachers()" style="width:100%; justify-content:center;">
+                                        <i class="fas fa-arrow-right"></i> العودة إلى قائمة الأساتذة
                                     </button>
                                 </div>
                             </div>
