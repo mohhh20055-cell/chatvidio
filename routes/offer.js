@@ -92,7 +92,7 @@ router.post('/offer/create', authenticate, authorize(['teacher']), [
         const room_name = `stream_${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;
         const defaultPassword = crypto.randomBytes(4).toString('hex').toUpperCase();
 
-        // ✅ إدخال العرض في قاعدة البيانات (مع حقول البث)
+        // ✅ إدخال العرض في قاعدة البيانات
         const newOffer = {
             teacher_id: teacher_id,
             subject_name: subject_name.trim(),
@@ -104,9 +104,6 @@ router.post('/offer/create', authenticate, authorize(['teacher']), [
             room_password: defaultPassword,
             status: 'upcoming',
             education_level: finalEducationLevel,
-            total_seconds: totalSeconds,
-            remaining_seconds: totalSeconds,
-            is_paused: false,
             booked_count: 0,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
@@ -183,8 +180,7 @@ router.put('/offer/update/:offer_id', authenticate, authorize(['teacher']), [
     body('price').optional().isFloat({ min: 0 }).withMessage('السعر غير صالح'),
     body('is_free').optional().isBoolean().withMessage('is_free يجب أن يكون true أو false'),
     body('education_level').optional().isString().withMessage('المستوى التعليمي يجب أن يكون نصاً'),
-    body('status').optional().isIn(['upcoming', 'live', 'paused', 'completed']).withMessage('حالة غير صالحة'),
-    body('remaining_seconds').optional().isInt().withMessage('الوقت المتبقي غير صالح')
+    body('status').optional().isIn(['upcoming', 'live', 'paused', 'completed']).withMessage('حالة غير صالحة')
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -207,37 +203,16 @@ router.put('/offer/update/:offer_id', authenticate, authorize(['teacher']), [
 
         // ✅ تحضير بيانات التحديث
         const updateData = {};
-        const allowedFields = ['subject_name', 'duration', 'offer_date', 'price', 'is_free', 'education_level', 'status', 'remaining_seconds'];
+        const allowedFields = ['subject_name', 'duration', 'offer_date', 'price', 'is_free', 'education_level', 'status'];
 
         for (const field of allowedFields) {
             if (req.body[field] !== undefined && req.body[field] !== null) {
                 if (field === 'duration') {
                     updateData[field] = parseInt(req.body[field]);
-                    // ✅ تحديث total_seconds و remaining_seconds تلقائياً عند تغيير المدة
-                    const newTotalSeconds = parseInt(req.body[field]) * 60;
-                    updateData.total_seconds = newTotalSeconds;
-                    if (offer.status === 'upcoming') {
-                        updateData.remaining_seconds = newTotalSeconds;
-                    }
                 } else if (field === 'price') {
                     updateData[field] = parseFloat(req.body[field]);
                 } else if (field === 'is_free') {
                     updateData[field] = req.body[field] === true || req.body[field] === 'true';
-                } else if (field === 'status') {
-                    updateData[field] = req.body[field];
-                    if (req.body[field] === 'completed') {
-                        updateData.completed_at = new Date().toISOString();
-                    } else if (req.body[field] === 'paused') {
-                        updateData.is_paused = true;
-                        updateData.paused_at = new Date().toISOString();
-                    } else if (req.body[field] === 'live') {
-                        updateData.is_paused = false;
-                        if (!offer.stream_started_at) {
-                            updateData.stream_started_at = new Date().toISOString();
-                        }
-                    }
-                } else if (field === 'remaining_seconds') {
-                    updateData[field] = parseInt(req.body[field]);
                 } else {
                     updateData[field] = req.body[field];
                 }

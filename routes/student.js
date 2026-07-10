@@ -1056,27 +1056,13 @@ router.get('/stream-status/:offer_id/:student_id', authenticate, authorize(['stu
 
         const isInStream = !!active;
 
-        let remainingSeconds = 0;
-        if (isActive) {
-            if (isPaused) {
-                remainingSeconds = offer.remaining_seconds || 0;
-            } else if (offer.stream_started_at) {
-                const startedAt = new Date(offer.stream_started_at);
-                const now = new Date();
-                const elapsed = Math.floor((now - startedAt) / 1000);
-                const total = offer.total_seconds || (offer.duration * 60);
-                remainingSeconds = Math.max(0, total - elapsed);
-            }
-        }
-
         res.json({
             can_join: isActive && isInStream,
             is_waiting: isActive && !isInStream,
             is_paused: isPaused,
             stream_url: offer.stream_url || null,
             room_password: offer.room_password || null,
-            remaining_seconds: remainingSeconds,
-            total_seconds: offer.total_seconds || (offer.duration * 60),
+            duration: offer.duration || 0,
             status: offer.status,
             subject_name: offer.subject_name,
             teacher_id: offer.teacher_id

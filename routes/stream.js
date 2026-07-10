@@ -1,5 +1,5 @@
 // ============================================================
-// مسارات البث المباشر - Stream Routes (معدل بالكامل مع استخدام الدوال الجديدة)
+// مسارات البث المباشر - Stream Routes
 // ============================================================
 
 const express = require('express');
@@ -12,6 +12,12 @@ const { supabase } = require('../config/database');
 const { authenticate, authorize, checkBanned, checkActiveStream, isOwner, validateOfferOwnership, validateStudentAccess, checkStreamActive, checkNoActiveStream } = require('../middleware/auth');
 const { getOne, insert, update } = require('../utils/helpers');
 const { verifyToken } = require('../utils/jwt');
+
+// دالة مساعدة لحماية HTML
+function escapeHtml(text) {
+    if (!text) return '';
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 
 // ============================================================
 // ✅ بدء البث باستخدام Jitsi Meet (مع التحقق من عدم وجود بث نشط)
@@ -47,9 +53,6 @@ router.post('/start-jitsi-stream', authenticate, authorize(['teacher']), checkNo
         const password = crypto.randomBytes(6).toString('hex').toUpperCase();
         const roomUrl = `https://meet.jit.si/${roomName}`;
         
-        // ✅ حساب الوقت الكلي بالثواني
-        const totalSeconds = offer.duration * 60;
-        
         // ✅ حفظ بيانات البث في جدول العروض
         await supabase
             .from('offers')
@@ -58,11 +61,7 @@ router.post('/start-jitsi-stream', authenticate, authorize(['teacher']), checkNo
                 stream_platform: 'jitsi',
                 status: 'live',
                 room_name: roomName,
-                room_password: password,
-                stream_started_at: new Date().toISOString(),
-                total_seconds: totalSeconds,
-                remaining_seconds: totalSeconds,
-                is_paused: false
+                room_password: password
             })
             .eq('id', offer_id);
         
@@ -79,8 +78,7 @@ router.post('/start-jitsi-stream', authenticate, authorize(['teacher']), checkNo
                 await supabase
                     .from('sessions')
                     .update({
-                        payment_status: 'pending_stream',
-                        stream_started_at: new Date().toISOString()
+                        payment_status: 'pending_stream'
                     })
                     .eq('offer_id', offer_id)
                     .eq('student_id', session.student_id);
@@ -107,7 +105,7 @@ router.post('/start-jitsi-stream', authenticate, authorize(['teacher']), checkNo
             room_url: roomUrl,
             password: password,
             room_name: roomName,
-            total_seconds: totalSeconds,
+            duration: offer.duration,
             students_count: sessions?.length || 0,
             message: 'تم بدء البث بنجاح (مجاني 100%)'
         });
@@ -141,20 +139,10 @@ router.post('/pause/:offer_id', authenticate, authorize(['teacher']), validateOf
             return res.status(400).json({ success: false, error: 'البث غير نشط' });
         }
 
-        // ✅ حفظ الوقت المتبقي وتغيير الحالة إلى paused
-        const updateData = {
-            status: 'paused',
-            is_paused: true,
-            paused_at: new Date().toISOString()
-        };
-
-        if (remaining_time !== undefined) {
-            updateData.remaining_seconds = remaining_time;
-        }
-
+        // ✅ تغيير الحالة إلى paused
         await supabase
             .from('offers')
-            .update(updateData)
+            .update({ status: 'paused' })
             .eq('id', offer_id);
 
         // ✅ إرسال إشعار للطلاب
@@ -180,7 +168,7 @@ router.post('/pause/:offer_id', authenticate, authorize(['teacher']), validateOf
         res.json({
             success: true,
             message: 'تم إيقاف البث مؤقتاً',
-            remaining_seconds: remaining_time || offer.remaining_seconds || 0
+            duration: offer.duration
         });
     } catch (error) {
         console.error('❌ خطأ في إيقاف البث:', error.message);
@@ -211,11 +199,7 @@ router.post('/resume/:offer_id', authenticate, authorize(['teacher']), validateO
         // ✅ استئناف البث
         await supabase
             .from('offers')
-            .update({
-                status: 'live',
-                is_paused: false,
-                resumed_at: new Date().toISOString()
-            })
+            .update({ status: 'live' })
             .eq('id', offer_id);
 
         // ✅ إرسال إشعار للطلاب
@@ -241,7 +225,7 @@ router.post('/resume/:offer_id', authenticate, authorize(['teacher']), validateO
         res.json({
             success: true,
             message: 'تم استئناف البث',
-            remaining_seconds: offer.remaining_seconds || 0
+            duration: offer.duration
         });
     } catch (error) {
         console.error('❌ خطأ في استئناف البث:', error.message);
@@ -316,10 +300,7 @@ router.post('/end/:offer_id', authenticate, authorize(['teacher']), validateOffe
         await supabase
             .from('offers')
             .update({
-                status: 'completed',
-                completed_at: new Date().toISOString(),
-                actual_duration_seconds: actualSeconds,
-                earned_amount: totalEarned
+                status: 'completed'
             })
             .eq('id', offer_id);
 
@@ -374,34 +355,19 @@ router.get('/status/:offer_id', async (req, res) => {
                 status: 'not_found', 
                 stream_url: null,
                 platform: null,
-                remaining_seconds: 0,
-                total_seconds: 0,
-                is_paused: false
+                duration: 0
             });
-        }
-
-        // حساب الوقت المتبقي
-        let remainingSeconds = offer.remaining_seconds || 0;
-        let isPaused = offer.is_paused || false;
-        
-        if (offer.status === 'live' && !isPaused && offer.stream_started_at) {
-            const startedAt = new Date(offer.stream_started_at);
-            const now = new Date();
-            const elapsedSeconds = Math.floor((now - startedAt) / 1000);
-            const totalSeconds = offer.total_seconds || (offer.duration * 60);
-            remainingSeconds = Math.max(0, totalSeconds - elapsedSeconds);
         }
 
         res.json({ 
             status: offer.status || 'not_found',
             stream_url: offer.stream_url || null,
             platform: offer.stream_platform || null,
-            remaining_seconds: remainingSeconds,
-            total_seconds: offer.total_seconds || (offer.duration * 60),
-            is_paused: isPaused,
+            duration: offer.duration || 0,
             subject_name: offer.subject_name,
             teacher_id: offer.teacher_id,
-            booked_count: offer.booked_count || 0
+            booked_count: offer.booked_count || 0,
+            room_password: offer.room_password || null
         });
     } catch (error) {
         console.error('خطأ في جلب حالة البث:', error.message);
@@ -449,28 +415,13 @@ router.get('/student-status/:offer_id/:student_id', authenticate, validateStuden
 
         const isInStream = !!active;
 
-        // حساب الوقت المتبقي
-        let remainingSeconds = 0;
-        if (isActive) {
-            if (isPaused) {
-                remainingSeconds = offer.remaining_seconds || 0;
-            } else if (offer.stream_started_at) {
-                const startedAt = new Date(offer.stream_started_at);
-                const now = new Date();
-                const elapsed = Math.floor((now - startedAt) / 1000);
-                const total = offer.total_seconds || (offer.duration * 60);
-                remainingSeconds = Math.max(0, total - elapsed);
-            }
-        }
-
         res.json({
             can_join: isActive && isInStream,
             is_waiting: isActive && !isInStream,
             is_paused: isPaused,
             stream_url: offer.stream_url || null,
             room_password: offer.room_password || null,
-            remaining_seconds: remainingSeconds,
-            total_seconds: offer.total_seconds || (offer.duration * 60),
+            duration: offer.duration || 0,
             status: offer.status,
             subject_name: offer.subject_name,
             teacher_id: offer.teacher_id
@@ -634,20 +585,10 @@ router.get('/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
             `);
         }
 
-        // ✅ حساب الوقت المتبقي
-        let remainingSeconds = offer.remaining_seconds || 0;
-        if (offer.status === 'live' && offer.stream_started_at) {
-            const startedAt = new Date(offer.stream_started_at);
-            const now = new Date();
-            const elapsed = Math.floor((now - startedAt) / 1000);
-            const total = offer.total_seconds || (offer.duration * 60);
-            remainingSeconds = Math.max(0, total - elapsed);
-        }
-
-        const totalSeconds = offer.total_seconds || (offer.duration * 60);
+        const totalMinutes = offer.duration || 0;
         const isPaused = offer.status === 'paused';
 
-        // ✅ عرض صفحة البث (مختصرة للتوفير)
+        // ✅ عرض صفحة البث (مبسطة)
         res.send(`
             <!DOCTYPE html>
             <html dir="rtl" lang="ar">
@@ -665,25 +606,19 @@ router.get('/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                     .badge-live { background: #ef4444; color: white; animation: pulse 1.5s infinite; }
                     .badge-paused { background: #f59e0b; color: white; }
                     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
-                    .timer-display { background: #0f3460; border-radius: 12px; padding: 16px; margin: 16px 0; border: 2px dashed rgba(96, 165, 250, 0.2); }
-                    .timer-display .time { font-size: 2.8rem; font-weight: 900; font-family: 'Courier New', monospace; color: #60a5fa; letter-spacing: 4px; }
-                    .timer-display .time.warning { color: #f59e0b; }
-                    .timer-display .time.danger { color: #ef4444; animation: pulse 1s infinite; }
-                    .timer-display .progress-bar { width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 10px; margin-top: 12px; overflow: hidden; }
-                    .timer-display .progress-bar .progress-fill { height: 100%; background: linear-gradient(90deg, #10b981, #f59e0b, #ef4444); border-radius: 10px; transition: width 1s linear; width: 100%; }
+                    .info-box { background: #0f3460; border-radius: 12px; padding: 16px; margin: 16px 0; }
+                    .info-box p { color: #94a3b8; font-size: 0.9rem; margin: 4px 0; }
                     .btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; border: none; padding: 14px 24px; border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; margin-top: 12px; transition: all 0.3s; color: #fff; }
                     .btn-open { background: linear-gradient(135deg, #10b981, #059669); }
                     .btn-open:hover { transform: scale(1.02); box-shadow: 0 8px 25px rgba(16,185,129,0.4); }
-                    .btn-pause { background: linear-gradient(135deg, #f59e0b, #d97706); }
-                    .btn-pause:hover { transform: scale(1.02); box-shadow: 0 8px 25px rgba(245,158,11,0.4); }
-                    .btn-resume { background: linear-gradient(135deg, #10b981, #059669); }
-                    .btn-resume:hover { transform: scale(1.02); box-shadow: 0 8px 25px rgba(16,185,129,0.4); }
                     .btn-end { background: linear-gradient(135deg, #ef4444, #dc2626); }
                     .btn-end:hover { transform: scale(1.02); box-shadow: 0 8px 25px rgba(239,68,68,0.4); }
-                    .info { color: #94a3b8; font-size: 0.8rem; margin-top: 16px; line-height: 1.7; }
                     .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
                     .btn-group .btn { flex: 1; min-width: 120px; }
-                    @media(max-width:600px) { .container { padding: 24px; } .timer-display .time { font-size: 2rem; } }
+                    .status { margin-top: 12px; padding: 12px; border-radius: 8px; font-size: 0.9rem; }
+                    .status-success { background: rgba(16,185,129,0.2); color: #10b981; }
+                    .status-error { background: rgba(239,68,68,0.2); color: #ef4444; }
+                    @media(max-width:600px) { .container { padding: 24px; } }
                 </style>
             </head>
             <body>
@@ -691,150 +626,57 @@ router.get('/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                     <div class="badge ${isPaused ? 'badge-paused' : 'badge-live'}">${isPaused ? '⏸ متوقف مؤقتاً' : '🔴 بث مباشر'}</div>
                     <h1>🎥 ${escapeHtml(offer.subject_name)}</h1>
                     
-                    <div class="timer-display">
-                        <div class="time" id="timerDisplay">--:--:--</div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" id="timerProgress" style="width: 100%;"></div>
-                        </div>
+                    <div class="info-box">
+                        <p>📚 مدة الحصة: ${totalMinutes} دقيقة</p>
+                        <p>🔑 كلمة المرور: ${offer.room_password || 'غير متوفرة'}</p>
                     </div>
 
+                    <button class="btn btn-open" onclick="window.open('${offer.stream_url}', '_blank')">🎥 فتح Jitsi Meet</button>
+                    
                     <div class="btn-group">
-                        <button class="btn btn-open" onclick="window.open('${offer.stream_url}', '_blank')">🎥 فتح البث</button>
-                        ${isPaused ? 
-                            `<button class="btn btn-resume" onclick="resumeStream()">▶️ استئناف</button>` :
-                            `<button class="btn btn-pause" onclick="pauseStream()">⏸ إيقاف مؤقت</button>`
-                        }
+                        <button class="btn btn-end" onclick="endStream()">⏹️ إنهاء البث</button>
                     </div>
-                    <button class="btn btn-end" onclick="endStream()">⏹️ إنهاء البث</button>
-                    <p class="info">✅ Jitsi Meet يُفتح في نافذة جديدة (مجاني 100%)</p>
+                    
+                    <div id="statusMessage"></div>
+                    <p style="color: #94a3b8; font-size: 0.8rem; margin-top: 16px;">✅ Jitsi Meet يُفتح في نافذة جديدة (مجاني 100%)</p>
                 </div>
                 <script>
                     const API_BASE_URL = window.location.hostname === 'localhost' ? 'http://localhost:3000' : window.location.origin;
                     const authToken = '${token}';
                     const offerId = ${parseInt(offer_id)};
-                    const teacherId = ${parseInt(teacher_id)};
-                    let remainingSeconds = ${remainingSeconds};
-                    const totalSeconds = ${totalSeconds};
-                    let isPaused = ${isPaused ? 'true' : 'false'};
-                    let timerInterval = null;
+                    const isPaused = ${isPaused ? 'true' : 'false'};
 
-                    function updateTimerDisplay() {
-                        const display = document.getElementById('timerDisplay');
-                        const progress = document.getElementById('timerProgress');
-                        const hours = Math.floor(remainingSeconds / 3600);
-                        const minutes = Math.floor((remainingSeconds % 3600) / 60);
-                        const seconds = remainingSeconds % 60;
-                        display.textContent = String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
-                        const percentage = (remainingSeconds / totalSeconds) * 100;
-                        progress.style.width = Math.min(100, percentage) + '%';
-                        display.className = 'time';
-                        if (percentage < 10) display.classList.add('danger');
-                        else if (percentage < 30) display.classList.add('warning');
-                    }
-
-                    function startTimer() {
-                        if (timerInterval) clearInterval(timerInterval);
-                        updateTimerDisplay();
-                        timerInterval = setInterval(() => {
-                            if (!isPaused && remainingSeconds > 0) {
-                                remainingSeconds--;
-                                updateTimerDisplay();
-                                if (remainingSeconds <= 0) {
-                                    clearInterval(timerInterval);
-                                    timerInterval = null;
-                                    alert('⏰ انتهى وقت البث! سيتم إنهاء البث تلقائياً.');
-                                    completeStream();
-                                }
-                            }
-                        }, 1000);
-                    }
-
-                    async function pauseStream() {
-                        if (isPaused) return;
-                        if (!confirm('⏸ هل تريد إيقاف البث مؤقتاً؟')) return;
-                        try {
-                            const res = await fetch(API_BASE_URL + '/api/stream/pause/' + offerId, {
-                                method: 'POST',
-                                headers: { 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json', 'X-CSRF-Token': '${csrfToken || ''}' },
-                                body: JSON.stringify({ remaining_time: remainingSeconds })
-                            });
-                            const data = await res.json();
-                            if (data.success) {
-                                isPaused = true;
-                                updateTimerDisplay();
-                                location.reload();
-                            } else { alert('❌ ' + (data.error || 'حدث خطأ')); }
-                        } catch(e) { console.error(e); alert('❌ حدث خطأ'); }
-                    }
-
-                    async function resumeStream() {
-                        if (!isPaused) return;
-                        try {
-                            const res = await fetch(API_BASE_URL + '/api/stream/resume/' + offerId, {
-                                method: 'POST',
-                                headers: { 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json', 'X-CSRF-Token': '${csrfToken || ''}' }
-                            });
-                            const data = await res.json();
-                            if (data.success) {
-                                isPaused = false;
-                                location.reload();
-                            } else { alert('❌ ' + (data.error || 'حدث خطأ')); }
-                        } catch(e) { console.error(e); alert('❌ حدث خطأ'); }
-                    }
-
-                    async function completeStream() {
-                        try {
-                            const res = await fetch(API_BASE_URL + '/api/stream/complete/' + offerId, {
-                                method: 'POST',
-                                headers: { 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json', 'X-CSRF-Token': '${csrfToken || ''}' },
-                                body: JSON.stringify({ teacher_id: teacherId })
-                            });
-                            const data = await res.json();
-                            if (data.success) { alert('✅ تم إنهاء البث تلقائياً!'); window.location.href = '/teacher-dashboard.html'; }
-                        } catch(e) { console.error(e); }
+                    function showStatus(message, isError) {
+                        const el = document.getElementById('statusMessage');
+                        el.className = 'status ' + (isError ? 'status-error' : 'status-success');
+                        el.textContent = message;
                     }
 
                     async function endStream() {
-                        if (!confirm('⚠️ هل أنت متأكد من إنهاء البث المباشر؟')) return;
+                        if (!confirm('⏹️ هل تريد إنهاء البث؟ هذا الإجراء لا يمكن التراجع عنه.')) return;
                         try {
                             const res = await fetch(API_BASE_URL + '/api/stream/end/' + offerId, {
                                 method: 'POST',
-                                headers: { 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json', 'X-CSRF-Token': '${csrfToken || ''}' },
-                                body: JSON.stringify({ teacher_id: teacherId, remaining_time: remainingSeconds })
+                                headers: { 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }
                             });
                             const data = await res.json();
-                            if (data.success) { alert('✅ تم إنهاء البث بنجاح!'); window.location.href = '/teacher-dashboard.html'; }
-                            else { alert('❌ ' + (data.error || 'حدث خطأ')); }
-                        } catch(e) { console.error(e); alert('❌ حدث خطأ'); }
-                    }
-
-                    startTimer();
-                    setInterval(async () => {
-                        try {
-                            const res = await fetch(API_BASE_URL + '/api/stream/status/' + offerId);
-                            const data = await res.json();
-                            if (data.status !== 'live' && data.status !== 'paused') {
-                                alert('⏹️ انتهى البث المباشر');
-                                window.location.href = '/teacher-dashboard.html';
+                            if (data.success) {
+                                showStatus('✅ تم إنهاء البث بنجاح', false);
+                                setTimeout(() => { window.location.href = '/teacher-dashboard.html'; }, 1500);
+                            } else {
+                                showStatus('❌ ' + (data.error || 'فشل في إنهاء البث'), true);
                             }
-                        } catch(e) { console.error(e); }
-                    }, 30000);
+                        } catch (e) {
+                            showStatus('❌ خطأ في الاتصال بالخادم', true);
+                        }
+                    }
                 </script>
             </body>
             </html>
         `);
     } catch (error) {
-        console.error('❌ خطأ في صفحة البث للأستاذ:', error.message);
-        res.status(500).send(`
-            <!DOCTYPE html>
-            <html dir="rtl" lang="ar">
-            <head><meta charset="UTF-8"><title>خطأ</title></head>
-            <body style="font-family:Cairo;text-align:center;padding:50px;">
-                <h1 style="color:#ef4444;">❌ حدث خطأ</h1>
-                <p style="color:#64748b;">${escapeHtml(error.message)}</p>
-                <a href="/teacher-dashboard.html" style="color:#0f5cbf;font-weight:700;">العودة للوحة التحكم</a>
-            </body></html>
-        `);
+        console.error('خطأ في صفحة البث:', error);
+        res.status(500).send('حدث خطأ في تحميل صفحة البث');
     }
 });
 
@@ -953,20 +795,10 @@ router.get('/join-stream/:offer_id/:student_id', async (req, res) => {
             });
         }
 
-        // ✅ حساب الوقت المتبقي
-        let remainingSeconds = offer.remaining_seconds || 0;
-        if (offer.status === 'live' && offer.stream_started_at) {
-            const startedAt = new Date(offer.stream_started_at);
-            const now = new Date();
-            const elapsed = Math.floor((now - startedAt) / 1000);
-            const total = offer.total_seconds || (offer.duration * 60);
-            remainingSeconds = Math.max(0, total - elapsed);
-        }
-
-        const totalSeconds = offer.total_seconds || (offer.duration * 60);
+        const totalMinutes = offer.duration || 0;
         const isPaused = offer.status === 'paused';
 
-        // ✅ عرض صفحة البث للطالب
+        // ✅ عرض صفحة البث للطالب (مبسطة)
         res.send(`
             <!DOCTYPE html>
             <html dir="rtl" lang="ar">
@@ -984,19 +816,13 @@ router.get('/join-stream/:offer_id/:student_id', async (req, res) => {
                     .badge-live { background: #ef4444; color: white; animation: pulse 1.5s infinite; }
                     .badge-paused { background: #f59e0b; color: white; }
                     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
-                    .timer-display { background: #0f3460; border-radius: 12px; padding: 12px; margin: 12px 0; border: 1px dashed rgba(96, 165, 250, 0.2); }
-                    .timer-display .time { font-size: 2rem; font-weight: 900; font-family: 'Courier New', monospace; color: #60a5fa; letter-spacing: 3px; }
-                    .timer-display .time.warning { color: #f59e0b; }
-                    .timer-display .time.danger { color: #ef4444; animation: pulse 1s infinite; }
+                    .info-box { background: #0f3460; border-radius: 12px; padding: 12px; margin: 12px 0; }
+                    .info-box p { color: #94a3b8; font-size: 0.9rem; margin: 4px 0; }
                     .password-box { background: rgba(96, 165, 250, 0.05); border: 1px solid rgba(96, 165, 250, 0.1); border-radius: 8px; padding: 12px; margin: 12px 0; }
                     .password-box span { font-family: 'Courier New', monospace; font-weight: 700; color: #60a5fa; letter-spacing: 2px; font-size: 1.2rem; }
                     .btn { background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; padding: 14px 24px; border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; width: 100%; transition: all 0.3s; margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 10px; }
                     .btn:hover { transform: scale(1.02); box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4); }
-                    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
                     .info { color: #64748b; font-size: 0.8rem; margin-top: 16px; line-height: 1.6; }
-                    .info i { color: #f59e0b; }
-                    .copy-btn { background: transparent; border: 1px solid #333; color: #94a3b8; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 0.75rem; transition: all 0.3s; margin-top: 6px; }
-                    .copy-btn:hover { background: #1a1a2e; border-color: #0f5cbf; color: white; }
                     .warning { color: #f59e0b; font-size: 0.75rem; margin-top: 10px; }
                 </style>
             </head>
@@ -1005,132 +831,32 @@ router.get('/join-stream/:offer_id/:student_id', async (req, res) => {
                     <div class="badge ${isPaused ? 'badge-paused' : 'badge-live'}">${isPaused ? '⏸ متوقف مؤقتاً' : '🔴 بث مباشر'}</div>
                     <h1>🎥 ${escapeHtml(offer.subject_name)}</h1>
                     
-                    <div class="timer-display">
-                        <div class="time" id="timerDisplay">--:--:--</div>
+                    <div class="info-box">
+                        <p>📚 مدة الحصة: ${totalMinutes} دقيقة</p>
                     </div>
                     
                     <div class="password-box">
-                        <span id="roomPassword">${offer.room_password || ''}</span>
-                        <br>
-                        <button class="copy-btn" onclick="copyPassword()">
-                            <i class="fas fa-copy"></i> نسخ كلمة المرور
-                        </button>
+                        <p style="color: #94a3b8; font-size: 0.8rem;">🔑 كلمة المرور:</p>
+                        <span>${offer.room_password || 'غير متوفرة'}</span>
                     </div>
                     
-                    <button class="btn" onclick="joinJitsi()" id="joinBtn">
-                        <i class="fas fa-video"></i> فتح البث المباشر
+                    <button class="btn" onclick="window.open('${offer.stream_url}', '_blank')">
+                        🎥 فتح Jitsi Meet
                     </button>
                     
                     <p class="info">
-                        <i class="fas fa-info-circle"></i> سيتم فتح Jitsi Meet في نافذة جديدة<br>
-                        ⚠️ أدخل كلمة المرور أعلاه عند الطلب
+                        سيتم فتح Jitsi Meet في نافذة جديدة<br>
+                        أدخل كلمة المرور أعلاه عند الطلب
                     </p>
                     <p class="warning">⚠️ لا تشارك كلمة المرور مع أي شخص خارج الحصة</p>
                 </div>
-                
-                <script>
-                    const roomUrl = '${offer.stream_url}';
-                    const password = '${offer.room_password || ''}';
-                    let remainingSeconds = ${remainingSeconds};
-                    const totalSeconds = ${totalSeconds};
-                    let isPaused = ${isPaused ? 'true' : 'false'};
-                    let timerInterval = null;
-
-                    function updateTimerDisplay() {
-                        const display = document.getElementById('timerDisplay');
-                        const hours = Math.floor(remainingSeconds / 3600);
-                        const minutes = Math.floor((remainingSeconds % 3600) / 60);
-                        const seconds = remainingSeconds % 60;
-                        const timeStr = String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
-                        display.textContent = timeStr;
-                        display.className = 'time';
-                        const percentage = (remainingSeconds / totalSeconds) * 100;
-                        if (percentage < 10) display.classList.add('danger');
-                        else if (percentage < 30) display.classList.add('warning');
-                        if (remainingSeconds <= 0) {
-                            document.getElementById('joinBtn').disabled = true;
-                            document.getElementById('joinBtn').innerHTML = '⏰ انتهى البث';
-                            document.querySelector('.badge').className = 'badge badge-paused';
-                            document.querySelector('.badge').textContent = '⏰ انتهى البث';
-                        }
-                    }
-
-                    function startTimer() {
-                        if (timerInterval) clearInterval(timerInterval);
-                        updateTimerDisplay();
-                        timerInterval = setInterval(() => {
-                            if (!isPaused && remainingSeconds > 0) {
-                                remainingSeconds--;
-                                updateTimerDisplay();
-                            }
-                        }, 1000);
-                    }
-
-                    function copyPassword() {
-                        navigator.clipboard.writeText(password).then(() => {
-                            const btn = document.querySelector('.copy-btn');
-                            btn.innerHTML = '✅ تم النسخ';
-                            setTimeout(() => { btn.innerHTML = '<i class="fas fa-copy"></i> نسخ كلمة المرور'; }, 2000);
-                        });
-                    }
-                    
-                    function joinJitsi() {
-                        if (remainingSeconds <= 0) { alert('⏰ انتهى وقت البث'); return; }
-                        const newWindow = window.open(roomUrl, '_blank');
-                        if (newWindow) {
-                            setTimeout(() => { alert('🔑 كلمة المرور: ' + password + '\\n\\nأدخلها عند الطلب في صفحة Jitsi'); }, 2000);
-                        } else {
-                            alert('⚠️ يرجى السماح بفتح النوافذ المنبثقة');
-                        }
-                    }
-
-                    startTimer();
-                    setInterval(async () => {
-                        try {
-                            const res = await fetch('/api/stream/status/' + ${parseInt(offer.id)});
-                            const data = await res.json();
-                            if (data.status !== 'live' && data.status !== 'paused') {
-                                document.getElementById('joinBtn').disabled = true;
-                                document.getElementById('joinBtn').innerHTML = '⏹ انتهى البث';
-                                if (timerInterval) clearInterval(timerInterval);
-                            }
-                            if (data.remaining_seconds !== undefined) {
-                                remainingSeconds = data.remaining_seconds;
-                                updateTimerDisplay();
-                            }
-                        } catch(e) { console.error(e); }
-                    }, 30000);
-                </script>
             </body>
             </html>
         `);
     } catch (error) {
-        console.error('❌ خطأ في صفحة البث للطالب:', error.message);
-        res.status(500).send(`
-            <!DOCTYPE html>
-            <html dir="rtl" lang="ar">
-            <head><meta charset="UTF-8"><title>خطأ</title></head>
-            <body style="font-family:Cairo;text-align:center;padding:50px;">
-                <h1 style="color:#ef4444;">❌ حدث خطأ</h1>
-                <p style="color:#64748b;">${escapeHtml(error.message)}</p>
-                <a href="/student-dashboard.html" style="color:#0f5cbf;font-weight:700;">العودة للوحة التحكم</a>
-            </body></html>
-        `);
+        console.error('خطأ في صفحة دخول البث:', error);
+        res.status(500).send('حدث خطأ في تحميل صفحة البث');
     }
 });
-
-// ============================================================
-// دالة مساعدة
-// ============================================================
-function escapeHtml(text) {
-    if (!text) return '';
-    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-// ============================================================
-// دالة للحصول على CSRF Token (مؤقت)
-// ============================================================
-let csrfToken = '';
-// سيتم تعيينه من ملف server.js
 
 module.exports = router;

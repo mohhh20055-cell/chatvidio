@@ -430,11 +430,14 @@ app.use(express.static('public', {
 app.use((req, res, next) => {
     const publicMethods = ['GET', 'HEAD', 'OPTIONS'];
     
-    const isAdminPath = req.path.startsWith('/api/admin');
+    // استخدام req.originalUrl بدلاً من req.path لأن req.path لا يحتوي على mount path
+    const requestPath = req.originalUrl.split('?')[0]; // إزالة query string
+    
+    const isAdminPath = requestPath.startsWith('/api/admin');
     
     const isPublicPath = csrfExcludedPaths.some(path => {
-        if (path === req.path) return true;
-        if (req.path.startsWith(path + '/')) return true;
+        if (requestPath === path) return true;
+        if (requestPath.startsWith(path + '/')) return true;
         return false;
     });
     
@@ -448,7 +451,7 @@ app.use((req, res, next) => {
     const cookieToken = req.cookies.csrf_token;
     
     if (!csrfToken || !cookieToken || csrfToken !== cookieToken) {
-        console.log(`❌ CSRF فشل: ${req.path}`);
+        console.log(`❌ CSRF فشل: ${requestPath}`);
         return res.status(403).json({ 
             success: false, 
             error: 'طلب غير مصرح به (CSRF)',

@@ -71,21 +71,8 @@ async function formatOffers(offers) {
         }
     }
 
-    const now = new Date();
-
     return offers.map(offer => {
         const teacher = teachersMap[offer.teacher_id] || {};
-
-        // ✅ حساب الوقت المتبقي للعروض المباشرة
-        let remainingSeconds = offer.remaining_seconds || 0;
-        let isPaused = offer.is_paused || false;
-        
-        if (offer.status === 'live' && !isPaused && offer.stream_started_at) {
-            const startedAt = new Date(offer.stream_started_at);
-            const elapsed = Math.floor((now - startedAt) / 1000);
-            const total = offer.total_seconds || (offer.duration * 60);
-            remainingSeconds = Math.max(0, total - elapsed);
-        }
 
         return {
             id: offer.id,
@@ -101,9 +88,6 @@ async function formatOffers(offers) {
             room_name: offer.room_name || null,
             stream_url: offer.stream_url || null,
             stream_platform: offer.stream_platform || 'jitsi',
-            total_seconds: offer.total_seconds || (offer.duration * 60),
-            remaining_seconds: remainingSeconds,
-            is_paused: isPaused,
             booked_count: offer.booked_count || 0,
             created_at: offer.created_at,
             teacher_name: teacher.full_name || 'غير معروف',
@@ -277,23 +261,13 @@ router.get('/public/teacher/:teacherId', [
 
         let liveStreamInfo = null;
         if (liveOffer && !liveError) {
-            let remainingSeconds = liveOffer.remaining_seconds || 0;
-            if (liveOffer.status === 'live' && !liveOffer.is_paused && liveOffer.stream_started_at) {
-                const startedAt = new Date(liveOffer.stream_started_at);
-                const elapsed = Math.floor((now - startedAt) / 1000);
-                const total = liveOffer.total_seconds || (liveOffer.duration * 60);
-                remainingSeconds = Math.max(0, total - elapsed);
-            }
-
             liveStreamInfo = {
                 id: liveOffer.id,
                 subject_name: liveOffer.subject_name,
                 status: liveOffer.status,
                 stream_url: liveOffer.stream_url,
                 room_password: liveOffer.room_password,
-                total_seconds: liveOffer.total_seconds || (liveOffer.duration * 60),
-                remaining_seconds: remainingSeconds,
-                is_paused: liveOffer.is_paused || false,
+                duration: liveOffer.duration || 0,
                 booked_count: liveOffer.booked_count || 0
             };
         }
