@@ -41,6 +41,16 @@ async function authenticate(req, res, next) {
         });
     }
 
+    // ✅ Admin لا يحتاج تحقق من قاعدة البيانات
+    if (decoded.role === 'admin') {
+        req.user = {
+            userId: 0,
+            role: 'admin',
+            email: decoded.email
+        };
+        return next();
+    }
+
     // ✅ التحقق من أن المستخدم لا يزال موجوداً في قاعدة البيانات
     const tableName = decoded.role === 'student' ? 'students' : 'teachers';
     // students ليس لديه status، teachers لديه status
