@@ -141,6 +141,24 @@ router.post('/create', authenticate, authorize(['student']), [
 
         // ✅ خصم المبلغ للعروض المدفوعة (يذهب إلى الرصيد المعلق)
         if (!isFree) {
+            // ✅ حساب الخصم بناءً على مدة العرض
+            const durationMinutes = offer.duration || 60; // افتراضي 60 دقيقة
+            let platformFee = 0;
+            
+            if (durationMinutes <= 120) {
+                // ساعتان أو أقل: خصم 100 دينار
+                platformFee = 100;
+            } else if (durationMinutes <= 240) {
+                // أكثر من ساعتين إلى 4 ساعات: خصم 200 دينار
+                platformFee = 200;
+            } else {
+                // أكثر من 4 ساعات: خصم 600 دينار
+                platformFee = 600;
+            }
+            
+            // المبلغ الذي يذهب للأستاذ (بعد خصم الرسوم)
+            const teacherAmount = Math.max(0, offer.price - platformFee);
+            
             const newBalance = (student.wallet_balance || 0) - offer.price;
             await update('students', student_id, { 
                 wallet_balance: newBalance,
@@ -153,17 +171,26 @@ router.post('/create', authenticate, authorize(['student']), [
                 amount: offer.price,
                 type: 'withdraw',
                 status: 'pending_stream', // ✅ معلق حتى انتهاء البث
-                description: `حجز حصة "${offer.subject_name}" (في انتظار البث)`,
+                description: `حجز حصة "${offer.subject_name}" (${durationMinutes} دقيقة) - رسم المنصة: ${platformFee} دج`,
                 created_at: new Date().toISOString()
             });
 
-            // ✅ تحديث الرصيد المعلق للأستاذ (في جدول teachers)
+            // ✅ تحديث الرصيد المعلق للأستاذ (في جدول teachers) - بعد خصم الرسوم
             const teacher = await getOne('teachers', 'id', offer.teacher_id);
             if (teacher) {
                 await update('teachers', offer.teacher_id, {
-                    pending_withdraw: (teacher.pending_withdraw || 0) + offer.price
+                    pending_withdraw: (teacher.pending_withdraw || 0) + teacherAmount
                 });
             }
+            
+            // ✅ تحديث الجلسة بمبلغ ما يحصل عليه الأستاذ
+            await supabase
+                .from('sessions')
+                .update({
+                    teacher_earned: teacherAmount,
+                    platform_fee: platformFee
+                })
+                .eq('id', session.id);
         }
 
         // ✅ إضافة الطالب إلى غرفة الانتظار
@@ -267,6 +294,8 @@ router.post('/create', authenticate, authorize(['student']), [
             session_id: session.id,
             is_free: isFree,
             pending_balance: isFree ? 0 : offer.price,
+            platform_fee: isFree ? 0 : (offer.duration <= 120 ? 100 : (offer.duration <= 240 ? 200 : 600)),
+            teacher_amount: isFree ? 0 : Math.max(0, offer.price - (offer.duration <= 120 ? 100 : (offer.duration <= 240 ? 200 : 600))),
             message: isFree 
                 ? '✅ تم الحجز بنجاح (حصة مجانية)' 
                 : `✅ تم حجز الحصة بنجاح. تم خصم ${offer.price} دج من رصيدك (رصيد معلق حتى انتهاء البث).`,

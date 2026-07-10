@@ -303,7 +303,7 @@
         .nav-balance {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 10px;
             background: var(--gradient-main);
             padding: 4px 14px 4px 18px;
             border-radius: 30px;
@@ -318,6 +318,20 @@
         .nav-balance:hover { transform: scale(1.04); box-shadow: 0 4px 20px rgba(15, 92, 191, 0.35); }
         .nav-balance i { font-size: 0.9rem; opacity: 0.8; }
         .nav-balance .currency { font-size: 0.7rem; opacity: 0.7; }
+        
+        .nav-balance .balance-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .nav-balance .balance-item.pending {
+            background: rgba(245, 158, 11, 0.2);
+            padding: 2px 8px;
+            border-radius: 15px;
+            font-size: 0.75rem;
+        }
+        .nav-balance .balance-item.pending i { color: #f59e0b; }
+        .nav-balance .balance-item.pending .balance-label { color: #f59e0b; opacity: 1; }
 
         .nav-notifications {
             position: relative;
@@ -1160,10 +1174,18 @@
         </div>
 
         <div class="nav-balance" onclick="showSection('earnings')" title="الرصيد المتاح">
-            <i class="fas fa-wallet"></i>
-            <span class="balance-label">الرصيد:</span>
-            <span id="navBalanceAmount">0</span>
-            <span class="currency">دج</span>
+            <div class="balance-item">
+                <i class="fas fa-wallet"></i>
+                <span class="balance-label">الرصيد:</span>
+                <span id="navBalanceAmount">0</span>
+                <span class="currency">دج</span>
+            </div>
+            <div class="balance-item pending">
+                <i class="fas fa-clock"></i>
+                <span class="balance-label">المعلق:</span>
+                <span id="navPendingAmount">0</span>
+                <span class="currency">دج</span>
+            </div>
         </div>
 
         <div class="nav-notifications">
@@ -1951,7 +1973,11 @@
             const res = await fetchWithAuth(`/api/teacher/balance/${teacherId}`);
             const data = await res.json();
             const balance = data.balance || 0;
+            const pending = data.pending_withdraw || 0;
+            
+            // تحديث الرصيد في شريط التنقل
             document.getElementById('navBalanceAmount').textContent = balance;
+            document.getElementById('navPendingAmount').textContent = pending;
             document.getElementById('withdrawBalance').textContent = balance;
 
             let earningsHtml = `
@@ -1960,7 +1986,7 @@
                         <div>
                             <h3 style="font-size: 1rem; color: var(--gray-800);">💰 إجمالي الأرباح: ${data.total_earned || 0} دج</h3>
                             <p style="font-size: 0.9rem; color: var(--gray-600);">الرصيد المتاح للسحب: ${balance} دج</p>
-                            <p style="font-size: 0.85rem; color: var(--gold-dark);">⏳ الرصيد المعلق: ${data.pending_withdraw || 0} دج (في انتظار انتهاء البث)</p>
+                            <p style="font-size: 0.85rem; color: var(--gold-dark);">⏳ الرصيد المعلق: ${pending} دج (في انتظار انتهاء البث)</p>
                         </div>
                         <button class="btn-primary" onclick="showWithdrawModal()" style="font-size:0.75rem; padding:6px 16px;"><i class="fas fa-hand-holding-usd"></i> سحب الأرباح</button>
                     </div>
@@ -1972,9 +1998,10 @@
             if (data.sessions && data.sessions.length > 0) {
                 for (const s of data.sessions) {
                     const isPending = s.payment_status === 'pending' || s.payment_status === 'pending_stream';
+                    const teacherEarned = s.teacher_earned || (s.payment_amount - (s.platform_fee || 0));
                     earningsHtml += `<tr>
                         <td>${escapeHtml(s.offers?.subject_name || 'غير معروف')}</td>
-                        <td>${s.teacher_earned || s.payment_amount} دج</td>
+                        <td>${teacherEarned} دج</td>
                         <td>${new Date(s.created_at).toLocaleDateString()}</td>
                         <td>${isPending ? '⏳ معلق (في انتظار البث)' : '✅ مدفوع'}</td>
                     </tr>`;
@@ -2521,12 +2548,11 @@
                 streamIntervalId = null;
             }
             
-            // إرسال طلب إيقاف مؤقت تلقائي
-            fetch(`/api/stream/pause/${streamOfferId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ remaining_time: streamRemainingSeconds })
-            }).catch(() => {});
+            // إرسال طلب إيقاف مؤقت تلقائي مع CSRF token
+            const pauseData = JSON.stringify({ remaining_time: streamRemainingSeconds });
+            const pauseBlob = new Blob([pauseData], { type: 'application/json' });
+            
+            navigator.sendBeacon(`/api/stream/pause/${streamOfferId}`, pauseBlob);
             
             // إظهار رسالة للمستخدم
             e.preventDefault();
@@ -2545,16 +2571,15 @@
             }
             
             // إرسال طلب إيقاف مؤقت تلقائي للخادم
-            fetch(`/api/stream/pause/${streamOfferId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ remaining_time: streamRemainingSeconds })
-            }).then(() => {
-                streamPaused = true;
-                updateTimerButtons();
-                updateTimerDisplay();
-                showToast('⏸ تم إيقاف البث مؤقتاً لأنك غادرت الصفحة', 'warning');
-            }).catch(() => {});
+            const pauseData = JSON.stringify({ remaining_time: streamRemainingSeconds });
+            const pauseBlob = new Blob([pauseData], { type: 'application/json' });
+            
+            navigator.sendBeacon(`/api/stream/pause/${streamOfferId}`, pauseBlob);
+            
+            streamPaused = true;
+            updateTimerButtons();
+            updateTimerDisplay();
+            showToast('⏸ تم إيقاف البث مؤقتاً لأنك غادرت الصفحة', 'warning');
         }
     });
 
