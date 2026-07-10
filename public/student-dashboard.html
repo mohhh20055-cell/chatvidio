@@ -1519,6 +1519,18 @@
     async function fetchWithAuth(url, options = {}) {
         const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
         
+        // ✅ التحقق من وجود التوكن أولاً
+        if (!authToken) {
+            console.error('❌ authToken غير موجود!');
+            localStorage.removeItem('token');
+            localStorage.removeItem('userData');
+            showToast('انتهت صلاحية الجلسة، جاري إعادة التوجيه...', 'error');
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1000);
+            throw new Error('لا يوجد توكن');
+        }
+        
         const isFormData = options.body instanceof FormData;
         const headers = {
             'Authorization': `Bearer ${authToken}`,
@@ -1533,6 +1545,8 @@
         });
 
         if (response.status === 401) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('❌ خطأ 401:', errorData);
             showToast('⏳ انتهت صلاحية الجلسة، جاري إعادة التوجيه...', 'error');
             localStorage.removeItem('token');
             localStorage.removeItem('userData');
@@ -1822,110 +1836,116 @@
     // ✅ USER DATA
     // ================================================================
 
-           async function loadUserData() {
-    try {
-        // ✅ انتظار قليل لضمان تحميل localStorage
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        const storedData = localStorage.getItem('userData');
-        const token = localStorage.getItem('token');
-        
-        console.log('🔍 التحقق من التوكن:', token ? 'موجود ✅' : 'غير موجود ❌');
-        console.log('🔍 التحقق من userData:', storedData ? 'موجود ✅' : 'غير موجود ❌');
-        
-        // ✅ التحقق من وجود البيانات
-        if (!token || !storedData) {
-            console.log('⚠️ لا يوجد توكن أو بيانات مستخدم');
-            localStorage.removeItem('token');
-            localStorage.removeItem('userData');
-            window.location.href = '/';
-            return;
-        }
-        
-        // ✅ تعيين authToken قبل أي طلب
-        authToken = token;
-        console.log('✅ authToken تم تعيينها:', authToken ? 'نعم' : 'لا');
-        
+    async function loadUserData() {
         try {
-            userData = JSON.parse(storedData);
-            if (userData && userData.id) {
-                studentId = userData.id;
-                console.log('✅ studentId:', studentId);
-            } else {
-                console.error('❌ userData لا يحتوي على id');
-                localStorage.removeItem('userData');
-                localStorage.removeItem('token');
-                window.location.href = '/';
-                return;
-            }
-        } catch (parseError) {
-            console.error('❌ خطأ في تحليل userData:', parseError);
-            localStorage.removeItem('userData');
-            localStorage.removeItem('token');
-            window.location.href = '/';
-            return;
-        }
-        
-        // ✅ تحقق من وجود التوكن والـ ID
-        if (!authToken || !studentId) {
-            console.log('⚠️ لا يوجد توكن أو معرف طالب، جاري التوجيه للصفحة الرئيسية');
-            localStorage.removeItem('token');
-            localStorage.removeItem('userData');
-            window.location.href = '/';
-            return;
-        }
-
-        await getCsrfToken();
-
-        // ✅ استخدم مسار /me للتحقق من التوكن (أكثر موثوقية)
-        console.log('📥 جلب بيانات الطالب من الخادم...');
-        const res = await fetchWithAuth('/api/student/me');
-        console.log('📥 حالة الاستجابة:', res.status);
-        
-        if (!res.ok) {
-            console.error('❌ فشل جلب بيانات الطالب:', res.status);
-            const errorText = await res.text();
-            console.error('❌ نص الخطأ:', errorText);
+            // ✅ انتظار قليل لضمان تحميل localStorage
+            await new Promise(resolve => setTimeout(resolve, 100));
             
-            if (res.status === 401 || res.status === 403) {
-                localStorage.removeItem('token');
-                localStorage.removeItem('userData');
-                showToast('انتهت صلاحية الجلسة، جاري إعادة التوجيه...', 'error');
-                setTimeout(() => { window.location.href = '/'; }, 1500);
-            } else {
-                showToast('حدث خطأ في جلب البيانات (كود: ' + res.status + ')', 'error');
+            const storedData = localStorage.getItem('userData');
+            const token = localStorage.getItem('token');
+            
+            console.log('🔍 التحقق من التوكن:', token ? 'موجود ✅' : 'غير موجود ❌');
+            if (token) {
+                console.log('🔍 طول التوكن:', token.length, 'حرف');
             }
-            return;
-        }
-        
-        const data = await res.json();
-        console.log('📥 بيانات الطالب من الخادم:', data);
-        
-        if (!data.error && data.id) {
-            userData = data;
-            studentId = data.id;
-            localStorage.setItem('userData', JSON.stringify(data));
-            updateUI();
-            loadWallet();
-            loadNotifications();
-            loadReferralData();
-            loadOffers();
-        } else {
-            console.error('❌ خطأ في بيانات الطالب:', data.error || 'بيانات غير صالحة');
-            // ✅ إذا كان الخطأ "المستخدم غير موجود"، يتم توجيه للصفحة الرئيسية
-            if (data.error && data.error.includes('غير موجود')) {
+            console.log('🔍 التحقق من userData:', storedData ? 'موجود ✅' : 'غير موجود ❌');
+            
+            // ✅ التحقق من وجود البيانات
+            if (!token || !storedData) {
+                console.log('⚠️ لا يوجد توكن أو بيانات مستخدم');
                 localStorage.removeItem('token');
                 localStorage.removeItem('userData');
                 window.location.href = '/';
                 return;
             }
-            showToast(data.error || 'حدث خطأ في تحميل البيانات', 'error');
+            
+            // ✅ تعيين authToken قبل أي طلب
+            authToken = token;
+            console.log('✅ authToken تم تعيينها:', authToken ? 'نعم' : 'لا');
+            console.log('✅ authToken length:', authToken?.length);
+            
+            try {
+                userData = JSON.parse(storedData);
+                if (userData && userData.id) {
+                    studentId = userData.id;
+                    console.log('✅ studentId:', studentId);
+                    console.log('✅ userData.role:', userData.role);
+                } else {
+                    console.error('❌ userData لا يحتوي على id');
+                    localStorage.removeItem('userData');
+                    localStorage.removeItem('token');
+                    window.location.href = '/';
+                    return;
+                }
+            } catch (parseError) {
+                console.error('❌ خطأ في تحليل userData:', parseError);
+                localStorage.removeItem('userData');
+                localStorage.removeItem('token');
+                window.location.href = '/';
+                return;
+            }
+            
+            // ✅ تحقق من وجود التوكن والـ ID
+            if (!authToken || !studentId) {
+                console.log('⚠️ لا يوجد توكن أو معرف طالب، جاري التوجيه للصفحة الرئيسية');
+                localStorage.removeItem('token');
+                localStorage.removeItem('userData');
+                window.location.href = '/';
+                return;
+            }
+
+            await getCsrfToken();
+
+            // ✅ استخدم مسار /me للتحقق من التوكن (أكثر موثوقية)
+            console.log('📥 جلب بيانات الطالب من الخادم...');
+            console.log('📥 authToken قبل الطلب:', authToken ? 'موجود' : 'فارغ');
+            const res = await fetchWithAuth('/api/student/me');
+            console.log('📥 حالة الاستجابة:', res.status);
+            
+            if (!res.ok) {
+                console.error('❌ فشل جلب بيانات الطالب:', res.status);
+                const errorText = await res.text();
+                console.error('❌ نص الخطأ:', errorText);
+                
+                if (res.status === 401 || res.status === 403) {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('userData');
+                    showToast('انتهت صلاحية الجلسة، جاري إعادة التوجيه...', 'error');
+                    setTimeout(() => { window.location.href = '/'; }, 1500);
+                } else {
+                    showToast('حدث خطأ في جلب البيانات (كود: ' + res.status + ')', 'error');
+                }
+                return;
+            }
+            
+            const data = await res.json();
+            console.log('📥 بيانات الطالب من الخادم:', data);
+            
+            if (!data.error && data.id) {
+                userData = data;
+                studentId = data.id;
+                localStorage.setItem('userData', JSON.stringify(data));
+                updateUI();
+                loadWallet();
+                loadNotifications();
+                loadReferralData();
+                loadOffers();
+            } else {
+                console.error('❌ خطأ في بيانات الطالب:', data.error || 'بيانات غير صالحة');
+                // ✅ إذا كان الخطأ "المستخدم غير موجود"، يتم توجيه للصفحة الرئيسية
+                if (data.error && data.error.includes('غير موجود')) {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('userData');
+                    window.location.href = '/';
+                    return;
+                }
+                showToast(data.error || 'حدث خطأ في تحميل البيانات', 'error');
+            }
+        } catch(e) {
+            console.error('❌ خطأ في تحميل بيانات المستخدم:', e);
+            showToast('حدث خطأ في تحميل البيانات', 'error');
         }
-    } catch(e) {
-        console.error('❌ خطأ في تحميل بيانات المستخدم:', e);
-        showToast('حدث خطأ في تحميل البيانات', 'error');
     }
-}
     function updateUI() {
         if (!userData) return;
         const userName = userData.full_name || 'طالب';
