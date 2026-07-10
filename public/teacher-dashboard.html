@@ -2503,7 +2503,7 @@
         
         try {
             // إنهاء البث وتحويل الرصيد المعلق إلى رصيد قابل للسحب
-            const res = await fetchWithAuth(`/api/stream/complete/${streamOfferId}`, {
+            const res = await fetchWithAuth(`/api/stream/end/${streamOfferId}`, {
                 method: 'POST',
                 body: JSON.stringify({ teacher_id: teacherId })
             });

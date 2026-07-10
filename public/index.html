@@ -3295,8 +3295,8 @@
                 var data = await res.json();
 
                 if (data.success) {
-                    // ✅ التحقق من وجود البيانات المطلوبة
-                    if (!data.token || !data.user || !data.user.id) {
+                    // ✅ التحقق من وجود البيانات المطلوبة (id === 0 مسموح للأدمن)
+                    if (!data.token || !data.user || data.user.id === undefined || data.user.id === null) {
                         console.error('❌ استجابة_login غير صالحة:', data);
                         showNotification('حدث خطأ في تسجيل الدخول، يرجى المحاولة مرة أخرى', 'error');
                         return;
