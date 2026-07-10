@@ -92,12 +92,22 @@ router.post('/offer/create', authenticate, authorize(['teacher']), [
         const room_name = `stream_${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;
         const defaultPassword = crypto.randomBytes(4).toString('hex').toUpperCase();
 
+        // ✅ تحويل الوقت من التوقيت المحلي (الجزائر) إلى UTC للتخزين
+        // datetime-local يرسل الوقت بدون معلومات المنطقة الزمنية، نفترض أنه التوقيت المحلي
+        const [datePart, timePart] = offer_date.split('T');
+        const [year, month, day] = datePart.split('-').map(Number);
+        const [hours, minutes] = timePart.split(':').map(Number);
+        
+        // إنشاء كائن تاريخ بالتوقيت المحلي ثم تحويله إلى UTC
+        const localDate = new Date(year, month - 1, day, hours, minutes);
+        const offerDateUTC = new Date(localDate.getTime() - (localDate.getTimezoneOffset() * 60000));
+
         // ✅ إدخال العرض في قاعدة البيانات
         const newOffer = {
             teacher_id: teacher_id,
             subject_name: subject_name.trim(),
             duration: parseInt(duration),
-            offer_date: new Date(offer_date).toISOString(),
+            offer_date: offerDateUTC.toISOString(),
             price: parseFloat(price) || 0,
             is_free: is_free ? true : false,
             room_name: room_name,

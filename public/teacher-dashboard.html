@@ -2283,7 +2283,12 @@
             const offerDate = new Date(offer.offer_date);
             
             // التحقق من انتهاء العرض
-            const isExpired = offerDate < now && offer.status !== 'live' && offer.status !== 'teacher_ready' && offer.status !== 'paused';
+            // العرض منتهي إذا: مر عليه أكثر من ساعتين منذ وقته المحدد ولم يبدأ بعد
+            const twoHoursInMs = 2 * 60 * 60 * 1000;
+            const isExpired = (offerDate.getTime() + twoHoursInMs) < now.getTime() && 
+                              offer.status !== 'live' && 
+                              offer.status !== 'teacher_ready' && 
+                              offer.status !== 'paused';
 
             let statusText = '', statusClass = '';
             if (offer.status === 'upcoming' && !isExpired) { statusText = '⏳ قادم'; statusClass = 'status-upcoming'; }
@@ -2921,9 +2926,13 @@
         const offers = await res.json();
         // المتصفح يستخدم توقيت الجزائر تلقائياً
         const now = new Date();
+        const twoHoursInMs = 2 * 60 * 60 * 1000;
         const expiredOffers = offers.filter(o => {
             const offerDate = new Date(o.offer_date);
-            return offerDate < now && o.status !== 'live' && o.status !== 'teacher_ready' && o.status !== 'paused';
+            return (offerDate.getTime() + twoHoursInMs) < now.getTime() && 
+                   o.status !== 'live' && 
+                   o.status !== 'teacher_ready' && 
+                   o.status !== 'paused';
         });
 
         if (expiredOffers.length === 0) {
