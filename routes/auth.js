@@ -20,6 +20,7 @@ const { processReferralOnRegister } = require('../utils/referral');
 const { uploadToSupabase, validateUploadedFiles } = require('../utils/upload');
 const { verifyRecaptcha } = require('../utils/validation');
 const { generateToken, verifyToken } = require('../utils/jwt');
+const logger = require('../utils/logger');
 
 // ============================================================
 // الثوابت
