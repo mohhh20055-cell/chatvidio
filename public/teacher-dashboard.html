@@ -2266,7 +2266,10 @@
             return;
         }
 
+        // وقت الجزائر UTC+1
         const now = new Date();
+        const algeriaNow = new Date(now.getTime() + (60 * 60 * 1000)); // Add 1 hour for Algeria
+        
         let html = '';
         const levelMap = {
             '5eme_pri': 'خامسة ابتدائي', '1ere_am': 'أولى متوسط', '2eme_am': 'ثانية متوسط',
@@ -2278,7 +2281,8 @@
 
         for (const offer of offers) {
             const offerDate = new Date(offer.offer_date);
-            const isExpired = offerDate < now && offer.status !== 'live' && offer.status !== 'teacher_ready' && offer.status !== 'paused';
+            // استخدم وقت الجزائر للمقارنة
+            const isExpired = offerDate < algeriaNow && offer.status !== 'live' && offer.status !== 'teacher_ready' && offer.status !== 'paused';
 
             let statusText = '', statusClass = '';
             if (offer.status === 'upcoming' && !isExpired) { statusText = '⏳ قادم'; statusClass = 'status-upcoming'; }
@@ -2301,12 +2305,11 @@
             let rejoinButton = '';
             const isLiveOrReady = offer.status === 'live' || offer.status === 'teacher_ready' || offer.status === 'paused';
             
-            // التحقق من أن وقت البث قد وصل (بتوقيت الجزائر)
-            // الجزائر تستخدم UTC+1
-            const algeriaOffset = 1; // Algeria is UTC+1
+            // التحقق من أن وقت البث قد وصل (بتوقيت الجزائر UTC+1)
+            // نحصل على الوقت الحالي ونضيف ساعة واحدة للحصول على وقت الجزائر
             const algeriaNow = new Date();
-            const localOffset = algeriaNow.getTimezoneOffset() / 60;
-            algeriaNow.setHours(algeriaNow.getHours() + (algeriaOffset + localOffset));
+            // أضف ساعة واحدة لأن الجزائر UTC+1
+            algeriaNow.setUTCHours(algeriaNow.getUTCHours() + 1);
             
             const isTimeArrived = offerDate <= algeriaNow;
             const canStartStream = !isExpired && offer.status === 'upcoming' && isTimeArrived;
@@ -2389,10 +2392,12 @@
         
         document.getElementById('streamTitle').textContent = `📚 ${offer.subject_name}`;
         
-        // حساب الوقت المتبقي
+        // حساب الوقت المتبقي (باستخدام وقت الجزائر UTC+1)
         const offerDate = new Date(offer.offer_date);
         const now = new Date();
-        const elapsedSeconds = Math.floor((now - offerDate) / 1000);
+        // أضف ساعة واحدة للحصول على وقت الجزائر
+        const algeriaNow = new Date(now.getTime() + (60 * 60 * 1000));
+        const elapsedSeconds = Math.floor((algeriaNow - offerDate) / 1000);
         const totalSeconds = offer.duration * 60; // تحويل الدقائق إلى ثواني
         
         // إذا كان البث متوقف مؤقتاً، استخدم الوقت المتبقي المحفوظ
@@ -2916,10 +2921,12 @@
     async function deleteExpiredOffers() {
         const res = await fetchWithAuth(`/api/teacher/offers/${teacherId}`);
         const offers = await res.json();
+        // وقت الجزائر UTC+1
         const now = new Date();
+        const algeriaNow = new Date(now.getTime() + (60 * 60 * 1000));
         const expiredOffers = offers.filter(o => {
             const offerDate = new Date(o.offer_date);
-            return offerDate < now && o.status !== 'live' && o.status !== 'teacher_ready' && o.status !== 'paused';
+            return offerDate < algeriaNow && o.status !== 'live' && o.status !== 'teacher_ready' && o.status !== 'paused';
         });
 
         if (expiredOffers.length === 0) {
