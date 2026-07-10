@@ -233,7 +233,14 @@ async function verifyStreamCompletion(offerId) {
 /**
  * معالجة المدفوعات حسب وقت البث الفعلي
  */
-async function processStreamPayments(offerId) {
+async function processStreamPayments(offerId, earlyEnd = false) {
+    
+    // إذا كان إنهاء مبكر، استرداد كامل للطلاب
+    if (earlyEnd) {
+        return await processEarlyEndRefund(offerId);
+    }
+    
+    // Otherwise, process normal completion with partial payments
     const completion = await verifyStreamCompletion(offerId);
     
     const { data: offer, error: offerError } = await supabase
@@ -389,6 +396,127 @@ async function processStreamPayments(offerId) {
                 created_at: new Date().toISOString()
             });
     }
+}
+
+/**
+ * معالجة الاسترداد الكامل عند الإنهاء المبكر
+ * - لا يحصل الأستاذ على أي مال
+ * - يتم استرداد جميع الأموال للطلاب
+ */
+async function processEarlyEndRefund(offerId) {
+    const { data: offer, error: offerError } = await supabase
+        .from('offers')
+        .select('id, teacher_id, subject_name, is_free, price')
+        .eq('id', offerId)
+        .single();
+
+    if (offerError || !offer) {
+        console.error('خطأ في جلب العرض للاسترداد:', offerError);
+        return;
+    }
+
+    // إذا كان مجانياً، لا حاجة للمعالجة
+    if (offer.is_free || offer.price === 0) {
+        console.log('العرض مجاني، لا حاجة لمعالجة الاسترداد');
+        return;
+    }
+
+    // جلب جميع الجلسات المعلقة
+    const { data: sessions, error: sessionsError } = await supabase
+        .from('sessions')
+        .select('id, student_id, payment_amount, payment_status')
+        .eq('offer_id', offerId)
+        .eq('payment_status', 'pending_stream');
+
+    if (sessionsError) {
+        console.error('خطأ في جلب الجلسات:', sessionsError);
+        return;
+    }
+
+    console.log(`⚠️ معالجة إنهاء مبكر للبث ${offerId} - استرداد كامل للطلاب`);
+
+    for (const session of (sessions || [])) {
+        // استرداد كامل للمبلغ للطالب
+        const { data: student } = await supabase
+            .from('students')
+            .select('wallet_balance')
+            .eq('id', session.student_id)
+            .single();
+
+        await supabase
+            .from('students')
+            .update({
+                wallet_balance: (student?.wallet_balance || 0) + session.payment_amount
+            })
+            .eq('id', session.student_id);
+
+        // تحديث حالة الجلسة
+        await supabase
+            .from('sessions')
+            .update({
+                payment_status: 'refunded',
+                teacher_earned: 0,
+                completed_at: new Date().toISOString(),
+                partial_payment_note: 'استرداد كامل - أنهى الأستاذ البث مبكراً'
+            })
+            .eq('id', session.id);
+
+        // تسجيل المعاملة
+        await supabase
+            .from('wallet_transactions')
+            .insert({
+                student_id: session.student_id,
+                amount: session.payment_amount,
+                type: 'refund',
+                status: 'completed',
+                description: `استرداد كامل ${session.payment_amount} دج - أنهى الأستاذ البث مبكراً`,
+                created_at: new Date().toISOString()
+            });
+
+        // إشعار الطالب
+        await supabase
+            .from('notifications')
+            .insert({
+                user_id: session.student_id,
+                user_type: 'student',
+                title: '💰 استرداد كامل',
+                message: `تم استرداد ${session.payment_amount} دج لحصة "${offer.subject_name}" لأن الأستاذ أنهى البث مبكراً`,
+                is_read: false,
+                created_at: new Date().toISOString()
+            });
+
+        console.log(`💰 تم استرداد ${session.payment_amount} دج للطالب ${session.student_id}`);
+    }
+
+    // تحديث رصيد الأستاذ المعلق (إلغاء المعلق)
+    const { data: teacher } = await supabase
+        .from('teachers')
+        .select('pending_withdraw')
+        .eq('id', offer.teacher_id)
+        .single();
+
+    if (teacher?.pending_withdraw > 0) {
+        await supabase
+            .from('teachers')
+            .update({
+                pending_withdraw: 0
+            })
+            .eq('id', offer.teacher_id);
+    }
+
+    // إشعار الأستاذ
+    await supabase
+        .from('notifications')
+        .insert({
+            user_id: offer.teacher_id,
+            user_type: 'teacher',
+            title: '⚠️ تم إنهاء البث مبكراً',
+            message: `تم إنهاء البث "${offer.subject_name}" مبكراً. لم تحصل على أي مال وتم استرداد جميع المبالغ للطلاب.`,
+            is_read: false,
+            created_at: new Date().toISOString()
+        });
+
+    console.log(`⚠️ تم إنهاء البث مبكراً - لم يحصل الأستاذ على أي مال`);
 }
 
 /**

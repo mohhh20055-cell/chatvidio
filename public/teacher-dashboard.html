@@ -2453,27 +2453,31 @@
         if (!timerStarted) {
             // لم يبدأ العد التنازلي بعد
             addStudentsBtn.style.display = 'flex';
+            addStudentsBtn.innerHTML = '<i class="fas fa-user-plus"></i> إضافة الطلاب';
             pauseBtn.style.display = 'none';
             resumeBtn.style.display = 'none';
-            endStreamBtn.disabled = true;
-            endStreamBtn.style.opacity = '0.5';
-            endStreamBtn.style.cursor = 'not-allowed';
+            // زر إنهاء البث متاح حتى قبل البدء (للإلغاء)
+            endStreamBtn.disabled = false;
+            endStreamBtn.style.opacity = '1';
+            endStreamBtn.style.cursor = 'pointer';
         } else if (streamPaused) {
             // البث متوقف مؤقتاً
-            addStudentsBtn.style.display = 'none';
+            addStudentsBtn.style.display = 'flex';
+            addStudentsBtn.innerHTML = '<i class="fas fa-play"></i> استئناف البث';
             pauseBtn.style.display = 'none';
-            resumeBtn.style.display = 'flex';
+            resumeBtn.style.display = 'none';
             endStreamBtn.disabled = false;
             endStreamBtn.style.opacity = '1';
             endStreamBtn.style.cursor = 'pointer';
         } else {
-            // البث يعمل - لا يمكن إنهاءه حتى ينتهي الوقت
+            // البث يعمل
             addStudentsBtn.style.display = 'none';
             pauseBtn.style.display = 'flex';
             resumeBtn.style.display = 'none';
-            endStreamBtn.disabled = true;
-            endStreamBtn.style.opacity = '0.5';
-            endStreamBtn.style.cursor = 'not-allowed';
+            // زر إنهاء البث متاح دائماً (مع تحذير)
+            endStreamBtn.disabled = false;
+            endStreamBtn.style.opacity = '1';
+            endStreamBtn.style.cursor = 'pointer';
         }
     }
 
@@ -2640,20 +2644,42 @@
     async function endStream() {
         if (!streamOfferId) return;
         
-        // التحقق من أن العد التنازلي قد بدأ وأن الوقت قد انتهى
-        if (timerStarted && streamRemainingSeconds > 0) {
-            const remainingMinutes = Math.ceil(streamRemainingSeconds / 60);
-            showToast(`⚠️ لا يمكن إنهاء البث قبل انتهاء الوقت!`, 'warning');
-            showToast(`⏱ الوقت المتبقي: ${remainingMinutes} دقيقة`, 'warning');
-            return;
+        // حساب النسبة المكتملة
+        const elapsedSeconds = streamTotalSeconds - streamRemainingSeconds;
+        const completionPercentage = streamTotalSeconds > 0 ? Math.round((elapsedSeconds / streamTotalSeconds) * 100) : 0;
+        
+        // إذا لم يبدأ العداد بعد أو كان هناك وقت متبقي
+        const isEarlyEnd = timerStarted && streamRemainingSeconds > 0;
+        
+        let warningMessage = '';
+        if (!timerStarted) {
+            // لم يبدأ البث بعد - إلغاء فقط
+            warningMessage = '⚠️ أنت على وشك إلغاء البث قبل البدء.\n\n';
+            warningMessage += 'لن يتم خصم أي مبالغ من الطلاب.\n\n';
+            warningMessage += 'هل تريد المتابعة؟';
+        } else if (isEarlyEnd) {
+            // إنهاء مبكر أثناء البث
+            warningMessage = `⚠️ تحذير مهم!\n\n`;
+            warningMessage += `أنت تقوم بإنهاء البث قبل الموعد المحدد.\n`;
+            warningMessage += `نسبة الإكمال: ${completionPercentage}%\n`;
+            warningMessage += `❌ لن تحصل على أي مال من هذا البث!\n`;
+            warningMessage += `💰 سيتم إرجاع جميع الأموال للطلاب.\n\n`;
+            warningMessage += `هل أنت متأكد من المتابعة؟`;
+        } else {
+            // إنهاء بعد انتهاء الوقت
+            warningMessage = '⚠️ هل أنت متأكد من إنهاء البث؟';
         }
         
-        if (!confirm('⚠️ هل أنت متأكد من إنهاء البث؟ سيتم تحويل الرصيد المعلق إلى رصيدك القابل للسحب.')) return;
+        if (!confirm(warningMessage)) return;
         
         try {
             const res = await fetchWithAuth(`/api/stream/end/${streamOfferId}`, {
                 method: 'POST',
-                body: JSON.stringify({ teacher_id: teacherId, remaining_time: streamRemainingSeconds })
+                body: JSON.stringify({ 
+                    teacher_id: teacherId, 
+                    remaining_time: streamRemainingSeconds,
+                    early_end: isEarlyEnd
+                })
             });
             const data = await res.json();
             
@@ -2661,7 +2687,13 @@
                 hideStreamTimer();
                 loadOffers();
                 loadBalance();
-                showToast('✅ تم إنهاء البث! تم تحويل الرصيد المعلق إلى رصيدك', 'success');
+                if (!timerStarted) {
+                    showToast('✅ تم إلغاء البث بنجاح', 'success');
+                } else if (isEarlyEnd) {
+                    showToast('⚠️ تم إنهاء البث مبكراً! لم تحصل على أي مال.', 'warning');
+                } else {
+                    showToast('✅ تم إنهاء البث! تم تحويل الرصيد المعلق إلى رصيدك', 'success');
+                }
             } else {
                 showToast(data.error || 'حدث خطأ', 'error');
             }
@@ -2736,6 +2768,13 @@
     }
 
     async function addStudentsToStream(offerId) {
+        // التحقق من حالة البث
+        if (timerStarted && streamPaused) {
+            // استئناف البث
+            await resumeStream();
+            return;
+        }
+        
         if (!confirm('⚠️ هل تريد إضافة جميع الطلاب المسجلين إلى البث وإرسال الإشعارات؟\n\n⚠️ تأكد أنك قد دخلت للبث كمضيف أولاً!')) return;
 
         try {

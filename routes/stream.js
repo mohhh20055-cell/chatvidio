@@ -266,6 +266,7 @@ router.post('/end/:offer_id', authenticate, authorize(['teacher']), validateOffe
 
         const offer_id = parseInt(req.params.offer_id);
         const offer = req.offer;
+        const early_end = req.body.early_end === true;
 
         // ✅ تسجيل نهاية البث من الخادم (نظام التحقق المستقل)
         await recordStreamEnd(offer_id, req.user.userId);
@@ -281,8 +282,13 @@ router.post('/end/:offer_id', authenticate, authorize(['teacher']), validateOffe
         console.log(`   - الوقت المطلوب: ${completion.expected_seconds} ثانية`);
         console.log(`   - الناقص: ${completion.shortfall_seconds} ثانية`);
 
-        // ✅ معالجة المدفوعات حسب وقت البث الفعلي (سيعالج الاسترداد تلقائياً)
-        await processStreamPayments(offer_id);
+        // ✅ معالجة المدفوعات - إذا كان إنهاء مبكر، استرداد كامل للطلاب
+        if (early_end) {
+            console.log(`⚠️ إنهاء مبكر - سيتم استرداد كامل للطلاب`);
+            await processStreamPayments(offer_id, true);
+        } else {
+            await processStreamPayments(offer_id, false);
+        }
 
         // ✅ تحديث حالة العرض إلى completed
         await supabase
@@ -299,9 +305,12 @@ router.post('/end/:offer_id', authenticate, authorize(['teacher']), validateOffe
 
         res.json({
             success: true,
-            message: completion.complete 
-                ? 'تم إنهاء البث بنجاح - تم تحويل المبلغ للأستاذ' 
-                : `تم إنهاء البث - تم تحويل نسبة ${Math.round(completion.completion_percentage)}% فقط`,
+            message: early_end
+                ? 'تم إنهاء البث مبكراً - تم استرداد جميع المبالغ للطلاب'
+                : (completion.complete 
+                    ? 'تم إنهاء البث بنجاح - تم تحويل المبلغ للأستاذ' 
+                    : `تم إنهاء البث - تم تحويل نسبة ${Math.round(completion.completion_percentage)}% فقط`),
+            early_end: early_end,
             verification: {
                 completion_percentage: Math.round(completion.completion_percentage),
                 actual_seconds: completion.actual_seconds,
