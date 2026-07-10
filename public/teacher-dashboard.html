@@ -1286,6 +1286,9 @@
                 <button class="btn-end" id="endStreamBtn" onclick="endStream()" disabled style="opacity: 0.5; cursor: not-allowed;">
                     <i class="fas fa-stop"></i> إنهاء البث
                 </button>
+                <button class="btn-jitsi" id="rejoinStreamBtn" onclick="rejoinStreamFromTimer()" style="display: none; background: #f59e0b;">
+                    <i class="fas fa-external-link-alt"></i> أغلقت الصفحة بالخطأ
+                </button>
             </div>
         </div>
         
@@ -2295,12 +2298,32 @@
             }
 
             let streamButton = '';
+            let rejoinButton = '';
             const isLiveOrReady = offer.status === 'live' || offer.status === 'teacher_ready' || offer.status === 'paused';
             
-            if (!isExpired && offer.status === 'upcoming') {
+            // التحقق من أن وقت البث قد وصل (بتوقيت الجزائر)
+            // الجزائر تستخدم UTC+1
+            const algeriaOffset = 1; // Algeria is UTC+1
+            const algeriaNow = new Date();
+            const localOffset = algeriaNow.getTimezoneOffset() / 60;
+            algeriaNow.setHours(algeriaNow.getHours() + (algeriaOffset + localOffset));
+            
+            const isTimeArrived = offerDate <= algeriaNow;
+            const canStartStream = !isExpired && offer.status === 'upcoming' && isTimeArrived;
+            const notYetTime = !isExpired && offer.status === 'upcoming' && !isTimeArrived;
+            
+            if (canStartStream) {
                 streamButton = `<button class="start-stream-btn" onclick="startStreamNow(${offer.id})"><i class="fas fa-play"></i> بدء البث</button>`;
+            } else if (notYetTime) {
+                // حساب الوقت المتبقي
+                const timeLeft = offerDate - algeriaNow;
+                const hoursLeft = Math.floor(timeLeft / (1000 * 60 * 60));
+                const minutesLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                streamButton = `<button class="start-stream-btn" disabled style="opacity:0.6; cursor:not-allowed;"><i class="fas fa-clock"></i> يبدأ بعد ${hoursLeft}س ${minutesLeft}د</button>`;
             } else if (!isExpired && isLiveOrReady) {
                 streamButton = `<button class="start-stream-btn" onclick="joinTeacherStream(${offer.id})"><i class="fas fa-video"></i> دخول البث</button>`;
+                // زر إعادة فتح صفحة البث إذا أغلقت بالخطأ
+                rejoinButton = `<button class="message-btn" style="margin-top:8px; background: #f59e0b;" onclick="rejoinStream(${offer.id})"><i class="fas fa-external-link-alt"></i> أغلقت صفحة البث بالخطأ</button>`;
             }
 
             // عرض كلمة المرور إذا كانت موجودة
@@ -2325,6 +2348,7 @@
                 ${passwordDisplay}
                 <span class="status-badge ${statusClass}">${statusText}</span>
                 ${streamButton}
+                ${rejoinButton}
                 ${offer.status === 'upcoming' || isExpired ? `<button class="delete-btn" onclick="deleteOffer(${offer.id})"><i class="fas fa-trash"></i> حذف</button>` : ''}
             </div>`;
         }
@@ -2476,6 +2500,7 @@
         const resumeBtn = document.getElementById('resumeBtn');
         const addStudentsBtn = document.getElementById('addStudentsBtn');
         const endStreamBtn = document.getElementById('endStreamBtn');
+        const rejoinBtn = document.getElementById('rejoinStreamBtn');
         
         if (!timerStarted) {
             // لم يبدأ العد التنازلي بعد
@@ -2483,16 +2508,18 @@
             addStudentsBtn.innerHTML = '<i class="fas fa-user-plus"></i> إضافة الطلاب';
             pauseBtn.style.display = 'none';
             resumeBtn.style.display = 'none';
+            rejoinBtn.style.display = 'none';
             // زر إنهاء البث متاح حتى قبل البدء (للإلغاء)
             endStreamBtn.disabled = false;
             endStreamBtn.style.opacity = '1';
             endStreamBtn.style.cursor = 'pointer';
         } else if (streamPaused) {
-            // البث متوقف مؤقتاً
+            // البث متوقف مؤقتاً - أظهر زر إعادة فتح الصفحة
             addStudentsBtn.style.display = 'flex';
             addStudentsBtn.innerHTML = '<i class="fas fa-play"></i> استئناف البث';
             pauseBtn.style.display = 'none';
             resumeBtn.style.display = 'none';
+            rejoinBtn.style.display = 'flex';
             endStreamBtn.disabled = false;
             endStreamBtn.style.opacity = '1';
             endStreamBtn.style.cursor = 'pointer';
@@ -2501,11 +2528,18 @@
             addStudentsBtn.style.display = 'none';
             pauseBtn.style.display = 'flex';
             resumeBtn.style.display = 'none';
+            rejoinBtn.style.display = 'flex';
             // زر إنهاء البث متاح دائماً (مع تحذير)
             endStreamBtn.disabled = false;
             endStreamBtn.style.opacity = '1';
             endStreamBtn.style.cursor = 'pointer';
         }
+    }
+
+    // إعادة فتح صفحة البث من شريط البث
+    async function rejoinStreamFromTimer() {
+        if (!streamOfferId) return;
+        await rejoinStream(streamOfferId);
     }
 
     function hideStreamTimer() {
@@ -2784,6 +2818,45 @@
                 }
             } else {
                 showToast('⚠️ لم يتم بدء البث بعد', 'warning');
+            }
+        } catch (e) {
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                showToast('حدث خطأ', 'error');
+            }
+        }
+    }
+
+    // إعادة فتح صفحة البث إذا أغلقت بالخطأ
+    async function rejoinStream(offerId) {
+        try {
+            const res = await fetchWithAuth(`/api/teacher/offer/${offerId}`);
+            const data = await res.json();
+            
+            if (!data.stream_url) {
+                showToast('⚠️ لم يتم بدء البث بعد', 'warning');
+                return;
+            }
+            
+            // فتح رابط البث
+            const newWindow = window.open(data.stream_url, '_blank');
+            
+            if (newWindow && data.room_password) {
+                // طلب كلمة المرور
+                const enteredPassword = prompt('🔑 أدخل كلمة مرور البث للمضيف:\n\n(كلمة المرور موجودة في صفحة البث أو يمكن نسخها من هنا: ' + data.room_password + ')', '');
+                
+                if (enteredPassword === data.room_password) {
+                    showToast('✅ تم التحقق من كلمة المرور!', 'success');
+                    
+                    // إذا كان البث متوقف، استئنافه
+                    if (data.status === 'paused' || timerStarted) {
+                        // إضافة الطلاب وإرسال الإشعارات
+                        await addStudentsToStream(offerId);
+                    }
+                } else if (enteredPassword !== null) {
+                    showToast('⚠️ كلمة المرور غير صحيحة!', 'error');
+                }
+            } else {
+                showToast('⚠️ يرجى السماح بفتح النوافذ المنبثقة', 'warning');
             }
         } catch (e) {
             if (e.message !== 'انتهت صلاحية الجلسة') {
