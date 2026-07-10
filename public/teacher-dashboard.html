@@ -2306,12 +2306,11 @@
             const isLiveOrReady = offer.status === 'live' || offer.status === 'teacher_ready' || offer.status === 'paused';
             
             // التحقق من أن وقت البث قد وصل (بتوقيت الجزائر UTC+1)
-            // نحصل على الوقت الحالي ونضيف ساعة واحدة للحصول على وقت الجزائر
-            const algeriaNow = new Date();
-            // أضف ساعة واحدة لأن الجزائر UTC+1
-            algeriaNow.setUTCHours(algeriaNow.getUTCHours() + 1);
+            // نحسب وقت الجزائر من جديد لكل عرض
+            const nowForCheck = new Date();
+            const algeriaNowForCheck = new Date(nowForCheck.getTime() + (60 * 60 * 1000));
             
-            const isTimeArrived = offerDate <= algeriaNow;
+            const isTimeArrived = offerDate <= algeriaNowForCheck;
             const canStartStream = !isExpired && offer.status === 'upcoming' && isTimeArrived;
             const notYetTime = !isExpired && offer.status === 'upcoming' && !isTimeArrived;
             
@@ -2319,7 +2318,7 @@
                 streamButton = `<button class="start-stream-btn" onclick="startStreamNow(${offer.id})"><i class="fas fa-play"></i> بدء البث</button>`;
             } else if (notYetTime) {
                 // حساب الوقت المتبقي
-                const timeLeft = offerDate - algeriaNow;
+                const timeLeft = offerDate - algeriaNowForCheck;
                 const hoursLeft = Math.floor(timeLeft / (1000 * 60 * 60));
                 const minutesLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
                 streamButton = `<button class="start-stream-btn" disabled style="opacity:0.6; cursor:not-allowed;"><i class="fas fa-clock"></i> يبدأ بعد ${hoursLeft}س ${minutesLeft}د</button>`;
