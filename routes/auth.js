@@ -508,6 +508,8 @@ router.post('/login', checkBanned, authLimiter, [
         let user = null;
         let userRole = 'teacher';
 
+        logger.info('محاولة تسجيل دخول', { email, role });
+
         if (role === 'teacher') {
             user = await getOne('teachers', 'email', email);
             userRole = 'teacher';
@@ -516,9 +518,17 @@ router.post('/login', checkBanned, authLimiter, [
             userRole = 'student';
         }
 
+        logger.info('نتيجة جلب المستخدم', { 
+            email, 
+            role, 
+            userFound: !!user, 
+            userId: user?.id 
+        });
+
         // ✅ التحقق من وجود المستخدم
         if (!user) {
             trackLoginAttempt(email);
+            logger.warn('تسجيل دخول فاشل - مستخدم غير موجود', { email, role });
             return res.status(404).json({ 
                 success: false, 
                 error: '❌ البريد الإلكتروني غير موجود. يرجى التحقق من البريد أو التسجيل أولاً.' 

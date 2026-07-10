@@ -1822,7 +1822,7 @@
     // ✅ USER DATA
     // ================================================================
 
-   async function loadUserData() {
+           async function loadUserData() {
     try {
         // ✅ انتظار قليل لضمان تحميل localStorage
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -1834,33 +1834,41 @@
         console.log('🔍 التحقق من userData:', storedData ? 'موجود ✅' : 'غير موجود ❌');
         
         // ✅ التحقق من وجود البيانات
-        if (token) {
-            authToken = token;
-            console.log('✅ authToken تم تعيينها');
+        if (!token || !storedData) {
+            console.log('⚠️ لا يوجد توكن أو بيانات مستخدم');
+            localStorage.removeItem('token');
+            localStorage.removeItem('userData');
+            window.location.href = '/';
+            return;
         }
         
-        if (storedData) {
-            try {
-                userData = JSON.parse(storedData);
-                if (userData && userData.id) {
-                    studentId = userData.id;
-                    console.log('✅ studentId:', studentId);
-                } else {
-                    console.error('❌ userData لا يحتوي على id');
-                }
-            } catch (parseError) {
-                console.error('❌ خطأ في تحليل userData:', parseError);
+        // ✅ تعيين authToken قبل أي طلب
+        authToken = token;
+        console.log('✅ authToken تم تعيينها:', authToken ? 'نعم' : 'لا');
+        
+        try {
+            userData = JSON.parse(storedData);
+            if (userData && userData.id) {
+                studentId = userData.id;
+                console.log('✅ studentId:', studentId);
+            } else {
+                console.error('❌ userData لا يحتوي على id');
                 localStorage.removeItem('userData');
                 localStorage.removeItem('token');
                 window.location.href = '/';
                 return;
             }
+        } catch (parseError) {
+            console.error('❌ خطأ في تحليل userData:', parseError);
+            localStorage.removeItem('userData');
+            localStorage.removeItem('token');
+            window.location.href = '/';
+            return;
         }
         
         // ✅ تحقق من وجود التوكن والـ ID
         if (!authToken || !studentId) {
             console.log('⚠️ لا يوجد توكن أو معرف طالب، جاري التوجيه للصفحة الرئيسية');
-            console.log('⚠️ authToken:', !!authToken, 'studentId:', !!studentId);
             localStorage.removeItem('token');
             localStorage.removeItem('userData');
             window.location.href = '/';

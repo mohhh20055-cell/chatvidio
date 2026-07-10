@@ -1755,27 +1755,37 @@
             console.log('🔍 التحقق من التوكن:', token ? 'موجود ✅' : 'غير موجود ❌');
             console.log('🔍 التحقق من userData:', storedData ? 'موجود ✅' : 'غير موجود ❌');
             
-            if (token) {
-                authToken = token;
-                console.log('✅ authToken تم تعيينها');
+            // ✅ التحقق من وجود البيانات أولاً
+            if (!token || !storedData) {
+                console.log('⚠️ لا يوجد توكن أو بيانات مستخدم');
+                localStorage.removeItem('token');
+                localStorage.removeItem('userData');
+                window.location.href = '/';
+                return;
             }
             
-            if (storedData) {
-                try {
-                    userData = JSON.parse(storedData);
-                    if (userData && userData.id) {
-                        teacherId = userData.id;
-                        console.log('✅ teacherId:', teacherId);
-                    } else {
-                        console.error('❌ userData لا يحتوي على id');
-                    }
-                } catch (parseError) {
-                    console.error('❌ خطأ في تحليل userData:', parseError);
+            // ✅ تعيين authToken قبل أي طلب
+            authToken = token;
+            console.log('✅ authToken تم تعيينها:', authToken ? 'نعم' : 'لا');
+            
+            try {
+                userData = JSON.parse(storedData);
+                if (userData && userData.id) {
+                    teacherId = userData.id;
+                    console.log('✅ teacherId:', teacherId);
+                } else {
+                    console.error('❌ userData لا يحتوي على id');
                     localStorage.removeItem('userData');
                     localStorage.removeItem('token');
                     window.location.href = '/';
                     return;
                 }
+            } catch (parseError) {
+                console.error('❌ خطأ في تحليل userData:', parseError);
+                localStorage.removeItem('userData');
+                localStorage.removeItem('token');
+                window.location.href = '/';
+                return;
             }
             
             if (!teacherId || !authToken) {
