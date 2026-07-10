@@ -43,9 +43,11 @@ async function authenticate(req, res, next) {
 
     // ✅ التحقق من أن المستخدم لا يزال موجوداً في قاعدة البيانات
     const tableName = decoded.role === 'student' ? 'students' : 'teachers';
+    // students ليس لديه status، teachers لديه status
+    const selectFields = decoded.role === 'student' ? 'id, is_banned' : 'id, is_banned, status';
     const { data: user, error } = await supabase
         .from(tableName)
-        .select('id, is_banned, status')
+        .select(selectFields)
         .eq('id', decoded.userId)
         .single();
 
@@ -75,8 +77,8 @@ async function authenticate(req, res, next) {
         });
     }
 
-    // ✅ التحقق من حالة الأستاذ
-    if (decoded.role === 'teacher' && user.status !== 'approved') {
+    // ✅ التحقق من حالة الأستاذ فقط (الطلاب ليس لديهم status)
+    if (decoded.role === 'teacher' && user.status && user.status !== 'approved') {
         logger.warn('محاولة وصول حساب غير مفعل', {
             userId: decoded.userId,
             status: user.status,
@@ -151,12 +153,11 @@ async function checkBanned(req, res, next) {
     }
     
     try {
-        const encryptedIP = encrypt(ip);
-        
+        // التحقق من IP في جدول banned_users (يستخدم ip_address وليس ip_address_encrypted)
         const { data, error } = await supabase
             .from('banned_users')
             .select('*')
-            .eq('ip_address_encrypted', encryptedIP)
+            .eq('ip_address', ip)
             .single();
         
         if (error && error.code !== 'PGRST116') {
