@@ -1,5 +1,5 @@
 // ============================================================
-// مسارات البث المباشر - Stream Routes
+// مسارات البث المباشر - Stream Routes (مع نظام التحقق المستقل)
 // ============================================================
 
 const express = require('express');
@@ -13,6 +13,16 @@ const { authenticate, authorize, checkBanned, checkActiveStream, isOwner, valida
 const { getOne, insert, update } = require('../utils/helpers');
 const { verifyToken } = require('../utils/jwt');
 
+// ✅ استيراد نظام التحقق المستقل من وقت البث
+const { 
+    recordStreamStart, 
+    recordStreamEnd, 
+    recordStreamPause,
+    processStreamPayments, 
+    getStreamVerification,
+    verifyStreamCompletion 
+} = require('../utils/streamVerification');
+
 // دالة مساعدة لحماية HTML
 function escapeHtml(text) {
     if (!text) return '';
@@ -20,7 +30,7 @@ function escapeHtml(text) {
 }
 
 // ============================================================
-// ✅ بدء البث باستخدام Jitsi Meet (مع التحقق من عدم وجود بث نشط)
+// ✅ بدء البث باستخدام Jitsi Meet (مع نظام التحقق المستقل)
 // ============================================================
 
 router.post('/start-jitsi-stream', authenticate, authorize(['teacher']), checkNoActiveStream, [
@@ -65,6 +75,10 @@ router.post('/start-jitsi-stream', authenticate, authorize(['teacher']), checkNo
             })
             .eq('id', offer_id);
         
+        // ✅ تسجيل بداية البث من الخادم (نظام التحقق المستقل)
+        await recordStreamStart(offer_id, req.user.userId);
+        console.log(`✅ تم تسجيل بداية البث من الخادم: ${new Date().toISOString()}`);
+        
         // ✅ جلب الطلاب المسجلين والمدفوعين
         const { data: sessions } = await supabase
             .from('sessions')
@@ -107,7 +121,7 @@ router.post('/start-jitsi-stream', authenticate, authorize(['teacher']), checkNo
             room_name: roomName,
             duration: offer.duration,
             students_count: sessions?.length || 0,
-            message: 'تم بدء البث بنجاح (مجاني 100%)'
+            message: 'تم بدء البث بنجاح - نظام التحقق المستقل مفعّل'
         });
     } catch (error) {
         console.error('❌ خطأ في بدء البث:', error.message);
@@ -116,7 +130,7 @@ router.post('/start-jitsi-stream', authenticate, authorize(['teacher']), checkNo
 });
 
 // ============================================================
-// ✅ إيقاف البث مؤقتاً (مع التحقق من ملكية العرض)
+// ✅ إيقاف البث مؤقتاً (مع تسجيل وقت الإيقاف)
 // ============================================================
 
 router.post('/pause/:offer_id', authenticate, authorize(['teacher']), validateOfferOwnership, [
@@ -144,6 +158,10 @@ router.post('/pause/:offer_id', authenticate, authorize(['teacher']), validateOf
             .from('offers')
             .update({ status: 'paused' })
             .eq('id', offer_id);
+
+        // ✅ تسجيل وقت الإيقاف في نظام التحقق
+        await recordStreamPause(offer_id);
+        console.log(`⏸ تم تسجيل إيقاف البث: ${new Date().toISOString()}`);
 
         // ✅ إرسال إشعار للطلاب
         const { data: sessions } = await supabase
@@ -234,7 +252,7 @@ router.post('/resume/:offer_id', authenticate, authorize(['teacher']), validateO
 });
 
 // ============================================================
-// ✅ إنهاء البث (مع تحويل الرصيد المعلق)
+// ✅ إنهاء البث (مع نظام التحقق المستقل ومعالجة المدفوعات)
 // ============================================================
 
 router.post('/end/:offer_id', authenticate, authorize(['teacher']), validateOfferOwnership, [
@@ -249,58 +267,29 @@ router.post('/end/:offer_id', authenticate, authorize(['teacher']), validateOffe
         const offer_id = parseInt(req.params.offer_id);
         const offer = req.offer;
 
-        // ✅ جلب جميع الجلسات المدفوعة لهذا العرض
-        const { data: sessions } = await supabase
-            .from('sessions')
-            .select('student_id, payment_amount')
-            .eq('offer_id', offer_id)
-            .eq('payment_status', 'pending_stream');
+        // ✅ تسجيل نهاية البث من الخادم (نظام التحقق المستقل)
+        await recordStreamEnd(offer_id, req.user.userId);
+        console.log(`✅ تم تسجيل نهاية البث من الخادم: ${new Date().toISOString()}`);
 
-        let totalEarned = 0;
-        const teacher = await getOne('teachers', 'id', offer.teacher_id);
+        // ✅ الحصول على بيانات التحقق
+        const verification = await getStreamVerification(offer_id);
+        const completion = await verifyStreamCompletion(offer_id);
 
-        // ✅ حساب الوقت الفعلي للبث
-        const startedAt = new Date(offer.stream_started_at);
-        const now = new Date();
-        const actualSeconds = Math.floor((now - startedAt) / 1000);
-        const totalSeconds = offer.total_seconds || (offer.duration * 60);
-        const percentage = Math.min(1, Math.max(0, actualSeconds / totalSeconds));
+        console.log(`📊 تقرير التحقق:`);
+        console.log(`   - نسبة الاكتمال: ${Math.round(completion.completion_percentage)}%`);
+        console.log(`   - الوقت الفعلي: ${completion.actual_seconds} ثانية`);
+        console.log(`   - الوقت المطلوب: ${completion.expected_seconds} ثانية`);
+        console.log(`   - الناقص: ${completion.shortfall_seconds} ثانية`);
 
-        // ✅ تحويل الجلسات إلى مدفوعة وإضافة المبلغ للرصيد
-        for (const session of sessions) {
-            const amount = session.payment_amount || 0;
-            const earnedAmount = Math.round(amount * percentage);
-            
-            await supabase
-                .from('sessions')
-                .update({
-                    payment_status: 'paid',
-                    teacher_earned: earnedAmount,
-                    completed_at: new Date().toISOString(),
-                    pending_balance: 0
-                })
-                .eq('id', session.id);
-
-            totalEarned += earnedAmount;
-        }
-
-        // ✅ تحديث رصيد الأستاذ
-        if (teacher && totalEarned > 0) {
-            await supabase
-                .from('teachers')
-                .update({
-                    balance: (teacher.balance || 0) + totalEarned,
-                    total_earned: (teacher.total_earned || 0) + totalEarned,
-                    pending_withdraw: Math.max(0, (teacher.pending_withdraw || 0) - totalEarned)
-                })
-                .eq('id', offer.teacher_id);
-        }
+        // ✅ معالجة المدفوعات حسب وقت البث الفعلي (سيعالج الاسترداد تلقائياً)
+        await processStreamPayments(offer_id);
 
         // ✅ تحديث حالة العرض إلى completed
         await supabase
             .from('offers')
             .update({
-                status: 'completed'
+                status: 'completed',
+                completed_at: new Date().toISOString()
             })
             .eq('id', offer_id);
 
@@ -308,32 +297,20 @@ router.post('/end/:offer_id', authenticate, authorize(['teacher']), validateOffe
         await supabase.from('active_stream').delete().eq('offer_id', offer_id);
         await supabase.from('waiting_room').delete().eq('offer_id', offer_id);
 
-        // ✅ إرسال إشعار للطلاب
-        const { data: allSessions } = await supabase
-            .from('sessions')
-            .select('student_id')
-            .eq('offer_id', offer_id)
-            .eq('payment_status', 'paid');
-
-        if (allSessions && allSessions.length > 0) {
-            const notifications = allSessions.map(s => ({
-                user_id: s.student_id,
-                user_type: 'student',
-                title: '✅ انتهى البث المباشر',
-                message: `انتهى البث المباشر للحصة "${offer.subject_name}". شكراً لمشاركتك!`,
-                offer_id: offer_id,
-                is_read: false,
-                created_at: new Date().toISOString()
-            }));
-            await supabase.from('notifications').insert(notifications);
-        }
-
         res.json({
             success: true,
-            message: 'تم إنهاء البث بنجاح',
-            total_earned: totalEarned,
-            actual_duration: actualSeconds,
-            total_duration: totalSeconds
+            message: completion.complete 
+                ? 'تم إنهاء البث بنجاح - تم تحويل المبلغ للأستاذ' 
+                : `تم إنهاء البث - تم تحويل نسبة ${Math.round(completion.completion_percentage)}% فقط`,
+            verification: {
+                completion_percentage: Math.round(completion.completion_percentage),
+                actual_seconds: completion.actual_seconds,
+                expected_seconds: completion.expected_seconds,
+                shortfall_seconds: completion.shortfall_seconds,
+                is_complete: completion.complete,
+                server_start_time: verification?.server_start_time,
+                server_end_time: verification?.server_end_time
+            }
         });
     } catch (error) {
         console.error('❌ خطأ في إنهاء البث:', error.message);
@@ -856,6 +833,250 @@ router.get('/join-stream/:offer_id/:student_id', async (req, res) => {
     } catch (error) {
         console.error('خطأ في صفحة دخول البث:', error);
         res.status(500).send('حدث خطأ في تحميل صفحة البث');
+    }
+});
+
+// ============================================================
+// ✅ جلب بيانات التحقق من وقت البث (للأستاذ)
+// ============================================================
+router.get('/verification/:offer_id', authenticate, authorize(['teacher']), [
+    param('offer_id').isInt().withMessage('معرف العرض غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const offer_id = parseInt(req.params.offer_id);
+
+        // التحقق من ملكية العرض
+        const offer = await getOne('offers', 'id', offer_id);
+        if (!offer) {
+            return res.status(404).json({ success: false, error: 'العرض غير موجود' });
+        }
+
+        if (offer.teacher_id !== req.user.userId && req.user.role !== 'admin') {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        const verification = await getStreamVerification(offer_id);
+
+        if (!verification) {
+            return res.json({
+                success: true,
+                verification: null,
+                message: 'لا توجد بيانات تحقق لهذا البث'
+            });
+        }
+
+        res.json({
+            success: true,
+            verification: {
+                server_start_time: verification.server_start_time,
+                server_end_time: verification.server_end_time,
+                total_duration_seconds: verification.total_duration_seconds,
+                actual_live_seconds: verification.actual_live_seconds,
+                expected_duration: verification.expected_duration,
+                completion_percentage: Math.round(verification.completion_percentage),
+                is_complete: verification.is_complete,
+                status: verification.status
+            }
+        });
+    } catch (error) {
+        console.error('خطأ في جلب بيانات التحقق:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
+// ✅ جلب تقرير التحقق للطالب
+// ============================================================
+router.get('/student-verification/:offer_id/:student_id', authenticate, authorize(['student']), [
+    param('offer_id').isInt().withMessage('معرف العرض غير صالح'),
+    param('student_id').isInt().withMessage('معرف الطالب غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const offer_id = parseInt(req.params.offer_id);
+        const student_id = parseInt(req.params.student_id);
+
+        // التحقق من أن الطالب هو نفسه
+        if (student_id !== req.user.userId) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        const offer = await getOne('offers', 'id', offer_id);
+        if (!offer) {
+            return res.status(404).json({ success: false, error: 'العرض غير موجود' });
+        }
+
+        // التحقق من وجود حجز للطالب
+        const session = await getOne('sessions', 'offer_id', offer_id);
+        if (!session || session.student_id !== student_id) {
+            return res.status(404).json({ success: false, error: 'لم تقم بحجز هذه الحصة' });
+        }
+
+        const verification = await getStreamVerification(offer_id);
+        const completion = await verifyStreamCompletion(offer_id);
+
+        res.json({
+            success: true,
+            offer: {
+                id: offer.id,
+                subject_name: offer.subject_name,
+                duration: offer.duration,
+                status: offer.status
+            },
+            payment: {
+                original_amount: session.payment_amount,
+                status: session.payment_status,
+                teacher_earned: session.teacher_earned
+            },
+            verification: verification ? {
+                completion_percentage: Math.round(completion.completion_percentage),
+                actual_seconds: completion.actual_seconds,
+                expected_seconds: completion.expected_seconds,
+                is_complete: completion.complete
+            } : null
+        });
+    } catch (error) {
+        console.error('خطأ في جلب تقرير التحقق:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
+// ✅ جلب جميع تقارير التحقق (للأدمن)
+// ============================================================
+router.get('/admin/all-verifications', authenticate, authorize(['admin']), async (req, res) => {
+    try {
+        const { data: verifications, error } = await supabase
+            .from('stream_verification')
+            .select(`
+                *,
+                offers:offer_id (
+                    id,
+                    subject_name,
+                    duration,
+                    status,
+                    price,
+                    is_free,
+                    teachers:teacher_id (
+                        id,
+                        full_name,
+                        email
+                    )
+                )
+            `)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        // حساب نسبة الاكتمال لكل بث
+        const formatted = (verifications || []).map(v => {
+            const offer = v.offers;
+            const expectedSeconds = offer ? offer.duration * 60 : 0;
+            const percentage = expectedSeconds > 0 
+                ? Math.round((v.actual_live_seconds / expectedSeconds) * 100) 
+                : 0;
+
+            return {
+                id: v.id,
+                offer_id: v.offer_id,
+                teacher_id: v.teacher_id,
+                teacher_name: offer?.teachers?.full_name,
+                subject_name: offer?.subject_name,
+                duration_minutes: offer?.duration,
+                expected_seconds: expectedSeconds,
+                actual_seconds: v.actual_live_seconds,
+                completion_percentage: percentage,
+                is_complete: percentage >= 80,
+                server_start_time: v.server_start_time,
+                server_end_time: v.server_end_time,
+                total_paused_seconds: v.total_paused_seconds,
+                status: v.status,
+                created_at: v.created_at
+            };
+        });
+
+        res.json({
+            success: true,
+            verifications: formatted,
+            total: formatted.length,
+            completed_count: formatted.filter(v => v.is_complete).length,
+            incomplete_count: formatted.filter(v => !v.is_complete).length
+        });
+    } catch (error) {
+        console.error('خطأ في جلب تقارير التحقق:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
+// ✅ جلب تقرير تحقق معين للعرض (للأدمن)
+// ============================================================
+router.get('/admin/verification/:offer_id', authenticate, authorize(['admin']), [
+    param('offer_id').isInt().withMessage('معرف العرض غير صالح')
+], async (req, res) => {
+    try {
+        const offer_id = parseInt(req.params.offer_id);
+
+        const verification = await getStreamVerification(offer_id);
+        const completion = await verifyStreamCompletion(offer_id);
+
+        const { data: offer } = await supabase
+            .from('offers')
+            .select(`
+                *,
+                teachers:teacher_id (
+                    id,
+                    full_name,
+                    email
+                )
+            `)
+            .eq('id', offer_id)
+            .single();
+
+        const { data: sessions } = await supabase
+            .from('sessions')
+            .select(`
+                *,
+                students:student_id (
+                    id,
+                    full_name,
+                    email
+                )
+            `)
+            .eq('offer_id', offer_id);
+
+        res.json({
+            success: true,
+            verification: verification ? {
+                server_start_time: verification.server_start_time,
+                server_end_time: verification.server_end_time,
+                total_duration_seconds: verification.total_duration_seconds,
+                actual_live_seconds: verification.actual_live_seconds,
+                total_paused_seconds: verification.total_paused_seconds,
+                status: verification.status
+            } : null,
+            completion: {
+                expected_seconds: completion.expected_seconds,
+                actual_seconds: completion.actual_seconds,
+                shortfall_seconds: completion.shortfall_seconds,
+                completion_percentage: Math.round(completion.completion_percentage),
+                is_complete: completion.complete
+            },
+            offer: offer,
+            sessions: sessions
+        });
+    } catch (error) {
+        console.error('خطأ في جلب تقرير التحقق:', error.message);
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 

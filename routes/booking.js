@@ -10,6 +10,7 @@ const crypto = require('crypto');
 const { supabase } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { getOne, insert, update } = require('../utils/helpers');
+const { processStudentReferralRewardOnBooking } = require('../utils/referral');
 
 // ============================================================
 // ✅ إنشاء حجز جديد (مع نظام الرصيد المعلق)
@@ -245,6 +246,20 @@ router.post('/create', authenticate, authorize(['student']), [
             booked_count: totalBooked,
             updated_at: new Date().toISOString()
         });
+
+        // ✅ معالجة مكافأة الإحالة للطالب المحيل (فقط للعروض المدفوعة)
+        // الشرط: يجب أن يكون الطالب المحال (المستخدم الحالي) قد سجل باستخدام كود إحالة
+        // وعند حجزه لدرس مدفوع، يحصل المُحيل على فرصة صندوق هدايا
+        if (!isFree) {
+            try {
+                const referralProcessed = await processStudentReferralRewardOnBooking(student_id, 'student');
+                if (referralProcessed) {
+                    console.log(`✅ تم منح فرصة صندوق هدايا للمستخدم الذي أحاله الطالب`);
+                }
+            } catch (referralError) {
+                console.error('⚠️ خطأ في معالجة مكافأة الإحالة:', referralError.message);
+            }
+        }
 
         // ✅ إرجاع النتيجة
         return res.json({
