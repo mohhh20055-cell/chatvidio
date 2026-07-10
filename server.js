@@ -424,7 +424,10 @@ app.use(express.static('public', {
     '/api/chargily-webhook',
     '/api/start-jitsi-stream',
     '/api/join-jitsi',
-    '/api/support/send'
+    '/api/support/send',
+    '/api/logs/stats',
+    '/api/logs/errors',
+    '/api/logs/all'
 ];
 
 app.use((req, res, next) => {
@@ -506,6 +509,28 @@ app.get('/api/get-csrf-token', authenticate, (req, res) => {
         maxAge: 3600000
     });
     res.json({ csrfToken: token });
+});
+
+// ============================================================
+// API Logs (للوحة الأدمن logs.html)
+// ============================================================
+
+app.get('/api/logs/stats', authenticate, authorize(['admin']), (req, res) => {
+    const stats = logger.getLogStats();
+    res.json({ success: true, stats });
+});
+
+app.get('/api/logs/errors', authenticate, authorize(['admin']), (req, res) => {
+    const limit = parseInt(req.query.limit) || 50;
+    const errors = logger.getRecentErrors(limit);
+    res.json({ success: true, errors });
+});
+
+app.get('/api/logs/all', authenticate, authorize(['admin']), (req, res) => {
+    const type = req.query.type || 'all';
+    const limit = parseInt(req.query.limit) || 100;
+    const logs = logger.getLogs(type, limit);
+    res.json({ success: true, logs });
 });
 
 // ============================================================
