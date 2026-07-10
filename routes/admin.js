@@ -133,7 +133,7 @@ router.get('/all-teachers', authenticate, authorize(['admin']), async (req, res)
         if (teacherIds.length > 0) {
             const { data: offers, error: offersError } = await supabase
                 .from('offers')
-                .select('teacher_id, status, booked_count, total_seconds, remaining_seconds, is_paused')
+                .select('teacher_id, status, booked_count, duration')
                 .in('teacher_id', teacherIds)
                 .in('status', ['live', 'teacher_ready', 'paused']);
 
@@ -516,17 +516,6 @@ router.get('/all-offers', authenticate, authorize(['admin']), async (req, res) =
             if (!countError) {
                 offer.students_count = count || 0;
             }
-
-            // ✅ حساب الوقت المتبقي
-            let remainingSeconds = offer.remaining_seconds || 0;
-            if (offer.status === 'live' && !offer.is_paused && offer.stream_started_at) {
-                const startedAt = new Date(offer.stream_started_at);
-                const now = new Date();
-                const elapsed = Math.floor((now - startedAt) / 1000);
-                const total = offer.total_seconds || (offer.duration * 60);
-                remainingSeconds = Math.max(0, total - elapsed);
-            }
-            offer.remaining_seconds = remainingSeconds;
         }
 
         console.log(`✅ تم جلب ${offers?.length || 0} عرض`);

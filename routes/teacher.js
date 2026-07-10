@@ -78,34 +78,23 @@ router.get('/me', authenticate, authorize(['teacher']), async (req, res) => {
 
         delete teacher.password;
 
-        // جلب البث النشط يدوياً
+        // جلب البث النشط يدوياً (فقط الأعمدة الموجودة في قاعدة البيانات)
         const { data: activeOffer, error: activeError } = await supabase
             .from('offers')
-            .select('id, subject_name, status, stream_url, room_password, remaining_seconds, total_seconds, is_paused, booked_count, stream_started_at, duration')
+            .select('id, subject_name, status, stream_url, room_password, booked_count, duration')
             .eq('teacher_id', req.user.userId)
             .in('status', ['live', 'teacher_ready', 'paused'])
             .single();
 
         let activeStream = null;
         if (activeOffer && !activeError) {
-            let remainingSeconds = activeOffer.remaining_seconds || 0;
-            if (activeOffer.status === 'live' && !activeOffer.is_paused && activeOffer.stream_started_at) {
-                const startedAt = new Date(activeOffer.stream_started_at);
-                const now = new Date();
-                const elapsed = Math.floor((now - startedAt) / 1000);
-                const total = activeOffer.total_seconds || (activeOffer.duration * 60);
-                remainingSeconds = Math.max(0, total - elapsed);
-            }
-
             activeStream = {
                 id: activeOffer.id,
                 subject_name: activeOffer.subject_name,
                 status: activeOffer.status,
                 stream_url: activeOffer.stream_url,
                 room_password: activeOffer.room_password,
-                total_seconds: activeOffer.total_seconds || 0,
-                remaining_seconds: remainingSeconds,
-                is_paused: activeOffer.is_paused || false,
+                duration: activeOffer.duration || 0,
                 booked_count: activeOffer.booked_count || 0
             };
         }

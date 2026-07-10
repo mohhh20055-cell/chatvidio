@@ -984,7 +984,7 @@ router.get('/me', authenticate, async (req, res) => {
         if (role === 'teacher') {
             const { data: offer } = await supabase
                 .from('offers')
-                .select('id, status, subject_name, stream_url, remaining_seconds, total_seconds, is_paused')
+                .select('id, status, subject_name, stream_url, duration')
                 .eq('teacher_id', userId)
                 .in('status', ['live', 'teacher_ready', 'paused'])
                 .single();

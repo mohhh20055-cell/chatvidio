@@ -135,7 +135,7 @@ router.get(['/teachers', '/public/teachers'], async (req, res) => {
         if (teacherIds.length > 0) {
             const { data: liveOffers, error: liveError } = await supabase
                 .from('offers')
-                .select('teacher_id, status, booked_count, remaining_seconds, is_paused, stream_started_at, total_seconds, duration')
+                .select('teacher_id, status, booked_count, duration')
                 .in('teacher_id', teacherIds)
                 .in('status', ['live', 'teacher_ready', 'paused']);
 
@@ -154,17 +154,7 @@ router.get(['/teachers', '/public/teachers'], async (req, res) => {
                         streamInfo[offer.teacher_id].has_live_stream = true;
                         streamInfo[offer.teacher_id].stream_status = offer.status;
                         streamInfo[offer.teacher_id].stream_students += (offer.booked_count || 0);
-                        
-                        // حساب الوقت المتبقي
-                        if (offer.status === 'live' && !offer.is_paused && offer.stream_started_at) {
-                            const now = new Date();
-                            const startedAt = new Date(offer.stream_started_at);
-                            const elapsed = Math.floor((now - startedAt) / 1000);
-                            const total = offer.total_seconds || (offer.duration * 60);
-                            streamInfo[offer.teacher_id].remaining_seconds = Math.max(0, total - elapsed);
-                        } else {
-                            streamInfo[offer.teacher_id].remaining_seconds = offer.remaining_seconds || 0;
-                        }
+                        streamInfo[offer.teacher_id].remaining_seconds = (offer.duration || 0) * 60;
                     }
                 }
             }
