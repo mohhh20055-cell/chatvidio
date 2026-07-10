@@ -1728,6 +1728,304 @@
                 font-size: 0.8rem;
             }
         }
+
+        /* ============================================================
+           RESPONSIVE DESIGN - جميع الشاشات
+           ============================================================ */
+
+        /* الشاشات الصغيرة جداً (أقل من 360px) */
+        @media (max-width: 359px) {
+            :root {
+                --radius-sm: 6px;
+                --radius-md: 10px;
+                --radius-lg: 16px;
+            }
+            
+            body {
+                font-size: 13px;
+                padding-top: 60px;
+            }
+            
+            .container {
+                padding: 0 10px;
+            }
+            
+            .header {
+                padding: 10px 15px;
+                height: 60px;
+            }
+            
+            .header-logo {
+                font-size: 1.1rem;
+            }
+            
+            .hero {
+                padding: 40px 15px;
+                min-height: auto;
+            }
+            
+            .hero h1 {
+                font-size: 1.5rem;
+                line-height: 1.4;
+            }
+            
+            .btn {
+                padding: 10px 20px;
+                font-size: 0.85rem;
+            }
+            
+            .section-title {
+                font-size: 1.3rem;
+            }
+            
+            .developer-card {
+                padding: 15px;
+            }
+            
+            .developer-card h3 {
+                font-size: 1rem;
+            }
+            
+            .developer-role {
+                font-size: 0.65rem;
+                padding: 3px 8px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            
+            .footer {
+                padding: 20px 15px;
+                font-size: 0.8rem;
+            }
+        }
+
+        /* الشاشات الصغيرة (360px - 480px) - phones */
+        @media (min-width: 360px) and (max-width: 480px) {
+            :root {
+                --radius-sm: 8px;
+                --radius-md: 12px;
+                --radius-lg: 18px;
+            }
+            
+            body {
+                font-size: 14px;
+                padding-top: 65px;
+            }
+            
+            .header {
+                padding: 12px 15px;
+                height: 65px;
+            }
+            
+            .header-logo {
+                font-size: 1.2rem;
+            }
+            
+            .hero {
+                padding: 50px 20px;
+                min-height: auto;
+            }
+            
+            .hero h1 {
+                font-size: 1.8rem;
+            }
+            
+            .btn {
+                padding: 12px 24px;
+                font-size: 0.9rem;
+            }
+            
+            .section-container {
+                padding: 40px 15px;
+            }
+            
+            .section-title {
+                font-size: 1.4rem;
+            }
+            
+            .developer-card {
+                padding: 18px;
+            }
+            
+            .developer-card h3 {
+                font-size: 1.05rem;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
+            
+            .footer {
+                padding: 25px 15px;
+                font-size: 0.85rem;
+            }
+        }
+
+        /* phones landscape و large phones (481px - 768px) */
+        @media (min-width: 481px) and (max-width: 768px) {
+            body {
+                font-size: 15px;
+            }
+            
+            .header {
+                padding: 15px 20px;
+            }
+            
+            .hero {
+                padding: 60px 25px;
+            }
+            
+            .hero h1 {
+                font-size: 2rem;
+            }
+            
+            .section-container {
+                padding: 50px 20px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+            }
+            
+            .developer-card {
+                padding: 20px;
+            }
+            
+            .footer {
+                padding: 30px 20px;
+            }
+        }
+
+        /* tablets (769px - 1024px) */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .section-container {
+                padding: 60px 30px;
+            }
+            
+            .developer-card {
+                padding: 22px;
+            }
+        }
+
+        /* large screens (1025px - 1440px) */
+        @media (min-width: 1025px) and (max-width: 1440px) {
+            .container {
+                max-width: 1200px;
+            }
+        }
+
+        /* extra large screens (أكبر من 1440px) */
+        @media (min-width: 1441px) {
+            .container {
+                max-width: 1400px;
+            }
+            
+            body {
+                font-size: 17px;
+            }
+        }
+
+        /* تحسينات عامة للموبايل */
+        @media (max-width: 768px) {
+            /* تحسين الأزرار لللمس */
+            .btn, button, .tab-btn {
+                min-height: 44px;
+                min-width: 44px;
+                touch-action: manipulation;
+            }
+            
+            /* تحسين النماذج لللمس */
+            input, select, textarea {
+                min-height: 44px;
+                font-size: 16px !important;
+            }
+            
+            /* تحسين الجداول */
+            .table-container {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            table {
+                font-size: 0.85rem;
+            }
+            
+            /* تحسين البطاقات */
+            .card, .developer-card, .stat-card, .offer-card {
+                box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                margin-bottom: 12px;
+            }
+            
+            /* إخفاء الهوامش الكبيرة */
+            .section-container {
+                padding-top: 30px;
+                padding-bottom: 30px;
+            }
+            
+            /* تحسين الفلاتر */
+            .filters-bar {
+                padding: 15px;
+            }
+            
+            .filter-group {
+                flex: 1 1 100%;
+                margin-bottom: 10px;
+            }
+            
+            footer {
+                padding-bottom: 80px;
+            }
+            
+            footer .footer-dev {
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 5px;
+            }
+        }
+
+        /* الوضع الأفقي على الموبايل */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .hero {
+                padding: 20px 30px;
+            }
+            
+            .hero h1 {
+                font-size: 1.3rem;
+            }
+            
+            .header {
+                height: 50px;
+                padding: 8px 15px;
+            }
+        }
+
+        /* منع تحديد النص غير المرغوب على الموبايل */
+        @media (max-width: 768px) {
+            .btn, .developer-role, .badge, .stat-number {
+                -webkit-user-select: none;
+                user-select: none;
+            }
+        }
+
+        /* تحسين smooth scroll */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        @media (max-width: 768px) {
+            html {
+                scroll-behavior: auto;
+            }
+        }
     </style>
 </head>
 <body>
