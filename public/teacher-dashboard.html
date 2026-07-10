@@ -1219,11 +1219,24 @@
         
         <!-- ===== STREAM TIMER - يظهر فقط عند وجود بث نشط ===== -->
         <div id="streamTimerContainer" class="stream-timer-container" style="display: none;">
+            <!-- تعليمات فتح البث -->
+            <div id="streamInstructions" class="stream-instructions" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 12px 16px; margin-bottom: 14px;">
+                <div style="font-weight: 700; color: #10b981; margin-bottom: 8px; font-size: 0.9rem;">
+                    <i class="fas fa-info-circle"></i> خطوات فتح البث:
+                </div>
+                <div style="font-size: 0.8rem; color: rgba(255,255,255,0.8); line-height: 1.6;">
+                    <div style="margin-bottom: 4px;"><span style="background: #10b981; color: white; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; margin-left: 6px;">1</span> اضغط على <strong style="color: #60a5fa;">"فتح البث"</strong> لفتح نافذة البث</div>
+                    <div style="margin-bottom: 4px;"><span style="background: #10b981; color: white; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; margin-left: 6px;">2</span> ادخل كلمة المرور عندما يُطلب منك</div>
+                    <div style="margin-bottom: 4px;"><span style="background: #f59e0b; color: white; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; margin-left: 6px;">⚠️</span> <strong style="color: #f59e0b;">مهم:</strong> لا تضغط على "إضافة الطلاب" إلا بعد دخولك للبث كمضيف!</div>
+                    <div><span style="background: #10b981; color: white; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; margin-left: 6px;">3</span> اضغط على <strong style="color: #60a5fa;">"إضافة الطلاب"</strong> لبدء العد التنازلي وإضافة الطلاب</div>
+                </div>
+            </div>
+            
             <div class="timer-header">
                 <div class="stream-title" id="streamTitle">📚 البث المباشر</div>
                 <div class="stream-status">
                     <span class="live-dot" id="streamStatusDot"></span>
-                    <span id="streamStatusText">مباشر</span>
+                    <span id="streamStatusText">في انتظار بدء البث</span>
                 </div>
             </div>
             <div class="timer-display">
@@ -1232,24 +1245,37 @@
                     <div class="progress-fill" id="timerProgress" style="width: 100%;"></div>
                 </div>
                 <div style="font-size: 0.75rem; color: rgba(255,255,255,0.5); margin-top: 6px;">
-                    <span id="timerRemainingLabel">الوقت المتبقي</span>
+                    <span id="timerRemainingLabel">اضغط على "إضافة الطلاب" لبدء العد التنازلي</span>
                 </div>
             </div>
             <div class="timer-actions">
                 <button class="btn-jitsi" onclick="openJitsiStream()">
-                    <i class="fas fa-video"></i> فتح Jitsi Meet
+                    <i class="fas fa-video"></i> فتح البث
                 </button>
-                <button class="btn-pause" id="pauseBtn" onclick="pauseStream()">
+                <button class="btn-pause" id="addStudentsBtn" onclick="addStudentsToStream(streamOfferId)">
+                    <i class="fas fa-user-plus"></i> إضافة الطلاب
+                </button>
+                <button class="btn-pause" id="pauseBtn" onclick="pauseStream()" style="display: none;">
                     <i class="fas fa-pause"></i> إيقاف مؤقت
                 </button>
                 <button class="btn-resume" id="resumeBtn" onclick="resumeStream()" style="display: none;">
                     <i class="fas fa-play"></i> استئناف
                 </button>
-                <button class="btn-end" onclick="endStream()">
+                <button class="btn-end" id="endStreamBtn" onclick="endStream()" disabled style="opacity: 0.5; cursor: not-allowed;">
                     <i class="fas fa-stop"></i> إنهاء البث
                 </button>
             </div>
         </div>
+        
+        <style>
+            .stream-instructions {
+                animation: fadeIn 0.5s ease;
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(-10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+        </style>
 
         <!-- PROFILE SECTION -->
         <div id="profileSection">
@@ -2242,14 +2268,12 @@
             }
 
             let streamButton = '';
-            let addStudentsButton = '';
             const isLiveOrReady = offer.status === 'live' || offer.status === 'teacher_ready' || offer.status === 'paused';
             
             if (!isExpired && offer.status === 'upcoming') {
                 streamButton = `<button class="start-stream-btn" onclick="startStreamNow(${offer.id})"><i class="fas fa-play"></i> بدء البث</button>`;
             } else if (!isExpired && isLiveOrReady) {
                 streamButton = `<button class="start-stream-btn" onclick="joinTeacherStream(${offer.id})"><i class="fas fa-video"></i> دخول البث</button>`;
-                addStudentsButton = `<button class="message-btn" style="margin-top:8px;" onclick="addStudentsToStream(${offer.id})"><i class="fas fa-user-plus"></i> إضافة الطلاب</button>`;
             }
 
             // عرض كلمة المرور إذا كانت موجودة
@@ -2274,7 +2298,6 @@
                 ${passwordDisplay}
                 <span class="status-badge ${statusClass}">${statusText}</span>
                 ${streamButton}
-                ${addStudentsButton}
                 ${offer.status === 'upcoming' || isExpired ? `<button class="delete-btn" onclick="deleteOffer(${offer.id})"><i class="fas fa-trash"></i> حذف</button>` : ''}
             </div>`;
         }
@@ -2289,6 +2312,9 @@
     // ================================================================
     // ✅ SYSTEME DE STREAM AVEC TIMER ET PENDING BALANCE
     // ================================================================
+
+    // متغير لتتبع حالة بدء العد التنازلي
+    let timerStarted = false;
 
     async function checkActiveStream() {
         try {
@@ -2322,10 +2348,15 @@
         let remainingSeconds;
         if (offer.status === 'paused' && offer.remaining_time) {
             remainingSeconds = parseInt(offer.remaining_time);
-        } else if (offer.status === 'teacher_ready') {
-            remainingSeconds = totalSeconds;
-        } else {
+            timerStarted = true; // البث كان قد بدأ سابقاً
+        } else if (offer.status === 'live') {
+            // البث نشط - ابدأ العداد فوراً
             remainingSeconds = Math.max(0, totalSeconds - elapsedSeconds);
+            timerStarted = true;
+        } else {
+            // teacher_ready - في انتظار أن ينقر الأستاذ على "إضافة الطلاب"
+            remainingSeconds = totalSeconds;
+            timerStarted = false;
         }
         
         streamTotalSeconds = totalSeconds;
@@ -2335,7 +2366,17 @@
         updateTimerDisplay();
         updateTimerButtons();
         
-        // بدء العداد
+        // فقط ابدأ العد التنازلي إذا كان timerStarted = true
+        if (timerStarted && !streamPaused) {
+            startTimerInterval();
+        }
+        
+        // تحديث الحالة كل 30 ثانية للحفاظ على المزامنة مع الخادم
+        if (streamSyncInterval) clearInterval(streamSyncInterval);
+        streamSyncInterval = setInterval(syncStreamStatus, 30000);
+    }
+
+    function startTimerInterval() {
         if (streamIntervalId) clearInterval(streamIntervalId);
         
         streamIntervalId = setInterval(() => {
@@ -2351,10 +2392,6 @@
                 }
             }
         }, 1000);
-        
-        // تحديث الحالة كل 30 ثانية للحفاظ على المزامنة مع الخادم
-        if (streamSyncInterval) clearInterval(streamSyncInterval);
-        streamSyncInterval = setInterval(syncStreamStatus, 30000);
     }
 
     let streamSyncInterval = null;
@@ -2380,16 +2417,25 @@
         // تحديث شريط التقدم
         progress.style.width = `${percentage}%`;
         
-        // تحديث النص
-        const elapsed = streamTotalSeconds - streamRemainingSeconds;
-        const elapsedMinutes = Math.floor(elapsed / 60);
-        const totalMinutes = Math.floor(streamTotalSeconds / 60);
-        remainingLabel.textContent = streamPaused ? '⏸ متوقف مؤقتاً' : `⏱ ${elapsedMinutes}/${totalMinutes} دقيقة`;
+        // تحديث النص حسب حالة العداد
+        if (!timerStarted) {
+            remainingLabel.textContent = '⏳ اضغط على "إضافة الطلاب" لبدء العد التنازلي';
+        } else if (streamPaused) {
+            remainingLabel.textContent = '⏸ متوقف مؤقتاً';
+        } else {
+            const elapsed = streamTotalSeconds - streamRemainingSeconds;
+            const elapsedMinutes = Math.floor(elapsed / 60);
+            const totalMinutes = Math.floor(streamTotalSeconds / 60);
+            remainingLabel.textContent = `⏱ ${elapsedMinutes}/${totalMinutes} دقيقة`;
+        }
         
         // تحديث حالة البث
         const statusText = document.getElementById('streamStatusText');
         const statusDot = document.getElementById('streamStatusDot');
-        if (streamPaused) {
+        if (!timerStarted) {
+            statusText.textContent = '⏳ في انتظار بدء البث';
+            statusDot.className = 'live-dot paused';
+        } else if (streamPaused) {
             statusText.textContent = '⏸ متوقف مؤقتاً';
             statusDot.className = 'live-dot paused';
         } else {
@@ -2401,19 +2447,40 @@
     function updateTimerButtons() {
         const pauseBtn = document.getElementById('pauseBtn');
         const resumeBtn = document.getElementById('resumeBtn');
+        const addStudentsBtn = document.getElementById('addStudentsBtn');
+        const endStreamBtn = document.getElementById('endStreamBtn');
         
-        if (streamPaused) {
+        if (!timerStarted) {
+            // لم يبدأ العد التنازلي بعد
+            addStudentsBtn.style.display = 'flex';
+            pauseBtn.style.display = 'none';
+            resumeBtn.style.display = 'none';
+            endStreamBtn.disabled = true;
+            endStreamBtn.style.opacity = '0.5';
+            endStreamBtn.style.cursor = 'not-allowed';
+        } else if (streamPaused) {
+            // البث متوقف مؤقتاً
+            addStudentsBtn.style.display = 'none';
             pauseBtn.style.display = 'none';
             resumeBtn.style.display = 'flex';
+            endStreamBtn.disabled = false;
+            endStreamBtn.style.opacity = '1';
+            endStreamBtn.style.cursor = 'pointer';
         } else {
+            // البث يعمل - لا يمكن إنهاءه حتى ينتهي الوقت
+            addStudentsBtn.style.display = 'none';
             pauseBtn.style.display = 'flex';
             resumeBtn.style.display = 'none';
+            endStreamBtn.disabled = true;
+            endStreamBtn.style.opacity = '0.5';
+            endStreamBtn.style.cursor = 'not-allowed';
         }
     }
 
     function hideStreamTimer() {
         const container = document.getElementById('streamTimerContainer');
         container.style.display = 'none';
+        timerStarted = false;
         if (streamIntervalId) {
             clearInterval(streamIntervalId);
             streamIntervalId = null;
@@ -2436,6 +2503,56 @@
             }
         } catch(e) { if (e.message !== 'انتهت صلاحية الجلسة') console.error(e); }
     }
+
+    // ================================================================
+    // ✅ HANDLERS للتعامل مع إغلاق الصفحة أو التنقل بعيداً
+    // ================================================================
+
+    // إيقاف مؤقت للعداد عند مغادرة الصفحة
+    window.addEventListener('beforeunload', function(e) {
+        if (timerStarted && streamOfferId && streamRemainingSeconds > 0) {
+            // إيقاف العداد مؤقتاً وإرسال الوقت المتبقي للخادم
+            if (streamIntervalId) {
+                clearInterval(streamIntervalId);
+                streamIntervalId = null;
+            }
+            
+            // إرسال طلب إيقاف مؤقت تلقائي
+            fetch(`/api/stream/pause/${streamOfferId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ remaining_time: streamRemainingSeconds })
+            }).catch(() => {});
+            
+            // إظهار رسالة للمستخدم
+            e.preventDefault();
+            e.returnValue = '⚠️ أنت على وشك مغادرة الصفحة. سيتم إيقاف البث مؤقتاً.';
+            return e.returnValue;
+        }
+    });
+
+    // إيقاف مؤقت عند إخفاء التبويب
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden && timerStarted && streamOfferId && streamRemainingSeconds > 0 && !streamPaused) {
+            // إيقاف العداد مؤقتاً
+            if (streamIntervalId) {
+                clearInterval(streamIntervalId);
+                streamIntervalId = null;
+            }
+            
+            // إرسال طلب إيقاف مؤقت تلقائي للخادم
+            fetch(`/api/stream/pause/${streamOfferId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ remaining_time: streamRemainingSeconds })
+            }).then(() => {
+                streamPaused = true;
+                updateTimerButtons();
+                updateTimerDisplay();
+                showToast('⏸ تم إيقاف البث مؤقتاً لأنك غادرت الصفحة', 'warning');
+            }).catch(() => {});
+        }
+    });
 
     async function pauseStream() {
         if (!streamOfferId || streamPaused) return;
@@ -2522,6 +2639,15 @@
 
     async function endStream() {
         if (!streamOfferId) return;
+        
+        // التحقق من أن العد التنازلي قد بدأ وأن الوقت قد انتهى
+        if (timerStarted && streamRemainingSeconds > 0) {
+            const remainingMinutes = Math.ceil(streamRemainingSeconds / 60);
+            showToast(`⚠️ لا يمكن إنهاء البث قبل انتهاء الوقت!`, 'warning');
+            showToast(`⏱ الوقت المتبقي: ${remainingMinutes} دقيقة`, 'warning');
+            return;
+        }
+        
         if (!confirm('⚠️ هل أنت متأكد من إنهاء البث؟ سيتم تحويل الرصيد المعلق إلى رصيدك القابل للسحب.')) return;
         
         try {
@@ -2610,7 +2736,7 @@
     }
 
     async function addStudentsToStream(offerId) {
-        if (!confirm('⚠️ هل تريد إضافة جميع الطلاب المسجلين إلى البث وإرسال الإشعارات؟')) return;
+        if (!confirm('⚠️ هل تريد إضافة جميع الطلاب المسجلين إلى البث وإرسال الإشعارات؟\n\n⚠️ تأكد أنك قد دخلت للبث كمضيف أولاً!')) return;
 
         try {
             const res = await fetchWithAuth(`/api/stream/add-all-students/${offerId}`, {
@@ -2621,6 +2747,25 @@
 
             if (data.success) {
                 showToast(`✅ تم إضافة ${data.students_count || 0} طالب وإرسال الإشعارات`, 'success');
+                
+                // بدء العد التنازلي بعد إضافة الطلاب
+                timerStarted = true;
+                streamPaused = false;
+                startTimerInterval();
+                updateTimerButtons();
+                updateTimerDisplay();
+                
+                // إخفاء تعليمات البث بعد البدء
+                const instructions = document.getElementById('streamInstructions');
+                if (instructions) {
+                    instructions.style.display = 'none';
+                }
+                
+                // تحديث حالة العرض في الخادم
+                await fetchWithAuth(`/api/offer/update-status/${offerId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ status: 'live' })
+                });
             } else {
                 showToast(data.error || '❌ حدث خطأ', 'error');
             }
