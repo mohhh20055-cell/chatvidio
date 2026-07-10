@@ -2280,7 +2280,11 @@
         };
 
         for (const offer of offers) {
-            const offerDate = new Date(offer.offer_date);
+            // تحويل وقت العرض إلى وقت الجزائر UTC+1
+            const offerDateUTC = new Date(offer.offer_date);
+            // أضف ساعة للحصول على وقت الجزائر
+            const offerDate = new Date(offerDateUTC.getTime() + (60 * 60 * 1000));
+            
             // استخدم وقت الجزائر للمقارنة
             const isExpired = offerDate < algeriaNow && offer.status !== 'live' && offer.status !== 'teacher_ready' && offer.status !== 'paused';
 
@@ -2308,6 +2312,7 @@
             // التحقق من أن وقت البث قد وصل (بتوقيت الجزائر UTC+1)
             // نحسب وقت الجزائر من جديد لكل عرض
             const nowForCheck = new Date();
+            // أضف ساعة للحصول على وقت الجزائر
             const algeriaNowForCheck = new Date(nowForCheck.getTime() + (60 * 60 * 1000));
             
             const isTimeArrived = offerDate <= algeriaNowForCheck;
@@ -2392,7 +2397,10 @@
         document.getElementById('streamTitle').textContent = `📚 ${offer.subject_name}`;
         
         // حساب الوقت المتبقي (باستخدام وقت الجزائر UTC+1)
-        const offerDate = new Date(offer.offer_date);
+        // تحويل وقت العرض إلى وقت الجزائر
+        const offerDateUTC = new Date(offer.offer_date);
+        const offerDate = new Date(offerDateUTC.getTime() + (60 * 60 * 1000));
+        
         const now = new Date();
         // أضف ساعة واحدة للحصول على وقت الجزائر
         const algeriaNow = new Date(now.getTime() + (60 * 60 * 1000));
@@ -2924,7 +2932,9 @@
         const now = new Date();
         const algeriaNow = new Date(now.getTime() + (60 * 60 * 1000));
         const expiredOffers = offers.filter(o => {
-            const offerDate = new Date(o.offer_date);
+            // تحويل وقت العرض إلى وقت الجزائر
+            const offerDateUTC = new Date(o.offer_date);
+            const offerDate = new Date(offerDateUTC.getTime() + (60 * 60 * 1000));
             return offerDate < algeriaNow && o.status !== 'live' && o.status !== 'teacher_ready' && o.status !== 'paused';
         });
 
