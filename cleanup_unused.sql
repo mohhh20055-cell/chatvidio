@@ -5,41 +5,74 @@
 -- ============================================================
 
 -- ============================================================
--- ❌ الأعمدة المستخدمة فعلاً (لا تحذفها!):
--- - teachers: diploma_image, id_image, experience, facebook_url, 
---            instagram_url, linkedin_url, website_url, twitter_url, youtube_url
--- - students: profile_url, gift_box_chances, referral_balance, balance
--- - offers: stream_platform, stream_started_at
--- - payments: checkout_url
--- - sessions: paid_from_wallet
+-- 📊 تحليل الكود - الجداول والأعمدة المستخدمة:
 -- ============================================================
 
+-- 🔴 جداول للحذف بالكامل (غير مستخدمة في الكود):
+--    - login_logs
+--    - active_stream
+--    - waiting_room
+--    - referral_pending_rewards
+
+-- 🔴 أعمدة للحذف (غير مستخدمة):
+--    - students: balance (نستخدم wallet_balance)
+--    - banned_users: ip_address_encrypted, ip_address_masked
+--    - referral_rewards: referral_id
+
+-- ✅ الأعمدة المحفوظة (مستخدمة في الكود):
+-- teachers: diploma_image, id_image, experience, facebook_url, instagram_url,
+--           linkedin_url, website_url, twitter_url, youtube_url, whatsapp_url,
+--           profile_url, profile_image, balance, referral_balance, etc.
+-- students: profile_image, wallet_balance, referral_balance, gift_box_chances,
+--           referral_code, education_level, etc.
+-- offers: booked_count, stream_platform, stream_started_at, etc.
 -- ============================================================
--- 1️⃣ جدول login_logs - غير مستخدم (لا يُستخدم في الكود)
+
+
+-- ============================================================
+-- 1️⃣ جدول login_logs - غير مستخدم
 -- ============================================================
 DROP TABLE IF EXISTS login_logs;
 
--- ============================================================
--- 2️⃣ جدول password_resets - غير مستخدم (نظام الإحالة كافي)
--- ============================================================
-DROP TABLE IF EXISTS password_resets;
 
 -- ============================================================
--- 3️⃣ جدول active_stream - غير مستخدم (نستخدم offers بدلاً منه)
+-- 2️⃣ جدول active_stream - غير مستخدم (نستخدم offers)
 -- ============================================================
 DROP TABLE IF EXISTS active_stream;
 
+
 -- ============================================================
--- 4️⃣ جدول waiting_room - غير مستخدم
+-- 3️⃣ جدول waiting_room - غير مستخدم
 -- ============================================================
 DROP TABLE IF EXISTS waiting_room;
 
+
 -- ============================================================
--- 5️⃣ جدول referral_pending_rewards - غير مستخدم
+-- 4️⃣ جدول referral_pending_rewards - غير مستخدم
 -- ============================================================
 DROP TABLE IF EXISTS referral_pending_rewards;
+
+
+-- ============================================================
+-- 5️⃣ أعمدة غير مستخدمة في جدول students
+-- ============================================================
+ALTER TABLE students DROP COLUMN IF EXISTS balance;
+
+
+-- ============================================================
+-- 6️⃣ أعمدة غير مستخدمة في جدول banned_users
+-- ============================================================
+ALTER TABLE banned_users DROP COLUMN IF EXISTS ip_address_encrypted;
+ALTER TABLE banned_users DROP COLUMN IF EXISTS ip_address_masked;
+
+
+-- ============================================================
+-- 7️⃣ عمود غير مستخدم في جدول referral_rewards
+-- ============================================================
+ALTER TABLE referral_rewards DROP COLUMN IF EXISTS referral_id;
+
 
 -- ============================================================
 -- ✅ رسالة انتهاء
 -- ============================================================
--- تم حذف الجداول غير المستخدمة بنجاح!
+-- تم حذف الجداول والأعمدة غير المستخدمة بنجاح!
