@@ -115,7 +115,6 @@ router.post('/create', authenticate, authorize(['student']), [
             payment_status: 'pending_stream', // ✅ في انتظار البث
             payment_amount: isFree ? 0 : offer.price,
             teacher_earned: 0,
-            pending_balance: isFree ? 0 : offer.price, // ✅ الرصيد المعلق
             paid_from_wallet: !isFree,
             created_at: new Date().toISOString()
         };
@@ -325,7 +324,7 @@ router.post('/confirm-stream-completion', authenticate, authorize(['teacher']), 
 
         // ✅ تحويل كل جلسة من pending_stream إلى paid
         for (const session of sessions) {
-            const earnedAmount = session.pending_balance || session.payment_amount || 0;
+            const earnedAmount = session.payment_amount || 0;
             
             await supabase
                 .from('sessions')
@@ -456,7 +455,7 @@ router.get('/student/:student_id', authenticate, authorize(['student']), async (
         const formattedBookings = (bookings || []).map(booking => ({
             ...booking,
             is_pending_stream: booking.payment_status === 'pending_stream',
-            pending_balance: booking.pending_balance || 0,
+            pending_balance: booking.payment_amount || 0,
             teacher_name: booking.teachers?.[0]?.teacher_id?.full_name || 'غير معروف',
             teacher_profile: booking.teachers?.[0]?.teacher_id?.profile_url || null,
             teacher_specialization: booking.teachers?.[0]?.teacher_id?.specialization || ''
@@ -529,12 +528,12 @@ router.get('/teacher/:teacher_id', authenticate, authorize(['teacher']), async (
         const formattedBookings = (bookings || []).map(booking => {
             const isPending = booking.payment_status === 'pending_stream';
             if (isPending) {
-                pendingTotal += (booking.pending_balance || booking.payment_amount || 0);
+                pendingTotal += (booking.payment_amount || 0);
             }
             return {
                 ...booking,
                 is_pending_stream: isPending,
-                pending_balance: booking.pending_balance || 0
+                pending_balance: booking.payment_amount || 0
             };
         });
 
@@ -592,7 +591,7 @@ router.post('/cancel', authenticate, [
         // ✅ استرداد الرصيد المعلق إذا كان موجوداً
         let refundAmount = 0;
         if (session.payment_status === 'pending_stream' || session.payment_status === 'paid') {
-            refundAmount = session.pending_balance || session.payment_amount || 0;
+            refundAmount = session.payment_amount || 0;
             
             if (refundAmount > 0) {
                 // ✅ إعادة المبلغ للطالب
@@ -626,8 +625,7 @@ router.post('/cancel', authenticate, [
         // ✅ إلغاء الحجز
         await update('sessions', session_id, {
             payment_status: 'cancelled',
-            cancelled_at: new Date().toISOString(),
-            pending_balance: 0
+            cancelled_at: new Date().toISOString()
         });
 
         // ✅ إزالة من غرفة الانتظار
@@ -696,7 +694,7 @@ router.get('/stats/:teacher_id', authenticate, authorize(['teacher']), async (re
         // ✅ جلب إحصائيات الجلسات
         const { data: stats, error: statsError } = await supabase
             .from('sessions')
-            .select('payment_status, payment_amount, pending_balance, teacher_earned')
+            .select('payment_status, payment_amount, teacher_earned')
             .in('offer_id', offerIds);
 
         if (statsError) throw statsError;
@@ -711,7 +709,7 @@ router.get('/stats/:teacher_id', authenticate, authorize(['teacher']), async (re
             totalBookings++;
             if (stat.payment_status === 'pending_stream') {
                 pendingBookings++;
-                pendingAmount += (stat.pending_balance || stat.payment_amount || 0);
+                pendingAmount += (stat.payment_amount || 0);
             } else if (stat.payment_status === 'paid') {
                 completedBookings++;
                 completedAmount += (stat.teacher_earned || stat.payment_amount || 0);

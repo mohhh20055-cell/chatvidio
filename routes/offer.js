@@ -488,13 +488,13 @@ router.get('/offer/:offer_id', async (req, res) => {
         // ✅ جلب الرصيد المعلق الإجمالي
         const { data: pendingData, error: pendingError } = await supabase
             .from('sessions')
-            .select('pending_balance')
+            .select('payment_amount')
             .eq('offer_id', offer_id)
             .eq('payment_status', 'pending_stream');
 
         let totalPendingBalance = 0;
         if (!pendingError && pendingData) {
-            totalPendingBalance = pendingData.reduce((sum, s) => sum + (s.pending_balance || 0), 0);
+            totalPendingBalance = pendingData.reduce((sum, s) => sum + (s.payment_amount || 0), 0);
         }
 
         // ✅ حساب الوقت المتبقي

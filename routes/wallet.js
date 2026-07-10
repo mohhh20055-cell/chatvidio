@@ -214,13 +214,13 @@ router.get('/balance/:student_id', authenticate, authorize(['student']), async (
         // ✅ جلب الرصيد المعلق من الحجوزات
         const { data: pendingSessions, error: pendingError } = await supabase
             .from('sessions')
-            .select('pending_balance, payment_status')
+            .select('payment_amount, payment_status')
             .eq('student_id', student_id)
             .eq('payment_status', 'pending_stream');
 
         let totalPendingBalance = 0;
         if (!pendingError && pendingSessions) {
-            totalPendingBalance = pendingSessions.reduce((sum, s) => sum + (s.pending_balance || 0), 0);
+            totalPendingBalance = pendingSessions.reduce((sum, s) => sum + (s.payment_amount || 0), 0);
         }
 
         // ✅ جلب المبلغ المعلق في معاملات المحفظة
@@ -494,7 +494,7 @@ router.get('/transactions/:student_id', authenticate, authorize(['student']), as
         // ✅ إضافة معلومات الرصيد المعلق من الحجوزات
         const { data: pendingSessions, error: pendingError } = await supabase
             .from('sessions')
-            .select('id, pending_balance, created_at, offers:offer_id(subject_name)')
+            .select('id, payment_amount, created_at, offers:offer_id(subject_name)')
             .eq('student_id', student_id)
             .eq('payment_status', 'pending_stream');
 
@@ -502,7 +502,7 @@ router.get('/transactions/:student_id', authenticate, authorize(['student']), as
         if (!pendingError && pendingSessions) {
             pendingTransactions = pendingSessions.map(s => ({
                 id: s.id,
-                amount: s.pending_balance || 0,
+                amount: s.payment_amount || 0,
                 type: 'withdraw_pending',
                 status: 'pending_stream',
                 description: `حجز حصة "${s.offers?.subject_name || 'غير معروف'}" (في انتظار البث)`,

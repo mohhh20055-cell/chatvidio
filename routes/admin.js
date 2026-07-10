@@ -154,14 +154,14 @@ router.get('/all-teachers', authenticate, authorize(['admin']), async (req, res)
             // ✅ جلب الرصيد المعلق لكل أستاذ
             const { data: sessions, error: sessionsError } = await supabase
                 .from('sessions')
-                .select('teacher_id, pending_balance, offers!inner(teacher_id)')
+                .select('teacher_id, payment_amount, offers!inner(teacher_id)')
                 .eq('payment_status', 'pending_stream');
 
             if (!sessionsError && sessions) {
                 for (const session of sessions) {
                     const tid = session.offers?.teacher_id || session.teacher_id;
                     if (tid && streamStats[tid]) {
-                        streamStats[tid].total_pending += (session.pending_balance || 0);
+                        streamStats[tid].total_pending += (session.payment_amount || 0);
                     }
                 }
             }
@@ -420,12 +420,12 @@ router.get('/stats', authenticate, authorize(['admin']), async (req, res) => {
         // ✅ إجمالي الرصيد المعلق
         const { data: pendingData, error: pendingBalanceError } = await supabase
             .from('sessions')
-            .select('pending_balance')
+            .select('payment_amount')
             .eq('payment_status', 'pending_stream');
 
         let totalPendingBalance = 0;
         if (!pendingBalanceError && pendingData) {
-            totalPendingBalance = pendingData.reduce((sum, s) => sum + (s.pending_balance || 0), 0);
+            totalPendingBalance = pendingData.reduce((sum, s) => sum + (s.payment_amount || 0), 0);
         }
 
         // ✅ إجمالي الأرباح المدفوعة
@@ -576,18 +576,18 @@ router.post('/cancel-offer/:id', [
         // ✅ استرداد الرصيد المعلق للطلاب
         const { data: sessions } = await supabase
             .from('sessions')
-            .select('student_id, pending_balance')
+            .select('student_id, payment_amount')
             .eq('offer_id', offerId)
             .eq('payment_status', 'pending_stream');
 
         if (sessions && sessions.length > 0) {
             for (const session of sessions) {
-                if (session.pending_balance > 0) {
+                if (session.payment_amount > 0) {
                     // ✅ إعادة المبلغ للطالب
                     const student = await getOne('students', 'id', session.student_id);
                     if (student) {
                         await update('students', session.student_id, {
-                            wallet_balance: (student.wallet_balance || 0) + session.pending_balance
+                            wallet_balance: (student.wallet_balance || 0) + session.payment_amount
                         });
                     }
 

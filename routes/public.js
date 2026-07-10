@@ -354,12 +354,12 @@ router.get('/public/teacher/:teacherId', [
             const offerIds = offersIds.map(o => o.id);
             const { data: pendingData, error: pendingError } = await supabase
                 .from('sessions')
-                .select('pending_balance')
+                .select('payment_amount')
                 .in('offer_id', offerIds)
                 .eq('payment_status', 'pending_stream');
 
             if (!pendingError && pendingData) {
-                pendingBalance = pendingData.reduce((sum, s) => sum + (s.pending_balance || 0), 0);
+                pendingBalance = pendingData.reduce((sum, s) => sum + (s.payment_amount || 0), 0);
             }
         }
 

@@ -268,7 +268,7 @@ router.post('/end/:offer_id', authenticate, authorize(['teacher']), validateOffe
         // ✅ جلب جميع الجلسات المدفوعة لهذا العرض
         const { data: sessions } = await supabase
             .from('sessions')
-            .select('student_id, payment_amount, pending_balance')
+            .select('student_id, payment_amount')
             .eq('offer_id', offer_id)
             .eq('payment_status', 'pending_stream');
 
@@ -284,7 +284,7 @@ router.post('/end/:offer_id', authenticate, authorize(['teacher']), validateOffe
 
         // ✅ تحويل الجلسات إلى مدفوعة وإضافة المبلغ للرصيد
         for (const session of sessions) {
-            const amount = session.pending_balance || session.payment_amount || 0;
+            const amount = session.payment_amount || 0;
             const earnedAmount = Math.round(amount * percentage);
             
             await supabase

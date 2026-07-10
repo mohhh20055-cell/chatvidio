@@ -291,16 +291,16 @@ router.get('/balance/:student_id', authenticate, authorize(['student']), [
             return res.status(404).json({ success: false, error: 'طالب غير موجود' });
         }
 
-        // جلب الرصيد المعلق من الحجوزات
+        // جلب الرصيد المعلق من الحجوزات (pending_balance غير موجود، نستخدم payment_amount)
         const { data: pendingSessions, error: pendingError } = await supabase
             .from('sessions')
-            .select('pending_balance')
+            .select('payment_amount')
             .eq('student_id', student_id)
             .eq('payment_status', 'pending_stream');
 
         let totalPendingBalance = 0;
         if (!pendingError && pendingSessions) {
-            totalPendingBalance = pendingSessions.reduce((sum, s) => sum + (s.pending_balance || 0), 0);
+            totalPendingBalance = pendingSessions.reduce((sum, s) => sum + (s.payment_amount || 0), 0);
         }
 
         const { count: pendingCount, error: countError } = await supabase
@@ -358,7 +358,7 @@ router.get('/sessions/:student_id', authenticate, authorize(['student']), [
                     stream_url,
                     room_name,
                     room_password,
-                    status as offer_status,
+                    status,
                     teachers:teacher_id (
                         id,
                         full_name,
@@ -387,9 +387,9 @@ router.get('/sessions/:student_id', authenticate, authorize(['student']), [
             offer_date: session.offers?.offer_date || null,
             price: session.offers?.price || 0,
             is_free: session.offers?.is_free || false,
-            offer_status: session.offers?.offer_status || 'pending',
+            offer_status: session.offers?.status || 'pending',
             payment_status: session.payment_status,
-            pending_balance: session.pending_balance || 0,
+            pending_balance: session.payment_amount || 0,
             is_pending_stream: session.payment_status === 'pending_stream',
             payment_method: session.payment_method,
             transaction_id: session.transaction_id,
@@ -441,7 +441,7 @@ router.get('/session/:session_id', authenticate, authorize(['student']), [
                     stream_url,
                     room_name,
                     room_password,
-                    status as offer_status,
+                    status,
                     teachers:teacher_id (
                         id,
                         full_name,
@@ -471,9 +471,9 @@ router.get('/session/:session_id', authenticate, authorize(['student']), [
             offer_date: session.offers?.offer_date || null,
             price: session.offers?.price || 0,
             is_free: session.offers?.is_free || false,
-            offer_status: session.offers?.offer_status || 'pending',
+            offer_status: session.offers?.status || 'pending',
             payment_status: session.payment_status,
-            pending_balance: session.pending_balance || 0,
+            pending_balance: session.payment_amount || 0,
             is_pending_stream: session.payment_status === 'pending_stream',
             payment_method: session.payment_method,
             transaction_id: session.transaction_id,
@@ -761,8 +761,8 @@ router.post('/cancel-session/:session_id', authenticate, authorize(['student']),
 
         let refundAmount = 0;
 
-        if (session.payment_status === 'pending_stream' && session.pending_balance > 0) {
-            refundAmount = session.pending_balance;
+        if (session.payment_status === 'pending_stream' && session.payment_amount > 0) {
+            refundAmount = session.payment_amount;
             
             const student = await getOne('students', 'id', student_id);
             if (student) {
