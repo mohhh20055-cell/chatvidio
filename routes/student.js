@@ -313,12 +313,25 @@ router.get('/balance/:student_id', authenticate, authorize(['student']), [
             console.error('خطأ في جلب عدد الحجوزات المعلقة:', countError.message);
         }
 
+        // جلب سجل المعاملات من wallet_transactions
+        const { data: transactions, error: transactionsError } = await supabase
+            .from('wallet_transactions')
+            .select('*')
+            .eq('student_id', student_id)
+            .order('created_at', { ascending: false })
+            .limit(50);
+
+        if (transactionsError) {
+            console.error('خطأ في جلب المعاملات:', transactionsError.message);
+        }
+
         res.json({
             balance: student.wallet_balance || 0,
             pending_balance: totalPendingBalance,
             pending_count: pendingCount || 0,
             referral_balance: student.referral_balance || 0,
-            gift_box_chances: student.gift_box_chances || 0
+            gift_box_chances: student.gift_box_chances || 0,
+            transactions: transactions || []
         });
     } catch (error) {
         console.error('خطأ في جلب الرصيد:', error.message);
