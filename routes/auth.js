@@ -618,28 +618,42 @@ router.post('/login', checkBanned, authLimiter, [
         const token = generateToken(user.id, userRole, email);
         const redirectPath = userRole === 'teacher' ? '/teacher-dashboard.html' : '/student-dashboard.html';
         
+        // ✅ بيانات المستخدم المرجعة
+        const userData = {
+            id: user.id,
+            name: user.full_name,
+            role: userRole,
+            profile_image: user.profile_image,
+            profile_url: user.profile_url,
+            balance: user.wallet_balance || user.balance || 0,
+            email_verified: user.email_verified,
+            referral_code: user.referral_code,
+            education_level: user.education_level || null,
+            teaching_level: user.teaching_level || null,
+            status: user.status || null,
+            has_active_stream: hasActiveStream // ✅ إعلام العميل بوجود بث نشط
+        };
+        
+        logger.info('تسجيل دخول ناجح', {
+            userId: user.id,
+            role: userRole,
+            email: email
+        });
+        
         res.json({
             success: true,
             token: token,
             redirectTo: redirectPath,
-            user: {
-                id: user.id,
-                name: user.full_name,
-                role: userRole,
-                profile_image: user.profile_image,
-                profile_url: user.profile_url,
-                balance: user.wallet_balance || user.balance || 0,
-                email_verified: user.email_verified,
-                referral_code: user.referral_code,
-                education_level: user.education_level || null,
-                teaching_level: user.teaching_level || null,
-                status: user.status || null,
-                has_active_stream: hasActiveStream // ✅ إعلام العميل بوجود بث نشط
-            }
+            user: userData
         });
 
     } catch (error) {
-        console.error('خطأ في تسجيل الدخول:', error.message);
+        logger.error('خطأ في تسجيل الدخول', {
+            email: email,
+            role: role,
+            error: error.message,
+            stack: error.stack
+        });
         res.status(500).json({ 
             success: false, 
             error: 'حدث خطأ في الخادم. يرجى المحاولة مرة أخرى.' 

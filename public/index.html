@@ -3295,8 +3295,31 @@
                 var data = await res.json();
 
                 if (data.success) {
+                    // ✅ التحقق من وجود البيانات المطلوبة
+                    if (!data.token || !data.user || !data.user.id) {
+                        console.error('❌ استجابة_login غير صالحة:', data);
+                        showNotification('حدث خطأ في تسجيل الدخول، يرجى المحاولة مرة أخرى', 'error');
+                        return;
+                    }
+                    
+                    // ✅ تخزين البيانات بشكل آمن
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('userData', JSON.stringify(data.user));
+                    
+                    // ✅ التحقق من التخزين
+                    const storedToken = localStorage.getItem('token');
+                    const storedUserData = localStorage.getItem('userData');
+                    
+                    if (!storedToken || !storedUserData) {
+                        console.error('❌ فشل في تخزين البيانات في localStorage');
+                        showNotification('حدث خطأ في حفظ البيانات، يرجى المحاولة مرة أخرى', 'error');
+                        return;
+                    }
+                    
+                    console.log('✅ تم تسجيل الدخول بنجاح');
+                    console.log('✅ token:', storedToken.substring(0, 20) + '...');
+                    console.log('✅ userData:', storedUserData);
+                    
                     var redirectPath = data.redirectTo || '/';
                     window.location.href = redirectPath;
                 } else {

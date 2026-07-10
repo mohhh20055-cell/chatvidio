@@ -5,6 +5,7 @@
 const { verifyToken } = require('../utils/jwt');
 const { encrypt } = require('../utils/encryption');
 const { supabase } = require('../config/database');
+const logger = require('../utils/logger');
 
 // ============================================================
 // ✅ المصادقة - التحقق من التوكن
@@ -16,6 +17,10 @@ async function authenticate(req, res, next) {
     }
     
     if (!token) {
+        logger.warn('محاولة وصول بدون توكن', {
+            ip: req.ip,
+            url: req.originalUrl
+        });
         return res.status(401).json({ 
             success: false, 
             error: '❌ غير مصرح به، يرجى تسجيل الدخول' 
@@ -25,6 +30,11 @@ async function authenticate(req, res, next) {
     const decoded = verifyToken(token);
     
     if (!decoded) {
+        logger.warn('توكن غير صالح أو منتهي الصلاحية', {
+            ip: req.ip,
+            url: req.originalUrl,
+            userId: decoded?.userId
+        });
         return res.status(401).json({ 
             success: false, 
             error: '❌ انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى' 
@@ -40,6 +50,11 @@ async function authenticate(req, res, next) {
         .single();
 
     if (error || !user) {
+        logger.error('المستخدم غير موجود في قاعدة البيانات', {
+            userId: decoded.userId,
+            role: decoded.role,
+            error: error?.message
+        });
         return res.status(401).json({ 
             success: false, 
             error: '❌ المستخدم غير موجود، يرجى تسجيل الدخول مرة أخرى' 
@@ -48,6 +63,11 @@ async function authenticate(req, res, next) {
 
     // ✅ التحقق من الحظر
     if (user.is_banned) {
+        logger.logSecurityEvent('محاولة وصول مستخدم محظور', {
+            userId: decoded.userId,
+            role: decoded.role,
+            ip: req.ip
+        });
         return res.status(403).json({
             success: false,
             error: '⛔ تم حظر حسابك من المنصة',
@@ -57,6 +77,11 @@ async function authenticate(req, res, next) {
 
     // ✅ التحقق من حالة الأستاذ
     if (decoded.role === 'teacher' && user.status !== 'approved') {
+        logger.warn('محاولة وصول حساب غير مفعل', {
+            userId: decoded.userId,
+            status: user.status,
+            ip: req.ip
+        });
         return res.status(403).json({
             success: false,
             error: `⏳ حسابك غير مفعل. الحالة: ${user.status === 'pending' ? 'قيد المراجعة' : 'غير معتمد'}`,
@@ -66,6 +91,12 @@ async function authenticate(req, res, next) {
 
     req.user = decoded;
     req.token = token;
+    
+    logger.debug('تم المصادقة بنجاح', {
+        userId: decoded.userId,
+        role: decoded.role
+    });
+    
     next();
 }
 
@@ -75,12 +106,23 @@ async function authenticate(req, res, next) {
 function authorize(roles = []) {
     return (req, res, next) => {
         if (!req.user) {
+            logger.warn('محاولة وصول بدون مصادقة', {
+                url: req.originalUrl,
+                ip: req.ip
+            });
             return res.status(401).json({ 
                 success: false, 
                 error: '❌ غير مصرح به، يرجى تسجيل الدخول' 
             });
         }
         if (roles.length > 0 && !roles.includes(req.user.role)) {
+            logger.warn('صلاحيات غير كافية', {
+                userId: req.user.userId,
+                userRole: req.user.role,
+                requiredRoles: roles,
+                url: req.originalUrl,
+                ip: req.ip
+            });
             return res.status(403).json({ 
                 success: false, 
                 error: `❌ صلاحيات غير كافية. الدور المطلوب: ${roles.join(' أو ')}` 
@@ -111,13 +153,24 @@ async function checkBanned(req, res, next) {
     try {
         const encryptedIP = encrypt(ip);
         
-        const { data } = await supabase
+        const { data, error } = await supabase
             .from('banned_users')
             .select('*')
             .eq('ip_address_encrypted', encryptedIP)
             .single();
         
+        if (error && error.code !== 'PGRST116') {
+            logger.error('خطأ في التحقق من الحظر', {
+                ip: ip,
+                error: error.message
+            });
+        }
+        
         if (data) {
+            logger.logSecurityEvent('محاولة وصول من IP محظور', {
+                ip: ip,
+                reason: data.ban_reason
+            });
             return res.status(403).json({
                 success: false,
                 error: '⛔ تم حظر عنوان IP الخاص بك من المنصة',
@@ -127,6 +180,10 @@ async function checkBanned(req, res, next) {
         }
         next();
     } catch (error) {
+        logger.error('استثناء في التحقق من الحظر', {
+            ip: ip,
+            error: error.message
+        });
         next();
     }
 }
@@ -148,7 +205,10 @@ async function checkActiveStream(req, res, next) {
             .single();
 
         if (error && error.code !== 'PGRST116') {
-            console.error('❌ خطأ في التحقق من البث النشط:', error.message);
+            logger.error('خطأ في التحقق من البث النشط', {
+                userId: req.user.userId,
+                error: error.message
+            });
         }
 
         if (activeOffer) {
@@ -170,7 +230,10 @@ async function checkActiveStream(req, res, next) {
 
         next();
     } catch (error) {
-        console.error('❌ خطأ في التحقق من البث النشط:', error.message);
+        logger.error('استثناء في التحقق من البث النشط', {
+            userId: req.user.userId,
+            error: error.message
+        });
         next();
     }
 }
@@ -182,6 +245,12 @@ function isOwner(paramName = 'id') {
     return (req, res, next) => {
         const userId = parseInt(req.params[paramName]);
         if (req.user.userId !== userId && req.user.role !== 'admin') {
+            logger.warn('محاولة وصول غير مصرح بها للمورد', {
+                userId: req.user.userId,
+                requestedUserId: userId,
+                resource: req.originalUrl,
+                ip: req.ip
+            });
             return res.status(403).json({ 
                 success: false, 
                 error: '❌ غير مصرح لك بالوصول إلى هذا المورد' 
@@ -213,6 +282,11 @@ async function validateOfferOwnership(req, res, next) {
             .single();
 
         if (error || !offer) {
+            logger.warn('محاولة الوصول لعرض غير موجود', {
+                offerId: offerId,
+                userId: teacherId,
+                error: error?.message
+            });
             return res.status(404).json({ 
                 success: false, 
                 error: '❌ العرض غير موجود' 
@@ -220,6 +294,12 @@ async function validateOfferOwnership(req, res, next) {
         }
 
         if (offer.teacher_id !== teacherId && req.user.role !== 'admin') {
+            logger.warn('محاولة الوصول لعرض غير مملوك', {
+                offerId: offerId,
+                userId: teacherId,
+                ownerId: offer.teacher_id,
+                ip: req.ip
+            });
             return res.status(403).json({ 
                 success: false, 
                 error: '❌ غير مصرح لك بالوصول إلى هذا العرض' 
@@ -229,7 +309,11 @@ async function validateOfferOwnership(req, res, next) {
         req.offer = offer;
         next();
     } catch (error) {
-        console.error('❌ خطأ في التحقق من ملكية العرض:', error.message);
+        logger.error('خطأ في التحقق من ملكية العرض', {
+            offerId: offerId,
+            userId: teacherId,
+            error: error.message
+        });
         return res.status(500).json({ 
             success: false, 
             error: 'حدث خطأ في الخادم' 
@@ -262,6 +346,11 @@ async function validateStudentAccess(req, res, next) {
             .single();
 
         if (error || !session) {
+            logger.warn('محاولة وصول طالب بدون حجز صحيح', {
+                offerId: offerId,
+                studentId: studentId,
+                error: error?.message
+            });
             return res.status(403).json({ 
                 success: false, 
                 error: '❌ لم تقم بحجز هذه الحصة أو الدفع غير مكتمل' 
@@ -271,7 +360,11 @@ async function validateStudentAccess(req, res, next) {
         req.session = session;
         next();
     } catch (error) {
-        console.error('❌ خطأ في التحقق من صلاحية الطالب:', error.message);
+        logger.error('خطأ في التحقق من صلاحية الطالب', {
+            offerId: offerId,
+            studentId: studentId,
+            error: error.message
+        });
         return res.status(500).json({ 
             success: false, 
             error: 'حدث خطأ في الخادم' 
@@ -301,6 +394,10 @@ async function checkStreamActive(req, res, next) {
             .single();
 
         if (error || !offer) {
+            logger.warn('محاولة الوصول لبث غير نشط', {
+                offerId: offerId,
+                error: error?.message
+            });
             return res.status(404).json({ 
                 success: false, 
                 error: '❌ البث غير موجود أو غير نشط' 
@@ -310,7 +407,10 @@ async function checkStreamActive(req, res, next) {
         req.stream = offer;
         next();
     } catch (error) {
-        console.error('❌ خطأ في التحقق من البث النشط:', error.message);
+        logger.error('خطأ في التحقق من البث النشط', {
+            offerId: offerId,
+            error: error.message
+        });
         return res.status(500).json({ 
             success: false, 
             error: 'حدث خطأ في الخادم' 
@@ -335,6 +435,11 @@ async function checkNoActiveStream(req, res, next) {
             .single();
 
         if (activeOffer) {
+            logger.warn('محاولة بدء بث مع وجود بث نشط', {
+                userId: req.user.userId,
+                existingOfferId: activeOffer.id,
+                existingStatus: activeOffer.status
+            });
             return res.status(400).json({ 
                 success: false, 
                 error: `❌ لديك بث نشط بالفعل (${activeOffer.status === 'paused' ? 'متوقف مؤقتاً' : 'مباشر'}). لا يمكن بدء بث جديد.`,
@@ -345,7 +450,10 @@ async function checkNoActiveStream(req, res, next) {
         next();
     } catch (error) {
         if (error.code !== 'PGRST116') {
-            console.error('❌ خطأ في التحقق من البث النشط:', error.message);
+            logger.error('خطأ في التحقق من البث النشط', {
+                userId: req.user.userId,
+                error: error.message
+            });
         }
         next();
     }
@@ -374,6 +482,11 @@ async function checkStudentInStream(req, res, next) {
             .single();
 
         if (error || !active) {
+            logger.warn('محاولة دخول طالب غير مسجل في البث', {
+                offerId: offerId,
+                studentId: studentId,
+                error: error?.message
+            });
             return res.status(403).json({ 
                 success: false, 
                 error: '❌ لم تتم إضافتك إلى البث بعد' 
@@ -383,7 +496,11 @@ async function checkStudentInStream(req, res, next) {
         req.activeStreamStudent = active;
         next();
     } catch (error) {
-        console.error('❌ خطأ في التحقق من الطالب في البث:', error.message);
+        logger.error('خطأ في التحقق من الطالب في البث', {
+            offerId: offerId,
+            studentId: studentId,
+            error: error.message
+        });
         return res.status(500).json({ 
             success: false, 
             error: 'حدث خطأ في الخادم' 

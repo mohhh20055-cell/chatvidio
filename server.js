@@ -21,6 +21,9 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const fs = require('fs');
 
+// ✅ استيراد نظام السجلات
+const logger = require('./utils/logger');
+
 // ✅ استيراد الدوال المساعدة من ملفات منفصلة
 const { generateToken, verifyToken } = require('./utils/jwt');
 const { encrypt, maskIP } = require('./utils/encryption');
@@ -46,18 +49,28 @@ const resendApiKey = process.env.RESEND_API_KEY;
 const recaptchaSiteKey = process.env.RECAPTCHA_SITE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
+    logger.error('متغيرات Supabase غير موجودة', {
+        hasUrl: !!supabaseUrl,
+        hasKey: !!supabaseKey
+    });
     console.error('❌ خطأ: متغيرات Supabase غير موجودة');
     process.exit(1);
 }
 
 if (!resendApiKey) {
-    console.error('❌ خطأ: متغير RESEND_API_KEY غير موجود');
-    process.exit(1);
+    logger.warn('متغير RESEND_API_KEY غير موجود - لن يتم إرسال البريد الإلكتروني', {
+        env: process.env.NODE_ENV
+    });
 }
 
 // تهيئة الاتصالات
 const supabase = createClient(supabaseUrl, supabaseKey);
-const resend = new Resend(resendApiKey);
+const resend = resendApiKey ? new Resend(resendApiKey) : null;
+
+logger.info('تم تهيئة الاتصال بقاعدة البيانات', {
+    supabaseUrl: supabaseUrl ? '(مخفي)' : 'غير موجود',
+    hasResend: !!resend
+});
 
 // ✅ إنشاء ملف config.js العام لتكوين الواجهة الأمامية
 const publicDir = path.join(__dirname, 'public');
@@ -67,9 +80,9 @@ try {
         fs.mkdirSync(publicDir, { recursive: true });
     }
     fs.writeFileSync(configJsPath, `window.RECAPTCHA_SITE_KEY = ${JSON.stringify(recaptchaSiteKey || '')};\nwindow.API_BASE_URL = ${JSON.stringify(process.env.API_BASE_URL || '')};\n`);
-    console.log('✅ تم إنشاء config.js');
+    logger.info('تم إنشاء config.js');
 } catch (e) {
-    console.error('❌ خطأ في كتابة config.js:', e.message);
+    logger.error('فشل في كتابة config.js', { error: e.message });
 }
 
 // ============================================================
@@ -126,10 +139,23 @@ async function getOne(table, column, value) {
             .select('*')
             .eq(column, value)
             .single();
-        if (error && error.code !== 'PGRST116') return null;
+        if (error && error.code !== 'PGRST116') {
+            logger.error(`خطأ في getOne من جدول ${table}`, { 
+                table, 
+                column, 
+                value,
+                error: error.message 
+            });
+            return null;
+        }
         return data;
     } catch (error) {
-        console.error('خطأ في getOne:', error.message);
+        logger.error(`استثناء في getOne من جدول ${table}`, { 
+            table, 
+            column, 
+            error: error.message,
+            stack: error.stack 
+        });
         return null;
     }
 }
@@ -138,10 +164,22 @@ async function insert(table, data) {
     try {
         const sanitizedData = sanitizeObject(data);
         const { data: result, error } = await supabase.from(table).insert(sanitizedData).select();
-        if (error) throw error;
+        if (error) {
+            logger.error(`خطأ في insert إلى جدول ${table}`, { 
+                table, 
+                data: sanitizedData,
+                error: error.message 
+            });
+            throw error;
+        }
+        logger.debug(`تم إدخال بيانات في جدول ${table}`, { table, insertedId: result?.[0]?.id });
         return result[0];
     } catch (error) {
-        console.error(`خطأ في insert إلى ${table}:`, error.message);
+        logger.error(`استثناء في insert إلى جدول ${table}`, { 
+            table, 
+            error: error.message,
+            stack: error.stack 
+        });
         throw error;
     }
 }
@@ -150,10 +188,24 @@ async function update(table, id, data) {
     try {
         const sanitizedData = sanitizeObject(data);
         const { data: result, error } = await supabase.from(table).update(sanitizedData).eq('id', id).select();
-        if (error) throw error;
+        if (error) {
+            logger.error(`خطأ في update لجدول ${table}`, { 
+                table, 
+                id, 
+                data: sanitizedData,
+                error: error.message 
+            });
+            throw error;
+        }
+        logger.debug(`تم تحديث بيانات في جدول ${table}`, { table, id });
         return result[0];
     } catch (error) {
-        console.error(`خطأ في update للجدول ${table}:`, error.message);
+        logger.error(`استثناء في update لجدول ${table}`, { 
+            table, 
+            id, 
+            error: error.message,
+            stack: error.stack 
+        });
         throw error;
     }
 }
@@ -161,10 +213,24 @@ async function update(table, id, data) {
 async function remove(table, column, value) {
     try {
         const { error } = await supabase.from(table).delete().eq(column, value);
-        if (error) throw error;
+        if (error) {
+            logger.error(`خطأ في remove من جدول ${table}`, { 
+                table, 
+                column, 
+                value,
+                error: error.message 
+            });
+            throw error;
+        }
         return true;
     } catch (error) {
-        console.error(`خطأ في remove من ${table}:`, error.message);
+        logger.error(`استثناء في remove من جدول ${table}`, { 
+            table, 
+            column, 
+            value,
+            error: error.message,
+            stack: error.stack 
+        });
         throw error;
     }
 }
@@ -835,35 +901,103 @@ app.post('/api/refresh-token', authenticate, (req, res) => {
 // معالج الأخطاء
 // ============================================================
 
-app.use((err, req, res, next) => {
-    console.error('❌ خطأ:', err.message);
-    console.error('📚 Stack:', err.stack);
-    
-    if (err.message && err.message.includes('غير مسموح به من هذا المصدر')) {
-        return res.status(403).json({
-            success: false,
-            error: 'غير مسموح به من هذا المصدر',
-            origin: req.headers.origin || 'unknown'
+const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
+
+// تطبيق معالج 404
+app.use(notFoundHandler);
+
+// تطبيق معالج الأخطاء العام
+app.use(errorHandler);
+
+// ============================================================
+// مسارات السجلات والمراقبة (للأدمن)
+// ============================================================
+
+// جلب آخر الأخطاء
+app.get('/api/logs/errors', authenticate, authorize(['admin']), (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 50;
+        const errors = logger.getRecentErrors(limit);
+        
+        res.json({
+            success: true,
+            errors: errors,
+            count: errors.length
         });
+    } catch (error) {
+        logger.error('خطأ في جلب السجلات', { error: error.message });
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
-    
-    if (err.name === 'ValidationError') {
-        return res.status(400).json({
-            success: false,
-            error: err.message
+});
+
+// جلب جميع السجلات
+app.get('/api/logs/all', authenticate, authorize(['admin']), (req, res) => {
+    try {
+        const type = req.query.type || 'all';
+        const limit = parseInt(req.query.limit) || 100;
+        const logs = logger.getLogs(type, limit);
+        
+        res.json({
+            success: true,
+            logs: logs,
+            type: type
         });
+    } catch (error) {
+        logger.error('خطأ في جلب السجلات', { error: error.message });
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
-    
-    if (err.name === 'MulterError') {
-        return res.status(400).json({
-            success: false,
-            error: err.message
+});
+
+// جلب إحصائيات السجلات
+app.get('/api/logs/stats', authenticate, authorize(['admin']), (req, res) => {
+    try {
+        const stats = logger.getLogStats();
+        
+        res.json({
+            success: true,
+            stats: stats
         });
+    } catch (error) {
+        logger.error('خطأ في جلب إحصائيات السجلات', { error: error.message });
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
+});
+
+// مسح سجلات الذاكرة
+app.post('/api/logs/clear', authenticate, authorize(['admin']), (req, res) => {
+    try {
+        logger.clearMemory();
+        
+        logger.info('تم مسح سجلات الذاكرة من قبل الأدمن', {
+            userId: req.user.userId
+        });
+        
+        res.json({
+            success: true,
+            message: 'تم مسح السجلات بنجاح'
+        });
+    } catch (error) {
+        logger.error('خطأ في مسح السجلات', { error: error.message });
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// جلب حالة الخادم
+app.get('/api/health', (req, res) => {
+    const memoryUsage = process.memoryUsage();
     
-    res.status(500).json({
-        success: false,
-        error: process.env.NODE_ENV === 'production' ? 'حدث خطأ داخلي في الخادم' : err.message
+    res.json({
+        success: true,
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        memory: {
+            heapUsed: Math.round(memoryUsage.heapUsed / 1024 / 1024),
+            heapTotal: Math.round(memoryUsage.heapTotal / 1024 / 1024),
+            rss: Math.round(memoryUsage.rss / 1024 / 1024)
+        },
+        nodeVersion: process.version,
+        environment: process.env.NODE_ENV || 'development'
     });
 });
 
