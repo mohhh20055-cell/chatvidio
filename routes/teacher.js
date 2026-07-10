@@ -35,39 +35,7 @@ const upload = multer({
 });
 
 // ============================================================
-// جلب بيانات الأستاذ
-// ============================================================
-router.get('/:teacher_id', authenticate, [
-    param('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const teacher_id = parseInt(req.params.teacher_id);
-
-        if (req.user.userId !== teacher_id && req.user.role !== 'admin') {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه المعلومات' });
-        }
-
-        const teacher = await getOne('teachers', 'id', teacher_id);
-        if (!teacher) {
-            return res.status(404).json({ success: false, error: 'أستاذ غير موجود' });
-        }
-        
-        delete teacher.password;
-        
-        res.json(teacher);
-    } catch (error) {
-        console.error('خطأ في جلب بيانات الأستاذ:', error.message);
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
-    }
-});
-
-// ============================================================
-// جلب معلومات الأستاذ الحالي
+// جلب معلومات الأستاذ الحالي (يجب أن يكون قبل /:teacher_id)
 // ============================================================
 router.get('/me', authenticate, authorize(['teacher']), async (req, res) => {
     try {
@@ -100,11 +68,44 @@ router.get('/me', authenticate, authorize(['teacher']), async (req, res) => {
         }
 
         res.json({
-            ...teacher,
-            active_stream: activeStream
+            success: true,
+            teacher: teacher,
+            activeStream: activeStream
         });
     } catch (error) {
-        console.error('خطأ في جلب معلومات الأستاذ:', error.message);
+        console.error('خطأ في جلب بيانات الأستاذ:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// جلب بيانات الأستاذ
+// ============================================================
+router.get('/:teacher_id', authenticate, [
+    param('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const teacher_id = parseInt(req.params.teacher_id);
+
+        if (req.user.userId !== teacher_id && req.user.role !== 'admin') {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه المعلومات' });
+        }
+
+        const teacher = await getOne('teachers', 'id', teacher_id);
+        if (!teacher) {
+            return res.status(404).json({ success: false, error: 'أستاذ غير موجود' });
+        }
+        
+        delete teacher.password;
+        
+        res.json(teacher);
+    } catch (error) {
+        console.error('خطأ في جلب بيانات الأستاذ:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
