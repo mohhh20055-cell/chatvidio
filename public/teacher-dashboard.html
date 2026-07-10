@@ -1822,10 +1822,13 @@
             const data = await res.json();
             console.log('📥 بيانات الأستاذ من الخادم:', data);
             
-            if (!data.error && data.id) {
-                userData = data;
-                teacherId = data.id;
-                localStorage.setItem('userData', JSON.stringify(data));
+            // دعم التنسيق الجديد: { success: true, teacher: {...}, activeStream: {...} }
+            const teacherData = data.teacher || data;
+            
+            if (!data.error && teacherData.id) {
+                userData = teacherData;
+                teacherId = teacherData.id;
+                localStorage.setItem('userData', JSON.stringify(teacherData));
                 updateUI();
                 loadBalance();
                 loadReferralData();
