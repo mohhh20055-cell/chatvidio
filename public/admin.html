@@ -543,7 +543,7 @@
                 const userData = JSON.parse(userDataStr);
                 console.log('UserData parsed:', userData);
                 
-                if (userData.role !== 'admin') {
+                if (!userData.role || (userData.role !== 'admin' && userData.role !== 'Admin' && userData.role !== 'ADMIN')) {
                     console.log('❌ المستخدم ليس مديراً - الدور:', userData.role);
                     window.location.href = '/';
                     return;
