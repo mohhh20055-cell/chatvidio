@@ -2283,9 +2283,9 @@
             const offerDate = new Date(offer.offer_date);
             
             // التحقق من انتهاء العرض
-            // العرض منتهي إذا: مر عليه أكثر من ساعتين منذ وقته المحدد ولم يبدأ بعد
-            const twoHoursInMs = 2 * 60 * 60 * 1000;
-            const isExpired = (offerDate.getTime() + twoHoursInMs) < now.getTime() && 
+            // العرض منتهي إذا: مر عليه وقت العرض + مدة العرض ولم يبدأ بعد
+            const durationMs = (offer.duration || 60) * 60 * 1000;
+            const isExpired = (offerDate.getTime() + durationMs) < now.getTime() && 
                               offer.status !== 'live' && 
                               offer.status !== 'teacher_ready' && 
                               offer.status !== 'paused';
@@ -2333,18 +2333,6 @@
                 rejoinButton = `<button class="message-btn" style="margin-top:8px; background: #f59e0b;" onclick="rejoinStream(${offer.id})"><i class="fas fa-external-link-alt"></i> أغلقت صفحة البث بالخطأ</button>`;
             }
 
-            // عرض كلمة المرور إذا كانت موجودة
-            let passwordDisplay = '';
-            if (offer.room_password) {
-                passwordDisplay = `
-                    <div style="margin-top: 8px; font-size: 0.8rem; background: rgba(15,92,191,0.05); padding: 6px 10px; border-radius: 8px;">
-                        <span style="color: var(--gray-500);">🔑 كلمة المرور:</span>
-                        <span style="font-family: 'Courier New', monospace; font-weight: 700; color: var(--primary); letter-spacing: 2px; direction: ltr; display: inline-block;">${offer.room_password}</span>
-                        <button onclick="copyPassword('${offer.room_password}')" style="background:transparent; border:none; color:var(--primary); cursor:pointer; font-size:0.7rem; font-weight:700;"><i class="fas fa-copy"></i> نسخ</button>
-                    </div>
-                `;
-            }
-
             html += `<div class="offer-card ${isExpired ? 'expired' : ''}">
                 ${isExpired ? '<span class="expired-label">منتهية</span>' : ''}
                 <div class="offer-title">${escapeHtml(offer.subject_name)}</div>
@@ -2352,7 +2340,6 @@
                 <div style="font-size:0.85rem; color:var(--gray-600);"><i class="fas fa-clock" style="color:var(--primary);"></i> ${offer.duration} دقيقة</div>
                 <div style="font-size:0.85rem; color:var(--gray-600);">${priceDisplay}</div>
                 ${levelDisplay}
-                ${passwordDisplay}
                 <span class="status-badge ${statusClass}">${statusText}</span>
                 ${streamButton}
                 ${rejoinButton}
@@ -2360,11 +2347,6 @@
             </div>`;
         }
         container.innerHTML = html;
-    }
-
-    function copyPassword(password) {
-        navigator.clipboard.writeText(password).then(() => showToast('✅ تم نسخ كلمة المرور!', 'success'))
-            .catch(() => { const ta = document.createElement('textarea'); ta.value = password; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast('✅ تم نسخ كلمة المرور!', 'success'); });
     }
 
     // ================================================================
@@ -2925,10 +2907,10 @@
         const offers = await res.json();
         // المتصفح يستخدم توقيت الجزائر تلقائياً
         const now = new Date();
-        const twoHoursInMs = 2 * 60 * 60 * 1000;
         const expiredOffers = offers.filter(o => {
             const offerDate = new Date(o.offer_date);
-            return (offerDate.getTime() + twoHoursInMs) < now.getTime() && 
+            const durationMs = (o.duration || 60) * 60 * 1000;
+            return (offerDate.getTime() + durationMs) < now.getTime() && 
                    o.status !== 'live' && 
                    o.status !== 'teacher_ready' && 
                    o.status !== 'paused';
