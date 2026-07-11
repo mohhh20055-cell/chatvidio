@@ -1271,7 +1271,7 @@
                 </div>
             </div>
             <div class="timer-actions">
-                <button class="btn-jitsi" onclick="openJitsiStream()">
+                <button class="btn-jitsi" id="openStreamBtn" onclick="openJitsiStream()" style="display: none;">
                     <i class="fas fa-video"></i> فتح البث
                 </button>
                 <button class="btn-pause" id="addStudentsBtn" onclick="addStudentsToStream(streamOfferId)">
@@ -2398,9 +2398,6 @@
         
         // حساب الوقت المتبقي
         // المتصفح يستخدم توقيت الجزائر تلقائياً
-        const offerDate = new Date(offer.offer_date);
-        const now = new Date();
-        const elapsedSeconds = Math.floor((now - offerDate) / 1000);
         const totalSeconds = offer.duration * 60; // تحويل الدقائق إلى ثواني
         
         // إذا كان البث متوقف مؤقتاً، استخدم الوقت المتبقي المحفوظ
@@ -2408,24 +2405,22 @@
         if (offer.status === 'paused' && offer.remaining_time) {
             remainingSeconds = parseInt(offer.remaining_time);
             timerStarted = true; // البث كان قد بدأ سابقاً
-        } else if (offer.status === 'live') {
-            // البث نشط - ابدأ العداد فوراً
-            remainingSeconds = Math.max(0, totalSeconds - elapsedSeconds);
-            timerStarted = true;
+            streamPaused = true;
         } else {
-            // teacher_ready - في انتظار أن ينقر الأستاذ على "إضافة الطلاب"
+            // teacher_ready أو live - في انتظار أن ينقر الأستاذ على "إضافة الطلاب"
+            // لن نبدأ العداد تلقائياً أبداً
             remainingSeconds = totalSeconds;
             timerStarted = false;
+            streamPaused = false;
         }
         
         streamTotalSeconds = totalSeconds;
         streamRemainingSeconds = remainingSeconds;
-        streamPaused = (offer.status === 'paused');
         
         updateTimerDisplay();
         updateTimerButtons();
         
-        // فقط ابدأ العد التنازلي إذا كان timerStarted = true
+        // فقط ابدأ العد التنازلي إذا كان timerStarted = true و live (وليس paused)
         if (timerStarted && !streamPaused) {
             startTimerInterval();
         }
@@ -2509,9 +2504,11 @@
         const addStudentsBtn = document.getElementById('addStudentsBtn');
         const endStreamBtn = document.getElementById('endStreamBtn');
         const rejoinBtn = document.getElementById('rejoinStreamBtn');
+        const openStreamBtn = document.getElementById('openStreamBtn');
         
         if (!timerStarted) {
             // لم يبدأ العد التنازلي بعد
+            openStreamBtn.style.display = 'flex'; // أظهر زر فتح البث
             addStudentsBtn.style.display = 'flex';
             addStudentsBtn.innerHTML = '<i class="fas fa-user-plus"></i> إضافة الطلاب';
             pauseBtn.style.display = 'none';
@@ -2523,6 +2520,7 @@
             endStreamBtn.style.cursor = 'pointer';
         } else if (streamPaused) {
             // البث متوقف مؤقتاً - أظهر زر إعادة فتح الصفحة
+            openStreamBtn.style.display = 'none';
             addStudentsBtn.style.display = 'flex';
             addStudentsBtn.innerHTML = '<i class="fas fa-play"></i> استئناف البث';
             pauseBtn.style.display = 'none';
@@ -2533,6 +2531,7 @@
             endStreamBtn.style.cursor = 'pointer';
         } else {
             // البث يعمل
+            openStreamBtn.style.display = 'none';
             addStudentsBtn.style.display = 'none';
             pauseBtn.style.display = 'flex';
             resumeBtn.style.display = 'none';
@@ -2845,24 +2844,24 @@
                 return;
             }
             
-            // فتح رابط البث
+            // فتح رابط البث في نافذة جديدة
             const newWindow = window.open(data.stream_url, '_blank');
             
-            if (newWindow && data.room_password) {
-                // طلب كلمة المرور
-                const enteredPassword = prompt('🔑 أدخل كلمة مرور البث للمضيف:\n\n(كلمة المرور موجودة في صفحة البث أو يمكن نسخها من هنا: ' + data.room_password + ')', '');
+            if (newWindow) {
+                showToast('🔗 تم فتح صفحة البث! انقر على "إضافة الطلاب" لبدء البث', 'info');
                 
-                if (enteredPassword === data.room_password) {
-                    showToast('✅ تم التحقق من كلمة المرور!', 'success');
-                    
-                    // إذا كان البث متوقف، استئنافه
-                    if (data.status === 'paused' || timerStarted) {
-                        // إضافة الطلاب وإرسال الإشعارات
-                        await addStudentsToStream(offerId);
-                    }
-                } else if (enteredPassword !== null) {
-                    showToast('⚠️ كلمة المرور غير صحيحة!', 'error');
+                // إظهار شريط البث إذا كان مخفياً
+                const container = document.getElementById('streamTimerContainer');
+                if (container) {
+                    container.style.display = 'block';
                 }
+                
+                // تحديث البيانات
+                streamOfferId = offerId;
+                activeStream = data;
+                
+                // تحديث الأزرار
+                updateTimerButtons();
             } else {
                 showToast('⚠️ يرجى السماح بفتح النوافذ المنبثقة', 'warning');
             }
