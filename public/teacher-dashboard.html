@@ -2408,6 +2408,9 @@
         // مزامنة مع الخادم كل 30 ثانية
         if (streamSyncInterval) clearInterval(streamSyncInterval);
         streamSyncInterval = setInterval(syncStreamStatus, 30000);
+        
+        // مراقبة نافذة Jitsi - إذا أُغلقت يتوقف العداد المحلي
+        startJitsiWindowWatch();
     }
 
     function startTimerInterval() {
@@ -2473,6 +2476,8 @@
     let heartbeatInterval = null;  // نبضة قلب كل 20 ثانية
     let streamGracePeriod = false; // هل نحن في فترة السماح؟
     let streamGraceSeconds = 0;    // ثواني grace period المتبقية
+    let jitsiWindow = null;        // مرجع نافذة Jitsi المفتوحة
+    let jitsiWatchInterval = null; // مراقبة إغلاق نافذة Jitsi
 
     // إرسال heartbeat للخادم
     async function sendHeartbeat() {
@@ -2634,6 +2639,31 @@
         if (streamIntervalId) { clearInterval(streamIntervalId); streamIntervalId = null; }
         if (streamSyncInterval) { clearInterval(streamSyncInterval); streamSyncInterval = null; }
         if (heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null; }
+        if (jitsiWatchInterval) { clearInterval(jitsiWatchInterval); jitsiWatchInterval = null; }
+        jitsiWindow = null;
+    }
+
+    // مراقبة نافذة Jitsi: إذا أُغلقت → وقف العداد المحلي + heartbeat
+    // الخادم يستمر بالعد ويُفعّل grace period تلقائياً
+    function startJitsiWindowWatch() {
+        if (jitsiWatchInterval) clearInterval(jitsiWatchInterval);
+        jitsiWatchInterval = setInterval(() => {
+            if (!jitsiWindow || jitsiWindow.closed) {
+                // نافذة Jitsi أُغلقت
+                if (streamIntervalId) { clearInterval(streamIntervalId); streamIntervalId = null; }
+                if (heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null; }
+                if (jitsiWatchInterval) { clearInterval(jitsiWatchInterval); jitsiWatchInterval = null; }
+                // أبلغ الخادم مباشرةً بانقطاع heartbeat وابدأ grace period
+                syncStreamStatus();
+                showToast('⚠️ أغلقت نافذة البث - الخادم يستمر بالعد. أعد فتح البث أو أنهِ الحصة.', 'warning', 8000);
+            }
+        }, 2000); // فحص كل ثانيتين
+    }
+
+    // تسجيل مرجع نافذة Jitsi عند فتحها
+    function setJitsiWindow(win) {
+        jitsiWindow = win;
+        if (win && !win.closed) startJitsiWindowWatch();
     }
 
     async function syncStreamStatus() {
@@ -2670,33 +2700,14 @@
     // ✅ HANDLERS للتعامل مع إغلاق الصفحة أو التنقل بعيداً
     // ================================================================
 
-    // عند مغادرة الصفحة: يتوقف العداد المحلي لكن الخادم يستمر بالعد
-    // الخادم سيكتشف انقطاع الـ heartbeat ويُفعّل grace period تلقائياً
+    // عند مغادرة لوحة التحكم (إغلاق/تحديث الصفحة الرئيسية)
+    // الخادم يستمر بالعد - انقطاع heartbeat سيُفعّل grace period تلقائياً
     window.addEventListener('beforeunload', function(e) {
         if (timerStarted && streamOfferId) {
-            // وقف جميع الـ intervals المحلية
             if (streamIntervalId) { clearInterval(streamIntervalId); streamIntervalId = null; }
             if (heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null; }
             if (streamSyncInterval) { clearInterval(streamSyncInterval); streamSyncInterval = null; }
-            // الخادم سيكتشف انقطاع heartbeat خلال 60 ثانية ويُفعّل grace period
-            e.preventDefault();
-            e.returnValue = '⚠️ إذا غادرت الصفحة، سيستمر العداد على الخادم وقد يُغلق البث تلقائياً!';
-            return e.returnValue;
-        }
-    });
-
-    // عند الرجوع للوحة التحكم (إخفاء التبويب): يتوقف العداد المحلي فقط
-    document.addEventListener('visibilitychange', function() {
-        if (document.hidden && timerStarted && streamOfferId && !streamPaused) {
-            // أوقف العداد المحلي - الخادم يستمر
-            if (streamIntervalId) { clearInterval(streamIntervalId); streamIntervalId = null; }
-            if (heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null; }
-            updateTimerDisplay();
-        } else if (!document.hidden && timerStarted && streamOfferId && !streamPaused) {
-            // عاد الأستاذ للصفحة: استأنف heartbeat وزامن الوقت من الخادم
-            syncStreamStatus();
-            heartbeatInterval = setInterval(sendHeartbeat, 20000);
-            if (!streamIntervalId) startTimerInterval();
+            if (jitsiWatchInterval) { clearInterval(jitsiWatchInterval); jitsiWatchInterval = null; }
         }
     });
 
@@ -2870,6 +2881,7 @@
                 startStreamTimer(offer);
                 
                 const newWindow = window.open(data.room_url, '_blank');
+                setJitsiWindow(newWindow);
                 if (newWindow) {
                     setTimeout(() => {
                         alert(`🔑 كلمة مرور البث: ${data.password}\n\nأدخلها عند الطلب في صفحة البث`);
@@ -2894,6 +2906,7 @@
             const data = await res.json();
             if (data.stream_url) {
                 const newWindow = window.open(data.stream_url, '_blank');
+                setJitsiWindow(newWindow);
                 if (newWindow && data.room_password) {
                     setTimeout(() => {
                         alert(`🔑 كلمة مرور البث: ${data.room_password}\n\nأدخلها عند الطلب في صفحة البث`);
@@ -2922,21 +2935,16 @@
             
             // فتح رابط البث في نافذة جديدة
             const newWindow = window.open(data.stream_url, '_blank');
+            setJitsiWindow(newWindow);
             
             if (newWindow) {
                 showToast('🔗 تم فتح صفحة البث! انقر على "إضافة الطلاب" لبدء البث', 'info');
                 
-                // إظهار شريط البث إذا كان مخفياً
                 const container = document.getElementById('streamTimerContainer');
-                if (container) {
-                    container.style.display = 'block';
-                }
+                if (container) container.style.display = 'block';
                 
-                // تحديث البيانات
                 streamOfferId = offerId;
                 activeStream = data;
-                
-                // تحديث الأزرار
                 updateTimerButtons();
             } else {
                 showToast('⚠️ يرجى السماح بفتح النوافذ المنبثقة', 'warning');
