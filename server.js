@@ -1033,6 +1033,26 @@ app.get('/api/health', (req, res) => {
 });
 
 // ============================================================
+// ✅ Cron: مراقبة العروض المنتهية والبث غير المغلق (كل دقيقة)
+// ============================================================
+const { checkAndExpireOverdueOffers } = require('./utils/streamVerification');
+
+function startOfferCron() {
+    // تشغيل فوري عند بدء الخادم
+    checkAndExpireOverdueOffers().catch(err =>
+        console.error('Cron checkAndExpireOverdueOffers error:', err.message)
+    );
+    // ثم كل 60 ثانية
+    setInterval(() => {
+        checkAndExpireOverdueOffers().catch(err =>
+            console.error('Cron checkAndExpireOverdueOffers error:', err.message)
+        );
+    }, 60 * 1000);
+
+    console.log('⏰ Cron: مراقبة العروض المنتهية والبث غير المغلق - يعمل كل دقيقة');
+}
+
+// ============================================================
 // تشغيل الخادم
 // ============================================================
 
@@ -1046,5 +1066,6 @@ if (require.main === module) {
         console.log('✅ نظام البث: Jitsi Meet (مجاني 100%)');
         console.log('✅ مسارات المصادقة: /api/student/register و /api/teacher/register');
         console.log('='.repeat(60));
+        startOfferCron();
     });
 }

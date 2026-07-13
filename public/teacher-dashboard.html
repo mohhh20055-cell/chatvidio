@@ -2378,36 +2378,34 @@
         
         document.getElementById('streamTitle').textContent = `📚 ${offer.subject_name}`;
         
-        // حساب الوقت المتبقي
-        // المتصفح يستخدم توقيت الجزائر تلقائياً
-        const totalSeconds = offer.duration * 60; // تحويل الدقائق إلى ثواني
+        const totalSeconds = offer.duration * 60;
         
-        // إذا كان البث متوقف مؤقتاً، استخدم الوقت المتبقي المحفوظ
-        let remainingSeconds;
         if (offer.status === 'paused' && offer.remaining_time) {
-            remainingSeconds = parseInt(offer.remaining_time);
-            timerStarted = true; // البث كان قد بدأ سابقاً
+            streamRemainingSeconds = parseInt(offer.remaining_time);
+            timerStarted = true;
             streamPaused = true;
         } else {
-            // teacher_ready أو live - في انتظار أن ينقر الأستاذ على "إضافة الطلاب"
-            // لن نبدأ العداد تلقائياً أبداً
-            remainingSeconds = totalSeconds;
+            streamRemainingSeconds = totalSeconds;
             timerStarted = false;
             streamPaused = false;
         }
         
         streamTotalSeconds = totalSeconds;
-        streamRemainingSeconds = remainingSeconds;
+        streamGracePeriod = false;
+        streamGraceSeconds = 0;
         
         updateTimerDisplay();
         updateTimerButtons();
         
-        // فقط ابدأ العد التنازلي إذا كان timerStarted = true و live (وليس paused)
         if (timerStarted && !streamPaused) {
             startTimerInterval();
         }
         
-        // تحديث الحالة كل 30 ثانية للحفاظ على المزامنة مع الخادم
+        // heartbeat كل 20 ثانية للإبلاغ عن وجود الأستاذ في الصفحة
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
+        heartbeatInterval = setInterval(sendHeartbeat, 20000);
+        
+        // مزامنة مع الخادم كل 30 ثانية
         if (streamSyncInterval) clearInterval(streamSyncInterval);
         streamSyncInterval = setInterval(syncStreamStatus, 30000);
     }
@@ -2417,52 +2415,148 @@
         
         streamIntervalId = setInterval(() => {
             if (!streamPaused) {
-                streamRemainingSeconds--;
-                updateTimerDisplay();
-                
-                // عند انتهاء الوقت
-                if (streamRemainingSeconds <= 0) {
-                    clearInterval(streamIntervalId);
-                    streamIntervalId = null;
-                    completeStream();
+                if (streamGracePeriod) {
+                    // وضع grace period: نعد 10 دقائق إضافية
+                    streamGraceSeconds--;
+                    if (streamGraceSeconds <= 0) {
+                        clearInterval(streamIntervalId);
+                        streamIntervalId = null;
+                        handleForceEnd();
+                        return;
+                    }
+                } else {
+                    streamRemainingSeconds--;
+                    if (streamRemainingSeconds <= 0) {
+                        streamRemainingSeconds = 0;
+                        // لا تنهِ البث تلقائياً - انتقل لـ grace period
+                        enterGracePeriod();
+                        return;
+                    }
                 }
+                updateTimerDisplay();
             }
         }, 1000);
     }
 
+    // دخول فترة السماح (10 دقائق) بعد انتهاء وقت البث
+    function enterGracePeriod() {
+        streamGracePeriod = true;
+        streamGraceSeconds = 10 * 60; // 10 دقائق
+        updateTimerDisplay();
+        showGraceWarning();
+        // الـ heartbeat سيُبلّغ الخادم ببدء grace period
+        sendHeartbeat();
+    }
+
+    function showGraceWarning() {
+        const remaining = document.getElementById('timerRemainingLabel');
+        if (remaining) {
+            remaining.style.color = '#ef4444';
+            remaining.style.fontWeight = '700';
+        }
+        showToast('⚠️ انتهى وقت الحصة! لديك 10 دقائق لإنهاء البث قبل الإغلاق التلقائي', 'warning', 8000);
+    }
+
+    // معالجة الإغلاق الإجباري من الخادم
+    function handleForceEnd() {
+        if (streamIntervalId) clearInterval(streamIntervalId);
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
+        streamIntervalId = null;
+        heartbeatInterval = null;
+        hideStreamTimer();
+        loadOffers();
+        loadBalance();
+        showToast('🔴 تم إغلاق البث تلقائياً بعد انتهاء فترة السماح', 'error', 6000);
+    }
+
     let streamSyncInterval = null;
+    let heartbeatInterval = null;  // نبضة قلب كل 20 ثانية
+    let streamGracePeriod = false; // هل نحن في فترة السماح؟
+    let streamGraceSeconds = 0;    // ثواني grace period المتبقية
+
+    // إرسال heartbeat للخادم
+    async function sendHeartbeat() {
+        if (!streamOfferId || (!timerStarted && !streamGracePeriod)) return;
+        try {
+            const res = await fetchWithAuth(`/api/stream/heartbeat/${streamOfferId}`, { method: 'POST' });
+            if (!res.ok) return;
+            const data = await res.json();
+
+            if (data.action === 'force_end') {
+                handleForceEnd();
+                return;
+            }
+
+            // مزامنة الوقت المتبقي مع الخادم (الخادم هو المرجع)
+            if (data.remaining_seconds !== undefined && !streamGracePeriod) {
+                const diff = Math.abs(streamRemainingSeconds - data.remaining_seconds);
+                if (diff > 5) { // تصحيح فقط إذا كان الفرق أكثر من 5 ثوانٍ
+                    streamRemainingSeconds = data.remaining_seconds;
+                    updateTimerDisplay();
+                }
+            }
+
+            // تحقق إذا دخل الخادم في grace period
+            if (data.overdue && data.grace_remaining_seconds !== null && !streamGracePeriod) {
+                streamGracePeriod = true;
+                streamGraceSeconds = data.grace_remaining_seconds;
+                showGraceWarning();
+                updateTimerDisplay();
+            }
+
+            // تحديث grace seconds من الخادم
+            if (streamGracePeriod && data.grace_remaining_seconds !== null) {
+                const serverGrace = data.grace_remaining_seconds;
+                if (Math.abs(streamGraceSeconds - serverGrace) > 5) {
+                    streamGraceSeconds = serverGrace;
+                    updateTimerDisplay();
+                }
+            }
+        } catch(e) { /* تجاهل أخطاء الشبكة في heartbeat */ }
+    }
 
     function updateTimerDisplay() {
         const display = document.getElementById('timerDisplay');
         const progress = document.getElementById('timerProgress');
         const remainingLabel = document.getElementById('timerRemainingLabel');
         
-        const hours = Math.floor(streamRemainingSeconds / 3600);
-        const minutes = Math.floor((streamRemainingSeconds % 3600) / 60);
-        const seconds = streamRemainingSeconds % 60;
+        // في grace period: نعرض عداد الـ 10 دقائق الإضافية
+        const displaySecs = streamGracePeriod ? streamGraceSeconds : streamRemainingSeconds;
+        const hours = Math.floor(displaySecs / 3600);
+        const minutes = Math.floor((displaySecs % 3600) / 60);
+        const seconds = displaySecs % 60;
         
         const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
         display.textContent = timeStr;
         
-        // تغيير اللون حسب الوقت المتبقي
         display.className = 'time';
-        const percentage = (streamRemainingSeconds / streamTotalSeconds) * 100;
-        if (percentage < 10) display.classList.add('danger');
-        else if (percentage < 30) display.classList.add('warning');
-        
-        // تحديث شريط التقدم
-        progress.style.width = `${percentage}%`;
+        if (streamGracePeriod) {
+            display.classList.add('danger'); // أحمر دائماً في grace period
+        } else {
+            const percentage = (streamRemainingSeconds / streamTotalSeconds) * 100;
+            if (percentage < 10) display.classList.add('danger');
+            else if (percentage < 30) display.classList.add('warning');
+            // تحديث شريط التقدم فقط في الوقت الأصلي
+            progress.style.width = `${percentage}%`;
+        }
+        if (streamGracePeriod) progress.style.width = '100%';
         
         // تحديث النص حسب حالة العداد
-        if (!timerStarted) {
+        if (streamGracePeriod) {
+            remainingLabel.textContent = '⚠️ فترة السماح - سيُغلق البث تلقائياً';
+            remainingLabel.style.color = '#ef4444';
+        } else if (!timerStarted) {
             remainingLabel.textContent = '⏳ اضغط على "إضافة الطلاب" لبدء العد التنازلي';
+            remainingLabel.style.color = '';
         } else if (streamPaused) {
             remainingLabel.textContent = '⏸ متوقف مؤقتاً';
+            remainingLabel.style.color = '';
         } else {
             const elapsed = streamTotalSeconds - streamRemainingSeconds;
             const elapsedMinutes = Math.floor(elapsed / 60);
             const totalMinutes = Math.floor(streamTotalSeconds / 60);
             remainingLabel.textContent = `⏱ ${elapsedMinutes}/${totalMinutes} دقيقة`;
+            remainingLabel.style.color = '';
         }
         
         // تحديث حالة البث
@@ -2535,25 +2629,39 @@
         const container = document.getElementById('streamTimerContainer');
         container.style.display = 'none';
         timerStarted = false;
-        if (streamIntervalId) {
-            clearInterval(streamIntervalId);
-            streamIntervalId = null;
-        }
-        if (streamSyncInterval) {
-            clearInterval(streamSyncInterval);
-            streamSyncInterval = null;
-        }
+        streamGracePeriod = false;
+        streamGraceSeconds = 0;
+        if (streamIntervalId) { clearInterval(streamIntervalId); streamIntervalId = null; }
+        if (streamSyncInterval) { clearInterval(streamSyncInterval); streamSyncInterval = null; }
+        if (heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null; }
     }
 
     async function syncStreamStatus() {
+        if (!streamOfferId) return;
         try {
-            const res = await fetchWithAuth(`/api/teacher/offer/${streamOfferId}`);
+            const res = await fetchWithAuth(`/api/stream/status/${streamOfferId}`);
+            if (!res.ok) return;
             const data = await res.json();
-            if (data.status === 'completed' || data.status === 'cancelled') {
-                hideStreamTimer();
-                loadOffers();
-                loadBalance();
-                showToast('✅ تم إنهاء البث', 'success');
+
+            if (data.force_ended || data.status === 'completed' || data.status === 'expired') {
+                handleForceEnd();
+                return;
+            }
+
+            // تصحيح الوقت من الخادم إذا كان الفرق كبيراً
+            if (!streamGracePeriod && data.remaining_seconds !== undefined) {
+                const diff = Math.abs(streamRemainingSeconds - data.remaining_seconds);
+                if (diff > 10) {
+                    streamRemainingSeconds = data.remaining_seconds;
+                    updateTimerDisplay();
+                }
+            }
+
+            if (data.overdue && data.grace_remaining_seconds !== null && !streamGracePeriod) {
+                streamGracePeriod = true;
+                streamGraceSeconds = data.grace_remaining_seconds;
+                showGraceWarning();
+                updateTimerDisplay();
             }
         } catch(e) { if (e.message !== 'انتهت صلاحية الجلسة') console.error(e); }
     }
@@ -2562,47 +2670,33 @@
     // ✅ HANDLERS للتعامل مع إغلاق الصفحة أو التنقل بعيداً
     // ================================================================
 
-    // إيقاف مؤقت للعداد عند مغادرة الصفحة
+    // عند مغادرة الصفحة: يتوقف العداد المحلي لكن الخادم يستمر بالعد
+    // الخادم سيكتشف انقطاع الـ heartbeat ويُفعّل grace period تلقائياً
     window.addEventListener('beforeunload', function(e) {
-        if (timerStarted && streamOfferId && streamRemainingSeconds > 0) {
-            // إيقاف العداد مؤقتاً وإرسال الوقت المتبقي للخادم
-            if (streamIntervalId) {
-                clearInterval(streamIntervalId);
-                streamIntervalId = null;
-            }
-            
-            // إرسال طلب إيقاف مؤقت تلقائي مع CSRF token
-            const pauseData = JSON.stringify({ remaining_time: streamRemainingSeconds });
-            const pauseBlob = new Blob([pauseData], { type: 'application/json' });
-            
-            navigator.sendBeacon(`/api/stream/pause/${streamOfferId}`, pauseBlob);
-            
-            // إظهار رسالة للمستخدم
+        if (timerStarted && streamOfferId) {
+            // وقف جميع الـ intervals المحلية
+            if (streamIntervalId) { clearInterval(streamIntervalId); streamIntervalId = null; }
+            if (heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null; }
+            if (streamSyncInterval) { clearInterval(streamSyncInterval); streamSyncInterval = null; }
+            // الخادم سيكتشف انقطاع heartbeat خلال 60 ثانية ويُفعّل grace period
             e.preventDefault();
-            e.returnValue = '⚠️ أنت على وشك مغادرة الصفحة. سيتم إيقاف البث مؤقتاً.';
+            e.returnValue = '⚠️ إذا غادرت الصفحة، سيستمر العداد على الخادم وقد يُغلق البث تلقائياً!';
             return e.returnValue;
         }
     });
 
-    // إيقاف مؤقت عند إخفاء التبويب
+    // عند الرجوع للوحة التحكم (إخفاء التبويب): يتوقف العداد المحلي فقط
     document.addEventListener('visibilitychange', function() {
-        if (document.hidden && timerStarted && streamOfferId && streamRemainingSeconds > 0 && !streamPaused) {
-            // إيقاف العداد مؤقتاً
-            if (streamIntervalId) {
-                clearInterval(streamIntervalId);
-                streamIntervalId = null;
-            }
-            
-            // إرسال طلب إيقاف مؤقت تلقائي للخادم
-            const pauseData = JSON.stringify({ remaining_time: streamRemainingSeconds });
-            const pauseBlob = new Blob([pauseData], { type: 'application/json' });
-            
-            navigator.sendBeacon(`/api/stream/pause/${streamOfferId}`, pauseBlob);
-            
-            streamPaused = true;
-            updateTimerButtons();
+        if (document.hidden && timerStarted && streamOfferId && !streamPaused) {
+            // أوقف العداد المحلي - الخادم يستمر
+            if (streamIntervalId) { clearInterval(streamIntervalId); streamIntervalId = null; }
+            if (heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null; }
             updateTimerDisplay();
-            showToast('⏸ تم إيقاف البث مؤقتاً لأنك غادرت الصفحة', 'warning');
+        } else if (!document.hidden && timerStarted && streamOfferId && !streamPaused) {
+            // عاد الأستاذ للصفحة: استأنف heartbeat وزامن الوقت من الخادم
+            syncStreamStatus();
+            heartbeatInterval = setInterval(sendHeartbeat, 20000);
+            if (!streamIntervalId) startTimerInterval();
         }
     });
 

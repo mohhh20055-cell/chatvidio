@@ -549,13 +549,251 @@ async function getStreamVerification(offerId) {
     };
 }
 
+/**
+ * انتهاء العرض قبل بدئه (فات أوانه أو انقضت مدته بدون بث)
+ * يُرجع أموال الطلاب الذين حجزوا
+ */
+async function expireOverdueOffer(offerId) {
+    const { data: offer, error: offerError } = await supabase
+        .from('offers')
+        .select('id, teacher_id, subject_name, price, is_free, status, offer_date, duration')
+        .eq('id', offerId)
+        .single();
+
+    if (offerError || !offer) {
+        console.error('expireOverdueOffer: العرض غير موجود', offerId);
+        return;
+    }
+
+    if (['completed', 'expired'].includes(offer.status)) return;
+
+    console.log(`⏰ انتهاء العرض ${offerId} (${offer.subject_name}) - جاري رد الأموال`);
+
+    // تحديث حالة العرض إلى expired
+    await supabase
+        .from('offers')
+        .update({ status: 'expired', expired_at: new Date().toISOString() })
+        .eq('id', offerId);
+
+    if (offer.is_free || offer.price === 0) return;
+
+    // رد أموال الطلاب الذين دفعوا (paid أو pending_stream)
+    const { data: sessions } = await supabase
+        .from('sessions')
+        .select('id, student_id, payment_amount, payment_status')
+        .eq('offer_id', offerId)
+        .in('payment_status', ['paid', 'pending_stream']);
+
+    for (const session of (sessions || [])) {
+        const { data: student } = await supabase
+            .from('students')
+            .select('wallet_balance')
+            .eq('id', session.student_id)
+            .single();
+
+        await supabase
+            .from('students')
+            .update({ wallet_balance: (student?.wallet_balance || 0) + session.payment_amount })
+            .eq('id', session.student_id);
+
+        await supabase
+            .from('sessions')
+            .update({
+                payment_status: 'refunded',
+                teacher_earned: 0,
+                completed_at: new Date().toISOString(),
+                partial_payment_note: 'استرداد كامل - العرض انتهى قبل البدء أو فات أوانه'
+            })
+            .eq('id', session.id);
+
+        await supabase.from('wallet_transactions').insert({
+            student_id: session.student_id,
+            amount: session.payment_amount,
+            type: 'refund',
+            status: 'completed',
+            description: `استرداد ${session.payment_amount} دج - العرض "${offer.subject_name}" لم يُقام`,
+            created_at: new Date().toISOString()
+        });
+
+        await supabase.from('notifications').insert({
+            user_id: session.student_id,
+            user_type: 'student',
+            title: '💰 استرداد تلقائي',
+            message: `تم استرداد ${session.payment_amount} دج - لم تُقام حصة "${offer.subject_name}" في الموعد المحدد`,
+            is_read: false,
+            created_at: new Date().toISOString()
+        });
+
+        console.log(`💰 استرداد ${session.payment_amount} دج للطالب ${session.student_id}`);
+    }
+
+    // إشعار الأستاذ
+    await supabase.from('notifications').insert({
+        user_id: offer.teacher_id,
+        user_type: 'teacher',
+        title: '⏰ تم إلغاء العرض تلقائياً',
+        message: `العرض "${offer.subject_name}" تم إلغاؤه تلقائياً لأنه لم يُبدأ في الوقت المحدد أو انتهت مدته. يرجى إنشاء عرض جديد.`,
+        is_read: false,
+        created_at: new Date().toISOString()
+    });
+}
+
+/**
+ * إغلاق البث إجبارياً بعد انتهاء فترة السماح (10 دقائق)
+ * يُستدعى من cron أو عند انتهاء grace period
+ */
+async function forceEndStream(offerId, reason = 'grace_timeout') {
+    const { data: offer, error: offerError } = await supabase
+        .from('offers')
+        .select('id, teacher_id, subject_name, status, price, is_free')
+        .eq('id', offerId)
+        .single();
+
+    if (offerError || !offer) return;
+    if (!['live', 'paused'].includes(offer.status)) return;
+
+    console.log(`🔴 إغلاق إجباري للبث ${offerId} - السبب: ${reason}`);
+
+    // تسجيل نهاية البث
+    await recordStreamEndWithReason(offerId, offer.teacher_id, reason);
+
+    const completion = await verifyStreamCompletion(offerId);
+    await processStreamPayments(offerId, false);
+
+    await supabase.from('offers').update({
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+        force_ended_at: new Date().toISOString()
+    }).eq('id', offerId);
+
+    await supabase.from('active_stream').delete().eq('offer_id', offerId);
+    await supabase.from('waiting_room').delete().eq('offer_id', offerId);
+
+    // إشعار الأستاذ
+    const reasonMessages = {
+        grace_timeout: 'انتهت فترة السماح (10 دقائق) بعد انتهاء وقت الحصة',
+        heartbeat_lost: 'غادرت صفحة البث أثناء الحصة',
+        expired_offer: 'انتهت مدة العرض'
+    };
+
+    await supabase.from('notifications').insert({
+        user_id: offer.teacher_id,
+        user_type: 'teacher',
+        title: '🔴 تم إغلاق البث تلقائياً',
+        message: `تم إغلاق بث "${offer.subject_name}" تلقائياً - ${reasonMessages[reason] || reason}. يرجى إنشاء عرض جديد لحصة جديدة.`,
+        is_read: false,
+        created_at: new Date().toISOString()
+    });
+
+    console.log(`✅ تم الإغلاق الإجباري للبث ${offerId}`);
+}
+
+/**
+ * نسخة من recordStreamEnd مع سبب الإنهاء
+ */
+async function recordStreamEndWithReason(offerId, teacherId, reason) {
+    const serverTimestamp = new Date().toISOString();
+
+    const { data: existing } = await supabase
+        .from('stream_verification')
+        .select('*')
+        .eq('offer_id', offerId)
+        .single();
+
+    let updateData = {
+        server_end_time: serverTimestamp,
+        status: 'completed',
+        end_reason: reason
+    };
+
+    if (existing?.server_start_time) {
+        const totalSeconds = Math.floor((new Date(serverTimestamp) - new Date(existing.server_start_time)) / 1000);
+        const pausedSeconds = existing.total_paused_seconds || 0;
+        updateData.total_duration_seconds = totalSeconds;
+        updateData.actual_live_seconds = Math.max(0, totalSeconds - pausedSeconds);
+    }
+
+    if (existing) {
+        await supabase.from('stream_verification').update(updateData).eq('offer_id', offerId);
+    } else {
+        await supabase.from('stream_verification').insert({
+            offer_id: offerId,
+            teacher_id: teacherId,
+            server_start_time: serverTimestamp,
+            server_end_time: serverTimestamp,
+            total_duration_seconds: 0,
+            actual_live_seconds: 0,
+            status: 'completed',
+            end_reason: reason,
+            created_at: serverTimestamp
+        });
+    }
+}
+
+/**
+ * اكتشاف العروض التي فات أوانها أو انتهت مدتها بدون بث
+ * يُستدعى من cron كل دقيقة
+ */
+async function checkAndExpireOverdueOffers() {
+    const now = new Date();
+
+    // 1) عروض upcoming فات موعد بدئها + مدتها (أي لم تُبدأ أبداً)
+    const { data: overdueOffers } = await supabase
+        .from('offers')
+        .select('id, offer_date, duration, subject_name')
+        .eq('status', 'upcoming');
+
+    for (const offer of (overdueOffers || [])) {
+        const offerStart = new Date(offer.offer_date);
+        const offerEnd = new Date(offerStart.getTime() + offer.duration * 60 * 1000);
+        // إذا انقضى وقت العرض الكامل ولم يُبدأ
+        if (now > offerEnd) {
+            await expireOverdueOffer(offer.id);
+        }
+    }
+
+    // 2) عروض live/paused تجاوزت grace period (10 دقائق بعد انتهاء وقتها)
+    const GRACE_MS = 10 * 60 * 1000;
+    const { data: liveOffers } = await supabase
+        .from('offers')
+        .select('id, offer_date, duration, grace_period_started_at, teacher_last_heartbeat, subject_name')
+        .in('status', ['live', 'paused']);
+
+    for (const offer of (liveOffers || [])) {
+        const offerStart = new Date(offer.offer_date);
+        const offerEnd = new Date(offerStart.getTime() + offer.duration * 60 * 1000);
+
+        if (now <= offerEnd) continue; // لم ينته الوقت بعد
+
+        // انتهى الوقت المخصص - تحقق من grace period
+        if (!offer.grace_period_started_at) {
+            // ابدأ grace period الآن
+            await supabase.from('offers')
+                .update({ grace_period_started_at: now.toISOString() })
+                .eq('id', offer.id);
+            console.log(`⏰ بدأ grace period للبث ${offer.id} (${offer.subject_name})`);
+            continue;
+        }
+
+        const graceStart = new Date(offer.grace_period_started_at);
+        if (now - graceStart >= GRACE_MS) {
+            // انتهت فترة السماح - إغلاق إجباري
+            await forceEndStream(offer.id, 'grace_timeout');
+        }
+    }
+}
+
 module.exports = {
     verifyJitsiRoom,
     recordStreamStart,
     recordStreamPause,
     recordStreamEnd,
+    recordStreamEndWithReason,
     calculateActualStreamDuration,
     verifyStreamCompletion,
     processStreamPayments,
-    getStreamVerification
+    getStreamVerification,
+    expireOverdueOffer,
+    forceEndStream,
+    checkAndExpireOverdueOffers
 };

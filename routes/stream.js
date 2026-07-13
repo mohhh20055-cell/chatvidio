@@ -20,7 +20,8 @@ const {
     recordStreamPause,
     processStreamPayments, 
     getStreamVerification,
-    verifyStreamCompletion 
+    verifyStreamCompletion,
+    forceEndStream
 } = require('../utils/streamVerification');
 
 // دالة مساعدة لحماية HTML
@@ -1085,6 +1086,141 @@ router.get('/admin/verification/:offer_id', authenticate, authorize(['admin']), 
         });
     } catch (error) {
         console.error('خطأ في جلب تقرير التحقق:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
+// ✅ Heartbeat: الأستاذ يُرسل نبضة كل 20 ثانية ليثبت وجوده في صفحة البث
+// ============================================================
+router.post('/stream/heartbeat/:offer_id', authenticate, authorize(['teacher']), async (req, res) => {
+    try {
+        const offer_id = parseInt(req.params.offer_id);
+        const teacher_id = req.user.userId;
+
+        const { data: offer, error: offerError } = await supabase
+            .from('offers')
+            .select('id, teacher_id, status, offer_date, duration, grace_period_started_at, subject_name')
+            .eq('id', offer_id)
+            .single();
+
+        if (offerError || !offer) {
+            return res.status(404).json({ success: false, error: 'العرض غير موجود' });
+        }
+        if (offer.teacher_id !== teacher_id) {
+            return res.status(403).json({ success: false, error: 'غير مصرح' });
+        }
+        if (!['live', 'paused', 'teacher_ready'].includes(offer.status)) {
+            return res.status(400).json({ success: false, error: 'البث غير نشط', status: offer.status });
+        }
+
+        const now = new Date();
+        const offerStart = new Date(offer.offer_date);
+        const offerEnd = new Date(offerStart.getTime() + offer.duration * 60 * 1000);
+        const GRACE_MS = 10 * 60 * 1000;
+
+        // هل انتهى وقت العرض؟
+        const overdue = now > offerEnd;
+        let graceRemainingSeconds = null;
+        let shouldForceEnd = false;
+
+        if (overdue) {
+            if (!offer.grace_period_started_at) {
+                // أول heartbeat بعد انتهاء الوقت - ابدأ grace period
+                await supabase.from('offers')
+                    .update({
+                        teacher_last_heartbeat: now.toISOString(),
+                        grace_period_started_at: now.toISOString()
+                    })
+                    .eq('id', offer_id);
+                graceRemainingSeconds = GRACE_MS / 1000;
+            } else {
+                const graceStart = new Date(offer.grace_period_started_at);
+                const elapsed = now - graceStart;
+                if (elapsed >= GRACE_MS) {
+                    shouldForceEnd = true;
+                } else {
+                    graceRemainingSeconds = Math.ceil((GRACE_MS - elapsed) / 1000);
+                    await supabase.from('offers')
+                        .update({ teacher_last_heartbeat: now.toISOString() })
+                        .eq('id', offer_id);
+                }
+            }
+        } else {
+            // وقت البث لا يزال سارياً
+            await supabase.from('offers')
+                .update({ teacher_last_heartbeat: now.toISOString() })
+                .eq('id', offer_id);
+        }
+
+        if (shouldForceEnd) {
+            await forceEndStream(offer_id, 'grace_timeout');
+            return res.json({
+                success: true,
+                action: 'force_end',
+                message: 'انتهت فترة السماح (10 دقائق) - تم إغلاق البث وإعادة توزيع المدفوعات'
+            });
+        }
+
+        // حساب الثواني المتبقية الحقيقية من الخادم
+        let remainingSeconds = Math.max(0, Math.floor((offerEnd - now) / 1000));
+
+        return res.json({
+            success: true,
+            action: 'ok',
+            remaining_seconds: remainingSeconds,
+            overdue,
+            grace_remaining_seconds: graceRemainingSeconds,
+            server_time: now.toISOString()
+        });
+
+    } catch (error) {
+        console.error('خطأ في heartbeat:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
+// ✅ تحقق من حالة العرض (للأستاذ عند الرجوع للوحة التحكم)
+// تُرجع حالة العرض الحالية من الخادم - الأستاذ يتوقف عن الـ heartbeat
+// ============================================================
+router.get('/stream/status/:offer_id', authenticate, async (req, res) => {
+    try {
+        const offer_id = parseInt(req.params.offer_id);
+
+        const { data: offer, error } = await supabase
+            .from('offers')
+            .select('id, teacher_id, status, offer_date, duration, grace_period_started_at, force_ended_at, total_seconds')
+            .eq('id', offer_id)
+            .single();
+
+        if (error || !offer) {
+            return res.status(404).json({ success: false, error: 'العرض غير موجود' });
+        }
+
+        const now = new Date();
+        const offerStart = new Date(offer.offer_date);
+        const offerEnd = new Date(offerStart.getTime() + offer.duration * 60 * 1000);
+        const remainingSeconds = Math.max(0, Math.floor((offerEnd - now) / 1000));
+
+        let graceRemainingSeconds = null;
+        if (offer.grace_period_started_at) {
+            const graceEnd = new Date(new Date(offer.grace_period_started_at).getTime() + 10 * 60 * 1000);
+            graceRemainingSeconds = Math.max(0, Math.floor((graceEnd - now) / 1000));
+        }
+
+        res.json({
+            success: true,
+            offer_id,
+            status: offer.status,
+            remaining_seconds: remainingSeconds,
+            overdue: now > offerEnd,
+            grace_remaining_seconds: graceRemainingSeconds,
+            force_ended: !!offer.force_ended_at,
+            server_time: now.toISOString()
+        });
+    } catch (error) {
+        console.error('خطأ في جلب حالة البث:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
