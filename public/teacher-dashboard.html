@@ -2643,21 +2643,26 @@
         jitsiWindow = null;
     }
 
-    // مراقبة نافذة Jitsi: إذا أُغلقت → وقف العداد المحلي + heartbeat
+    // مراقبة نافذة Jitsi: إذا أُغلقت → وقف العداد محلياً + أظهر زر "استئناف البث"
     // الخادم يستمر بالعد ويُفعّل grace period تلقائياً
     function startJitsiWindowWatch() {
         if (jitsiWatchInterval) clearInterval(jitsiWatchInterval);
         jitsiWatchInterval = setInterval(() => {
             if (!jitsiWindow || jitsiWindow.closed) {
-                // نافذة Jitsi أُغلقت
+                if (jitsiWatchInterval) { clearInterval(jitsiWatchInterval); jitsiWatchInterval = null; }
+                // وقف العداد المحلي والـ heartbeat
                 if (streamIntervalId) { clearInterval(streamIntervalId); streamIntervalId = null; }
                 if (heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null; }
-                if (jitsiWatchInterval) { clearInterval(jitsiWatchInterval); jitsiWatchInterval = null; }
-                // أبلغ الخادم مباشرةً بانقطاع heartbeat وابدأ grace period
-                syncStreamStatus();
-                showToast('⚠️ أغلقت نافذة البث - الخادم يستمر بالعد. أعد فتح البث أو أنهِ الحصة.', 'warning', 8000);
+                // حوّل الحالة إلى "متوقف" لكي يظهر زر "استئناف البث"
+                if (timerStarted && !streamPaused) {
+                    streamPaused = true;
+                    updateTimerButtons();
+                    updateTimerDisplay();
+                    showToast('⚠️ أغلقت نافذة البث - اضغط على "استئناف البث" لإعادة فتحها ومتابعة الحصة', 'warning', 8000);
+                }
+                jitsiWindow = null;
             }
-        }, 2000); // فحص كل ثانيتين
+        }, 2000);
     }
 
     // تسجيل مرجع نافذة Jitsi عند فتحها
@@ -2756,6 +2761,22 @@
             
             if (data.success) {
                 streamPaused = false;
+                
+                // أعد فتح نافذة Jitsi
+                if (activeStream?.stream_url) {
+                    const win = window.open(activeStream.stream_url, '_blank');
+                    setJitsiWindow(win);
+                } else if (activeStream?.room_name) {
+                    const jitsiUrl = `https://meet.jit.si/${activeStream.room_name}`;
+                    const win = window.open(jitsiUrl, '_blank');
+                    setJitsiWindow(win);
+                }
+                
+                // استأنف العداد والـ heartbeat
+                startTimerInterval();
+                if (heartbeatInterval) clearInterval(heartbeatInterval);
+                heartbeatInterval = setInterval(sendHeartbeat, 20000);
+                
                 updateTimerButtons();
                 updateTimerDisplay();
                 showToast('▶️ تم استئناف البث', 'success');
