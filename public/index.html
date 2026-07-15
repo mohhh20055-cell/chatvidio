@@ -2636,7 +2636,7 @@
                 <div class="logo-text">
                     <span>Zoom</span>
                     <span class="highlight">Dz</span>
-                    <span class="logo-badge">.edu</span>
+                   
                 </div>
             </div>
             
@@ -2657,10 +2657,10 @@
                 <a onclick="showReferral()" id="referralTab">
                     <i class="fas fa-link nav-icon" style="color:var(--gold);"></i>
                     <span class="nav-label">الإحالة</span>
-                    <span class="nav-badge" style="background:var(--gold);">💰</span>
+                    
                 </a>
-                <a onclick="showDevelopers()" id="developersTab">
-                    <i class="fas fa-code nav-icon"> فريق المطورين </i>
+                 <a onclick="showSupport()" id="helpTab">
+                    <span class="nav-label">مساعدة</span>
                 </a>
                 <a onclick="showLogin()" id="loginTabNav">
                     <i class="fas fa-user nav-icon"></i>
@@ -2679,10 +2679,7 @@
         <!-- ===== HOME SECTION ===== -->
         <section id="homeSection" class="hero">
             <div class="hero-content">
-                <div class="hero-badge">
-                    <i class="fas fa-rocket"></i>
-                    منصة تعليمية جزائرية
-                </div>
+               
                 <h1>
                     تعلم مع أفضل الأساتذة
                     <span class="highlight">في الجزائر</span>
@@ -2716,31 +2713,28 @@
                         <i class="fas fa-chalkboard-user"></i>
                         انضم كأستاذ
                     </button>
-                    <button class="btn-accent" onclick="showSupport()">
-                        <i class="fas fa-headset"></i>
-                        الدعم الفني
-                    </button>
+                   
                 </div>
             </div>
-            <div class="hero-image">
-                <div class="hero-image-wrapper">
-                    <div class="floating-icon"><i class="fas fa-laptop-code"></i></div>
-                    <div class="badge-float">
-                        <span class="badge-icon video"><i class="fas fa-video"></i></span>
-                        <div>
-                            <div style="font-size:0.9rem; color:var(--dark);">دروس مباشرة</div>
-                            <div style="font-size:0.7rem; color:var(--gray);">تفاعل فوري</div>
-                        </div>
-                    </div>
-                    <div class="badge-float">
-                        <span class="badge-icon star"><i class="fas fa-star"></i></span>
-                        <div>
-                            <div style="font-size:0.9rem; color:var(--dark);">أفضل الأساتذة</div>
-                            <div style="font-size:0.7rem; color:var(--gray);">معتمدون</div>
-                        </div>
-                    </div>
-                </div>
+         <div class="hero-image">
+    <div class="hero-image-wrapper">
+        <div class="floating-icon"><i class="fas fa-graduation-cap"></i></div>
+        <div class="badge-float">
+            <span class="badge-icon video"><i class="fas fa-video"></i></span>
+            <div>
+                <div style="font-size:0.9rem; color:var(--dark);">دروس مباشرة</div>
+                <div style="font-size:0.7rem; color:var(--gray);">تفاعل فوري</div>
             </div>
+        </div>
+        <div class="badge-float">
+            <span class="badge-icon star"><i class="fas fa-star"></i></span>
+            <div>
+                <div style="font-size:0.9rem; color:var(--dark);">أفضل الأساتذة</div>
+                <div style="font-size:0.7rem; color:var(--gray);">معتمدون</div>
+            </div>
+        </div>
+    </div>
+</div>
         </section>
 
         <!-- ===== ABOUT SECTION ===== -->
@@ -2816,24 +2810,17 @@
         <!-- ===== TEACHERS SECTION - مع فلتر اسم المادة أو التخصص فقط ===== -->
         <section id="teachersSection" class="section-container" style="display: none;">
             <div class="section-header">
-                <span class="section-tag"><i class="fas fa-users"></i> نخبة الأساتذة</span>
+             
                 <h2 class="section-title">أساتذتنا المعتمدون <i class="fas fa-chalkboard-user"></i></h2>
                 <p class="section-subtitle">تعلم على يد أفضل الخبراء في مختلف التخصصات</p>
             </div>
             
-            <div class="search-filter-container">
-                <div class="search-box">
-                    <i class="fas fa-search"></i>
-                    <input type="text" id="searchTeacher" placeholder="ابحث عن أستاذ بالاسم أو التخصص..." oninput="filterTeachers()">
-                </div>
-                <div class="filter-group">
-                    <button class="clear-filters-btn" onclick="clearFilters()">
-                        <i class="fas fa-undo"></i> مسح
-                    </button>
-                </div>
+             <div class="search-box" style="max-width: 500px; margin: 0 auto 30px;">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchTeacher" placeholder="ابحث عن الاستاذ بالاسم او المادة" oninput="filterTeachers()">
             </div>
             
-            <div id="teachersList" class="teachers-grid"></div>
+             <div id="teachersList" class="teachers-grid"></div>
             <div id="teachersEmpty" style="display:none; text-align:center; padding:60px 20px; color:var(--gray);">
                 <i class="fas fa-search" style="font-size:3rem; display:block; margin-bottom:16px; opacity:0.4;"></i>
                 <h3 style="color:var(--dark); margin-bottom:8px;">لم يتم العثور على نتائج</h3>
@@ -2844,7 +2831,7 @@
         <!-- ===== LIVE SECTION ===== -->
         <section id="liveSection" class="section-container" style="display: none;">
             <div class="section-header">
-                <span class="section-tag"><i class="fas fa-broadcast"></i> بث مباشر</span>
+         
                 <h2 class="section-title">البث المباشر الآن <i class="fas fa-video"></i></h2>
                 <p class="section-subtitle">انضم إلى الدروس المباشرة وتفاعل مع الأساتذة في الوقت الفعلي</p>
             </div>
