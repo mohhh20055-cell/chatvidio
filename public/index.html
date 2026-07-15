@@ -3956,14 +3956,14 @@
         function filterTeachers() {
             var searchTerm = document.getElementById('searchTeacher').value.toLowerCase().trim();
             
-            // filteredTeachers = allTeachers.filter(function(t) {
-            //     var matchesSearch = true;
-            //     if (searchTerm) {
-            //         var name = (t.full_name || '').toLowerCase();
-            //         var spec = (t.specialization || '').toLowerCase();
-            //         matchesSearch = name.includes(searchTerm) || spec.includes(searchTerm);
-            //     }
-                // return matchesSearch;
+           filteredTeachers = allTeachers.filter(function(t) {
+              var matchesSearch = true;
+              if (searchTerm) {
+                  var name = (t.full_name || '').toLowerCase();
+                    var spec = (t.specialization || '').toLowerCase();
+                   matchesSearch = name.includes(searchTerm) || spec.includes(searchTerm);
+                }
+               return matchesSearch;
             });
             
             renderTeachers(filteredTeachers);
