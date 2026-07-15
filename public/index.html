@@ -2841,7 +2841,7 @@
         <!-- ===== REFERRAL SECTION ===== -->
         <section id="referralSection" class="section-container" style="display: none;">
             <div class="section-header">
-                <span class="section-tag"><i class="fas fa-link"></i> نظام الإحالة</span>
+               
                 <h2 class="section-title">نظام الإحالة والمكافآت <i class="fas fa-gift" style="color:var(--gold);"></i></h2>
                 <p class="section-subtitle">ادعُ أصدقاءك واحصل على مكافآت مجزية</p>
             </div>
@@ -3945,11 +3945,9 @@
                     '<img src="' + imageUrl + '" class="teacher-image" onerror="this.src=\'https://ui-avatars.com/api/?name=' + encodeURIComponent(t.full_name) + '&background=0f5cbf&color=fff&size=120\'" onclick="event.stopPropagation(); showFullImage(this.src)">' +
                     '<h3>' + escapeHtml(t.full_name) + '</h3>' +
                     '<p class="specialization"><i class="fas fa-book"></i> ' + escapeHtml(t.specialization || 'تخصص عام') + '</p>' +
-                    '<div class="teacher-experience"><i class="fas fa-briefcase"></i> ' + (t.experience || '0') + ' سنة خبرة</div>' +
-                    levelDisplay +
-                    '<div class="teacher-bio">' + (t.bio ? escapeHtml(t.bio) : 'لا توجد نبذة') + '</div>' +
+                   
                     '<button class="view-profile-btn" onclick="event.stopPropagation(); viewTeacherProfile(' + t.id + ')">' +
-                        '<i class="fas fa-eye"></i> زيارة صفحة الأستاذ' +
+                        ' زيارة صفحة الأستاذ' +
                     '</button>' +
                 '</div>';
             });
