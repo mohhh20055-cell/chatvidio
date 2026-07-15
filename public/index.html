@@ -3933,7 +3933,7 @@
             };
             
             var html = '';
-            teachers.forEach(function(t) {
+             teachers.forEach(function(t) {
                 var imageUrl = t.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(t.full_name) + '&background=0f5cbf&color=fff&size=120';
                 var levelDisplay = '';
                 if (t.teaching_level) {
@@ -3945,10 +3945,8 @@
                     '<img src="' + imageUrl + '" class="teacher-image" onerror="this.src=\'https://ui-avatars.com/api/?name=' + encodeURIComponent(t.full_name) + '&background=0f5cbf&color=fff&size=120\'" onclick="event.stopPropagation(); showFullImage(this.src)">' +
                     '<h3>' + escapeHtml(t.full_name) + '</h3>' +
                     '<p class="specialization"><i class="fas fa-book"></i> ' + escapeHtml(t.specialization || 'تخصص عام') + '</p>' +
-                   z
-                    '<button class="view-profile-btn" onclick="event.stopPropagation(); viewTeacherProfile(' + t.id + ')">' +
-                        ' زيارة صفحة الأستاذ' +
-                    '</button>' +
+                    levelDisplay +
+                    '<button class="view-profile-btn" onclick="event.stopPropagation(); viewTeacherProfile(' + t.id + ')">زيارة صفحة الأستاذ</button>' +
                 '</div>';
             });
             container.innerHTML = html;
