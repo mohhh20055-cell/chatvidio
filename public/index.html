@@ -4032,8 +4032,7 @@
             html += '<div class="teacher-card" onclick="viewTeacherProfile(' + o.teacher_id + ')">' +
                 '<img src="' + imageUrl + '" class="teacher-image" onerror="this.src=\'https://ui-avatars.com/api/?name=' + encodeURIComponent(o.teacher_name) + '&background=0f5cbf&color=fff&size=120\'" onclick="event.stopPropagation(); showFullImage(this.src)">' +
                 '<h3>' + escapeHtml(o.teacher_name) + '</h3>' +
-                '<p class="specialization"><i class="fas fa-book"></i> ' + escapeHtml(o.teacher_specialization || 'تخصص عام') + '</p>' +
-                levelDisplay +
+                '<p class="specialization"><i class="fas fa-book"></i> ' + escapeHtml(o.teacher_specialization || 'تخصص عام') + ' ' + levelDisplay + '</p>' +
                 '<span class="live-badge" style="display:inline-block; margin:6px 0;">🔴 مباشر</span>' +
                 '<button class="view-profile-btn" onclick="event.stopPropagation(); viewTeacherProfile(' + o.teacher_id + ')" style="margin-top:10px;">زيارة صفحة الأستاذ</button>' +
             '</div>';
