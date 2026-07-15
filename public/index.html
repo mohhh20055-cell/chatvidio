@@ -2656,7 +2656,7 @@
                     <span id="liveCount" class="nav-badge" style="display:none;">0</span>
                 </a>
                 <a onclick="showReferral()" id="referralTab">
-                    <i class="fas fa-link nav-icon" style="color:var(--gold);"></i>
+                 
                     <span class="nav-label">الإحالة</span>
                     
                 </a>
@@ -3956,13 +3956,13 @@
         function filterTeachers() {
             var searchTerm = document.getElementById('searchTeacher').value.toLowerCase().trim();
             
-            filteredTeachers = allTeachers.filter(function(t) {
-                var matchesSearch = true;
-                if (searchTerm) {
-                    var name = (t.full_name || '').toLowerCase();
-                    var spec = (t.specialization || '').toLowerCase();
-                    matchesSearch = name.includes(searchTerm) || spec.includes(searchTerm);
-                }
+            // filteredTeachers = allTeachers.filter(function(t) {
+            //     var matchesSearch = true;
+            //     if (searchTerm) {
+            //         var name = (t.full_name || '').toLowerCase();
+            //         var spec = (t.specialization || '').toLowerCase();
+            //         matchesSearch = name.includes(searchTerm) || spec.includes(searchTerm);
+            //     }
                 return matchesSearch;
             });
             
@@ -4004,20 +4004,17 @@
                     return;
                 }
                 var html = '';
-                offers.forEach(function(o) {
-                    var imageUrl = o.teacher_profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(o.teacher_name) + '&background=0f5cbf&color=fff&size=120';
-                    html += '<div class="teacher-card" onclick="viewTeacherProfile(' + o.teacher_id + ')">' +
-                        '<img src="' + imageUrl + '" class="teacher-image" onerror="this.src=\'https://ui-avatars.com/api/?name=' + encodeURIComponent(o.teacher_name) + '&background=0f5cbf&color=fff&size=120\'" onclick="event.stopPropagation(); showFullImage(this.src)">' +
-                        '<h3>' + escapeHtml(o.teacher_name) + '</h3>' +
-                        '<p class="specialization"><i class="fas fa-book"></i> ' + escapeHtml(o.teacher_specialization || 'تخصص عام') + '</p>' +
-                        '<div class="teacher-experience"><i class="fas fa-briefcase"></i> ' + (o.experience || '0') + ' سنة خبرة</div>' +
-                        '<span class="live-badge" style="display:inline-block; margin:6px 0;">🔴 بث مباشر</span>' +
-                        '<button class="view-profile-btn" onclick="event.stopPropagation(); viewTeacherProfile(' + o.teacher_id + ')" style="margin-top:10px;">' +
-                            '<i class="fas fa-eye"></i> زيارة صفحة الأستاذ' +
-                        '</button>' +
-                    '</div>';
-                });
-                container.innerHTML = html;
+             offers.forEach(function(o) {
+    var imageUrl = o.teacher_profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(o.teacher_name) + '&background=0f5cbf&color=fff&size=120';
+    html += '<div class="teacher-card" onclick="viewTeacherProfile(' + o.teacher_id + ')">' +
+        '<img src="' + imageUrl + '" class="teacher-image" onerror="this.src=\'https://ui-avatars.com/api/?name=' + encodeURIComponent(o.teacher_name) + '&background=0f5cbf&color=fff&size=120\'" onclick="event.stopPropagation(); showFullImage(this.src)">' +
+        '<h3>' + escapeHtml(o.teacher_name) + '</h3>' +
+        '<p class="specialization"><i class="fas fa-book"></i> ' + escapeHtml(o.teacher_specialization || 'تخصص عام') + '</p>' +
+        '<span class="live-badge" style="display:inline-block; margin:6px 0;">🔴 مباشر</span>' +
+        '<button class="view-profile-btn" onclick="event.stopPropagation(); viewTeacherProfile(' + o.teacher_id + ')" style="margin-top:10px;">زيارة صفحة الأستاذ</button>' +
+    '</div>';
+});
+container.innerHTML = html;
             } catch(e) {
                 console.error(e);
                 container.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8;">لا يوجد بث مباشر حالياً</p>';
