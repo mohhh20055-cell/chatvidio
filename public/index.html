@@ -3280,6 +3280,7 @@
             <i class="fas fa-code"></i> طور بواسطة: 
             <span>عثمانية محمد الصالح</span> · 
             <span>مليك صالح</span>
+            <span>هلالبي نفيسة</span>
         </div>
     </footer>
 
@@ -3987,40 +3988,62 @@
         // ============================================================
         // LIVE
         // ============================================================
-        async function loadLiveStreams() {
-            var container = document.getElementById('liveOffersList');
-            try {
-                var res = await fetch('/api/live-offers');
-                var offers = await res.json();
-                var liveCount = document.getElementById('liveCount');
-                if (offers && offers.length > 0) {
-                    liveCount.style.display = 'inline-block';
-                    liveCount.innerText = offers.length;
-                } else {
-                    liveCount.style.display = 'none';
-                }
-                if (!offers || offers.length === 0) {
-                    container.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8;">لا يوجد بث مباشر حالياً</p>';
-                    return;
-                }
-                var html = '';
-             offers.forEach(function(o) {
-    var imageUrl = o.teacher_profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(o.teacher_name) + '&background=0f5cbf&color=fff&size=120';
-    html += '<div class="teacher-card" onclick="viewTeacherProfile(' + o.teacher_id + ')">' +
-        '<img src="' + imageUrl + '" class="teacher-image" onerror="this.src=\'https://ui-avatars.com/api/?name=' + encodeURIComponent(o.teacher_name) + '&background=0f5cbf&color=fff&size=120\'" onclick="event.stopPropagation(); showFullImage(this.src)">' +
-        '<h3>' + escapeHtml(o.teacher_name) + '</h3>' +
-        '<p class="specialization"><i class="fas fa-book"></i> ' + escapeHtml(o.teacher_specialization || 'تخصص عام') + '</p>' + levelDisplay +
-        '<span class="live-badge" style="display:inline-block; margin:6px 0;">🔴 مباشر</span>' +
-        '<button class="view-profile-btn" onclick="event.stopPropagation(); viewTeacherProfile(' + o.teacher_id + ')" style="margin-top:10px;">زيارة صفحة الأستاذ</button>' +
-    '</div>';
-});
-container.innerHTML = html;
-            } catch(e) {
-                console.error(e);
-                container.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8;">لا يوجد بث مباشر حالياً</p>';
-            }
+     async function loadLiveStreams() {
+    var container = document.getElementById('liveOffersList');
+    try {
+        var res = await fetch('/api/live-offers');
+        var offers = await res.json();
+        var liveCount = document.getElementById('liveCount');
+        if (offers && offers.length > 0) {
+            liveCount.style.display = 'inline-block';
+            liveCount.innerText = offers.length;
+        } else {
+            liveCount.style.display = 'none';
+        }
+        if (!offers || offers.length === 0) {
+            container.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8;">لا يوجد بث مباشر حالياً</p>';
+            return;
         }
 
+        var levelMap = {
+            '5eme_pri': 'خامسة ابتدائي',
+            '1ere_am': 'أولى متوسط',
+            '2eme_am': 'ثانية متوسط',
+            '3eme_am': 'ثالثة متوسط',
+            '4eme_am': 'رابعة متوسط',
+            '5eme_am': 'خامسة متوسط',
+            '1ere_as': 'أولى ثانوي',
+            'bac': 'بكالوريا',
+            '1ere_uni': 'أولى جامعي',
+            '2eme_uni': 'ثانية جامعي',
+            '3eme_uni': 'ثالثة جامعي',
+            'master': 'ماستر',
+            'doctorat': 'دكتوراه'
+        };
+
+        var html = '';
+        offers.forEach(function(o) {
+            var imageUrl = o.teacher_profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(o.teacher_name) + '&background=0f5cbf&color=fff&size=120';
+            var levelDisplay = '';
+            if (o.teaching_level) {
+                var levelName = levelMap[o.teaching_level] || o.teaching_level;
+                levelDisplay = '<span class="teacher-level-badge"><i class="fas fa-graduation-cap"></i> ' + levelName + '</span>';
+            }
+            html += '<div class="teacher-card" onclick="viewTeacherProfile(' + o.teacher_id + ')">' +
+                '<img src="' + imageUrl + '" class="teacher-image" onerror="this.src=\'https://ui-avatars.com/api/?name=' + encodeURIComponent(o.teacher_name) + '&background=0f5cbf&color=fff&size=120\'" onclick="event.stopPropagation(); showFullImage(this.src)">' +
+                '<h3>' + escapeHtml(o.teacher_name) + '</h3>' +
+                '<p class="specialization"><i class="fas fa-book"></i> ' + escapeHtml(o.teacher_specialization || 'تخصص عام') + '</p>' +
+                levelDisplay +
+                '<span class="live-badge" style="display:inline-block; margin:6px 0;">🔴 مباشر</span>' +
+                '<button class="view-profile-btn" onclick="event.stopPropagation(); viewTeacherProfile(' + o.teacher_id + ')" style="margin-top:10px;">زيارة صفحة الأستاذ</button>' +
+            '</div>';
+        });
+        container.innerHTML = html;
+    } catch(e) {
+        console.error(e);
+        container.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8;">لا يوجد بث مباشر حالياً</p>';
+    }
+}
         // ============================================================
         // VIEW TEACHER PROFILE
         // ============================================================
