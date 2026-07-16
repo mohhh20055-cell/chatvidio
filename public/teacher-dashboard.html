@@ -3148,7 +3148,14 @@
         otherGroup.style.display = level === 'other' ? 'block' : 'none';
     }
 
+    let isCreatingOffer = false;
+
     async function createOffer() {
+        if (isCreatingOffer) {
+            showToast('⏳ جاري إنشاء العرض، الرجاء الانتظار...', 'info');
+            return;
+        }
+
         const subject_name = document.getElementById('subjectName').value;
         const offer_date = document.getElementById('offerDate').value;
         const educationLevel = document.getElementById('educationLevel').value;
@@ -3185,6 +3192,7 @@
             education_level: finalLevel
         };
 
+        isCreatingOffer = true;
         try {
             const res = await fetchWithAuth('/api/offer/create', {
                 method: 'POST',
@@ -3202,6 +3210,8 @@
             if (e.message !== 'انتهت صلاحية الجلسة') {
                 showToast('❌ حدث خطأ في الاتصال', 'error');
             }
+        } finally {
+            isCreatingOffer = false;
         }
     }
 

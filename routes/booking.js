@@ -141,6 +141,19 @@ router.post('/create', authenticate, authorize(['student']), [
 
         // ✅ خصم المبلغ للعروض المدفوعة (يذهب إلى الرصيد المعلق)
         if (!isFree) {
+            const duplicateWalletCheck = await supabase
+                .from('wallet_transactions')
+                .select('id')
+                .eq('student_id', student_id)
+                .eq('type', 'withdraw')
+                .eq('status', 'pending_stream')
+                .like('description', `%${offer.subject_name}%`)
+                .order('created_at', { ascending: false })
+                .limit(1);
+
+            if (duplicateWalletCheck.data?.length > 0) {
+                console.log('⚠️ توجد معاملة مشابهة بالفعل لهذا الحجز، سيتم تجاهل التكرار');
+            }
             // ✅ حساب الخصم بناءً على مدة العرض
             const durationMinutes = offer.duration || 60; // افتراضي 60 دقيقة
             let platformFee = 0;

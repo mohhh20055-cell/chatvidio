@@ -45,6 +45,29 @@ router.post('/offer/create', authenticate, authorize(['teacher']), [
         // ✅ استخدام teacher_id من التوكن
         const teacher_id = req.user.userId;
 
+        // ✅ تحويل الوقت من التوقيت المحلي (الجزائر) إلى UTC للتخزين
+        const [datePart, timePart] = offer_date.split('T');
+        const [year, month, day] = datePart.split('-').map(Number);
+        const [hours, minutes] = timePart.split(':').map(Number);
+        const localDate = new Date(year, month - 1, day, hours, minutes);
+        const offerDateUTC = new Date(localDate.getTime() - (localDate.getTimezoneOffset() * 60000));
+
+        const { data: recentOffer, error: recentOfferError } = await supabase
+            .from('offers')
+            .select('id')
+            .eq('teacher_id', teacher_id)
+            .eq('subject_name', subject_name?.trim())
+            .eq('offer_date', offerDateUTC.toISOString())
+            .limit(1)
+            .maybeSingle();
+
+        if (!recentOfferError && recentOffer) {
+            return res.status(409).json({
+                success: false,
+                error: 'يوجد عرض مشابه تم إنشاؤه بالفعل، الرجاء الانتظار قليلاً قبل المحاولة مرة أخرى'
+            });
+        }
+
         console.log('📝 محاولة إنشاء عرض للأستاذ:', teacher_id);
         console.log('📚 المادة:', subject_name);
 
@@ -91,16 +114,6 @@ router.post('/offer/create', authenticate, authorize(['teacher']), [
         // ✅ إنشاء كلمات المرور والغرفة
         const room_name = `stream_${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;
         const defaultPassword = crypto.randomBytes(4).toString('hex').toUpperCase();
-
-        // ✅ تحويل الوقت من التوقيت المحلي (الجزائر) إلى UTC للتخزين
-        // datetime-local يرسل الوقت بدون معلومات المنطقة الزمنية، نفترض أنه التوقيت المحلي
-        const [datePart, timePart] = offer_date.split('T');
-        const [year, month, day] = datePart.split('-').map(Number);
-        const [hours, minutes] = timePart.split(':').map(Number);
-        
-        // إنشاء كائن تاريخ بالتوقيت المحلي ثم تحويله إلى UTC
-        const localDate = new Date(year, month - 1, day, hours, minutes);
-        const offerDateUTC = new Date(localDate.getTime() - (localDate.getTimezoneOffset() * 60000));
 
         // ✅ إدخال العرض في قاعدة البيانات
         const newOffer = {
