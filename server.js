@@ -275,8 +275,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const publicCache = new Map();
 
-const trustProxySetting = process.env.TRUST_PROXY === 'true' || (process.env.NODE_ENV === 'production' && process.env.TRUST_PROXY !== 'false');
-app.set('trust proxy', trustProxySetting);
+app.set('trust proxy', 1);
 app.disable('x-powered-by');
 
 function cachePublicResponses(ttlMs = PUBLIC_CACHE_TTL_MS) {
@@ -974,6 +973,30 @@ app.post('/api/refresh-token', authenticate, (req, res) => {
 
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 
+// رابط تحميل التطبيق
+app.get('/download-app', (req, res) => {
+    res.redirect(302, APP_DOWNLOAD_URL);
+});
+
+// جلب حالة الخادم
+app.get('/api/health', (req, res) => {
+    const memoryUsage = process.memoryUsage();
+
+    res.json({
+        success: true,
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        memory: {
+            heapUsed: Math.round(memoryUsage.heapUsed / 1024 / 1024),
+            heapTotal: Math.round(memoryUsage.heapTotal / 1024 / 1024),
+            rss: Math.round(memoryUsage.rss / 1024 / 1024)
+        },
+        nodeVersion: process.version,
+        environment: process.env.NODE_ENV || 'development'
+    });
+});
+
 // تطبيق معالج 404
 app.use(notFoundHandler);
 
@@ -1053,30 +1076,6 @@ app.post('/api/logs/clear', authenticate, authorize(['admin']), (req, res) => {
     }
 });
 
-// رابط تحميل التطبيق
-app.get('/download-app', (req, res) => {
-    res.redirect(302, APP_DOWNLOAD_URL);
-});
-
-// جلب حالة الخادم
-app.get('/api/health', (req, res) => {
-    const memoryUsage = process.memoryUsage();
-    
-    res.json({
-        success: true,
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        memory: {
-            heapUsed: Math.round(memoryUsage.heapUsed / 1024 / 1024),
-            heapTotal: Math.round(memoryUsage.heapTotal / 1024 / 1024),
-            rss: Math.round(memoryUsage.rss / 1024 / 1024)
-        },
-        nodeVersion: process.version,
-        environment: process.env.NODE_ENV || 'development'
-    });
-});
-
 // ============================================================
 // ✅ Cron: مراقبة العروض المنتهية والبث غير المغلق (كل دقيقة)
 // ============================================================
@@ -1114,3 +1113,4 @@ if (require.main === module) {
         startOfferCron();
     });
 }
+
