@@ -3096,15 +3096,16 @@
         </section>
 
         <!-- ===== LOGIN SECTION ===== -->
-      <div class="form-tabs">
-    <button class="tab-btn active" onclick="switchTab('login')">تسجيل الدخول</button>
-    <button class="tab-btn tab-btn-pill" onclick="switchTab('student-register')">
-        <i class="fas fa-user-plus"></i> إنشاء حساب طالب
-    </button>
-    <button class="tab-btn tab-btn-pill" onclick="switchTab('teacher-register')">
-        <i class="fas fa-chalkboard-teacher"></i> إنشاء حساب أستاذ
-    </button>
-</div>
+        <section id="loginSection" class="form-section" style="display: none;">
+            <div class="form-tabs">
+                <button class="tab-btn active" onclick="switchTab('login')">تسجيل الدخول</button>
+             <button class="tab-btn tab-btn-pill" onclick="switchTab('student-register')">
+  <i class="ti ti-user-plus"></i> إنشاء حساب طالب
+</button>
+<button class="tab-btn tab-btn-pill" onclick="switchTab('teacher-register')">
+  <i class="ti ti-school"></i> إنشاء حساب أستاذ
+</button>
+            </div>
 
             <div id="loginTab" class="form-container">
                 <h3><i class="fas fa-sign-in-alt"></i> تسجيل الدخول</h3>
