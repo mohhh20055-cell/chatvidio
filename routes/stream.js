@@ -295,7 +295,41 @@ router.post('/end/:offer_id', authenticate, authorize(['teacher']), validateOffe
             await processStreamPayments(offer_id, false);
         }
 
-        // ✅ تحديث حالة العرض إلى completed
+        // ✅ إذا كان الإنهاء قبل البدء، حذف العرض بالكامل من قاعدة البيانات
+        if (req.body.cancel_before_start === true) {
+            const tables = ['sessions', 'waiting_room', 'active_stream', 'student_room_passwords'];
+            for (const table of tables) {
+                try {
+                    await supabase.from(table).delete().eq('offer_id', offer_id);
+                } catch (e) {
+                    console.error(`خطأ في حذف ${table}:`, e.message);
+                }
+            }
+
+            try {
+                await supabase.from('notifications').delete().eq('offer_id', offer_id);
+            } catch (e) {
+                console.error('خطأ في حذف الإشعارات:', e.message);
+            }
+
+            const { error: deleteError } = await supabase
+                .from('offers')
+                .delete()
+                .eq('id', offer_id);
+
+            if (deleteError) {
+                console.error('❌ خطأ في حذف العرض قبل البدء:', deleteError);
+                return res.status(500).json({ success: false, error: deleteError.message });
+            }
+
+            return res.json({
+                success: true,
+                message: 'تم حذف العرض قبل البدء بنجاح',
+                deleted: true
+            });
+        }
+
+        // ✅ تحديث حالة العرض إلى completed للإنهاء العادي
         await supabase
             .from('offers')
             .update({
