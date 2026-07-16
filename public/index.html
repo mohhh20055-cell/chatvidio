@@ -2694,68 +2694,61 @@
     </div>
 
     <!-- ===== NAVBAR ===== -->
-    <nav class="navbar">
-        <div class="nav-container">
-            <div class="logo" onclick="showHome()">
-                <div class="logo-icon-wrapper">
-                    <i class="fas fa-graduation-cap"></i>
-                </div>
-                <div class="logo-text">
-                    <span>Zoom</span>
-                    <span class="highlight">Dz</span>
-                   
-                </div>
+   <nav class="navbar">
+    <div class="nav-container">
+        <div class="logo" onclick="showHome()">
+            <div class="logo-icon-wrapper">
+                <i class="fas fa-graduation-cap"></i>
             </div>
-            
-            <div class="nav-links">
-                <a onclick="showHome()" id="homeTab" class="active">
-                    <i class="fas fa-home nav-icon"></i>
-                    <span class="nav-label">الرئيسية</span>
-                </a>
-                <a onclick="showTeachers()" id="teachersTab">
-                    <i class="fas fa-chalkboard-user nav-icon"></i>
-                    <span class="nav-label">الأساتذة</span>
-                </a>
-                <a onclick="showReferral()" id="referralTab">
-                 
-                    <span class="nav-label">الإحالة</span>
-                    
-                </a>
-                 <a onclick="showSupport()" id="helpTab">
-                    <span class="nav-label">مساعدة</span>
-                </a>
-                <a onclick="showLogin()" id="loginTabNav">
-                    <i class="fas fa-user nav-icon"></i>
-                    <span class="nav-label">تسجيل الدخول</span>
-                </a>
-                <a onclick="showLogin()" id="loginTabNav">
-    <i class="fas fa-user nav-icon"></i>
-    <span class="nav-label">تسجيل الدخول</span>
-</a>
-
-<div class="nav-dropdown-wrap">
-    <a class="nav-dropdown-trigger">
-        <i class="fas fa-user-plus nav-icon"></i>
-        <span class="nav-label">إنشاء حساب</span>
-        <i class="fas fa-chevron-down nav-caret"></i>
-    </a>
-    <div class="nav-dropdown-menu">
-        <a onclick="showLogin(); switchTab('student-register');">
-            <i class="fas fa-user-graduate"></i> إنشاء حساب طالب
-        </a>
-        <a onclick="showLogin(); switchTab('teacher-register');">
-            <i class="fas fa-chalkboard-teacher"></i> إنشاء حساب أستاذ
-        </a>
-    </div>
-</div>
-                <button class="download-app-btn" onclick="window.open('/download-app', '_blank', 'noopener,noreferrer')">
-                    <i class="fas fa-download"></i>
-                    التطبيق
-                </button>
+            <div class="logo-text">
+                <span>Zoom</span>
+                <span class="highlight">Dz</span>
             </div>
         </div>
-    </nav>
 
+        <div class="nav-links">
+            <a onclick="showHome()" id="homeTab" class="active">
+                <i class="fas fa-home nav-icon"></i>
+                <span class="nav-label">الرئيسية</span>
+            </a>
+            <a onclick="showTeachers()" id="teachersTab">
+                <i class="fas fa-chalkboard-user nav-icon"></i>
+                <span class="nav-label">الأساتذة</span>
+            </a>
+            <a onclick="showReferral()" id="referralTab">
+                <span class="nav-label">الإحالة</span>
+            </a>
+            <a onclick="showSupport()" id="helpTab">
+                <span class="nav-label">مساعدة</span>
+            </a>
+            <a onclick="showLogin()" id="loginTabNav">
+                <i class="fas fa-user nav-icon"></i>
+                <span class="nav-label">تسجيل الدخول</span>
+            </a>
+
+            <div class="nav-dropdown-wrap" id="createAccountWrap">
+                <a class="nav-dropdown-trigger" onclick="toggleCreateAccountNav(event)">
+                    <i class="fas fa-user-plus nav-icon"></i>
+                    <span class="nav-label">إنشاء حساب</span>
+                    <i class="fas fa-chevron-down nav-caret"></i>
+                </a>
+                <div class="nav-dropdown-menu" id="createAccountMenuNav">
+                    <a onclick="showLogin(); switchTab('student-register');">
+                        <i class="fas fa-user-graduate"></i> إنشاء حساب طالب
+                    </a>
+                    <a onclick="showLogin(); switchTab('teacher-register');">
+                        <i class="fas fa-chalkboard-teacher"></i> إنشاء حساب أستاذ
+                    </a>
+                </div>
+            </div>
+
+            <button class="download-app-btn" onclick="window.open('/download-app', '_blank', 'noopener,noreferrer')">
+                <i class="fas fa-download"></i>
+                التطبيق
+            </button>
+        </div>
+    </div>
+</nav>
     <!-- ===== MAIN ===== -->
     <main>
         <!-- ===== HOME SECTION ===== -->
@@ -3566,7 +3559,15 @@
             switchTab('login');
             resetRecaptchaState();
         }
-
+      function toggleCreateAccountNav(e) {
+    e.stopPropagation();
+    document.getElementById('createAccountMenuNav').classList.toggle('show');
+}
+document.addEventListener('click', function() {
+    document.getElementById('createAccountMenuNav').classList.remove('show');
+});
+C'est-à-dire : ne touche pas à showLogin(), ajoute juste les nouvelles lignes (function toggleCreateAccountNav... jusqu'à la fin) juste en dessous, dans le même fichier, au même endroit.
+Maintenant pour le CSS — peux-tu chercher dans ton fichier une ligne qui ressemble à .navbar { ou <style> et me copier-coller les quelques lignes autour ? Comme ça je te dis exactement où mettre le CSS du menu déroulant. 
         function showDownloadApp() {
             window.location.href = '/app.html';
         }
