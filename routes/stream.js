@@ -273,6 +273,15 @@ router.post('/end/:offer_id', authenticate, authorize(['teacher']), validateOffe
         const offer = req.offer;
         const early_end = req.body.early_end === true || req.body.cancel_before_start === true;
 
+        // ✅ حماية آمنة ضد تكرار إنهاء البث أو معالجة الطلب أكثر من مرة
+        if (['completed', 'cancelled', 'expired'].includes(offer.status)) {
+            return res.json({
+                success: true,
+                message: 'تم إنهاء البث بالفعل من قبل',
+                already_processed: true
+            });
+        }
+
         // ✅ تسجيل نهاية البث من الخادم (نظام التحقق المستقل)
         await recordStreamEnd(offer_id, req.user.userId);
         console.log(`✅ تم تسجيل نهاية البث من الخادم: ${new Date().toISOString()}`);

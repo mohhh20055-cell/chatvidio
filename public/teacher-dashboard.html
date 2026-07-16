@@ -2869,7 +2869,9 @@
                 hideStreamTimer();
                 loadOffers();
                 loadBalance();
-                if (isBeforeStart) {
+                if (data.already_processed) {
+                    showToast('ℹ️ تم إنهاء البث مسبقًا ولا توجد معالجة إضافية', 'info');
+                } else if (isBeforeStart) {
                     showToast('✅ تم إلغاء البث قبل البدء وتم حذف العرض من لوحة العروض', 'success');
                 } else if (isEarlyEnd) {
                     showToast('⚠️ تم إنهاء البث مبكراً! لم تحصل على أي مال.', 'warning');
