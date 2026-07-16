@@ -55,8 +55,12 @@ router.post('/start-jitsi-stream', authenticate, authorize(['teacher']), checkNo
             return res.status(403).json({ success: false, error: 'غير مصرح لك ببدء هذا البث' });
         }
 
-        if (offer.status === 'live' || offer.status === 'teacher_ready') {
+        if (offer.status === 'live' || offer.status === 'teacher_ready' || offer.status === 'paused') {
             return res.status(400).json({ success: false, error: 'هذا العرض قيد البث بالفعل' });
+        }
+
+        if (offer.status === 'completed') {
+            return res.status(400).json({ success: false, error: 'لا يمكن إعادة تشغيل حصة منتهية' });
         }
 
         // ✅ إنشاء غرفة Jitsi

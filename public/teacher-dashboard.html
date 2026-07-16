@@ -2653,12 +2653,14 @@
                 // وقف العداد المحلي والـ heartbeat
                 if (streamIntervalId) { clearInterval(streamIntervalId); streamIntervalId = null; }
                 if (heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null; }
-                // حوّل الحالة إلى "متوقف" لكي يظهر زر "استئناف البث"
-                if (timerStarted && !streamPaused) {
-                    streamPaused = true;
+                // إعادة ضبط الحالة لتظهر زر "إضافة الطلاب" مرة أخرى عند إغلاق النافذة بالخطأ
+                if (timerStarted || streamPaused) {
+                    timerStarted = false;
+                    streamPaused = false;
+                    streamRemainingSeconds = streamTotalSeconds;
                     updateTimerButtons();
                     updateTimerDisplay();
-                    showToast('⚠️ أغلقت نافذة البث - اضغط على "استئناف البث" لإعادة فتحها ومتابعة الحصة', 'warning', 8000);
+                    showToast('⚠️ أغلقت نافذة البث بالخطأ - يمكنك الآن فتح البث مرة أخرى أو الضغط على "إضافة الطلاب"', 'warning', 8000);
                 }
                 jitsiWindow = null;
             }
@@ -2925,6 +2927,13 @@
         try {
             const res = await fetchWithAuth(`/api/teacher/offer/${offerId}`);
             const data = await res.json();
+            const activeStatuses = ['live', 'paused', 'teacher_ready'];
+
+            if (!activeStatuses.includes(data.status)) {
+                showToast('⚠️ هذا البث انتهى ولا يمكن فتحه مرة أخرى', 'warning');
+                return;
+            }
+
             if (data.stream_url) {
                 const newWindow = window.open(data.stream_url, '_blank');
                 setJitsiWindow(newWindow);
@@ -2948,6 +2957,12 @@
         try {
             const res = await fetchWithAuth(`/api/teacher/offer/${offerId}`);
             const data = await res.json();
+            const activeStatuses = ['live', 'paused', 'teacher_ready'];
+
+            if (!activeStatuses.includes(data.status)) {
+                showToast('⚠️ هذا البث انتهى ولا يمكن فتحه مرة أخرى', 'warning');
+                return;
+            }
             
             if (!data.stream_url) {
                 showToast('⚠️ لم يتم بدء البث بعد', 'warning');
