@@ -3542,35 +3542,34 @@
             document.getElementById('supportSection').style.display = 'none';
             setActiveTab('developersTab');
         }
+function showLogin() {
+    document.getElementById('homeSection').style.display = 'none';
+    document.getElementById('aboutSection').style.display = 'none';
+    document.getElementById('teachersSection').style.display = 'none';
+    var liveSection = document.getElementById('liveSection');
+    if (liveSection) liveSection.style.display = 'none';
+    document.getElementById('referralSection').style.display = 'none';
+    document.getElementById('developersSection').style.display = 'none';
+    document.getElementById('profileSection').style.display = 'none';
+    document.getElementById('loginSection').style.display = 'block';
+    document.getElementById('downloadAppSection').style.display = 'none';
+    document.getElementById('supportSection').style.display = 'none';
+    setActiveTab('loginTabNav');
+    switchTab('login');
+    resetRecaptchaState();
+}
 
-        function showLogin() {
-            document.getElementById('homeSection').style.display = 'none';
-            document.getElementById('aboutSection').style.display = 'none';
-            document.getElementById('teachersSection').style.display = 'none';
-            var liveSection = document.getElementById('liveSection');
-            if (liveSection) liveSection.style.display = 'none';
-            document.getElementById('referralSection').style.display = 'none';
-            document.getElementById('developersSection').style.display = 'none';
-            document.getElementById('profileSection').style.display = 'none';
-            document.getElementById('loginSection').style.display = 'block';
-            document.getElementById('downloadAppSection').style.display = 'none';
-            document.getElementById('supportSection').style.display = 'none';
-            setActiveTab('loginTabNav');
-            switchTab('login');
-            resetRecaptchaState();
-        }
-      function toggleCreateAccountNav(e) {
+function toggleCreateAccountNav(e) {
     e.stopPropagation();
     document.getElementById('createAccountMenuNav').classList.toggle('show');
 }
 document.addEventListener('click', function() {
     document.getElementById('createAccountMenuNav').classList.remove('show');
 });
-C'est-à-dire : ne touche pas à showLogin(), ajoute juste les nouvelles lignes (function toggleCreateAccountNav... jusqu'à la fin) juste en dessous, dans le même fichier, au même endroit.
-Maintenant pour le CSS — peux-tu chercher dans ton fichier une ligne qui ressemble à .navbar { ou <style> et me copier-coller les quelques lignes autour ? Comme ça je te dis exactement où mettre le CSS du menu déroulant. 
-        function showDownloadApp() {
-            window.location.href = '/app.html';
-        }
+
+function showDownloadApp() {
+    window.location.href = '/app.html';
+}
 
         function showSupport() {
             document.getElementById('homeSection').style.display = 'none';
