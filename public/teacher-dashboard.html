@@ -1589,7 +1589,10 @@
         <button class="close-modal" onclick="closeModal()">&times;</button>
     </div>
     <div class="modal-body">
-        <input type="text" id="subjectName" placeholder="اسم المادة" required>
+        <label style="display:block; margin-bottom:6px; font-weight:700; color:var(--gray-800);">
+            <i class="fas fa-heading" style="color:var(--primary); margin-left:6px;"></i> عنوان العرض
+        </label>
+        <input type="text" id="subjectName" placeholder="أدخل عنوان العرض" required>
         <input type="number" id="duration" placeholder="المدة (بالدقائق)" value="60" min="5">
         <input type="datetime-local" id="offerDate" required>
         <div class="education-level-group">
