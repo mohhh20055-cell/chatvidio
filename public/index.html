@@ -12,6 +12,8 @@
     <!-- ===== FONTS & ICONS ===== -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f5cbf">
     
     <!-- ===== CONFIG + reCAPTCHA v2 ===== -->
     <script>
@@ -2650,7 +2652,7 @@
                     <i class="fas fa-user nav-icon"></i>
                     <span class="nav-label">تسجيل الدخول</span>
                 </a>
-                <button class="download-app-btn" onclick="showDownloadApp()">
+                <button class="download-app-btn" onclick="window.location.href='/app.html'">
                     <i class="fas fa-download"></i>
                     التطبيق
                 </button>
@@ -2677,9 +2679,9 @@
                         <div class="label">أستاذ معتمد</div>
                     </div>
                     <div class="stat-card">
-                        <span class="icon"><i class="fas fa-video"></i></span>
-                        <div class="number" id="liveCountStat">0</div>
-                        <div class="label">بث مباشر الآن</div>
+                        <span class="icon"><i class="fas fa-mobile-alt"></i></span>
+                        <div class="number" id="appCount">1</div>
+                        <div class="label">تطبيق جاهز</div>
                     </div>
                     <div class="stat-card">
                         <span class="icon"><i class="fas fa-users"></i></span>
@@ -2697,6 +2699,10 @@
                         <i class="fas fa-chalkboard-user"></i>
                         انضم كأستاذ
                     </button>
+                    <button class="btn-outline" onclick="window.location.href='/app.html'">
+                        <i class="fas fa-mobile-alt"></i>
+                        حمل التطبيق
+                    </button>
                    
                 </div>
             </div>
@@ -2704,10 +2710,10 @@
     <div class="hero-image-wrapper">
         <div class="floating-icon"><i class="fas fa-graduation-cap"></i></div>
         <div class="badge-float">
-            <span class="badge-icon video"><i class="fas fa-video"></i></span>
+            <span class="badge-icon video"><i class="fas fa-mobile-alt"></i></span>
             <div>
-                <div style="font-size:0.9rem; color:var(--dark);">دروس مباشرة</div>
-                <div style="font-size:0.7rem; color:var(--gray);">تفاعل فوري</div>
+                <div style="font-size:0.9rem; color:var(--dark);">تطبيق موبايل</div>
+                <div style="font-size:0.7rem; color:var(--gray);">تجربة سلسة</div>
             </div>
         </div>
         <div class="badge-float">
@@ -2748,9 +2754,9 @@
                     </div>
                     <div class="about-features">
                         <div class="about-feature-item">
-                            <span class="icon blue"><i class="fas fa-video"></i></span>
-                            <h4>دروس مباشرة</h4>
-                            <p>بث فيديو تفاعلي مع الأستاذ في الوقت الفعلي</p>
+                            <span class="icon blue"><i class="fas fa-mobile-alt"></i></span>
+                            <h4>تطبيق موبايل</h4>
+                            <p>منصة حديثة وسريعة تعمل بسلاسة على الهاتف</p>
                         </div>
                         <div class="about-feature-item">
                             <span class="icon green"><i class="fas fa-credit-card"></i></span>
@@ -2785,7 +2791,7 @@
                     </div>
                     <div class="about-step">
                         <span class="step-number">4</span>
-                        <span class="step-text">انضم إلى البث المباشر وتعلم</span>
+                        <span class="step-text">استخدم التطبيق من هاتفك مباشرة</span>
                     </div>
                 </div>
             </div>
@@ -2810,16 +2816,6 @@
                 <h3 style="color:var(--dark); margin-bottom:8px;">لم يتم العثور على نتائج</h3>
                 <p>حاول تعديل معايير البحث</p>
             </div>
-        </section>
-
-        <!-- ===== LIVE SECTION ===== -->
-        <section id="liveSection" class="section-container" style="display: none;">
-            <div class="section-header">
-         
-                <h2 class="section-title">البث المباشر الآن <i class="fas fa-video"></i></h2>
-                <p class="section-subtitle">انضم إلى الدروس المباشرة وتفاعل مع الأساتذة في الوقت الفعلي</p>
-            </div>
-            <div id="liveOffersList" class="teachers-grid"></div>
         </section>
 
         <!-- ===== REFERRAL SECTION ===== -->
@@ -3398,7 +3394,8 @@
             document.getElementById('homeSection').style.display = 'flex';
             document.getElementById('aboutSection').style.display = 'block';
             document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('liveSection').style.display = 'none';
+            var liveSection = document.getElementById('liveSection');
+            if (liveSection) liveSection.style.display = 'none';
             document.getElementById('referralSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
             document.getElementById('profileSection').style.display = 'none';
@@ -3413,7 +3410,8 @@
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'block';
-            document.getElementById('liveSection').style.display = 'none';
+            var liveSection = document.getElementById('liveSection');
+            if (liveSection) liveSection.style.display = 'none';
             document.getElementById('referralSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
             document.getElementById('profileSection').style.display = 'none';
@@ -3424,26 +3422,12 @@
             loadPublicTeachers();
         }
 
-        function showLiveStreams() {
-            document.getElementById('homeSection').style.display = 'none';
-            document.getElementById('aboutSection').style.display = 'none';
-            document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('liveSection').style.display = 'block';
-            document.getElementById('referralSection').style.display = 'none';
-            document.getElementById('developersSection').style.display = 'none';
-            document.getElementById('profileSection').style.display = 'none';
-            document.getElementById('loginSection').style.display = 'none';
-            document.getElementById('downloadAppSection').style.display = 'none';
-            document.getElementById('supportSection').style.display = 'none';
-            setActiveTab('liveTab');
-            loadLiveStreams();
-        }
-
         function showReferral() {
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('liveSection').style.display = 'none';
+            var liveSection = document.getElementById('liveSection');
+            if (liveSection) liveSection.style.display = 'none';
             document.getElementById('referralSection').style.display = 'block';
             document.getElementById('developersSection').style.display = 'none';
             document.getElementById('profileSection').style.display = 'none';
@@ -3458,7 +3442,8 @@
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('liveSection').style.display = 'none';
+            var liveSection = document.getElementById('liveSection');
+            if (liveSection) liveSection.style.display = 'none';
             document.getElementById('referralSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'block';
             document.getElementById('profileSection').style.display = 'none';
@@ -3472,7 +3457,8 @@
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('liveSection').style.display = 'none';
+            var liveSection = document.getElementById('liveSection');
+            if (liveSection) liveSection.style.display = 'none';
             document.getElementById('referralSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
             document.getElementById('profileSection').style.display = 'none';
@@ -3485,24 +3471,15 @@
         }
 
         function showDownloadApp() {
-            document.getElementById('homeSection').style.display = 'none';
-            document.getElementById('aboutSection').style.display = 'none';
-            document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('liveSection').style.display = 'none';
-            document.getElementById('referralSection').style.display = 'none';
-            document.getElementById('developersSection').style.display = 'none';
-            document.getElementById('profileSection').style.display = 'none';
-            document.getElementById('loginSection').style.display = 'none';
-            document.getElementById('downloadAppSection').style.display = 'block';
-            document.getElementById('supportSection').style.display = 'none';
-            setActiveTab('');
+            window.location.href = '/app.html';
         }
 
         function showSupport() {
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('liveSection').style.display = 'none';
+            var liveSection = document.getElementById('liveSection');
+            if (liveSection) liveSection.style.display = 'none';
             document.getElementById('referralSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
             document.getElementById('profileSection').style.display = 'none';
@@ -3516,7 +3493,8 @@
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('liveSection').style.display = 'none';
+            var liveSection = document.getElementById('liveSection');
+            if (liveSection) liveSection.style.display = 'none';
             document.getElementById('referralSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
             document.getElementById('profileSection').style.display = 'none';
@@ -3597,16 +3575,12 @@
                 var stats = await res.json();
                 
                 document.getElementById('teacherCount').innerText = stats.teachers || 0;
-                document.getElementById('liveCountStat').innerText = stats.live || 0;
+                var appCount = document.getElementById('appCount');
+                if (appCount) appCount.innerText = '1';
                 document.getElementById('studentCount').innerText = stats.students || 0;
                 
                 var liveBadge = document.getElementById('liveCount');
-                if (stats.live > 0) {
-                    liveBadge.style.display = 'inline-block';
-                    liveBadge.innerText = stats.live;
-                } else {
-                    liveBadge.style.display = 'none';
-                }
+                if (liveBadge) liveBadge.style.display = 'none';
             } catch (error) {
                 console.error('خطأ في جلب الإحصائيات:', error);
             }
@@ -3974,71 +3948,14 @@
         }
 
         // ============================================================
-        // LIVE
-        // ============================================================
-     async function loadLiveStreams() {
-    var container = document.getElementById('liveOffersList');
-    try {
-        var res = await fetch('/api/live-offers');
-        var offers = await res.json();
-        var liveCount = document.getElementById('liveCount');
-        if (offers && offers.length > 0) {
-            liveCount.style.display = 'inline-block';
-            liveCount.innerText = offers.length;
-        } else {
-            liveCount.style.display = 'none';
-        }
-        if (!offers || offers.length === 0) {
-            container.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8;">لا يوجد بث مباشر حالياً</p>';
-            return;
-        }
-
-        var levelMap = {
-            '5eme_pri': 'خامسة ابتدائي',
-            '1ere_am': 'أولى متوسط',
-            '2eme_am': 'ثانية متوسط',
-            '3eme_am': 'ثالثة متوسط',
-            '4eme_am': 'رابعة متوسط',
-            '5eme_am': 'خامسة متوسط',
-            '1ere_as': 'أولى ثانوي',
-            'bac': 'بكالوريا',
-            '1ere_uni': 'أولى جامعي',
-            '2eme_uni': 'ثانية جامعي',
-            '3eme_uni': 'ثالثة جامعي',
-            'master': 'ماستر',
-            'doctorat': 'دكتوراه'
-        };
-
-        var html = '';
-        offers.forEach(function(o) {
-            var imageUrl = o.teacher_profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(o.teacher_name) + '&background=0f5cbf&color=fff&size=120';
-            var levelDisplay = '';
-            if (o.teaching_level) {
-                var levelName = levelMap[o.teaching_level] || o.teaching_level;
-                levelDisplay = '<span class="teacher-level-badge"><i class="fas fa-graduation-cap"></i> ' + levelName + '</span>';
-            }
-            html += '<div class="teacher-card" onclick="viewTeacherProfile(' + o.teacher_id + ')">' +
-                '<img src="' + imageUrl + '" class="teacher-image" onerror="this.src=\'https://ui-avatars.com/api/?name=' + encodeURIComponent(o.teacher_name) + '&background=0f5cbf&color=fff&size=120\'" onclick="event.stopPropagation(); showFullImage(this.src)">' +
-                '<h3>' + escapeHtml(o.teacher_name) + '</h3>' +
-                '<p class="specialization"><i class="fas fa-book"></i> ' + escapeHtml(o.teacher_specialization || 'تخصص عام') + ' ' + levelDisplay + '</p>' +
-                '<span class="live-badge" style="display:inline-block; margin:6px 0;">🔴 مباشر</span>' +
-                '<button class="view-profile-btn" onclick="event.stopPropagation(); viewTeacherProfile(' + o.teacher_id + ')" style="margin-top:10px;">زيارة صفحة الأستاذ</button>' +
-            '</div>';
-        });
-        container.innerHTML = html;
-    } catch(e) {
-        console.error(e);
-        container.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8;">لا يوجد بث مباشر حالياً</p>';
-    }
-}
-        // ============================================================
         // VIEW TEACHER PROFILE
         // ============================================================
         async function viewTeacherProfile(teacherId) {
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('liveSection').style.display = 'none';
+            var liveSection = document.getElementById('liveSection');
+            if (liveSection) liveSection.style.display = 'none';
             document.getElementById('referralSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'none';
@@ -4391,7 +4308,6 @@
             showHome();
             loadStats();
             
-            setInterval(loadLiveStreams, 30000);
             setInterval(loadStats, 60000);
             
             if (referralCode) {
@@ -4404,7 +4320,6 @@
         document.addEventListener('DOMContentLoaded', init);
             window.showHome = showHome;
     window.showTeachers = showTeachers;
-    window.showLiveStreams = showLiveStreams;
     window.showReferral = showReferral;
     window.showSupport = showSupport;
     window.showLogin = showLogin;
