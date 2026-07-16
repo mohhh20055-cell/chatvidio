@@ -275,7 +275,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const publicCache = new Map();
 
-app.set('trust proxy', true);
+const trustProxySetting = process.env.TRUST_PROXY === 'true' || (process.env.NODE_ENV === 'production' && process.env.TRUST_PROXY !== 'false');
+app.set('trust proxy', trustProxySetting);
 app.disable('x-powered-by');
 
 function cachePublicResponses(ttlMs = PUBLIC_CACHE_TTL_MS) {
