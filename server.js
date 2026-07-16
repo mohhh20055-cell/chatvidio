@@ -41,6 +41,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'zoomdz_secret_key_2024_for_testing
 const JWT_EXPIRY = '24h';
 const SALT_ROUNDS = 12;
 const PLATFORM_DOMAIN = process.env.PLATFORM_DOMAIN || 'https://chatvidio.vercel.app';
+const APP_DOWNLOAD_URL = process.env.APP_DOWNLOAD_URL || 'https://www.appcreator24.com/app4089108-lwkt4d';
+const PUBLIC_CACHE_TTL_MS = 30000;
 
 // قراءة المتغيرات البيئية
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -271,8 +273,32 @@ function isOriginAllowed(origin) {
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const publicCache = new Map();
 
 app.set('trust proxy', true);
+app.disable('x-powered-by');
+
+function cachePublicResponses(ttlMs = PUBLIC_CACHE_TTL_MS) {
+    return (req, res, next) => {
+        if (req.method !== 'GET') return next();
+
+        const cacheKey = `${req.method}:${req.originalUrl}`;
+        const cached = publicCache.get(cacheKey);
+        if (cached && Date.now() - cached.timestamp < ttlMs) {
+            res.set('X-Cache', 'HIT');
+            return res.json(cached.body);
+        }
+
+        const originalJson = res.json.bind(res);
+        res.json = (body) => {
+            publicCache.set(cacheKey, { timestamp: Date.now(), body });
+            res.set('X-Cache', 'MISS');
+            return originalJson(body);
+        };
+
+        next();
+    };
+}
 
 // ============================================================
 // Middleware الأساسية
@@ -358,6 +384,9 @@ app.use(express.static('public', {
     etag: true,
     lastModified: true
 }));
+
+// Cache بسيط للواجهات العامة لتقليل الضغط على قاعدة البيانات
+app.use('/api/public', cachePublicResponses());
 
 // ============================================================
 // CSRF Protection
@@ -487,6 +516,16 @@ const authLimiter = rateLimit({
         return req.ip || req.connection?.remoteAddress || 'unknown';
     }
 });
+
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 300,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, error: 'عدد الطلبات كبير حاليًا، حاول لاحقًا' }
+});
+
+app.use('/api', apiLimiter);
 
 // ============================================================
 // CSRF Token Generator
@@ -1011,6 +1050,11 @@ app.post('/api/logs/clear', authenticate, authorize(['admin']), (req, res) => {
         logger.error('خطأ في مسح السجلات', { error: error.message });
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
+});
+
+// رابط تحميل التطبيق
+app.get('/download-app', (req, res) => {
+    res.redirect(302, APP_DOWNLOAD_URL);
 });
 
 // جلب حالة الخادم
