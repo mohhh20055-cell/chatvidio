@@ -2721,26 +2721,25 @@
             <a onclick="showSupport()" id="helpTab">
                 <span class="nav-label">مساعدة</span>
             </a>
-            <a onclick="switchTab('login')" id="loginTabNav">
-                <i class="fas fa-user nav-icon"></i>
-                <span class="nav-label">تسجيل الدخول</span>
-            </a>
-
-            <div class="nav-dropdown-wrap" id="createAccountWrap">
-                <a class="nav-dropdown-trigger" onclick="toggleCreateAccountNav(event)">
-                    <i class="fas fa-user-plus nav-icon"></i>
-                    <span class="nav-label">إنشاء حساب</span>
-                    <i class="fas fa-chevron-down nav-caret"></i>
-                </a>
-                <div class="nav-dropdown-menu" id="createAccountMenuNav">
-                    <a onclick="switchTab('student-register')">
-                        <i class="fas fa-user-graduate"></i> إنشاء حساب طالب
-                    </a>
-                    <a onclick="switchTab('teacher-register')">
-                        <i class="fas fa-chalkboard-teacher"></i> إنشاء حساب أستاذ
-                    </a>
-                </div>
-            </div>
+        <a onclick="showLogin()" id="loginTabNav">
+    <i class="fas fa-user nav-icon"></i>
+    <span class="nav-label">تسجيل الدخول</span>
+</a>
+<div class="nav-dropdown-wrap" id="createAccountWrap">
+    <a class="nav-dropdown-trigger" onclick="toggleCreateAccountNav(event)">
+        <i class="fas fa-user-plus nav-icon"></i>
+        <span class="nav-label">إنشاء حساب</span>
+        <i class="fas fa-chevron-down nav-caret"></i>
+    </a>
+    <div class="nav-dropdown-menu" id="createAccountMenuNav">
+        <a onclick="showLogin(); switchTab('student-register');">
+            <i class="fas fa-user-graduate"></i> إنشاء حساب طالب
+        </a>
+        <a onclick="showLogin(); switchTab('teacher-register');">
+            <i class="fas fa-chalkboard-teacher"></i> إنشاء حساب أستاذ
+        </a>
+    </div>
+</div>
 
             <button class="download-app-btn" onclick="window.open('/download-app', '_blank', 'noopener,noreferrer')">
                 <i class="fas fa-download"></i>
