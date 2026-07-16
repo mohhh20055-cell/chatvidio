@@ -57,8 +57,13 @@
             --radius-sm: 12px;
             --radius-md: 16px;
             --radius-lg: 24px;
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition: all 0.2s ease;
         }
+        
+        html { scroll-behavior: smooth; }
+        img, svg { display: block; max-width: 100%; height: auto; }
+        button, input, select, textarea { font: inherit; }
+        * { -webkit-tap-highlight-color: transparent; }
         
         body { 
             font-family: 'Cairo', sans-serif; 
@@ -66,6 +71,8 @@
             min-height: 100vh;
             color: var(--dark);
             overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
         }
 
         ::-webkit-scrollbar { width: 8px; }
@@ -150,9 +157,9 @@
 
         /* ===== NAVBAR ===== */
         .navbar {
-            background: rgba(255,255,255,0.92);
-            backdrop-filter: blur(16px) saturate(180%);
-            padding: 10px 30px;
+            background: rgba(255,255,255,0.94);
+            backdrop-filter: blur(8px) saturate(140%);
+            padding: 10px 20px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.04);
             position: sticky;
             top: 0;
@@ -239,6 +246,7 @@
             gap: 4px;
             flex-wrap: wrap;
             align-items: center;
+            justify-content: flex-end;
         }
         
         .nav-links a {
@@ -2088,75 +2096,64 @@
            RESPONSIVE
            ============================================================ */
         @media (max-width: 992px) {
-            .hero-content h1 { font-size: 2.4rem; }
+            .hero-content h1 { font-size: 2.3rem; }
             .hero-image .badge-float { display: none; }
             .hero-image .floating-icon { font-size: 140px; }
             .about-grid { grid-template-columns: 1fr; gap: 30px; }
             .about-grid .about-features { grid-template-columns: 1fr 1fr; }
-            .profile-body {
-                grid-template-columns: 1fr;
-            }
-            .social-links-grid {
-                grid-template-columns: 1fr 1fr;
-            }
-            .referral-guide .guide-grid {
-                grid-template-columns: 1fr;
-            }
+            .profile-body { grid-template-columns: 1fr; }
+            .social-links-grid { grid-template-columns: 1fr 1fr; }
+            .referral-guide .guide-grid { grid-template-columns: 1fr; }
         }
         
         @media (max-width: 768px) {
-            .hero-content h1 { font-size: 2rem; }
-            .nav-links a { padding: 6px 12px; font-size: 0.75rem; }
+            .navbar { padding: 10px 12px; }
+            .nav-container { justify-content: center; gap: 10px; }
+            .nav-links { width: 100%; justify-content: center; }
+            .nav-links a { padding: 6px 10px; font-size: 0.73rem; }
+            .logo { font-size: 1.2rem; }
+            .logo-icon-wrapper { width: 36px; height: 36px; }
+            .logo-icon-wrapper i { font-size: 1rem; }
+            .hero { flex-direction: column; padding: 24px 16px 36px; gap: 24px; text-align: center; }
+            .hero-content { align-items: center; text-align: center; }
+            .hero-content h1 { font-size: 1.9rem; line-height: 1.3; }
+            .hero-content p { max-width: 100%; }
+            .hero-buttons { width: 100%; justify-content: center; flex-wrap: wrap; }
+            .hero-image { width: min(100%, 320px); margin: 0 auto; }
             .teachers-grid, .developers-grid { grid-template-columns: 1fr; }
             .stats-container { flex-direction: column; }
             .stat-card { min-width: auto; }
-            .download-card { padding: 30px 20px; }
-            .download-card h2 { font-size: 1.5rem; }
-            .download-btn-android { padding: 14px 28px; font-size: 1rem; }
+            .download-card { padding: 24px 18px; }
+            .download-card h2 { font-size: 1.4rem; }
+            .download-btn-android { padding: 12px 24px; font-size: 0.95rem; }
             .download-card .features { grid-template-columns: 1fr; }
-            .navbar { padding: 10px 16px; }
-            .logo { font-size: 1.3rem; }
-            .logo-icon-wrapper { width: 36px; height: 36px; }
-            .logo-icon-wrapper i { font-size: 1rem; }
-            .hero { padding: 0 16px; }
             .section-container { padding: 0 16px; }
             .form-section { padding: 0 16px; }
-            .form-container { padding: 24px; }
-            .support-card { padding: 24px; }
-            .referral-banner { font-size: 0.8rem; padding: 10px 14px; }
-            .referral-banner .highlight-text { font-size: 0.9rem; }
+            .form-container { padding: 20px; }
+            .support-card { padding: 20px; }
+            .referral-banner { font-size: 0.78rem; padding: 10px 14px; }
+            .referral-banner .highlight-text { font-size: 0.86rem; }
             .referral-banner .close-banner { left: 8px; width: 24px; height: 24px; font-size: 1rem; }
-            .about-card { padding: 30px 20px; }
+            .about-card { padding: 24px 18px; }
             .about-grid .about-features { grid-template-columns: 1fr; }
             .about-steps { grid-template-columns: 1fr; }
             .recaptcha-wrapper .g-recaptcha { transform: scale(0.75); }
             .profile-section { padding: 0 16px; }
             .profile-header { flex-direction: column; text-align: center; }
             .profile-body { grid-template-columns: 1fr; }
-            .profile-card { padding: 24px; }
+            .profile-card { padding: 20px; }
             .profile-header .profile-image { width: 100px; height: 100px; }
-            .profile-header .profile-info h2 { font-size: 1.5rem; }
+            .profile-header .profile-info h2 { font-size: 1.4rem; }
             .profile-offers-grid { grid-template-columns: 1fr; }
             .social-links-grid { grid-template-columns: 1fr; }
-            .search-filter-container {
-                flex-direction: column;
-                padding: 16px 20px;
-            }
-            .search-box {
-                width: 100%;
-            }
-            .filter-group {
-                width: 100%;
-                justify-content: center;
-            }
-            .filter-group select {
-                flex: 1;
-                min-width: 100px;
-            }
-            .referral-guide { padding: 24px; }
-            .referral-guide h2 { font-size: 1.3rem; }
+            .search-filter-container { flex-direction: column; padding: 14px 16px; }
+            .search-box { width: 100%; }
+            .filter-group { width: 100%; justify-content: center; }
+            .filter-group select { flex: 1; min-width: 100px; }
+            .referral-guide { padding: 20px; }
+            .referral-guide h2 { font-size: 1.25rem; }
         }
-
+        
         @media (max-width: 480px) {
             .hero-content h1 { font-size: 1.6rem; }
             .hero-buttons .btn-primary, 
@@ -2168,29 +2165,19 @@
                 text-align: center;
                 justify-content: center;
             }
-            .nav-links a { padding: 4px 10px; font-size: 0.7rem; }
+            .nav-links a { padding: 4px 8px; font-size: 0.7rem; }
             .download-btn-android { width: 100%; justify-content: center; }
-            .form-container { padding: 18px; }
-            .section-title { font-size: 1.5rem; }
-            .stat-card .number { font-size: 1.8rem; }
-            .logo-text span:first-child { font-size: 1.3rem; }
-            .logo-text .highlight { font-size: 1.3rem; }
+            .form-container { padding: 16px; }
+            .section-title { font-size: 1.4rem; }
+            .stat-card .number { font-size: 1.7rem; }
+            .logo-text span:first-child { font-size: 1.2rem; }
+            .logo-text .highlight { font-size: 1.2rem; }
             .logo-badge { font-size: 0.45rem; padding: 1px 8px; }
-            .about-grid .about-text h2 { font-size: 1.4rem; }
-            .filter-group {
-                flex-direction: column;
-            }
-            .filter-group select {
-                width: 100%;
-            }
-            .clear-filters-btn {
-                width: 100%;
-                justify-content: center;
-            }
-            .referral-stats {
-                grid-template-columns: 1fr;
-            }
-        }
+            .about-grid .about-text h2 { font-size: 1.3rem; }
+            .filter-group { flex-direction: column; }
+            .filter-group select { width: 100%; }
+            .clear-filters-btn { width: 100%; justify-content: center; }
+            .referral-stats { grid-template-columns: 1fr; }
 
         /* ============================================================
            RESPONSIVE DESIGN - جميع الشاشات
