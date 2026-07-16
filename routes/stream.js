@@ -59,8 +59,8 @@ router.post('/start-jitsi-stream', authenticate, authorize(['teacher']), checkNo
             return res.status(400).json({ success: false, error: 'هذا العرض قيد البث بالفعل' });
         }
 
-        if (offer.status === 'completed') {
-            return res.status(400).json({ success: false, error: 'لا يمكن إعادة تشغيل حصة منتهية' });
+        if (offer.status === 'completed' || offer.status === 'cancelled') {
+            return res.status(400).json({ success: false, error: 'لا يمكن إعادة تشغيل حصة منتهية أو ملغاة' });
         }
 
         // ✅ إنشاء غرفة Jitsi
@@ -271,7 +271,7 @@ router.post('/end/:offer_id', authenticate, authorize(['teacher']), validateOffe
 
         const offer_id = parseInt(req.params.offer_id);
         const offer = req.offer;
-        const early_end = req.body.early_end === true;
+        const early_end = req.body.early_end === true || req.body.cancel_before_start === true;
 
         // ✅ تسجيل نهاية البث من الخادم (نظام التحقق المستقل)
         await recordStreamEnd(offer_id, req.user.userId);

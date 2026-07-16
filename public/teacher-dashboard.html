@@ -2290,12 +2290,14 @@
                               offer.status !== 'teacher_ready' && 
                               offer.status !== 'paused';
 
+            const isTerminated = offer.status === 'completed' || offer.status === 'cancelled' || isExpired;
+
             let statusText = '', statusClass = '';
             if (offer.status === 'upcoming' && !isExpired) { statusText = '⏳ قادم'; statusClass = 'status-upcoming'; }
             else if (offer.status === 'teacher_ready') { statusText = '🎥 جاهز للبث'; statusClass = 'status-teacher-ready'; }
             else if (offer.status === 'live') { statusText = '🔴 بث مباشر'; statusClass = 'status-live'; }
             else if (offer.status === 'paused') { statusText = '⏸ متوقف مؤقتاً'; statusClass = 'status-teacher-ready'; }
-            else if (offer.status === 'completed' || isExpired) { statusText = '✅ منتهية'; statusClass = 'status-completed'; }
+            else if (isTerminated) { statusText = '✅ منتهية'; statusClass = 'status-completed'; }
             else { statusText = '⏳ قادم'; statusClass = 'status-upcoming'; }
 
             const isFree = offer.is_free === 1 || offer.is_free === true;
@@ -2825,10 +2827,12 @@
         const completionPercentage = streamTotalSeconds > 0 ? Math.round((elapsedSeconds / streamTotalSeconds) * 100) : 0;
         
         // إذا لم يبدأ العداد بعد أو كان هناك وقت متبقي
+        const isBeforeStart = !timerStarted;
         const isEarlyEnd = timerStarted && streamRemainingSeconds > 0;
+        const shouldTerminate = isBeforeStart || isEarlyEnd;
         
         let warningMessage = '';
-        if (!timerStarted) {
+        if (isBeforeStart) {
             // لم يبدأ البث بعد - إلغاء فقط
             warningMessage = '⚠️ أنت على وشك إلغاء البث قبل البدء.\n\n';
             warningMessage += 'لن يتم خصم أي مبالغ من الطلاب.\n\n';
@@ -2854,7 +2858,8 @@
                 body: JSON.stringify({ 
                     teacher_id: teacherId, 
                     remaining_time: streamRemainingSeconds,
-                    early_end: isEarlyEnd
+                    early_end: shouldTerminate,
+                    cancel_before_start: isBeforeStart
                 })
             });
             const data = await res.json();
@@ -2863,8 +2868,8 @@
                 hideStreamTimer();
                 loadOffers();
                 loadBalance();
-                if (!timerStarted) {
-                    showToast('✅ تم إلغاء البث بنجاح', 'success');
+                if (isBeforeStart) {
+                    showToast('✅ تم إلغاء البث قبل البدء وسيظهر كمنتهٍ في لوحة العروض', 'success');
                 } else if (isEarlyEnd) {
                     showToast('⚠️ تم إنهاء البث مبكراً! لم تحصل على أي مال.', 'warning');
                 } else {
@@ -2928,6 +2933,12 @@
             const res = await fetchWithAuth(`/api/teacher/offer/${offerId}`);
             const data = await res.json();
             const activeStatuses = ['live', 'paused', 'teacher_ready'];
+            const terminatedStatuses = ['completed', 'cancelled'];
+
+            if (terminatedStatuses.includes(data.status)) {
+                showToast('⚠️ هذا البث انتهى ولا يمكن فتحه مرة أخرى', 'warning');
+                return;
+            }
 
             if (!activeStatuses.includes(data.status)) {
                 showToast('⚠️ هذا البث انتهى ولا يمكن فتحه مرة أخرى', 'warning');
@@ -2958,6 +2969,12 @@
             const res = await fetchWithAuth(`/api/teacher/offer/${offerId}`);
             const data = await res.json();
             const activeStatuses = ['live', 'paused', 'teacher_ready'];
+            const terminatedStatuses = ['completed', 'cancelled'];
+
+            if (terminatedStatuses.includes(data.status)) {
+                showToast('⚠️ هذا البث انتهى ولا يمكن فتحه مرة أخرى', 'warning');
+                return;
+            }
 
             if (!activeStatuses.includes(data.status)) {
                 showToast('⚠️ هذا البث انتهى ولا يمكن فتحه مرة أخرى', 'warning');
