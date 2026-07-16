@@ -300,7 +300,11 @@ router.post('/end/:offer_id', authenticate, authorize(['teacher']), validateOffe
             .from('offers')
             .update({
                 status: 'completed',
-                completed_at: new Date().toISOString()
+                completed_at: new Date().toISOString(),
+                stream_url: null,
+                room_name: null,
+                room_password: null,
+                is_paused: false
             })
             .eq('id', offer_id);
 

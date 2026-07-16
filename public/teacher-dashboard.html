@@ -2253,7 +2253,7 @@
         const container = document.getElementById('offersList');
         container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
         try {
-            const res = await fetchWithAuth(`/api/teacher/offers/${teacherId}`);
+            const res = await fetchWithAuth(`/api/teacher/offers/${teacherId}`, { cache: 'no-store' });
             const offers = await res.json();
             renderOffers(offers);
         } catch(e) { if (e.message !== 'انتهت صلاحية الجلسة') showToast('حدث خطأ', 'error'); }
@@ -2290,7 +2290,8 @@
                               offer.status !== 'teacher_ready' && 
                               offer.status !== 'paused';
 
-            const isTerminated = offer.status === 'completed' || offer.status === 'cancelled' || isExpired;
+            const isExplicitlyTerminated = ['completed', 'cancelled'].includes(offer.status) || !!offer.completed_at || !!offer.force_ended_at || offer.terminated === true;
+            const isTerminated = isExplicitlyTerminated || isExpired;
 
             let statusText = '', statusClass = '';
             if (offer.status === 'upcoming' && !isExpired) { statusText = '⏳ قادم'; statusClass = 'status-upcoming'; }
@@ -2311,7 +2312,7 @@
 
             let streamButton = '';
             let rejoinButton = '';
-            const isLiveOrReady = offer.status === 'live' || offer.status === 'teacher_ready' || offer.status === 'paused';
+            const isLiveOrReady = !isTerminated && (offer.status === 'live' || offer.status === 'teacher_ready' || offer.status === 'paused');
             
             // التحقق من أن وقت البث قد وصل
             // المتصفح يستخدم توقيت الجزائر تلقائياً

@@ -586,6 +586,9 @@ router.get('/offers/:teacher_id', authenticate, authorize(['teacher']), [
             return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه العروض' });
         }
 
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+        res.set('Pragma', 'no-cache');
+
         const { data: offers, error: offersError } = await supabase
             .from('offers')
             .select('*')
