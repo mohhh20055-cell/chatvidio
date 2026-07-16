@@ -2731,14 +2731,13 @@
         <span class="nav-label">إنشاء حساب</span>
         <i class="fas fa-chevron-down nav-caret"></i>
     </a>
-    <div class="nav-dropdown-menu" id="createAccountMenuNav">
-        <a onclick="showLogin(); switchTab('student-register');">
-            <i class="fas fa-user-graduate"></i> إنشاء حساب طالب
-        </a>
-        <a onclick="showLogin(); switchTab('teacher-register');">
-            <i class="fas fa-chalkboard-teacher"></i> إنشاء حساب أستاذ
-        </a>
-    </div>
+   <div class="nav-dropdown-menu" id="createAccountMenuNav">
+    <a onclick="document.getElementById('loginSection').style.display='block'; switchTab('student-register');">
+        <i class="fas fa-user-graduate"></i> إنشاء حساب طالب
+    </a>
+    <a onclick="document.getElementById('loginSection').style.display='block'; switchTab('teacher-register');">
+        <i class="fas fa-chalkboard-teacher"></i> إنشاء حساب أستاذ
+    </a>
 </div>
 
             <button class="download-app-btn" onclick="window.open('/download-app', '_blank', 'noopener,noreferrer')">
