@@ -2127,7 +2127,8 @@
   z-index: 1000;
 }
 
-.nav-dropdown-wrap:hover .nav-dropdown-menu {
+.nav-dropdown-wrap:hover .nav-dropdown-menu,
+.nav-dropdown-menu.show {
   display: block;
 }
 
@@ -3565,6 +3566,9 @@ function toggleCreateAccountNav(e) {
 }
 document.addEventListener('click', function() {
     document.getElementById('createAccountMenuNav').classList.remove('show');
+});
+document.getElementById('createAccountMenuNav').addEventListener('click', function(e) {
+    e.stopPropagation();
 });
 
 function showDownloadApp() {
