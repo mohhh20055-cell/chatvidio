@@ -49,10 +49,25 @@
             background: #f0f4f9; 
             overflow-x: hidden;
             width: 100%;
+            min-width: 100%;
+            max-width: 100%;
             color: var(--gray-800);
             padding-top: 66px;
+            margin: 0;
             -webkit-font-smoothing: antialiased;
             text-rendering: optimizeLegibility;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding-top: 58px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            body {
+                padding-top: 54px;
+            }
         }
 
         ::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -663,7 +678,31 @@
         .profile-dropdown .dropdown-item.danger i { color: var(--danger); }
 
         /* ===== MAIN CONTENT ===== */
-        .main-wrapper { max-width: 1300px; margin: 0 auto; padding: 16px; width: 100%; }
+        .main-wrapper { 
+            width: 100%;
+            max-width: 100%;
+            margin: 0 auto; 
+            padding: 16px;
+        }
+        
+        @media (max-width: 1024px) {
+            .main-wrapper {
+                padding: 14px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .main-wrapper {
+                padding: 12px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .main-wrapper {
+                padding: 8px;
+            }
+        }
+        
         .content-area {
             background: white;
             border-radius: var(--radius-md);
@@ -671,6 +710,22 @@
             box-shadow: var(--shadow-sm);
             border: 1px solid rgba(0,0,0,0.04);
             min-height: 70vh;
+            width: 100%;
+        }
+        
+        @media (max-width: 768px) {
+            .content-area {
+                padding: 16px;
+                border-radius: 12px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .content-area {
+                padding: 12px;
+                border-radius: 10px;
+                min-height: auto;
+            }
         }
         .section-title {
             font-size: 1.1rem;
@@ -683,7 +738,33 @@
             gap: 10px;
             color: var(--gray-800);
         }
-        .section-title i { color: var(--primary); }
+        
+        @media (max-width: 768px) {
+            .section-title {
+                font-size: 1rem;
+                margin-bottom: 12px;
+                border-right-width: 3px;
+                padding-right: 10px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .section-title {
+                font-size: 0.9rem;
+                margin-bottom: 10px;
+                gap: 6px;
+            }
+        }
+        
+        .section-title i { 
+            color: var(--primary);
+        }
+        
+        @media (max-width: 480px) {
+            .section-title i {
+                font-size: 0.9rem;
+            }
+        }
 
         .offers-grid {
             display: grid;
@@ -703,6 +784,21 @@
             transition: var(--transition);
             position: relative;
             border: 1px solid var(--gray-200);
+            width: 100%;
+        }
+        
+        @media (max-width: 768px) {
+            .offer-card, .teacher-card {
+                padding: 12px;
+                border-radius: 10px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .offer-card, .teacher-card {
+                padding: 10px;
+                border-radius: 8px;
+            }
         }
         .offer-card::before, .teacher-card::before {
             content: '';
@@ -1684,7 +1780,7 @@
                 <option value="2eme_uni">ثانية جامعي</option>
                 <option value="3eme_uni">ثالثة جامعي</option>
                 <option value="master">ماستر</option>
-                <option value="doctorat">دكتوراه</option>
+                <option value="doctorat">د��توراه</option>
                 <option value="other">آخر</option>
             </select>
         </div>
@@ -2350,7 +2446,7 @@
             const res = await fetchWithAuth(`/api/messages/${teacherId}/teacher/${otherId}/teacher`);
             const messages = await res.json();
             renderChatMessages(messages);
-        } catch(e) { if (e.message !== 'انتهت صلاحية الجلسة') { console.log(e); container.innerHTML = '<p style="text-align:center; padding:20px; color:var(--danger);">حدث خطأ في تحميل الرسائل</p>'; } }
+        } catch(e) { if (e.message !== 'انتهت صلاحية الجلسة') { console.log(e); container.innerHTML = '<p style="text-align:center; padding:20px; color:var(--danger);">حدث خطأ في تحميل ��لرسائل</p>'; } }
     }
 
     function renderChatMessages(messages) {
@@ -2464,7 +2560,7 @@
         let html = '';
         const levelMap = {
             '5eme_pri': 'خامسة ابتدائي', '1ere_am': 'أولى متوسط', '2eme_am': 'ثانية متوسط',
-            '3eme_am': 'ثالثة متوسط', '4eme_am': 'رابعة متوسط', '5eme_am': 'خامسة متوسط',
+            '3eme_am': 'ثالثة متوسط', '4eme_am': 'رابعة متوسط', '5eme_am': '��امسة متوسط',
             '1ere_as': 'أولى ثانوي', '2eme_as': 'ثانية ثانوي', '3eme_as': 'ثالثة ثانوي',
             'bac': 'بكالوريا', '1ere_uni': 'أولى جامعي', '2eme_uni': 'ثانية جامعي',
             '3eme_uni': 'ثالثة جامعي', 'master': 'ماستر', 'doctorat': 'دكتوراه'
@@ -2517,7 +2613,7 @@
             if (canStartStream) {
                 streamButton = `<button class="start-stream-btn" onclick="startStreamNow(${offer.id})"><i class="fas fa-play"></i> بدء البث</button>`;
             } else if (notYetTime) {
-                // حساب الوقت المتبقي
+                // حساب الوق�� المتبقي
                 const timeLeft = offerDate - nowForCheck;
                 const hoursLeft = Math.floor(timeLeft / (1000 * 60 * 60));
                 const minutesLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
@@ -2687,7 +2783,7 @@
                 return;
             }
 
-            // مزامنة الوقت المتبقي مع الخادم (الخادم هو المرجع)
+            // مزامنة الوقت المتبقي مع الخادم (الخ��دم هو المرجع)
             if (data.remaining_seconds !== undefined && !streamGracePeriod) {
                 const diff = Math.abs(streamRemainingSeconds - data.remaining_seconds);
                 if (diff > 5) { // تصحيح فقط إذا كان الفرق أكثر من 5 ثوانٍ
@@ -3019,7 +3115,7 @@
         const elapsedSeconds = streamTotalSeconds - streamRemainingSeconds;
         const completionPercentage = streamTotalSeconds > 0 ? Math.round((elapsedSeconds / streamTotalSeconds) * 100) : 0;
         
-        // إذا لم يبدأ العداد بعد أو كان هناك وقت متبقي
+        // إذا لم يبدأ العداد بعد أو كان هن��ك وقت متبقي
         const isBeforeStart = !timerStarted;
         const isEarlyEnd = timerStarted && streamRemainingSeconds > 0;
         const shouldTerminate = isBeforeStart || isEarlyEnd;

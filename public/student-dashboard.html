@@ -54,10 +54,24 @@
             overflow-x: hidden;
             width: 100%;
             min-height: 100vh;
+            min-width: 100%;
             color: var(--gray-800);
             padding-top: 80px;
+            margin: 0;
             -webkit-font-smoothing: antialiased;
             text-rendering: optimizeLegibility;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding-top: 60px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            body {
+                padding-top: 56px;
+            }
         }
 
         ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -519,33 +533,79 @@
 
         /* ===== MAIN CONTENT ===== */
         .main-wrapper {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 24px;
             width: 100%;
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 40px 30px;
             display: grid;
-            grid-template-columns: 1fr;
-            gap: 24px;
+            grid-template-columns: 1fr 380px;
+            gap: 30px;
+        }
+        
+        @media (max-width: 1024px) {
+            .main-wrapper {
+                padding: 30px 24px;
+                gap: 24px;
+                grid-template-columns: 1fr 320px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .main-wrapper {
+                padding: 20px 16px;
+                gap: 16px;
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .main-wrapper {
+                padding: 16px 12px;
+                gap: 12px;
+            }
         }
 
         .content-area {
             background: white;
-            border-radius: var(--radius-md);
-            padding: 24px;
-            box-shadow: var(--shadow-sm);
-            border: 1px solid var(--gray-200);
-            min-height: 70vh;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            width: 100%;
+        }
+        
+        @media (max-width: 768px) {
+            .content-area {
+                padding: 20px;
+                border-radius: 16px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .content-area {
+                padding: 16px;
+                border-radius: 12px;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+            }
         }
         .section-title {
-            font-size: 1.25rem;
-            font-weight: 800;
-            margin-bottom: 24px;
-            border-right: 4px solid var(--primary);
-            padding-right: 12px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            color: var(--gray-900);
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: var(--gray-800);
+        }
+        
+        @media (max-width: 768px) {
+            .section-title {
+                font-size: 1.1rem;
+                margin-bottom: 16px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .section-title {
+                font-size: 1rem;
+                margin-bottom: 12px;
+            }
         }
         .section-title i { color: var(--primary); }
 
@@ -571,9 +631,23 @@
                 margin-bottom: 16px;
             }
             
-            .offer-title { 
+        .offer-title { 
+            font-size: 1rem; 
+            font-weight: 700; 
+            margin-bottom: 6px;
+        }
+        
+        @media (max-width: 768px) {
+            .offer-title {
                 font-size: 0.95rem;
             }
+        }
+        
+        @media (max-width: 480px) {
+            .offer-title {
+                font-size: 0.9rem;
+            }
+        }
             
             .offer-info {
                 font-size: 0.75rem;
@@ -604,14 +678,21 @@
             line-height: 1.5;
         }
 
-        .offer-info {
-            font-size: 0.85rem;
-            color: var(--gray-600);
-            margin: 6px 0;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
+        .offer-info { 
+            font-size: 0.8rem; 
+            color: var(--gray-500);
+        }
+        
+        @media (max-width: 768px) {
+            .offer-info {
+                font-size: 0.75rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .offer-info {
+                font-size: 0.7rem;
+            }
         }
         .offer-info i { color: var(--gray-400); width: 16px; }
 
@@ -1415,7 +1496,7 @@
             <div id="freeOffersSidebar"></div>
         </div>
         <div class="right-card">
-            <div class="card-title"><i class="fas fa-clock" style="color:var(--primary);"></i> حصصي القادمة</div>
+            <div class="card-title"><i class="fas fa-clock" style="color:var(--primary);"></i> حصص�� القادمة</div>
             <div id="upcomingBookings"></div>
         </div>
         <div class="right-card">
@@ -2084,7 +2165,7 @@
         if (!offers || offers.length === 0) {
             let message = 'لا توجد عروض متاحة حالياً';
             if (userData && userData.education_level) {
-                message = `لا توجد عروض متاحة لمستواك الدراسي (${levelMap[userData.education_level] || userData.education_level})`;
+                message = `لا توجد عر��ض متاحة لمستواك الدراسي (${levelMap[userData.education_level] || userData.education_level})`;
             }
             container.innerHTML = `<p style="text-align:center; padding:30px; color:var(--gray-400);">${message}</p>`;
             return;
