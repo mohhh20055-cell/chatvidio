@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>ZoomDz | منصة تعليمية</title>
     
     <!-- ===== FAVICON ===== -->
@@ -251,6 +251,17 @@
             justify-content: flex-end;
         }
         
+        @media (max-width: 640px) {
+            .nav-links a {
+                padding: 6px 12px;
+                font-size: 0.75rem;
+            }
+            
+            .nav-container {
+                gap: 6px;
+            }
+        }
+        
         .nav-links a {
             text-decoration: none;
             color: var(--dark-light);
@@ -339,13 +350,21 @@
         .hero {
             max-width: 1280px;
             margin: 40px auto 60px;
-            padding: 0 30px;
+            padding: 0 20px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             flex-wrap: wrap;
             gap: 50px;
             position: relative;
+        }
+        
+        @media (max-width: 768px) {
+            .hero {
+                margin: 30px auto 40px;
+                padding: 0 16px;
+                gap: 30px;
+            }
         }
         
         .hero::before {
@@ -391,6 +410,20 @@
             line-height: 1.15;
             margin-bottom: 16px;
             color: var(--dark);
+        }
+        
+        @media (max-width: 768px) {
+            .hero-content h1 {
+                font-size: 2rem;
+                line-height: 1.2;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .hero-content h1 {
+                font-size: 1.5rem;
+                line-height: 1.25;
+            }
         }
         
         .hero-content h1 .highlight {
@@ -461,6 +494,13 @@
             margin-top: 20px;
         }
         
+        @media (max-width: 768px) {
+            .about-grid {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+        }
+        
         .about-grid .about-text {
             text-align: right;
         }
@@ -494,6 +534,12 @@
             grid-template-columns: 1fr 1fr;
             gap: 16px;
             align-content: start;
+        }
+        
+        @media (max-width: 768px) {
+            .about-grid .about-features {
+                grid-template-columns: 1fr;
+            }
         }
         
         .about-feature-item {
@@ -2834,7 +2880,7 @@
                         </p>
                         <p style="font-size:0.95rem; color:var(--gray); background:var(--gray-light); padding:14px; border-radius:var(--radius-sm); border-right:4px solid var(--primary);">
                             <i class="fas fa-quote-right" style="color:var(--primary);"></i>
-                            نؤمن بأن التعليم الجيد هو حق لكل جزائري، ومنصتنا هي الجسر الذي يوصلك إلى أفضل الكفاءات في وطننا.
+                            نؤمن بأن التعليم الجيد هو حق لكل جزائري، ومنصتنا هي الجسر ال��ي يوصلك إلى أفضل الكفاءات في وطننا.
                         </p>
                     </div>
                     <div class="about-features">

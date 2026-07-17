@@ -5,6 +5,8 @@
 const CORS_ORIGIN = process.env.CORS_ORIGIN 
     ? process.env.CORS_ORIGIN.split(',') 
     : [
+        'https://zoomdz.com',
+        'https://www.zoomdz.com',
         'https://chatvidio.vercel.app',
         'https://chatvidio-git-*.vercel.app',
         'https://chatvidio-*.vercel.app',

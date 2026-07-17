@@ -25,7 +25,7 @@ function authorize(roles = []) {
     };
 }
 
-const PLATFORM_DOMAIN = process.env.PLATFORM_DOMAIN || 'https://chatvidio.vercel.app';
+const PLATFORM_DOMAIN = process.env.PLATFORM_DOMAIN || 'https://zoomdz.com';
 
 // ============================================================
 // إنشاء رمز إحالة

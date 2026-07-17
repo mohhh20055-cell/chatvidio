@@ -2,7 +2,7 @@
 <html lang="ar">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>لوحة المدير - منصة التعليم</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -348,6 +348,81 @@
             font-size: 3rem;
             display: block;
             margin-bottom: 10px;
+        }
+        
+        /* ===== RESPONSIVE DESIGN ===== */
+        @media (max-width: 768px) {
+            .teachers-grid, .requests-grid, .messages-grid, .users-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .nav-tabs {
+                overflow-x: auto;
+                flex-wrap: nowrap;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            .nav-tab {
+                padding: 8px 14px;
+                font-size: 0.75rem;
+                white-space: nowrap;
+            }
+            
+            .container {
+                padding: 0 12px;
+            }
+            
+            body {
+                overflow-x: hidden;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .navbar {
+                padding: 8px 12px;
+            }
+            
+            .nav-container {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            
+            .logo {
+                font-size: 1.2rem;
+            }
+            
+            .logout-btn {
+                padding: 6px 12px;
+                font-size: 0.75rem;
+            }
+            
+            .container {
+                margin: 10px auto;
+                padding: 0 8px;
+            }
+            
+            .teacher-card, .request-card, .message-card, .user-card {
+                padding: 12px;
+            }
+            
+            .button-group {
+                gap: 4px;
+            }
+            
+            .btn-approve, .btn-reject, .btn-delete, .btn-ban, .btn-unban, .btn-small {
+                padding: 6px 12px;
+                font-size: 0.7rem;
+            }
+            
+            .teacher-avatar {
+                width: 60px;
+                height: 60px;
+            }
+            
+            .modal {
+                width: 95%;
+                max-width: 450px;
+            }
         }
     </style>
 </head>

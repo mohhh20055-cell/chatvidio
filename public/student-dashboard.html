@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>ZoomDz | لوحة الطالب</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -183,6 +183,41 @@
             scrollbar-width: none;
         }
         .nav-tabs::-webkit-scrollbar { display: none; }
+        
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 0 12px;
+                min-height: 60px;
+            }
+            
+            .nav-tab {
+                padding: 6px 12px;
+                font-size: 0.75rem;
+            }
+            
+            .nav-balance {
+                padding: 4px 10px;
+                font-size: 0.75rem;
+            }
+            
+            .nav-logo span {
+                font-size: 1rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .nav-balance {
+                display: none;
+            }
+            
+            .nav-tabs {
+                gap: 3px;
+            }
+            
+            .nav-logo span {
+                font-size: 0.9rem;
+            }
+        }
         .nav-tab {
             display: flex;
             align-items: center;
@@ -518,6 +553,31 @@
             display: grid;
             grid-template-columns: 1fr;
             gap: 20px;
+        }
+        
+        @media (max-width: 640px) {
+            .main-wrapper {
+                padding: 16px;
+                gap: 16px;
+            }
+            
+            .content-area {
+                padding: 16px;
+                border-radius: 12px;
+            }
+            
+            .section-title {
+                font-size: 1.1rem;
+                margin-bottom: 16px;
+            }
+            
+            .offer-title { 
+                font-size: 0.95rem;
+            }
+            
+            .offer-info {
+                font-size: 0.75rem;
+            }
         }
 
         .offer-card, .teacher-card {
@@ -2516,7 +2576,7 @@
                 renderRewardHistory(infoData.rewards || []);
             }
         } catch(e) {
-            if (e.message !== 'انتهت صلاحية الجلسة') {
+            if (e.message !== 'انته�� صلاحية الجلسة') {
                 console.error('خطأ في تحميل بيانات الإحالة:', e);
             }
         }

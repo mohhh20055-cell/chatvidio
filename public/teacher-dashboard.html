@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>ZoomDz | لوحة الأستاذ</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -115,6 +115,33 @@
             letter-spacing: 4px;
             color: #60a5fa;
             text-shadow: 0 0 30px rgba(96, 165, 250, 0.3);
+        }
+        
+        @media (max-width: 768px) {
+            .stream-timer-container .timer-display .time {
+                font-size: 2.5rem;
+                letter-spacing: 2px;
+            }
+            
+            .stream-timer-container .timer-header .stream-title {
+                font-size: 0.95rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .stream-timer-container {
+                padding: 12px 16px;
+                margin-bottom: 12px;
+            }
+            
+            .stream-timer-container .timer-display .time {
+                font-size: 1.8rem;
+                letter-spacing: 1px;
+            }
+            
+            .stream-timer-container .timer-header {
+                gap: 8px;
+            }
         }
         .stream-timer-container .timer-display .time.warning {
             color: #f59e0b;
@@ -275,6 +302,35 @@
             scrollbar-width: none;
         }
         .nav-tabs::-webkit-scrollbar { display: none; }
+        
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 0 12px;
+                min-height: 58px;
+            }
+            
+            .nav-tabs {
+                gap: 1px;
+                padding: 0 4px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .navbar {
+                padding: 0 8px;
+                min-height: 56px;
+            }
+            
+            .nav-logo span {
+                font-size: 0.9rem;
+            }
+            
+            .nav-balance {
+                padding: 4px 8px;
+                font-size: 0.7rem;
+            }
+        }
+        
         .nav-tab {
             display: flex;
             align-items: center;
@@ -292,6 +348,21 @@
             white-space: nowrap;
             flex-shrink: 0;
             position: relative;
+        }
+        
+        @media (max-width: 768px) {
+            .nav-tab {
+                padding: 5px 10px;
+                font-size: 0.75rem;
+                gap: 4px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .nav-tab {
+                padding: 4px 8px;
+                font-size: 0.65rem;
+            }
         }
         .nav-tab i { font-size: 0.95rem; }
         .nav-tab:hover { background: var(--primary-light); color: var(--primary); }
@@ -1652,7 +1723,7 @@
     let streamTimer = null;            // معرف الـ Interval
     let streamRemainingSeconds = 0;    // الوقت المتبقي بالثواني
     let streamTotalSeconds = 0;        // الوقت الكلي بالثواني
-    let streamPaused = false;          // هل البث في حالة إيقاف مؤقت؟
+    let streamPaused = false;          // هل البث في حالة إيقاف مؤقت��
     let streamOfferId = null;          // معرف العرض
     let streamIntervalId = null;       // معرف الـ setInterval
 
@@ -2603,7 +2674,7 @@
     let jitsiWindow = null;        // مرجع نافذة Jitsi المفتوحة
     let jitsiWatchInterval = null; // مراقبة إغلاق نافذة Jitsi
 
-    // إرسال heartbeat للخادم
+    // إرسال heartbeat ل��خادم
     async function sendHeartbeat() {
         if (!streamOfferId || (!timerStarted && !streamGracePeriod)) return;
         try {

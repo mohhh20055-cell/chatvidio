@@ -40,7 +40,7 @@ const { authenticate, authorize, checkBanned, checkActiveStream, validateOfferOw
 const JWT_SECRET = process.env.JWT_SECRET || 'zoomdz_secret_key_2024_for_testing_only';
 const JWT_EXPIRY = '24h';
 const SALT_ROUNDS = 12;
-const PLATFORM_DOMAIN = process.env.PLATFORM_DOMAIN || 'https://chatvidio.vercel.app';
+const PLATFORM_DOMAIN = process.env.PLATFORM_DOMAIN || 'https://zoomdz.com';
 const APP_DOWNLOAD_URL = process.env.APP_DOWNLOAD_URL || 'https://www.appcreator24.com/app4089108-lwkt4d';
 const PUBLIC_CACHE_TTL_MS = 30000;
 
@@ -244,6 +244,8 @@ async function remove(table, column, value) {
 const CORS_ORIGIN = process.env.CORS_ORIGIN 
     ? process.env.CORS_ORIGIN.split(',') 
     : [
+        'https://zoomdz.com',
+        'https://www.zoomdz.com',
         'https://chatvidio.vercel.app',
         'https://chatvidio.onrender.com',
         'https://chatvidio-git-*.vercel.app',

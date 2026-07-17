@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>تطبيق ZoomDz</title>
   <meta name="description" content="تطبيق ZoomDz الرسمي لتجربة تعليمية أسرع وأكثر سهولة على الهاتف" />
   <meta name="theme-color" content="#0f5cbf" />
@@ -29,7 +29,24 @@
     .feature h3 { font-size:0.95rem; margin:0 0 6px; }
     .feature p { font-size:0.8rem; margin:0; }
     .footer-note { text-align:center; color:var(--muted); margin-top:20px; font-size:0.9rem; }
-    @media (max-width:768px) { .hero{grid-template-columns:1fr;} .features{grid-template-columns:1fr;} h1{font-size:1.6rem;} }
+    @media (max-width:768px) { 
+      .hero { grid-template-columns:1fr; }
+      .features { grid-template-columns:1fr; }
+      h1 { font-size:1.6rem; }
+      body { overflow-x: hidden; }
+    }
+    @media (max-width:480px) {
+      .container { padding:16px 12px 32px; }
+      .hero { padding:18px; }
+      h1 { font-size:1.3rem; }
+      p { font-size:0.9rem; }
+      .actions { gap:8px; }
+      .btn { padding:10px 14px; font-size:0.85rem; }
+      .feature { padding:12px; }
+      .feature i { font-size:1.1rem; }
+      .feature h3 { font-size:0.85rem; }
+      .feature p { font-size:0.7rem; }
+    }
   </style>
 </head>
 <body>
