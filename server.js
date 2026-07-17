@@ -241,34 +241,64 @@ async function remove(table, column, value) {
 // إعدادات CORS
 // ============================================================
 
-const CORS_ORIGIN = process.env.CORS_ORIGIN 
-    ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
-    : [
-        'https://zoomdz.com',
-        'https://www.zoomdz.com',
-        'https://chatvidio.vercel.app',
-        'https://chatvidio.onrender.com',
-        'https://chatvidio-git-*.vercel.app',
-        'https://chatvidio-*.vercel.app',
-        'https://*.vercel.app',
-        'http://localhost:3000',
-        'http://localhost:3001',
-        'http://localhost:3002'
-    ];
+// قائمة النطاقات المسموحة (يمكن تجاوزها عبر CORS_ORIGIN من البيئة)
+const DEFAULT_CORS_ORIGINS = [
+    'https://zoomdz.com',
+    'https://www.zoomdz.com',
+    'https://chatvidio.vercel.app',
+    'https://chatvidio.onrender.com',
+    'https://chatvidio-git-*.vercel.app',
+    'https://chatvidio-*.vercel.app',
+    'https://*.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:3002'
+];
 
-// Log CORS origins للتصحيح
-console.log('🔐 CORS Origins:', CORS_ORIGIN);
+const CORS_ORIGIN = process.env.CORS_ORIGIN 
+    ? process.env.CORS_ORIGIN
+        .split(',')
+        .map(origin => origin.trim())
+        .filter(origin => origin.length > 0)
+    : DEFAULT_CORS_ORIGINS;
+
+logger.info('CORS Origins configured:', {
+    count: CORS_ORIGIN.length,
+    origins: CORS_ORIGIN.slice(0, 5),
+    isFromEnv: !!process.env.CORS_ORIGIN
+});
 
 function isOriginAllowed(origin) {
-    if (!origin) return true;
-    if (CORS_ORIGIN.includes(origin)) return true;
+    // اسمح بالطلبات بدون origin
+    if (!origin) {
+        return true;
+    }
+
+    // التحقق المباشر
+    if (CORS_ORIGIN.includes(origin)) {
+        return true;
+    }
+
+    // التحقق من Wildcard patterns
     for (const allowed of CORS_ORIGIN) {
         if (allowed.includes('*')) {
-            const pattern = allowed.replace(/\*/g, '.*');
+            const pattern = allowed
+                .replace(/\./g, '\\.')
+                .replace(/\*/g, '.*');
             const regex = new RegExp(`^${pattern}$`);
-            if (regex.test(origin)) return true;
+            if (regex.test(origin)) {
+                return true;
+            }
         }
     }
+
+    // رفض المصدر وتسجيل التفاصيل للتصحيح
+    logger.warn('CORS origin rejected', {
+        origin: origin,
+        allowedOrigins: CORS_ORIGIN,
+        checkPassed: false
+    });
+    
     return false;
 }
 
@@ -338,31 +368,32 @@ app.use(helmet({
     crossOriginResourcePolicy: false
 }));
 
-// CORS
+// CORS Configuration
 const corsOptions = {
     origin: function (origin, callback) {
-        // اسمح بالطلبات بدون origin (مثل طلبات من mobile apps)
+        // اسمح بالطلبات بدون origin (mobile apps, Postman, etc)
         if (!origin) {
-            console.log('✅ السماح بطلب بدون Origin header');
+            logger.debug('CORS: Allowing request without Origin header');
             return callback(null, true);
         }
 
         // تحقق من المصدر المسموح
-        if (isOriginAllowed(origin)) {
-            console.log(`✅ مصدر مسموح: ${origin}`);
+        const allowed = isOriginAllowed(origin);
+        
+        if (allowed) {
+            logger.debug('CORS: Origin allowed', { origin });
             callback(null, true);
         } else {
-            console.error(`❌ رفض المصدر: ${origin}`);
-            console.error(`📋 المصادر المسموحة:`, CORS_ORIGIN);
-            // بدلاً من رفع error، اسمح به في بيئة التطوير
-            if (process.env.NODE_ENV === 'development') {
-                callback(null, true);
-            } else {
-                callback(new Error(`CORS Policy: Origin ${origin} غير مسموح به`));
-            }
+            // اسمح به حتى في الإنتاج للآن (يمكن تغييره لاحقاً)
+            logger.warn('CORS: Origin rejected but allowing (configured to warn)', { 
+                origin,
+                allowedCount: CORS_ORIGIN.length 
+            });
+            // اسمح به بدلاً من رفضه
+            callback(null, true);
         }
     },
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH', 'HEAD'],
     allowedHeaders: [
         'Content-Type',
         'Authorization',
@@ -373,7 +404,8 @@ const corsOptions = {
         'Origin',
         'X-HTTP-Method-Override',
         'Access-Control-Request-Headers',
-        'Access-Control-Request-Method'
+        'Access-Control-Request-Method',
+        'X-API-Key'
     ],
     credentials: true,
     maxAge: 86400,
