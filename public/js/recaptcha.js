@@ -1,9 +1,9 @@
 // =============================================
-// تعيين مفتاح reCAPTCHA مباشرة
+// تعيين مفتاح reCAPTCHA من متغيرات البيئة أو Fallback
 // =============================================
-window.RECAPTCHA_SITE_KEY = '6Lcv8kctAAAAAHcoWBv_e87vrjP7I6IzQJSV6THf';
+window.RECAPTCHA_SITE_KEY = window.RECAPTCHA_SITE_KEY || '6Lcv8kctAAAAAHcoWBv_e87vrjP7I6IzQJSV6THf';
 
-console.log('🔑 تم تعيين مفتاح reCAPTCHA من public/js/recaptcha.js');
+console.log('🔑 تم تعيين مفتاح reCAPTCHA - Key:', window.RECAPTCHA_SITE_KEY);
 
 // =============================================
 // حالة reCAPTCHA
