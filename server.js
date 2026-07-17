@@ -242,7 +242,7 @@ async function remove(table, column, value) {
 // ============================================================
 
 const CORS_ORIGIN = process.env.CORS_ORIGIN 
-    ? process.env.CORS_ORIGIN.split(',') 
+    ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
     : [
         'https://zoomdz.com',
         'https://www.zoomdz.com',
@@ -255,6 +255,9 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN
         'http://localhost:3001',
         'http://localhost:3002'
     ];
+
+// Log CORS origins للتصحيح
+console.log('🔐 CORS Origins:', CORS_ORIGIN);
 
 function isOriginAllowed(origin) {
     if (!origin) return true;
@@ -338,23 +341,50 @@ app.use(helmet({
 // CORS
 const corsOptions = {
     origin: function (origin, callback) {
+        // اسمح بالطلبات بدون origin (مثل طلبات من mobile apps)
         if (!origin) {
+            console.log('✅ السماح بطلب بدون Origin header');
             return callback(null, true);
         }
+
+        // تحقق من المصدر المسموح
         if (isOriginAllowed(origin)) {
+            console.log(`✅ مصدر مسموح: ${origin}`);
             callback(null, true);
         } else {
-            console.log(`❌ رفض المصدر: ${origin}`);
-            callback(new Error(`غير مسموح به من هذا المصدر`));
+            console.error(`❌ رفض المصدر: ${origin}`);
+            console.error(`📋 المصادر المسموحة:`, CORS_ORIGIN);
+            // بدلاً من رفع error، اسمح به في بيئة التطوير
+            if (process.env.NODE_ENV === 'development') {
+                callback(null, true);
+            } else {
+                callback(new Error(`CORS Policy: Origin ${origin} غير مسموح به`));
+            }
         }
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-CSRF-Token', 'X-Signature', 'Accept', 'Origin', 'X-HTTP-Method-Override'],
+    allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'X-Requested-With',
+        'X-CSRF-Token',
+        'X-Signature',
+        'Accept',
+        'Origin',
+        'X-HTTP-Method-Override',
+        'Access-Control-Request-Headers',
+        'Access-Control-Request-Method'
+    ],
     credentials: true,
     maxAge: 86400,
-    optionsSuccessStatus: 200
+    optionsSuccessStatus: 200,
+    preflightContinue: false
 };
+
 app.use(cors(corsOptions));
+
+// معالج OPTIONS العام (for preflight requests)
+app.options('*', cors(corsOptions));
 
 // Cookie Parser
 app.use(cookieParser());
@@ -851,7 +881,7 @@ const walletRoutes = require('./routes/wallet');
 const notificationRoutes = require('./routes/notification');
 
 // ============================================================
-// ✅ استخدام المسارات - الترتيب مهم جداً!
+// ✅ استخ��ام المسارات - الترتيب مهم جداً!
 // ============================================================
 
 // ✅ 1. المسارات العامة (لا تحتاج مصادقة)

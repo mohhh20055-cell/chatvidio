@@ -3,7 +3,7 @@
 // ============================================================
 
 const CORS_ORIGIN = process.env.CORS_ORIGIN 
-    ? process.env.CORS_ORIGIN.split(',') 
+    ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
     : [
         'https://zoomdz.com',
         'https://www.zoomdz.com',
@@ -15,6 +15,8 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN
         'http://localhost:3001',
         'http://localhost:3002'
     ];
+
+console.log('[Security Config] CORS_ORIGIN configured:', CORS_ORIGIN.length, 'origins');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'zoomdz_secret_key_2024_for_testing_only';
 const JWT_EXPIRY = '24h';
