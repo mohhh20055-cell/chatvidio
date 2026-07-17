@@ -2733,10 +2733,10 @@
         <i class="fas fa-chevron-down nav-caret"></i>
     </a>
    <div class="nav-dropdown-menu" id="createAccountMenuNav">
-    <a onclick="document.getElementById('loginSection').style.display='block'; switchTab('student-register');">
+    <a onclick="showRegister('student-register');">
         <i class="fas fa-user-graduate"></i> إنشاء حساب طالب
     </a>
-    <a onclick="document.getElementById('loginSection').style.display='block'; switchTab('teacher-register');">
+    <a onclick="showRegister('teacher-register');">
         <i class="fas fa-chalkboard-teacher"></i> إنشاء حساب أستاذ
     </a>
 </div>
@@ -3558,6 +3558,24 @@ function showLogin() {
     setActiveTab('loginTabNav');
     switchTab('login');
     resetRecaptchaState();
+}
+
+function showRegister(tab) {
+    document.getElementById('homeSection').style.display = 'none';
+    document.getElementById('aboutSection').style.display = 'none';
+    document.getElementById('teachersSection').style.display = 'none';
+    var liveSection = document.getElementById('liveSection');
+    if (liveSection) liveSection.style.display = 'none';
+    document.getElementById('referralSection').style.display = 'none';
+    document.getElementById('developersSection').style.display = 'none';
+    document.getElementById('profileSection').style.display = 'none';
+    document.getElementById('loginSection').style.display = 'block';
+    document.getElementById('downloadAppSection').style.display = 'none';
+    document.getElementById('supportSection').style.display = 'none';
+    setActiveTab('loginTabNav');
+    switchTab(tab);
+    document.getElementById('createAccountMenuNav').classList.remove('show');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function toggleCreateAccountNav(e) {
