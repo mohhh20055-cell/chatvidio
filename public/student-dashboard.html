@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>ZoomDz | لوحة الطالب</title>
-    <link rel="icon" type="image/png" href="/images/zoomdz-logo.png">
-    <link rel="shortcut icon" href="/images/zoomdz-logo.png">
-    <link rel="apple-touch-icon" href="/images/zoomdz-logo.png">
+    <link rel="icon" type="image/png" href="/images/zoomdz.png">
+    <link rel="shortcut icon" href="/images/zoomdz.png">
+    <link rel="apple-touch-icon" href="/images/zoomdz.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
@@ -1648,6 +1648,9 @@
         </div>
 
         <input type="file" id="editProfileImage" accept="image/*">
+        <p style="font-size:0.7rem; color:var(--gray-400); margin-top:4px;">
+            <i class="fas fa-info-circle"></i> اختيار صورة جديدة اختياري، يمكنك ترك الحقل فارغاً للاحتفاظ بالصورة الحالية
+        </p>
     </div>
     <div class="modal-footer">
         <button class="cancel-btn" onclick="closeModal()">إلغاء</button>
@@ -1721,6 +1724,7 @@
 
     console.log('🌐 API Base URL:', API_BASE_URL);
 
+    // ✅ نفس قائمة المستويات المستخدمة في صفحة التسجيل
     const levelMap = {
         '5eme_pri': 'خامسة ابتدائي',
         '1ere_am': 'أولى متوسط',
@@ -1756,7 +1760,6 @@
     async function fetchWithAuth(url, options = {}) {
         const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
         
-        // ✅ التحقق من وجود التوكن أولاً
         if (!authToken) {
             console.error('❌ authToken غير موجود!');
             localStorage.removeItem('token');
@@ -2075,7 +2078,6 @@
 
     async function loadUserData() {
         try {
-            // ✅ انتظار قليل لضمان تحميل localStorage
             await new Promise(resolve => setTimeout(resolve, 100));
             
             const storedData = localStorage.getItem('userData');
@@ -2087,7 +2089,6 @@
             }
             console.log('🔍 التحقق من userData:', storedData ? 'موجود ✅' : 'غير موجود ❌');
             
-            // ✅ التحقق من وجود البيانات
             if (!token || !storedData) {
                 console.log('⚠️ لا يوجد توكن أو بيانات مستخدم');
                 localStorage.removeItem('token');
@@ -2096,7 +2097,6 @@
                 return;
             }
             
-            // ✅ تعيين authToken قبل أي طلب
             authToken = token;
             console.log('✅ authToken تم تعيينها:', authToken ? 'نعم' : 'لا');
             console.log('✅ authToken length:', authToken?.length);
@@ -2122,7 +2122,6 @@
                 return;
             }
             
-            // ✅ تحقق من وجود التوكن والـ ID
             if (!authToken || !studentId) {
                 console.log('⚠️ لا يوجد توكن أو معرف طالب، جاري التوجيه للصفحة الرئيسية');
                 localStorage.removeItem('token');
@@ -2133,7 +2132,6 @@
 
             await getCsrfToken();
 
-            // ✅ استخدم مسار /me للتحقق من التوكن (أكثر موثوقية)
             console.log('📥 جلب بيانات الطالب من الخادم...');
             console.log('📥 authToken قبل الطلب:', authToken ? 'موجود' : 'فارغ');
             const res = await fetchWithAuth('/api/student/me');
@@ -2169,7 +2167,6 @@
                 loadOffers();
             } else {
                 console.error('❌ خطأ في بيانات الطالب:', data.error || 'بيانات غير صالحة');
-                // ✅ إذا كان الخطأ "المستخدم غير موجود"، يتم توجيه للصفحة الرئيسية
                 if (data.error && data.error.includes('غير موجود')) {
                     localStorage.removeItem('token');
                     localStorage.removeItem('userData');
@@ -2183,6 +2180,7 @@
             showToast('حدث خطأ في تحميل البيانات', 'error');
         }
     }
+
     function updateUI() {
         if (!userData) return;
         const userName = userData.full_name || 'طالب';
@@ -2254,7 +2252,7 @@
         if (!offers || offers.length === 0) {
             let message = 'لا توجد عروض متاحة حالياً';
             if (userData && userData.education_level) {
-                message = `لا توجد عر��ض متاحة لمستواك الدراسي (${levelMap[userData.education_level] || userData.education_level})`;
+                message = `لا توجد عروض متاحة لمستواك الدراسي (${levelMap[userData.education_level] || userData.education_level})`;
             }
             container.innerHTML = `<p style="text-align:center; padding:30px; color:var(--gray-400);">${message}</p>`;
             return;
@@ -2746,7 +2744,7 @@
                 renderRewardHistory(infoData.rewards || []);
             }
         } catch(e) {
-            if (e.message !== 'انته�� صلاحية الجلسة') {
+            if (e.message !== 'انتهت صلاحية الجلسة') {
                 console.error('خطأ في تحميل بيانات الإحالة:', e);
             }
         }
@@ -2954,7 +2952,7 @@
     }
 
     // ================================================================
-    // ✅ EDIT PROFILE
+    // ✅ EDIT PROFILE - مع تعديل المستوى وعدم رفع الصورة إجبارياً
     // ================================================================
 
     function showEditProfileModal() {
@@ -2970,6 +2968,9 @@
             } else {
                 otherGroup.style.display = 'none';
             }
+            
+            // ✅ إعادة تعيين حقل رفع الصورة
+            document.getElementById('editProfileImage').value = '';
         }
         document.getElementById('modalOverlay').style.display = 'block';
         document.getElementById('editProfileModal').style.display = 'block';
@@ -3004,10 +3005,15 @@
         }
         formData.append('education_level', educationLevel);
         
+        // ✅ فقط إذا اختار المستخدم صورة جديدة يتم إرسالها، وإلا يتم تجاهلها
         const imageFile = document.getElementById('editProfileImage').files[0];
         if (imageFile) {
             formData.append('profile_image', imageFile);
+            console.log('📷 تم اختيار صورة جديدة سيتم رفعها');
+        } else {
+            console.log('📷 لم يتم اختيار صورة جديدة، سيتم الاحتفاظ بالصورة الحالية');
         }
+        
         try {
             const res = await fetchWithAuth('/api/student/update-profile', { 
                 method: 'POST', 
