@@ -55,7 +55,7 @@
             min-width: 100%;
             max-width: 100%;
             color: var(--gray-800);
-            padding-top: 104px;
+            padding-top: 130px;
             margin: 0;
             -webkit-font-smoothing: antialiased;
             text-rendering: optimizeLegibility;
@@ -71,7 +71,7 @@
             top: 66px;
             left: 0;
             right: 0;
-            z-index: 999;
+            z-index: 1001;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             font-family: 'Cairo', sans-serif;
         }
@@ -1621,7 +1621,7 @@
                     <div class="progress-fill" id="timerProgress" style="width: 100%;"></div>
                 </div>
                 <div style="font-size: 0.75rem; color: rgba(255,255,255,0.5); margin-top: 6px;">
-                    <span id="timerRemainingLabel">اضغط على "إضافة الطلاب" لبدء العد التنازلي</span>
+                    <span id="timerRemainingLabel">اضغط على "��ضافة الطلاب" لبدء العد التنازلي</span>
                 </div>
             </div>
             <div class="timer-actions">
@@ -2791,7 +2791,7 @@
         if (streamSyncInterval) clearInterval(streamSyncInterval);
         streamSyncInterval = setInterval(syncStreamStatus, 30000);
         
-        // مراقبة نافذة Jitsi - إذا أُغلقت يتوقف العداد المحلي
+        // مراقبة نافذة Jitsi - إذا أُغلقت يتوقف ا��عداد المحلي
         startJitsiWindowWatch();
     }
 
@@ -3035,7 +3035,7 @@
                 // وقف العداد المحلي والـ heartbeat
                 if (streamIntervalId) { clearInterval(streamIntervalId); streamIntervalId = null; }
                 if (heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null; }
-                // إعادة ضبط الحالة لتظهر زر "إضافة الطلاب" مرة أخرى عند إغلاق النافذة بالخطأ
+                // إعادة ضبط الحالة لتظهر زر "إضافة ال��لاب" مرة أخرى عند إغلاق النافذة بالخطأ
                 if (timerStarted || streamPaused) {
                     timerStarted = false;
                     streamPaused = false;
