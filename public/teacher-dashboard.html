@@ -68,10 +68,10 @@
             padding: 12px 20px;
             overflow: hidden;
             position: fixed;
-            top: 66px;
+            top: 0;
             left: 0;
             right: 0;
-            z-index: 1001;
+            z-index: 999;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             font-family: 'Cairo', sans-serif;
         }
@@ -332,7 +332,7 @@
         /* ===== NAVBAR ===== */
         .navbar {
             position: fixed;
-            top: 0;
+            top: 38px;
             left: 0;
             right: 0;
             z-index: 1000;
@@ -3088,7 +3088,7 @@
     // ✅ HANDLERS للتعامل مع إغلاق الصفحة أو التنقل بعيداً
     // ================================================================
 
-    // عند مغادرة لوحة التحكم (إغلاق/تحديث الصفحة الرئيسية)
+    // عند مغادرة لوحة التحكم (إغلاق/تحدي�� الصفحة الرئيسية)
     // الخادم يستمر بالعد - انقطاع heartbeat سيُفعّل grace period تلقائياً
     window.addEventListener('beforeunload', function(e) {
         if (timerStarted && streamOfferId) {
@@ -3353,7 +3353,7 @@
             const terminatedStatuses = ['completed', 'cancelled'];
 
             if (terminatedStatuses.includes(data.status)) {
-                showToast('⚠️ هذا البث انتهى ولا يمكن فتحه مرة أخرى', 'warning');
+                showToast('⚠️ هذا البث انتهى ولا يمكن فتحه مرة أخ��ى', 'warning');
                 return;
             }
 
