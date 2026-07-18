@@ -3,7 +3,6 @@
 // ============================================================
 
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 
 // ============================================================
@@ -21,38 +20,24 @@ const LOG_LEVEL = process.env.LOG_LEVEL
     ? LOG_LEVELS[process.env.LOG_LEVEL.toUpperCase()] || LOG_LEVELS.INFO 
     : LOG_LEVELS.INFO;
 
-// اكتشاف بيئة serverless (Vercel / AWS Lambda) حيث نظام الملفات للقراءة فقط
-const IS_SERVERLESS = Boolean(
-    process.env.VERCEL ||
-    process.env.AWS_LAMBDA_FUNCTION_NAME ||
-    process.env.LAMBDA_TASK_ROOT ||
-    process.env.NOW_REGION
-);
-
-// مجلد السجلات: في بيئة serverless المجلد الوحيد القابل للكتابة هو /tmp
-const LOG_DIR = process.env.LOG_DIR
-    || (IS_SERVERLESS ? path.join(os.tmpdir(), 'logs') : path.join(__dirname, '..', 'logs'));
+// مجلد السجلات
+const LOG_DIR = process.env.LOG_DIR || path.join(__dirname, '..', 'logs');
 const ERROR_LOG_FILE = path.join(LOG_DIR, 'errors.log');
 const ACCESS_LOG_FILE = path.join(LOG_DIR, 'access.log');
 const AUDIT_LOG_FILE = path.join(LOG_DIR, 'audit.log');
-
-// عند تعطّل الكتابة إلى الملفات نعتمد على وحدة التحكم والذاكرة فقط
-let fileLoggingEnabled = true;
 
 // ============================================================
 // إنشاء مجلد السجلات إذا لم يكن موجوداً
 // ============================================================
 
 function ensureLogDir() {
-    try {
-        if (!fs.existsSync(LOG_DIR)) {
+    if (!fs.existsSync(LOG_DIR)) {
+        try {
             fs.mkdirSync(LOG_DIR, { recursive: true });
             console.log('✅ تم إنشاء مجلد السجلات:', LOG_DIR);
+        } catch (error) {
+            console.error('❌ فشل في إنشاء مجلد السجلات:', error.message);
         }
-    } catch (error) {
-        // نظام الملفات للقراءة فقط (مثل Vercel/Lambda) — نكتفي بالتسجيل في الذاكرة ووحدة التحكم
-        fileLoggingEnabled = false;
-        console.warn('⚠️ تعذّر إنشاء مجلد السجلات، سيتم التسجيل في الذاكرة فقط:', error.message);
     }
 }
 
@@ -92,15 +77,10 @@ function formatLogEntry(level, message, details = {}) {
 // ============================================================
 
 function writeToFile(filePath, content) {
-    // تخطي الكتابة إذا كان نظام الملفات غير قابل للكتابة (بيئة serverless)
-    if (!fileLoggingEnabled) return;
-
     try {
         fs.appendFileSync(filePath, content + '\n');
     } catch (error) {
-        // تعطيل الكتابة نهائياً لتفادي تكرار الأخطاء في كل عملية تسجيل
-        fileLoggingEnabled = false;
-        console.warn('⚠️ تعذّر الكتابة إلى ملف السجل، سيتم التسجيل في الذاكرة فقط:', error.message);
+        console.error('❌ فشل في كتابة السجل:', error.message);
     }
 }
 
@@ -241,22 +221,22 @@ function debug(message, details = {}) {
 // تسجيل أخطاء Express
 // ============================================================
 
-function logExpressError(err, req = {}, res = {}) {
+function logExpressError(error, req = {}, res = {}) {
     const errorInfo = {
         method: req.method,
         url: req.originalUrl || req.url,
         ip: req.ip || req.connection?.remoteAddress,
-        userAgent: typeof req.get === 'function' ? req.get('User-Agent') : undefined,
+        userAgent: req.get('User-Agent'),
         userId: req.user?.userId,
         userRole: req.user?.role,
         statusCode: res.statusCode,
-        errorName: err.name,
-        errorMessage: err.message,
-        stack: err.stack,
+        errorName: error.name,
+        errorMessage: error.message,
+        stack: error.stack,
         timestamp: new Date().toISOString()
     };
     
-    return error(err.message || 'Express error', errorInfo);
+    return error(message, errorInfo);
 }
 
 // ============================================================
@@ -282,7 +262,7 @@ function logSecurityEvent(event, details = {}) {
 }
 
 // ============================================================
-// الحصول على السجلات من الذاكر��
+// الحصول على السجلات من الذاكرة
 // ============================================================
 
 function getLogs(type = 'all', limit = 100) {
