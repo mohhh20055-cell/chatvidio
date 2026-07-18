@@ -357,12 +357,12 @@
             border: 1px solid rgba(15, 92, 191, 0.08);
             display: none;
             overflow: hidden;
-            z-index: 2000;
+            z-index: 9999;
             max-height: 460px;
         }
         
         .notif-dropdown.open { 
-            display: block; 
+            display: block !important; 
             animation: slideDown 0.25s ease; 
         }
         
@@ -560,7 +560,7 @@
         .profile-dropdown .dropdown-item.danger { color: var(--danger); }
         .profile-dropdown .dropdown-item.danger i { color: var(--danger); }
 
-        /* ===== باقي التنسيقات (محذوفة للاختصار، لكنها موجودة في الكود الكامل) ===== */
+        /* ===== باقي التنسيقات ===== */
         .main-wrapper { width: 100%; max-width: 100%; margin: 0 auto; padding: 16px; }
         .content-area { background: white; border-radius: var(--radius-md); padding: 20px; box-shadow: var(--shadow-sm); border: 1px solid rgba(0,0,0,0.04); min-height: 70vh; width: 100%; }
         .section-title { font-size: 1.1rem; font-weight: 800; margin-bottom: 16px; border-right: 4px solid var(--primary); padding-right: 12px; display: flex; align-items: center; gap: 10px; color: var(--gray-800); }
@@ -778,32 +778,6 @@
         </a>
 
         <div class="nav-tabs" id="navTabs">
-            <!-- ===== زر الإشعارات في البداية (أول تبويب) ===== -->
-            <div class="nav-notifications" id="notifContainer">
-                <button class="nav-notifications-btn" onclick="toggleNotifications(event)" id="notifBtn">
-                    <i class="fas fa-bell"></i>
-                    <span class="notif-badge hidden" id="notifBadge">0</span>
-                </button>
-                <div class="notif-dropdown" id="notifDropdown">
-                    <div class="notif-dropdown-header">
-                        <div class="notif-title-group">
-                            <i class="fas fa-bell"></i>
-                            <h4>الإشعارات</h4>
-                        </div>
-                        <div style="display:flex; align-items:center;">
-                            <span class="notif-count" id="notifCountLabel">0</span>
-                            <button class="mark-read" onclick="markAllNotifications()">تحديد الكل كمقروء</button>
-                        </div>
-                    </div>
-                    <div class="notif-list" id="notifList">
-                        <div class="notif-empty">
-                            <i class="fas fa-bell-slash"></i>
-                            لا توجد إشعارات
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- ===== باقي التبويبات ===== -->
             <button class="nav-tab active" data-section="profile" onclick="showSection('profile')">
                 <i class="fas fa-user"></i>
@@ -830,6 +804,32 @@
                 <i class="fas fa-envelope"></i>
                 <span class="tab-label">الرسائل</span>
             </button>
+            
+            <!-- ===== زر الإشعارات بجانب تبويبة الرسائل ===== -->
+            <div class="nav-notifications" id="notifContainer">
+                <button class="nav-notifications-btn" onclick="toggleNotifications(event)" id="notifBtn">
+                    <i class="fas fa-bell"></i>
+                    <span class="notif-badge hidden" id="notifBadge">0</span>
+                </button>
+                <div class="notif-dropdown" id="notifDropdown">
+                    <div class="notif-dropdown-header">
+                        <div class="notif-title-group">
+                            <i class="fas fa-bell"></i>
+                            <h4>الإشعارات</h4>
+                        </div>
+                        <div style="display:flex; align-items:center;">
+                            <span class="notif-count" id="notifCountLabel">0</span>
+                            <button class="mark-read" onclick="markAllNotifications()">تحديد الكل كمقروء</button>
+                        </div>
+                    </div>
+                    <div class="notif-list" id="notifList">
+                        <div class="notif-empty">
+                            <i class="fas fa-bell-slash"></i>
+                            لا توجد إشعارات
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="nav-balance" onclick="showSection('earnings')" title="الرصيد المتاح">
@@ -2422,12 +2422,6 @@
     }
 
     // ================================================================
-    // دوال الإشعارات - دوال البث
-    // ================================================================
-
-    // البث المباشر (تم اختصارها للحفاظ على طول الكود)
-
-    // ================================================================
     // دوال المودالات
     // ================================================================
 
@@ -2453,7 +2447,7 @@
     }
 
     // ================================================================
-    // دوال البث (مختصرة)
+    // دوال البث
     // ================================================================
 
     async function checkActiveStream() {
@@ -2465,9 +2459,6 @@
             if (activeOffer) {
                 activeStream = activeOffer;
                 streamOfferId = activeOffer.id;
-                // startStreamTimer(activeOffer);
-            } else {
-                // hideStreamTimer();
             }
         } catch(e) { if (e.message !== 'انتهت صلاحية الجلسة') console.error(e); }
     }
