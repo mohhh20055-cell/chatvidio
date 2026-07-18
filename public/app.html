@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>تطبيق ZoomDz</title>
+  <meta name="description" content="تطبيق ZoomDz الرسمي لتجربة تعليمية أسرع وأكثر سهولة على الهاتف" />
+  <meta name="theme-color" content="#0f5cbf" />
+  <link rel="icon" type="image/png" href="/images/zoomdz-logo.png">
+  <link rel="shortcut icon" href="/images/zoomdz-logo.png">
+  <link rel="apple-touch-icon" href="/images/zoomdz-logo.png">
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root { --primary:#0f5cbf; --secondary:#10b981; --text:#0f172a; --muted:#64748b; --bg:#f8fafc; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:'Cairo',sans-serif; background:linear-gradient(135deg,#f8fbff 0%,#eef5ff 100%); color:var(--text); min-height:100vh; }
+    .container { max-width:1100px; margin:0 auto; padding:24px 18px 48px; }
+    .hero { background:white; border-radius:24px; padding:24px; box-shadow:0 16px 40px rgba(15,92,191,0.08); display:grid; grid-template-columns:1.1fr 0.9fr; gap:24px; align-items:center; }
+    .badge { display:inline-block; background:#e8f0fe; color:var(--primary); padding:8px 12px; border-radius:999px; font-weight:700; font-size:0.85rem; }
+    h1 { font-size:2rem; margin:10px 0 12px; line-height:1.4; }
+    p { color:var(--muted); font-size:1rem; line-height:1.8; }
+    .actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:18px; }
+    .btn { display:inline-flex; align-items:center; gap:8px; padding:12px 18px; border-radius:999px; text-decoration:none; font-weight:800; color:white; background:var(--primary); }
+    .btn.secondary { background:var(--secondary); }
+    .phone { background:linear-gradient(135deg,#0f5cbf 0%,#1e3c72 100%); border-radius:28px; padding:22px; color:white; min-height:360px; display:flex; flex-direction:column; justify-content:space-between; }
+    .phone-card { background:rgba(255,255,255,0.14); border:1px solid rgba(255,255,255,0.2); border-radius:20px; padding:16px; }
+    .features { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:24px; }
+    .feature { background:white; border-radius:18px; padding:16px; text-align:center; box-shadow:0 8px 24px rgba(15,92,191,0.06); }
+    .feature i { font-size:1.35rem; color:var(--primary); margin-bottom:8px; }
+    .feature h3 { font-size:0.95rem; margin:0 0 6px; }
+    .feature p { font-size:0.8rem; margin:0; }
+    .footer-note { text-align:center; color:var(--muted); margin-top:20px; font-size:0.9rem; }
+    @media (max-width:768px) { 
+      .hero { grid-template-columns:1fr; }
+      .features { grid-template-columns:1fr; }
+      h1 { font-size:1.6rem; }
+      body { overflow-x: hidden; }
+    }
+    @media (max-width:480px) {
+      .container { padding:16px 12px 32px; }
+      .hero { padding:18px; }
+      h1 { font-size:1.3rem; }
+      p { font-size:0.9rem; }
+      .actions { gap:8px; }
+      .btn { padding:10px 14px; font-size:0.85rem; }
+      .feature { padding:12px; }
+      .feature i { font-size:1.1rem; }
+      .feature h3 { font-size:0.85rem; }
+      .feature p { font-size:0.7rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <section class="hero">
+      <div>
+        <span class="badge"><i class="fas fa-mobile-alt"></i> تطبيق ZoomDz الرسمي</span>
+        <h1>منصة تعليمية حديثة على هاتفك بكل سهولة</h1>
+        <p>استخدم تطبيق ZoomDz للوصول إلى الأساتذة، إدارة الحصص، والاطلاع على الإشعارات من مكان واحد وبسرعة عالية.</p>
+        <div class="actions">
+          <a class="btn" href="/download-app" target="_blank" rel="noopener"><i class="fas fa-download"></i> حمل التطبيق الآن</a>
+          <a class="btn secondary" href="/" target="_self"><i class="fas fa-home"></i> افتح المنصة</a>
+        </div>
+      </div>
+      <div class="phone">
+        <div class="phone-card">
+          <h3 style="margin:0 0 8px;">لوحة التطبيق</h3>
+          <p style="margin:0; color:#dbeafe;">مرحبًا بك في تجربة تعليمية أسرع ومناسبة للجوال</p>
+        </div>
+        <div class="phone-card">
+          <div style="display:flex; align-items:center; gap:8px; font-weight:700;"><i class="fas fa-check-circle"></i> جاهز للاستخدام</div>
+          <div style="margin-top:10px; font-size:0.9rem; color:#dbeafe;">تصفح العروض، ابحث عن الأساتذة، وابدأ رحلتك التعليمية الآن.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="features">
+      <div class="feature">
+        <i class="fas fa-bolt"></i>
+        <h3>سريع</h3>
+        <p>أداء خفيف وسلس على الهاتف</p>
+      </div>
+      <div class="feature">
+        <i class="fas fa-users"></i>
+        <h3>تواصل مباشر</h3>
+        <p>الوصول إلى الأساتذة بسهولة</p>
+      </div>
+      <div class="feature">
+        <i class="fas fa-shield-alt"></i>
+        <h3>آمن</h3>
+        <p>حماية بيانات الحساب والدفعات</p>
+      </div>
+    </section>
+
+    <p class="footer-note">يمكنك تحميل التطبيق مباشرة من الرابط أعلاه أو العودة إلى المنصة الرئيسية للاطلاع على الخدمات.</p>
+  </div>
+</body>
+</html>

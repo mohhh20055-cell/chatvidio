@@ -1,0 +1,3107 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>ZoomDz | لوحة الطالب</title>
+    <link rel="icon" type="image/png" href="/images/zoomdz-logo.png">
+    <link rel="shortcut icon" href="/images/zoomdz-logo.png">
+    <link rel="apple-touch-icon" href="/images/zoomdz-logo.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        /* ===== RESET & BASE ===== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #0f5cbf;
+            --primary-dark: #0b4a9c;
+            --primary-light: #f0f6ff;
+            --secondary: #10b981;
+            --secondary-dark: #059669;
+            --secondary-light: #f0fdf4;
+            --gold: #f59e0b;
+            --gold-dark: #d97706;
+            --gold-light: #fefbeb;
+            --danger: #ef4444;
+            --danger-dark: #dc2626;
+            --gray-50: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1;
+            --gray-400: #94a3b8;
+            --gray-500: #64748b;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1e293b;
+            --gray-900: #0f172a;
+            --gradient-main: linear-gradient(135deg, #0f5cbf 0%, #1e3c72 100%);
+            --gradient-secondary: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            --gradient-gold: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            --gradient-gift: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+            --gradient-danger: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+            --radius-sm: 12px;
+            --radius-md: 18px;
+            --radius-lg: 28px;
+            --transition: all 0.2s ease;
+        }
+        html { scroll-behavior: smooth; }
+        img, svg { display: block; max-width: 100%; height: auto; }
+        button, input, select, textarea { font: inherit; }
+        * { -webkit-tap-highlight-color: transparent; }
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background: #f8fafc; 
+            overflow-x: hidden;
+            width: 100%;
+            min-height: 100vh;
+            min-width: 100%;
+            color: var(--gray-800);
+            padding-top: 132px;
+            margin: 0;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding-top: 60px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            body {
+                padding-top: 56px;
+            }
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--gray-100); }
+        ::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--gray-400); }
+
+        /* ===== PASSWORD BADGE ===== */
+        .password-badge {
+            display: inline-block;
+            background: #0f3460;
+            padding: 2px 14px;
+            border-radius: 20px;
+            color: #60a5fa;
+            font-size: 0.75rem;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 2px;
+            border: 1px dashed rgba(96, 165, 250, 0.3);
+            margin-right: 6px;
+        }
+        .password-label {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+            font-weight: 700;
+            margin-left: 4px;
+        }
+
+        /* ===== JOIN STREAM BUTTON ===== */
+        .join-stream-btn {
+            background: var(--gradient-main);
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            font-family: 'Cairo', sans-serif;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 4px 14px rgba(15, 92, 191, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .join-stream-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(15, 92, 191, 0.4);
+        }
+        .join-stream-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* ===== NEWS TICKER ===== */
+        .news-ticker {
+            background: linear-gradient(90deg, #0088cc 0%, #0066aa 100%);
+            color: white;
+            padding: 12px 20px;
+            overflow: hidden;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 999;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            font-family: 'Cairo', sans-serif;
+        }
+        
+        .ticker-content {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            animation: scroll 15s linear infinite;
+            white-space: nowrap;
+        }
+        
+        .ticker-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+        
+        .ticker-item i {
+            font-size: 1.2rem;
+            color: #fff;
+        }
+        
+        .ticker-item a {
+            color: #fff;
+            text-decoration: none;
+            border-bottom: 2px dotted rgba(255,255,255,0.5);
+            padding-bottom: 2px;
+            transition: all 0.3s ease;
+        }
+        
+        .ticker-item a:hover {
+            border-bottom-color: #fff;
+            text-decoration: underline;
+        }
+        
+        @keyframes scroll {
+            0% {
+                transform: translateX(100%);
+            }
+            100% {
+                transform: translateX(-100%);
+            }
+        }
+        
+        /* ===== NAVBAR ===== */
+        .navbar {
+            margin-top: 38px;
+            position: fixed;
+            top: 38px;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.94);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--gray-200);
+            box-shadow: var(--shadow-sm);
+            min-height: 70px;
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+        }
+        .navbar-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+        .nav-logo i { 
+            font-size: 1.8rem;
+            background: var(--gradient-main);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .nav-logo span { 
+            font-size: 1.3rem; 
+            font-weight: 900; 
+            background: var(--gradient-main);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .nav-logo .highlight {
+            background: var(--gradient-secondary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex: 1;
+            justify-content: center;
+            overflow-x: auto;
+            padding: 0 8px;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .nav-tabs::-webkit-scrollbar { display: none; }
+        
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 0 12px;
+                min-height: 60px;
+            }
+            
+            .nav-tab {
+                padding: 6px 12px;
+                font-size: 0.75rem;
+            }
+            
+            .nav-balance {
+                padding: 4px 10px;
+                font-size: 0.75rem;
+            }
+            
+            .nav-logo span {
+                font-size: 1rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .nav-balance {
+                display: none;
+            }
+            
+            .nav-tabs {
+                gap: 3px;
+            }
+            
+            .nav-logo span {
+                font-size: 0.9rem;
+            }
+        }
+        .nav-tab {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 30px;
+            border: none;
+            background: transparent;
+            color: var(--gray-600);
+            font-family: 'Cairo', sans-serif;
+            font-weight: 700;
+            font-size: 0.88rem;
+            cursor: pointer;
+            transition: var(--transition);
+            white-space: nowrap;
+            flex-shrink: 0;
+            position: relative;
+        }
+        .nav-tab i { font-size: 1.05rem; }
+        .nav-tab:hover {
+            background: var(--gray-100);
+            color: var(--gray-900);
+        }
+        .nav-tab.active {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .nav-balance {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--secondary-light);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            padding: 6px 16px;
+            border-radius: 30px;
+            color: var(--secondary-dark);
+            font-weight: 800;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .nav-balance:hover {
+            background: var(--secondary-dark);
+            color: white;
+            transform: translateY(-1px);
+        }
+        .nav-balance i { font-size: 1rem; }
+        .nav-balance .currency { font-size: 0.75rem; margin-right: 2px; }
+
+        .nav-notifications {
+            position: relative;
+            flex-shrink: 0;
+        }
+        .nav-notifications-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            border: 1px solid var(--gray-200);
+            background: white;
+            color: var(--gray-600);
+            font-size: 1.15rem;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .nav-notifications-btn:hover {
+            background: var(--gray-50);
+            color: var(--primary);
+            border-color: var(--gray-300);
+        }
+        .nav-notifications-btn .notif-badge {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            background: var(--danger);
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 800;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid white;
+            box-shadow: 0 2px 5px rgba(239, 68, 68, 0.2);
+            animation: pulse-dot 2s infinite;
+        }
+        .nav-notifications-btn .notif-badge.hidden { display: none; }
+        @keyframes pulse-dot {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .notif-dropdown {
+            position: absolute;
+            top: 52px;
+            left: 0;
+            width: 380px;
+            max-width: 92vw;
+            background: white;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--gray-200);
+            display: none;
+            overflow: hidden;
+            z-index: 1001;
+            max-height: 450px;
+        }
+        .notif-dropdown.open { display: block; animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .notif-dropdown-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--gray-50);
+        }
+        .notif-dropdown-header h4 {
+            font-size: 0.95rem;
+            color: var(--gray-800);
+            font-weight: 800;
+        }
+        .notif-dropdown-header .mark-read {
+            font-size: 0.78rem;
+            color: var(--primary);
+            cursor: pointer;
+            font-weight: 700;
+            background: none;
+            border: none;
+            font-family: 'Cairo', sans-serif;
+        }
+        .notif-dropdown-header .mark-read:hover { text-decoration: underline; }
+        .notif-list {
+            max-height: 380px;
+            overflow-y: auto;
+            padding: 4px 0;
+        }
+        .notif-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--gray-100);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .notif-item:hover { background: var(--gray-50); }
+        .notif-item.unread { background: var(--primary-light); border-right: 4px solid var(--primary); }
+        .notif-item .notif-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 1rem;
+            color: white;
+        }
+        .notif-item .notif-icon.success { background: var(--gradient-secondary); }
+        .notif-item .notif-icon.warning { background: var(--gradient-gold); }
+        .notif-item .notif-icon.info { background: var(--gradient-main); }
+        .notif-item .notif-icon.danger { background: var(--gradient-danger); }
+        .notif-item .notif-icon.gift { background: var(--gradient-gift); }
+        .notif-item .notif-content { flex: 1; min-width: 0; }
+        .notif-item .notif-title {
+            font-weight: 800;
+            font-size: 0.88rem;
+            color: var(--gray-800);
+        }
+        .notif-item .notif-message {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+            margin-top: 4px;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+        .notif-item .notif-time {
+            font-size: 0.7rem;
+            color: var(--gray-400);
+            margin-top: 6px;
+        }
+        .notif-item .notif-action button {
+            background: var(--gradient-main);
+            color: white;
+            border: none;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: var(--transition);
+            margin-top: 8px;
+            font-family: 'Cairo', sans-serif;
+        }
+        .notif-item .notif-action button:hover { opacity: 0.9; transform: translateY(-1px); }
+        .notif-empty {
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--gray-400);
+        }
+        .notif-empty i { font-size: 2.2rem; margin-bottom: 12px; display: block; }
+
+        .nav-profile {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            padding: 4px 12px 4px 6px;
+            border-radius: 30px;
+            background: var(--gray-100);
+            transition: var(--transition);
+            flex-shrink: 0;
+            border: 1px solid transparent;
+        }
+        .nav-profile:hover {
+            border-color: var(--primary);
+            background: white;
+            box-shadow: var(--shadow-sm);
+        }
+        .nav-profile img {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid white;
+            box-shadow: var(--shadow-sm);
+        }
+        .nav-profile .profile-name {
+            font-weight: 800;
+            font-size: 0.85rem;
+            color: var(--gray-700);
+            max-width: 90px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .nav-profile .profile-chevron {
+            font-size: 0.65rem;
+            color: var(--gray-500);
+            transition: var(--transition);
+        }
+        .nav-profile:hover .profile-chevron { color: var(--primary); }
+
+        .profile-dropdown {
+            position: absolute;
+            top: 56px;
+            left: 0;
+            width: 270px;
+            background: white;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--gray-200);
+            display: none;
+            z-index: 1001;
+            overflow: hidden;
+        }
+        .profile-dropdown.open { display: block; animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+        .profile-dropdown .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 18px;
+            cursor: pointer;
+            transition: var(--transition);
+            border: none;
+            background: none;
+            width: 100%;
+            font-family: 'Cairo', sans-serif;
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: var(--gray-700);
+            text-align: right;
+        }
+        .profile-dropdown .dropdown-item:hover { background: var(--gray-50); color: var(--primary); }
+        .profile-dropdown .dropdown-item i {
+            width: 20px;
+            color: var(--gray-400);
+            font-size: 1rem;
+        }
+        .profile-dropdown .dropdown-item:hover i { color: var(--primary); }
+        .profile-dropdown .dropdown-divider {
+            height: 1px;
+            background: var(--gray-200);
+            margin: 6px 0;
+        }
+        .profile-dropdown .dropdown-item.danger { color: var(--danger); }
+        .profile-dropdown .dropdown-item.danger i { color: var(--danger); }
+
+        /* ===== MAIN CONTENT ===== */
+        .main-wrapper {
+            width: 100%;
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 40px 30px;
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 30px;
+        }
+        
+        @media (max-width: 1024px) {
+            .main-wrapper {
+                padding: 30px 24px;
+                gap: 24px;
+                grid-template-columns: 1fr 320px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .main-wrapper {
+                padding: 20px 16px;
+                gap: 16px;
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .main-wrapper {
+                padding: 16px 12px;
+                gap: 12px;
+            }
+        }
+
+        .content-area {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            width: 100%;
+        }
+        
+        @media (max-width: 768px) {
+            .content-area {
+                padding: 20px;
+                border-radius: 16px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .content-area {
+                padding: 16px;
+                border-radius: 12px;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+            }
+        }
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: var(--gray-800);
+        }
+        
+        @media (max-width: 768px) {
+            .section-title {
+                font-size: 1.1rem;
+                margin-bottom: 16px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .section-title {
+                font-size: 1rem;
+                margin-bottom: 12px;
+            }
+        }
+        .section-title i { color: var(--primary); }
+
+        .offers-grid, .teachers-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+        
+        @media (max-width: 640px) {
+            .main-wrapper {
+                padding: 16px;
+                gap: 16px;
+            }
+            
+            .content-area {
+                padding: 16px;
+                border-radius: 12px;
+            }
+            
+            .section-title {
+                font-size: 1.1rem;
+                margin-bottom: 16px;
+            }
+            
+        .offer-title { 
+            font-size: 1rem; 
+            font-weight: 700; 
+            margin-bottom: 6px;
+        }
+        
+        @media (max-width: 768px) {
+            .offer-title {
+                font-size: 0.95rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .offer-title {
+                font-size: 0.9rem;
+            }
+        }
+            
+            .offer-info {
+                font-size: 0.75rem;
+            }
+        }
+
+        .offer-card, .teacher-card {
+            background: white;
+            border-radius: var(--radius-sm);
+            padding: 20px;
+            transition: var(--transition);
+            position: relative;
+            border: 1px solid var(--gray-200);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .offer-card:hover, .teacher-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary);
+        }
+        .offer-title { 
+            font-weight: 800; 
+            font-size: 1.05rem; 
+            margin: 8px 0 12px 0; 
+            color: var(--gray-900); 
+            line-height: 1.5;
+        }
+
+        .offer-info { 
+            font-size: 0.8rem; 
+            color: var(--gray-500);
+        }
+        
+        @media (max-width: 768px) {
+            .offer-info {
+                font-size: 0.75rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .offer-info {
+                font-size: 0.7rem;
+            }
+        }
+        .offer-info i { color: var(--gray-400); width: 16px; }
+
+        .free-badge {
+            background: var(--secondary-light);
+            color: var(--secondary-dark);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: 700;
+        }
+        .paid-badge {
+            background: var(--primary-light);
+            color: var(--primary);
+            border: 1px solid rgba(15, 92, 191, 0.15);
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: 700;
+        }
+
+        .book-btn {
+            background: var(--gradient-main);
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 30px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 16px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            font-family: 'Cairo', sans-serif;
+            transition: var(--transition);
+        }
+        .book-btn.free {
+            background: var(--gradient-secondary);
+        }
+        .book-btn:hover {
+            transform: translateY(-1px);
+            opacity: 0.95;
+        }
+        .book-btn:disabled {
+            background: var(--gray-200) !important;
+            color: var(--gray-400) !important;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        .teacher-avatar {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 12px;
+            border: 3px solid white;
+            box-shadow: var(--shadow-sm);
+        }
+        .teacher-name { font-weight: 800; font-size: 1rem; color: var(--gray-900); }
+        .teacher-specialty { font-size: 0.8rem; color: var(--gray-500); margin-top: 4px; }
+
+        .view-btn {
+            background: var(--gray-100);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 30px;
+            cursor: pointer;
+            margin-top: 14px;
+            width: 100%;
+            font-size: 0.85rem;
+            font-weight: 700;
+            font-family: 'Cairo', sans-serif;
+            transition: var(--transition);
+            color: var(--gray-700);
+        }
+        .view-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .insufficient-balance {
+            color: var(--danger-dark);
+            background: rgba(239, 68, 68, 0.05);
+            border: 1px dashed rgba(239, 68, 68, 0.2);
+            padding: 6px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 0.78rem;
+            font-weight: 700;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .booking-item, .transaction-item {
+            background: white;
+            border-radius: var(--radius-sm);
+            padding: 18px;
+            margin-bottom: 14px;
+            border: 1px solid var(--gray-200);
+            transition: var(--transition);
+        }
+        .booking-item:hover, .transaction-item:hover {
+            border-color: var(--primary-light);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .referral-card {
+            background: var(--gradient-gold);
+            color: white;
+            border-radius: var(--radius-sm);
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(245, 158, 11, 0.15);
+        }
+        .referral-card .referral-code {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px dashed rgba(255, 255, 255, 0.4);
+            border-radius: var(--radius-sm);
+            padding: 12px;
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 900;
+            letter-spacing: 2px;
+            font-family: 'Courier New', monospace, sans-serif;
+            cursor: pointer;
+            transition: var(--transition);
+            margin: 12px 0;
+        }
+        .referral-card .referral-code:hover { background: rgba(255, 255, 255, 0.3); }
+        .referral-card .share-btn {
+            background: white;
+            color: var(--gold-dark);
+            border: none;
+            padding: 10px 18px;
+            border-radius: 30px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: 800;
+            font-size: 0.88rem;
+            font-family: 'Cairo', sans-serif;
+            transition: var(--transition);
+            margin-top: 10px;
+            box-shadow: var(--shadow-sm);
+        }
+        .referral-card .share-btn:hover { background: var(--gray-50); transform: translateY(-1px); }
+        
+        .referral-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        .referral-stats .stat-item {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: var(--radius-sm);
+            padding: 12px;
+            text-align: center;
+        }
+        .referral-stats .stat-item .stat-number { font-size: 1.6rem; font-weight: 900; }
+        .referral-stats .stat-item .stat-label { font-size: 0.75rem; opacity: 0.9; margin-top: 4px; }
+
+        .gift-box-card {
+            background: var(--gradient-gift);
+            color: white;
+            border-radius: var(--radius-sm);
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(139, 92, 246, 0.15);
+            text-align: center;
+        }
+        .gift-box-card .gift-icon {
+            font-size: 3.8rem;
+            margin-bottom: 12px;
+            display: block;
+            animation: giftFloat 2s ease-in-out infinite;
+        }
+        @keyframes giftFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+        .gift-box-card .chances-display {
+            font-size: 2.5rem;
+            font-weight: 900;
+        }
+        .gift-box-card .chances-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin-bottom: 12px;
+        }
+        .open-gift-btn {
+            background: white;
+            color: #6d28d9;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 800;
+            font-size: 0.95rem;
+            font-family: 'Cairo', sans-serif;
+            transition: var(--transition);
+            margin-top: 12px;
+            width: 100%;
+            box-shadow: var(--shadow-sm);
+        }
+        .open-gift-btn:hover {
+            background: var(--gray-50);
+            transform: scale(1.02);
+        }
+        .open-gift-btn:disabled {
+            background: rgba(255,255,255,0.4) !important;
+            color: rgba(255,255,255,0.8) !important;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        .reward-item {
+            background: white;
+            border-radius: var(--radius-sm);
+            padding: 14px 18px;
+            margin-bottom: 10px;
+            border: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .reward-item .reward-icon { font-size: 1.3rem; margin-left: 10px; }
+        .reward-item .reward-amount { font-weight: 800; color: var(--gold-dark); font-size: 1rem; }
+
+        .left-sidebar, .right-sidebar { display: none; }
+        .left-sidebar { position: sticky; top: 94px; height: fit-content; }
+        .right-sidebar { position: sticky; top: 94px; height: fit-content; }
+
+        .profile-card {
+            background: white;
+            border-radius: var(--radius-sm);
+            padding: 24px 16px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-sm);
+            text-align: center;
+            border: 1px solid var(--gray-200);
+        }
+        .profile-avatar {
+            width: 86px;
+            height: 86px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 14px;
+            border: 4px solid white;
+            box-shadow: var(--shadow-md);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .profile-avatar:hover {
+            transform: scale(1.03);
+        }
+        .profile-name { font-size: 1.1rem; font-weight: 800; margin-bottom: 6px; color: var(--gray-900); }
+        .profile-email { color: var(--gray-500); font-size: 0.8rem; margin-bottom: 16px; word-break: break-all; }
+        
+        .edit-profile-btn {
+            background: var(--gray-100);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 700;
+            width: 100%;
+            font-size: 0.82rem;
+            font-family: 'Cairo', sans-serif;
+            transition: var(--transition);
+            color: var(--gray-700);
+        }
+        .edit-profile-btn:hover { background: var(--primary); color: white; }
+
+        .wallet-card {
+            background: var(--gradient-secondary);
+            color: white;
+            border-radius: var(--radius-sm);
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.15);
+        }
+        .wallet-amount { font-size: 1.9rem; font-weight: 900; margin: 8px 0; }
+        
+        .deposit-btn {
+            background: white;
+            color: var(--secondary-dark);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 800;
+            margin-top: 10px;
+            width: 100%;
+            font-size: 0.82rem;
+            font-family: 'Cairo', sans-serif;
+            transition: var(--transition);
+            box-shadow: var(--shadow-sm);
+        }
+        .deposit-btn:hover { background: var(--gray-50); transform: translateY(-1px); }
+
+        .shortcut-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition);
+            text-align: right;
+        }
+        .shortcut-item:hover { background: var(--gray-50); color: var(--primary); }
+        .shortcut-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--gray-100);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            flex-shrink: 0;
+            transition: var(--transition);
+        }
+        .shortcut-item:hover .shortcut-icon { background: var(--primary-light); color: var(--primary); }
+
+        .right-card {
+            background: white;
+            border-radius: var(--radius-sm);
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--gray-200);
+        }
+        .card-title {
+            font-size: 0.95rem;
+            font-weight: 800;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--gray-900);
+        }
+        .card-title i { color: var(--primary); }
+
+        .education-level-badge {
+            display: inline-block;
+            background: var(--primary-light);
+            color: var(--primary);
+            padding: 4px 16px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            border: 1px solid rgba(15, 92, 191, 0.15);
+            margin-top: 8px;
+        }
+        .education-level-badge i { margin-left: 6px; }
+
+        /* ===== MODALS ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(6px);
+            z-index: 2000;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border-radius: var(--radius-md);
+            width: 92%;
+            max-width: 480px;
+            z-index: 2001;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--gray-200);
+        }
+        .modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--gray-50);
+            border-radius: var(--radius-md) var(--radius-md) 0 0;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .modal-header h3 { font-size: 1.05rem; color: var(--gray-900); font-weight: 800; }
+        .modal-header h3 i { color: var(--primary); margin-left: 8px; }
+        .modal-body { padding: 20px; }
+        .modal-body input, .modal-body textarea, .modal-body select {
+            width: 100%;
+            padding: 11px 16px;
+            margin: 8px 0;
+            border: 1.5px solid var(--gray-200);
+            border-radius: var(--radius-sm);
+            font-family: 'Cairo', sans-serif;
+            font-size: 0.88rem;
+            transition: var(--transition);
+            background: var(--gray-50);
+            color: var(--gray-800);
+        }
+        .modal-body input:focus, .modal-body textarea:focus, .modal-body select:focus {
+            border-color: var(--primary);
+            outline: none;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(15, 92, 191, 0.08);
+        }
+        .modal-footer {
+            padding: 14px 20px;
+            border-top: 1px solid var(--gray-200);
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+            background: var(--gray-50);
+            border-radius: 0 0 var(--radius-md) var(--radius-md);
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
+        }
+        .save-btn, .cancel-btn {
+            border: none;
+            padding: 8px 24px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 0.88rem;
+            font-weight: 700;
+            font-family: 'Cairo', sans-serif;
+            transition: var(--transition);
+        }
+        .save-btn {
+            background: var(--gradient-main);
+            color: white;
+        }
+        .save-btn:hover { opacity: 0.95; }
+        .cancel-btn { background: var(--gray-200); color: var(--gray-700); }
+        .cancel-btn:hover { background: var(--gray-300); }
+        
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 1.8rem;
+            cursor: pointer;
+            line-height: 1;
+            padding: 0 4px;
+            color: var(--gray-400);
+            transition: var(--transition);
+        }
+        .close-modal:hover { color: var(--gray-700); }
+
+        .gift-result {
+            text-align: center;
+            padding: 24px 12px;
+        }
+        .gift-result .big-icon { font-size: 4.5rem; margin-bottom: 16px; display: block; }
+        .gift-result .result-amount {
+            font-size: 2.8rem;
+            font-weight: 900;
+            margin: 12px 0;
+        }
+        .gift-result .result-amount.gold { color: var(--gold-dark); }
+        .gift-result .result-amount.green { color: var(--secondary); }
+        .gift-result .result-amount.gray { color: var(--gray-400); }
+
+        /* ===== TOAST ===== */
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            left: 24px;
+            z-index: 3000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+        }
+        .toast {
+            padding: 14px 24px;
+            border-radius: var(--radius-sm);
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 700;
+            box-shadow: var(--shadow-lg);
+            animation: slideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            max-width: 440px;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .toast.success { background: var(--gradient-secondary); }
+        .toast.error { background: var(--gradient-danger); }
+        .toast.warning { background: var(--gradient-gold); }
+        .toast.info { background: var(--gradient-main); }
+        .toast i { font-size: 1.2rem; flex-shrink: 0; }
+        @keyframes slideIn {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .loading { text-align: center; padding: 40px; color: var(--gray-400); font-weight: 600; }
+        .loading i { color: var(--primary); margin-left: 8px; }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 767px) {
+            body { padding-top: 84px; }
+            .navbar { min-height: 64px; padding: 8px 12px; }
+            .navbar-inner { flex-wrap: wrap; gap: 8px; align-items: center; }
+            .nav-logo span { font-size: 1.05rem; }
+            .nav-logo i { font-size: 1.35rem; }
+            .nav-tabs { order: 3; width: 100%; gap: 4px; padding: 0; overflow-x: auto; justify-content: flex-start; }
+            .nav-tab { padding: 6px 10px; font-size: 0.74rem; }
+            .nav-tab i { font-size: 0.9rem; }
+            .nav-tab .tab-label { display: none; }
+            .nav-balance { padding: 4px 10px; font-size: 0.72rem; }
+            .nav-balance .balance-label { display: none; }
+            .nav-profile { padding: 4px; }
+            .nav-profile .profile-name { max-width: 50px; font-size: 0.72rem; }
+            .nav-profile img { width: 28px; height: 28px; }
+            .nav-notifications-btn { width: 36px; height: 36px; font-size: 1rem; }
+            .notif-dropdown { width: min(92vw, 310px); left: auto; right: 0; }
+            .profile-dropdown { width: min(92vw, 230px); left: auto; right: 0; }
+            .main-wrapper { padding: 12px; }
+            .content-area { padding: 16px; }
+            .offers-grid, .teachers-grid { grid-template-columns: 1fr; }
+            .modal { width: 94%; }
+            .referral-stats { grid-template-columns: 1fr 1fr; gap: 8px; }
+            .referral-stats .stat-item .stat-number { font-size: 1.3rem; }
+            .profile-avatar { width: 68px; height: 68px; }
+            .wallet-amount { font-size: 1.55rem; }
+        }
+
+        @media (min-width: 768px) {
+            .main-wrapper {
+                grid-template-columns: 240px 1fr;
+                gap: 20px;
+                padding: 24px;
+            }
+            .left-sidebar { display: block; }
+            .offers-grid, .teachers-grid { grid-template-columns: repeat(2, 1fr); }
+            .notif-dropdown { width: 400px; left: auto; right: 0; }
+        }
+
+        @media (min-width: 1024px) {
+            .main-wrapper {
+                grid-template-columns: 280px 1fr 280px;
+                gap: 24px;
+            }
+            .right-sidebar { display: block; }
+            .offers-grid, .teachers-grid { grid-template-columns: repeat(2, 1fr); }
+            .content-area { padding: 24px; }
+        }
+
+        @media (min-width: 1200px) {
+            .offers-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        @media (max-width: 400px) {
+            .nav-tab { padding: 4px 8px; font-size: 0.7rem; }
+            .nav-tab i { font-size: 0.8rem; }
+            .nav-balance { font-size: 0.7rem; padding: 4px 8px; }
+            .notif-dropdown { width: 92vw; }
+            .profile-dropdown { width: 92vw; }
+        }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .navbar { height: 54px; }
+            body { padding-top: 54px; }
+            .main-wrapper { padding: 12px; }
+            .modal { max-height: 85vh; }
+            .left-sidebar { top: 70px; }
+            .right-sidebar { top: 70px; }
+            .profile-avatar { width: 55px; height: 55px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===== NEWS TICKER ===== -->
+<div class="news-ticker">
+    <div class="ticker-content">
+        <div class="ticker-item">
+            <i class="fas fa-bell"></i>
+            <span>تابعنا على التلجرام للاطلاع على آخر المستجدات والعروض</span>
+        </div>
+        <div class="ticker-item">
+            <i class="fab fa-telegram"></i>
+            <a href="https://t.me/zoomdz1" target="_blank" rel="noopener noreferrer">انضم إلى قناتنا الآن</a>
+        </div>
+        <div class="ticker-item">
+            <i class="fas fa-star"></i>
+            <span>عروض حصرية وتحديثات مهمة</span>
+        </div>
+        <div class="ticker-item">
+            <i class="fas fa-bell"></i>
+            <span>تابعنا على التلجرام للاطلاع على آخر المستجدات والعروض</span>
+        </div>
+        <div class="ticker-item">
+            <i class="fab fa-telegram"></i>
+            <a href="https://t.me/zoomdz1" target="_blank" rel="noopener noreferrer">انضم إلى قناتنا الآن</a>
+        </div>
+        <div class="ticker-item">
+            <i class="fas fa-star"></i>
+            <span>عروض حصرية وتحديثات مهمة</span>
+        </div>
+    </div>
+</div>
+
+<!-- ===== NAVBAR ===== -->
+<nav class="navbar">
+    <div class="navbar-inner">
+        <a class="nav-logo" onclick="showSection('offers')">
+            <i class="fas fa-graduation-cap"></i>
+            <span>Zoom<span class="highlight">Dz</span></span>
+        </a>
+
+        <div class="nav-tabs" id="navTabs">
+            <button class="nav-tab active" data-section="offers" onclick="showSection('offers')">
+                <i class="fas fa-calendar-alt"></i>
+                <span class="tab-label">العروض</span>
+            </button>
+            <button class="nav-tab" data-section="teachers" onclick="showSection('teachers')">
+                <i class="fas fa-chalkboard-user"></i>
+                <span class="tab-label">الأساتذة</span>
+            </button>
+            <button class="nav-tab" data-section="bookings" onclick="showSection('bookings')">
+                <i class="fas fa-bookmark"></i>
+                <span class="tab-label">حجوزاتي</span>
+            </button>
+            <button class="nav-tab" data-section="transactions" onclick="showSection('transactions')">
+                <i class="fas fa-history"></i>
+                <span class="tab-label">المعاملات</span>
+            </button>
+            <button class="nav-tab" data-section="referral" onclick="showSection('referral')">
+                <i class="fas fa-link" style="color:var(--gold);"></i>
+                <span class="tab-label">الإحالة</span>
+            </button>
+            <button class="nav-notifications-btn" onclick="toggleNotifications()" id="notifBtn" style="margin-right: auto;">
+                <i class="fas fa-bell"></i>
+                <span class="notif-badge hidden" id="notifBadge">0</span>
+            </button>
+        </div>
+
+        <div class="nav-balance" onclick="showSection('transactions')" title="الرصيد المتاح">
+            <i class="fas fa-wallet"></i>
+            <span class="balance-label">الرصيد:</span>
+            <span id="navBalanceAmount">0</span>
+            <span class="currency">دج</span>
+        </div>
+
+        <div class="nav-notifications" style="position: absolute; top: 70px; right: 0; width: 100%;">
+
+            <div class="notif-dropdown" id="notifDropdown">
+                <div class="notif-dropdown-header">
+                    <h4><i class="fas fa-bell" style="color:var(--primary);"></i> الإشعارات</h4>
+                    <button class="mark-read" onclick="markAllNotifications()">تحديد الكل كمقروء</button>
+                </div>
+                <div class="notif-list" id="notifList">
+                    <div class="notif-empty">
+                        <i class="fas fa-bell-slash"></i>
+                        لا توجد إشعارات
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="nav-profile" onclick="toggleProfileDropdown()" id="profileBtn">
+            <img id="navProfileImg" src="https://ui-avatars.com/api/?name=طالب&background=0f5cbf&color=fff&size=64" alt="صورة">
+            <span class="profile-name" id="navProfileName">طالب</span>
+            <i class="fas fa-chevron-down profile-chevron"></i>
+        </div>
+        <div class="profile-dropdown" id="profileDropdown">
+            <button class="dropdown-item" onclick="showEditProfileModal(); closeAllDropdowns();">
+                <i class="fas fa-user-edit"></i> تعديل الملف الشخصي
+            </button>
+            <button class="dropdown-item" onclick="showSection('bookings'); closeAllDropdowns();">
+                <i class="fas fa-bookmark"></i> حجوزاتي
+            </button>
+            <button class="dropdown-item" onclick="showSection('transactions'); closeAllDropdowns();">
+                <i class="fas fa-history"></i> سجل المعاملات
+            </button>
+            <button class="dropdown-item" onclick="showSection('referral'); closeAllDropdowns();">
+                <i class="fas fa-link" style="color:var(--gold);"></i> الإحالة
+            </button>
+            <div class="dropdown-divider"></div>
+            <button class="dropdown-item danger" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> تسجيل الخروج
+            </button>
+        </div>
+    </div>
+</nav>
+
+<!-- ===== MAIN CONTENT ===== -->
+<div class="main-wrapper">
+    <!-- LEFT SIDEBAR -->
+    <div class="left-sidebar">
+        <div class="profile-card">
+            <img id="sidebarAvatar" class="profile-avatar" src="https://ui-avatars.com/api/?name=طالب&background=0f5cbf&color=fff&size=80" alt="صورة الملف الشخصي">
+            <div class="profile-name" id="sidebarName"></div>
+            <div class="profile-email" id="sidebarEmail"></div>
+            <div id="educationLevelDisplay" class="education-level-badge" style="display:none;">
+                <i class="fas fa-graduation-cap"></i> <span id="educationLevelText">لم يحدد</span>
+            </div>
+            <button class="edit-profile-btn" onclick="showEditProfileModal()"><i class="fas fa-camera"></i> تعديل الملف الشخصي</button>
+        </div>
+        <div class="wallet-card">
+            <i class="fas fa-wallet" style="font-size: 1.3rem; opacity:0.8;"></i>
+            <div class="wallet-amount" id="walletAmount">0 دج</div>
+            <div style="font-size: 0.75rem; opacity:0.9;">الرصيد المتاح</div>
+            <button class="deposit-btn" onclick="showDepositModal()"><i class="fas fa-plus-circle"></i> شحن الرصيد</button>
+        </div>
+        <div class="profile-card" style="text-align:right; padding: 12px 6px;">
+            <div class="shortcut-item" onclick="showSection('offers')">
+                <div class="shortcut-icon"><i class="fas fa-tag"></i></div>
+                <span>العروض المتوفرة</span>
+            </div>
+            <div class="shortcut-item" onclick="showSection('teachers')">
+                <div class="shortcut-icon"><i class="fas fa-chalkboard-user"></i></div>
+                <span>الأساتذة</span>
+            </div>
+            <div class="shortcut-item" onclick="showSection('bookings')">
+                <div class="shortcut-icon"><i class="fas fa-calendar-check"></i></div>
+                <span>حجوزاتي</span>
+            </div>
+            <div class="shortcut-item" onclick="showSection('transactions')">
+                <div class="shortcut-icon"><i class="fas fa-history"></i></div>
+                <span>سجل المعاملات</span>
+            </div>
+            <div class="shortcut-item" onclick="showSection('referral')">
+                <div class="shortcut-icon" style="background:var(--gradient-gold);color:white;"><i class="fas fa-link"></i></div>
+                <span>نظام الإحالة</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content-area">
+        <!-- OFFERS SECTION -->
+        <div id="offersSection">
+            <div class="section-title"><i class="fas fa-calendar-alt"></i> العروض المتوفرة</div>
+            <div id="offersList" class="offers-grid"></div>
+        </div>
+
+        <!-- TEACHERS SECTION -->
+        <div id="teachersSection" style="display: none;">
+            <div class="section-title"><i class="fas fa-chalkboard-user"></i> الأساتذة المتوافقون مع مستواك</div>
+            <div id="teachersList" class="teachers-grid"></div>
+        </div>
+
+        <!-- BOOKINGS SECTION -->
+        <div id="bookingsSection" style="display: none;">
+            <div class="section-title"><i class="fas fa-bookmark"></i> حجوزاتي</div>
+            <div id="bookingsList"></div>
+        </div>
+
+        <!-- TRANSACTIONS SECTION -->
+        <div id="transactionsSection" style="display: none;">
+            <div class="section-title"><i class="fas fa-history"></i> سجل المعاملات</div>
+            <div id="transactionsList"></div>
+        </div>
+
+        <!-- REFERRAL SECTION -->
+        <div id="referralSection" style="display: none;">
+            <div class="section-title"><i class="fas fa-link" style="color:var(--gold);"></i> نظام الإحالة</div>
+            
+            <div class="referral-card">
+                <h4 style="margin-bottom:6px; font-weight:800;"><i class="fas fa-gift"></i> رمز الإحالة الخاص بك</h4>
+                <p style="font-size:0.8rem; opacity:0.9; margin-bottom:6px;">شارك هذا الرمز مع أصدقائك واحصل على مكافآت</p>
+                <div class="referral-code" onclick="copyReferralCode()">
+                    <span id="referralCodeText">جاري التحميل...</span>
+                </div>
+                <button class="share-btn" onclick="shareReferral()"><i class="fas fa-share-alt"></i> مشاركة الرابط</button>
+                
+                <div class="referral-stats">
+                    <div class="stat-item">
+                        <div class="stat-number" id="referredCount">0</div>
+                        <div class="stat-label">عدد المحالين</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="giftChances">0</div>
+                        <div class="stat-label">فرص صناديق الهدايا</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gift Box -->
+            <div class="gift-box-card">
+                <span class="gift-icon">🎁</span>
+                <div class="chances-display" id="giftChancesDisplay">0</div>
+                <div class="chances-label">فرص متاحة لفتح صندوق الهدايا</div>
+                <button class="open-gift-btn" id="openGiftBtn" onclick="openGiftBox()">
+                    <i class="fas fa-gift"></i> فتح صندوق الهدايا
+                </button>
+                <p style="font-size:0.75rem; opacity:0.8; margin-top:8px;">
+                    الجوائز: 50 دج | 100 دج
+                </p>
+            </div>
+
+            <!-- Reward History -->
+            <div style="margin-top:24px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <h4 style="font-size:1rem; font-weight:800;"><i class="fas fa-history" style="color:var(--gold);"></i> سجل المكافآت</h4>
+                </div>
+                <div id="rewardHistory"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT SIDEBAR -->
+    <div class="right-sidebar">
+        <div class="right-card">
+            <div class="card-title"><i class="fas fa-gift" style="color:var(--gold);"></i> عروض مجانية</div>
+            <div id="freeOffersSidebar"></div>
+        </div>
+        <div class="right-card">
+            <div class="card-title"><i class="fas fa-clock" style="color:var(--primary);"></i> حصص�� القادمة</div>
+            <div id="upcomingBookings"></div>
+        </div>
+        <div class="right-card">
+            <div class="card-title"><i class="fas fa-trophy" style="color:var(--gold);"></i> مكافآت الإحالة</div>
+            <div id="referralSummarySidebar">
+                <p style="font-size:0.75rem; color:var(--gray-500);">قم بدعوة الأصدقاء للحصول على مكافآت</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== TOAST CONTAINER ===== -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ===== MODALS ===== -->
+<div class="modal-overlay" id="modalOverlay"></div>
+
+<!-- EDIT PROFILE MODAL -->
+<div id="editProfileModal" class="modal">
+    <div class="modal-header">
+        <h3><i class="fas fa-user-edit"></i> تعديل الملف الشخصي</h3>
+        <button class="close-modal" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+        <input type="text" id="editFullName" placeholder="الاسم الكامل">
+        <input type="tel" id="editPhone" placeholder="رقم الهاتف">
+        
+        <div style="margin: 12px 0;">
+            <label style="display: block; margin-bottom: 6px; font-weight: 700; color: var(--gray-800); font-size: 0.9rem;">
+                <i class="fas fa-graduation-cap" style="color: var(--primary); margin-left: 6px;"></i>
+                المستوى الدراسي
+            </label>
+            <select id="editEducationLevel" style="width: 100%; padding: 11px 16px; border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm); font-family: 'Cairo', sans-serif; font-size: 0.88rem; transition: var(--transition); background: var(--gray-50); color: var(--gray-800);">
+                <option value="">-- اختر المستوى --</option>
+                <option value="5eme_pri">خامسة ابتدائي</option>
+                <option value="1ere_am">أولى متوسط</option>
+                <option value="2eme_am">ثانية متوسط</option>
+                <option value="3eme_am">ثالثة متوسط</option>
+                <option value="4eme_am">رابعة متوسط</option>
+                <option value="1ere_as">أولى ثانوي</option>
+                <option value="2eme_as">ثانية ثانوي</option>
+                <option value="bac">بكالوريا</option>
+                <option value="1ere_uni">أولى جامعي</option>
+                <option value="2eme_uni">ثانية جامعي</option>
+                <option value="3eme_uni">ثالثة جامعي</option>
+                <option value="master">ماستر</option>
+                <option value="doctorat">دكتوراه</option>
+                <option value="other">آخر</option>
+            </select>
+            <div id="editOtherLevelGroup" style="display: none; margin-top: 8px;">
+                <input type="text" id="editOtherLevelText" placeholder="أدخل المستوى التعليمي...">
+            </div>
+            <p style="font-size: 0.7rem; color: var(--gray-400); margin-top: 4px;">
+                <i class="fas fa-info-circle"></i> سيتم عرض الأساتذة المتوافقين مع مستواك الدراسي
+            </p>
+        </div>
+
+        <input type="file" id="editProfileImage" accept="image/*">
+    </div>
+    <div class="modal-footer">
+        <button class="cancel-btn" onclick="closeModal()">إلغاء</button>
+        <button class="save-btn" onclick="updateProfile()">حفظ</button>
+    </div>
+</div>
+
+<!-- DEPOSIT MODAL -->
+<div id="depositModal" class="modal">
+    <div class="modal-header">
+        <h3><i class="fas fa-plus-circle"></i> شحن الرصيد</h3>
+        <button class="close-modal" onclick="closeDepositModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+        <p style="font-size:0.85rem; color:var(--gray-500); margin-bottom: 4px;">الحد الأدنى للشحن: 100 دج</p>
+        <input type="number" id="depositAmount" placeholder="المبلغ" min="100">
+    </div>
+    <div class="modal-footer">
+        <button class="cancel-btn" onclick="closeDepositModal()">إلغاء</button>
+        <button class="save-btn" onclick="depositWallet()">شحن</button>
+    </div>
+</div>
+
+<!-- TEACHER PROFILE MODAL -->
+<div id="teacherProfileModal" class="modal">
+    <div class="modal-header">
+        <h3 id="teacherModalName"><i class="fas fa-chalkboard-user"></i> ملف الأستاذ</h3>
+        <button class="close-modal" onclick="closeTeacherModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="teacherModalBody"></div>
+    <div class="modal-footer">
+        <button class="cancel-btn" onclick="closeTeacherModal()">إغلاق</button>
+    </div>
+</div>
+
+<!-- GIFT RESULT MODAL -->
+<div id="giftResultModal" class="modal">
+    <div class="modal-header">
+        <h3><i class="fas fa-gift" style="color:var(--gold);"></i> صندوق الهدايا</h3>
+        <button class="close-modal" onclick="closeGiftResult()">&times;</button>
+    </div>
+    <div class="modal-body">
+        <div class="gift-result" id="giftResultContent">
+            <span class="big-icon">🎁</span>
+            <div class="result-amount" id="giftResultAmount">0 دج</div>
+            <p id="giftResultMessage">جاري فتح الصندوق...</p>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button class="save-btn" onclick="closeGiftResult()">رائع!</button>
+    </div>
+</div>
+
+<script>
+    // ================================================================
+    // ✅ إعدادات أساسية
+    // ================================================================
+
+    let userData = null;
+    let studentId = null;
+    let currentSection = 'offers';
+    let currentBalance = 0;
+    let notifications = [];
+    let referralData = null;
+    let authToken = null;
+    let csrfToken = null;
+
+    const API_BASE_URL = window.location.hostname === 'localhost' 
+        ? 'http://localhost:3000' 
+        : window.location.origin;
+
+    console.log('🌐 API Base URL:', API_BASE_URL);
+
+    const levelMap = {
+        '5eme_pri': 'خامسة ابتدائي',
+        '1ere_am': 'أولى متوسط',
+        '2eme_am': 'ثانية متوسط',
+        '3eme_am': 'ثالثة متوسط',
+        '4eme_am': 'رابعة متوسط',
+        '1ere_as': 'أولى ثانوي',
+        '2eme_as': 'ثانية ثانوي',
+        'bac': 'بكالوريا',
+        '1ere_uni': 'أولى جامعي',
+        '2eme_uni': 'ثانية جامعي',
+        '3eme_uni': 'ثالثة جامعي',
+        'master': 'ماستر',
+        'doctorat': 'دكتوراه',
+        'other': 'آخر'
+    };
+
+    // ================================================================
+    // ✅ دوال المصادقة
+    // ================================================================
+
+    function getCsrfTokenFromCookies() {
+        const cookies = document.cookie.split(';');
+        for (const cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'csrf_token') {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    async function fetchWithAuth(url, options = {}) {
+        const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
+        
+        // ✅ التحقق من وجود التوكن أولاً
+        if (!authToken) {
+            console.error('❌ authToken غير موجود!');
+            localStorage.removeItem('token');
+            localStorage.removeItem('userData');
+            showToast('انتهت صلاحية الجلسة، جاري إعادة التوجيه...', 'error');
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1000);
+            throw new Error('لا يوجد توكن');
+        }
+        
+        const isFormData = options.body instanceof FormData;
+        const headers = {
+            'Authorization': `Bearer ${authToken}`,
+            'X-CSRF-Token': csrfToken || getCsrfTokenFromCookies() || '',
+            ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+            ...options.headers
+        };
+        
+        const response = await fetch(fullUrl, {
+            ...options,
+            headers: headers
+        });
+
+        if (response.status === 401) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('❌ خطأ 401:', errorData);
+            showToast('⏳ انتهت صلاحية الجلسة، جاري إعادة التوجيه...', 'error');
+            localStorage.removeItem('token');
+            localStorage.removeItem('userData');
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1500);
+            throw new Error('انتهت صلاحية الجلسة');
+        }
+
+        if (response.status === 403) {
+            try {
+                const data = await response.json();
+                if (data.banned) {
+                    showToast('⚠️ تم حظر حسابك من المنصة', 'error');
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('userData');
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
+                    throw new Error('حساب محظور');
+                }
+                if (data.error && data.error.includes('CSRF')) {
+                    await getCsrfToken();
+                    const retryResponse = await fetch(fullUrl, {
+                        ...options,
+                        headers: {
+                            ...headers,
+                            'X-CSRF-Token': csrfToken
+                        }
+                    });
+                    if (retryResponse.ok) {
+                        return retryResponse;
+                    }
+                }
+                throw new Error(data.error || 'غير مصرح به');
+            } catch (e) {
+                if (e.message === 'حساب محظور' || e.message === 'انتهت صلاحية الجلسة') throw e;
+                throw new Error('غير مصرح به');
+            }
+        }
+
+        return response;
+    }
+
+    async function getCsrfToken() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/csrf-token`, {
+                credentials: 'include'
+            });
+            const data = await response.json();
+            csrfToken = data.csrfToken;
+            return csrfToken;
+        } catch (error) {
+            console.error('خطأ في جلب CSRF Token:', error);
+            return null;
+        }
+    }
+
+    // ================================================================
+    // ✅ NOTIFICATIONS
+    // ================================================================
+
+    async function loadNotifications() {
+        try {
+            const res = await fetchWithAuth(`/api/notifications/${studentId}/student`);
+            const data = await res.json();
+            notifications = data || [];
+            renderNotifications();
+            updateNotifBadge();
+        } catch (e) {
+            if (e.message !== 'انتهت صلاحية الجلسة' && e.message !== 'حساب محظور') {
+                console.error('خطأ في جلب الإشعارات:', e);
+            }
+        }
+    }
+
+    function renderNotifications() {
+        const list = document.getElementById('notifList');
+        if (!notifications || notifications.length === 0) {
+            list.innerHTML = `
+                <div class="notif-empty">
+                    <i class="fas fa-bell-slash"></i>
+                    لا توجد إشعارات
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+        for (const notif of notifications.slice(0, 20)) {
+            const isUnread = !notif.is_read;
+            const time = new Date(notif.created_at);
+            const timeStr = time.toLocaleString('ar', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' });
+
+            let iconClass = 'info';
+            let icon = 'fa-bell';
+            const title = notif.title || '';
+            if (title.includes('حجز') || title.includes('حصة') || title.includes('تسجيل')) {
+                iconClass = 'info';
+                icon = 'fa-calendar-plus';
+            } else if (title.includes('بدء') || title.includes('بث') || title.includes('مباشر')) {
+                iconClass = 'success';
+                icon = 'fa-video';
+            } else if (title.includes('مكافأة') || title.includes('إحالة') || title.includes('صندوق') || title.includes('هدايا')) {
+                iconClass = 'gift';
+                icon = 'fa-gift';
+            } else if (title.includes('رصيد') || title.includes('شحن') || title.includes('دفع')) {
+                iconClass = 'success';
+                icon = 'fa-money-bill-wave';
+            } else if (title.includes('إلغاء') || title.includes('حظر')) {
+                iconClass = 'danger';
+                icon = 'fa-exclamation-circle';
+            }
+
+            html += `
+                <div class="notif-item ${isUnread ? 'unread' : ''}" onclick="markNotificationRead('${notif.id}', ${notif.offer_id || 'null'})">
+                    <div class="notif-icon ${iconClass}"><i class="fas ${icon}"></i></div>
+                    <div class="notif-content">
+                        <div class="notif-title">${escapeHtml(notif.title)}</div>
+                        <div class="notif-message">${escapeHtml(notif.message)}</div>
+                        <div class="notif-time">${timeStr}</div>
+                        ${notif.offer_id ? `
+                            <div class="notif-action">
+                                <button onclick="event.stopPropagation(); joinFromNotification(${notif.offer_id})">
+                                    <i class="fas fa-video"></i> انضم الآن
+                                </button>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+        list.innerHTML = html;
+    }
+
+    function updateNotifBadge() {
+        const badge = document.getElementById('notifBadge');
+        const unreadCount = notifications.filter(n => !n.is_read).length;
+        if (unreadCount > 0) {
+            badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+    }
+
+    function toggleNotifications() {
+        const dropdown = document.getElementById('notifDropdown');
+        dropdown.classList.toggle('open');
+        document.getElementById('profileDropdown').classList.remove('open');
+        if (dropdown.classList.contains('open')) {
+            loadNotifications();
+        }
+    }
+
+    async function markNotificationRead(notifId, offerId) {
+        try {
+            const res = await fetchWithAuth(`/api/notifications/read/${notifId}`, {
+                method: 'POST'
+            });
+            if (res.ok) {
+                const notif = notifications.find(n => n.id == notifId);
+                if (notif) notif.is_read = true;
+                updateNotifBadge();
+                renderNotifications();
+                if (offerId) {
+                    joinFromNotification(offerId);
+                }
+            }
+        } catch (e) {
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                console.error('خطأ في تحديث الإشعار:', e);
+            }
+        }
+    }
+
+    async function markAllNotifications() {
+        const unreadNotifs = notifications.filter(n => !n.is_read);
+        if (unreadNotifs.length === 0) {
+            showToast('لا توجد إشعارات غير مقروءة', 'warning');
+            return;
+        }
+        for (const notif of unreadNotifs) {
+            try {
+                await fetchWithAuth(`/api/notifications/read/${notif.id}`, {
+                    method: 'POST'
+                });
+                notif.is_read = true;
+            } catch(e) { 
+                if (e.message !== 'انتهت صلاحية الجلسة') console.error(e); 
+            }
+        }
+        updateNotifBadge();
+        renderNotifications();
+        showToast('تم تحديد جميع الإشعارات كمقروءة', 'success');
+    }
+
+    async function joinFromNotification(offerId) {
+        try {
+            const res = await fetchWithAuth(`/api/student/stream-status/${offerId}/${studentId}`);
+            const data = await res.json();
+            if (data.can_join && data.stream_url) {
+                const newWindow = window.open(data.stream_url, '_blank');
+                if (newWindow && data.room_password) {
+                    setTimeout(() => {
+                        alert(`🔑 كلمة مرور البث: ${data.room_password}\nأدخلها عند الطلب في صفحة البث`);
+                    }, 2000);
+                }
+            } else if (data.is_waiting) {
+                showToast('⏳ جاري التحضير للبث، انتظر قليلاً...', 'warning');
+            } else {
+                showToast('البث غير متاح حالياً', 'warning');
+                showSection('bookings');
+            }
+        } catch(e) {
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                showToast('حدث خطأ', 'error');
+            }
+        }
+        document.getElementById('notifDropdown').classList.remove('open');
+    }
+
+    // ================================================================
+    // ✅ PROFILE DROPDOWN
+    // ================================================================
+
+    function toggleProfileDropdown() {
+        const dropdown = document.getElementById('profileDropdown');
+        dropdown.classList.toggle('open');
+        document.getElementById('notifDropdown').classList.remove('open');
+    }
+
+    function closeAllDropdowns() {
+        document.getElementById('profileDropdown').classList.remove('open');
+        document.getElementById('notifDropdown').classList.remove('open');
+    }
+
+    // ================================================================
+    // ✅ TOAST
+    // ================================================================
+
+    function showToast(message, type = 'success') {
+        const container = document.getElementById('toastContainer');
+        const icons = {
+            success: 'fa-check-circle',
+            error: 'fa-exclamation-circle',
+            warning: 'fa-triangle-exclamation',
+            info: 'fa-info-circle'
+        };
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = `<i class="fas ${icons[type] || icons.info}"></i> ${message}`;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(20px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 4500);
+    }
+
+    // ================================================================
+    // ✅ NAVIGATION
+    // ================================================================
+
+    function showSection(section) {
+        currentSection = section;
+        document.getElementById('offersSection').style.display = section === 'offers' ? 'block' : 'none';
+        document.getElementById('teachersSection').style.display = section === 'teachers' ? 'block' : 'none';
+        document.getElementById('bookingsSection').style.display = section === 'bookings' ? 'block' : 'none';
+        document.getElementById('transactionsSection').style.display = section === 'transactions' ? 'block' : 'none';
+        document.getElementById('referralSection').style.display = section === 'referral' ? 'block' : 'none';
+
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.section === section);
+        });
+
+        closeAllDropdowns();
+
+        if (section === 'offers') loadOffers();
+        else if (section === 'teachers') loadTeachers();
+        else if (section === 'bookings') loadMyBookings();
+        else if (section === 'transactions') loadTransactions();
+        else if (section === 'referral') loadReferralData();
+    }
+
+    // ================================================================
+    // ✅ USER DATA
+    // ================================================================
+
+    async function loadUserData() {
+        try {
+            // ✅ انتظار قليل لضمان تحميل localStorage
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            const storedData = localStorage.getItem('userData');
+            const token = localStorage.getItem('token');
+            
+            console.log('🔍 التحقق من التوكن:', token ? 'موجود ✅' : 'غير موجود ❌');
+            if (token) {
+                console.log('🔍 طول التوكن:', token.length, 'حرف');
+            }
+            console.log('🔍 التحقق من userData:', storedData ? 'موجود ✅' : 'غير موجود ❌');
+            
+            // ✅ التحقق من وجود البيانات
+            if (!token || !storedData) {
+                console.log('⚠️ لا يوجد توكن أو بيانات مستخدم');
+                localStorage.removeItem('token');
+                localStorage.removeItem('userData');
+                window.location.href = '/';
+                return;
+            }
+            
+            // ✅ تعيين authToken قبل أي طلب
+            authToken = token;
+            console.log('✅ authToken تم تعيينها:', authToken ? 'نعم' : 'لا');
+            console.log('✅ authToken length:', authToken?.length);
+            
+            try {
+                userData = JSON.parse(storedData);
+                if (userData && userData.id) {
+                    studentId = userData.id;
+                    console.log('✅ studentId:', studentId);
+                    console.log('✅ userData.role:', userData.role);
+                } else {
+                    console.error('❌ userData لا يحتوي على id');
+                    localStorage.removeItem('userData');
+                    localStorage.removeItem('token');
+                    window.location.href = '/';
+                    return;
+                }
+            } catch (parseError) {
+                console.error('❌ خطأ في تحليل userData:', parseError);
+                localStorage.removeItem('userData');
+                localStorage.removeItem('token');
+                window.location.href = '/';
+                return;
+            }
+            
+            // ✅ تحقق من وجود التوكن والـ ID
+            if (!authToken || !studentId) {
+                console.log('⚠️ لا يوجد توكن أو معرف طالب، جاري التوجيه للصفحة الرئيسية');
+                localStorage.removeItem('token');
+                localStorage.removeItem('userData');
+                window.location.href = '/';
+                return;
+            }
+
+            await getCsrfToken();
+
+            // ✅ استخدم مسار /me للتحقق من التوكن (أكثر موثوقية)
+            console.log('📥 جلب بيانات الطالب من الخادم...');
+            console.log('📥 authToken قبل الطلب:', authToken ? 'موجود' : 'فارغ');
+            const res = await fetchWithAuth('/api/student/me');
+            console.log('📥 حالة الاستجابة:', res.status);
+            
+            if (!res.ok) {
+                console.error('❌ فشل جلب بيانات الطالب:', res.status);
+                const errorText = await res.text();
+                console.error('❌ نص الخطأ:', errorText);
+                
+                if (res.status === 401 || res.status === 403) {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('userData');
+                    showToast('انتهت صلاحية الجلسة، جاري إعادة التوجيه...', 'error');
+                    setTimeout(() => { window.location.href = '/'; }, 1500);
+                } else {
+                    showToast('حدث خطأ في جلب البيانات (كود: ' + res.status + ')', 'error');
+                }
+                return;
+            }
+            
+            const data = await res.json();
+            console.log('📥 بيانات الطالب من الخادم:', data);
+            
+            if (!data.error && data.id) {
+                userData = data;
+                studentId = data.id;
+                localStorage.setItem('userData', JSON.stringify(data));
+                updateUI();
+                loadWallet();
+                loadNotifications();
+                loadReferralData();
+                loadOffers();
+            } else {
+                console.error('❌ خطأ في بيانات الطالب:', data.error || 'بيانات غير صالحة');
+                // ✅ إذا كان الخطأ "المستخدم غير موجود"، يتم توجيه للصفحة الرئيسية
+                if (data.error && data.error.includes('غير موجود')) {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('userData');
+                    window.location.href = '/';
+                    return;
+                }
+                showToast(data.error || 'حدث خطأ في تحميل البيانات', 'error');
+            }
+        } catch(e) {
+            console.error('❌ خطأ في تحميل بيانات المستخدم:', e);
+            showToast('حدث خطأ في تحميل البيانات', 'error');
+        }
+    }
+    function updateUI() {
+        if (!userData) return;
+        const userName = userData.full_name || 'طالب';
+        const userImage = userData.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(userName) + '&background=0f5cbf&color=fff&size=64';
+
+        document.getElementById('navProfileName').textContent = userName.split(' ')[0];
+        document.getElementById('navProfileImg').src = userImage;
+        document.getElementById('sidebarName').textContent = userName;
+        document.getElementById('sidebarEmail').textContent = userData.email || '';
+        document.getElementById('sidebarAvatar').src = userImage;
+
+        const levelDisplay = document.getElementById('educationLevelDisplay');
+        const levelText = document.getElementById('educationLevelText');
+        if (userData.education_level) {
+            levelDisplay.style.display = 'inline-block';
+            levelText.textContent = levelMap[userData.education_level] || userData.education_level;
+        } else {
+            levelDisplay.style.display = 'none';
+        }
+    }
+
+    // ================================================================
+    // ✅ WALLET
+    // ================================================================
+
+    async function loadWallet() {
+        try {
+            const res = await fetchWithAuth(`/api/student/balance/${studentId}`);
+            const data = await res.json();
+            currentBalance = data.balance || 0;
+            document.getElementById('walletAmount').textContent = currentBalance + ' دج';
+            document.getElementById('navBalanceAmount').textContent = currentBalance;
+        } catch(e) { 
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                console.error('خطأ في تحميل المحفظة:', e);
+            }
+        }
+    }
+
+    // ================================================================
+    // ✅ OFFERS - مع فلترة حسب المستوى الدراسي
+    // ================================================================
+
+    async function loadOffers() {
+        const container = document.getElementById('offersList');
+        container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/offers`);
+            const offers = await res.json();
+            
+            let filteredOffers = offers;
+            if (userData && userData.education_level) {
+                filteredOffers = offers.filter(offer => {
+                    if (!offer.education_level || offer.education_level === '') return true;
+                    return offer.education_level === userData.education_level;
+                });
+            }
+            
+            renderOffers(filteredOffers);
+            loadFreeOffersSidebar(filteredOffers);
+        } catch(e) { 
+            console.error('خطأ في تحميل العروض:', e);
+            showToast('حدث خطأ في تحميل العروض', 'error'); 
+        }
+    }
+
+    function renderOffers(offers) {
+        const container = document.getElementById('offersList');
+        if (!offers || offers.length === 0) {
+            let message = 'لا توجد عروض متاحة حالياً';
+            if (userData && userData.education_level) {
+                message = `لا توجد عر��ض متاحة لمستواك الدراسي (${levelMap[userData.education_level] || userData.education_level})`;
+            }
+            container.innerHTML = `<p style="text-align:center; padding:30px; color:var(--gray-400);">${message}</p>`;
+            return;
+        }
+        let html = '';
+        for (const offer of offers) {
+            const offerDate = new Date(offer.offer_date);
+            const isFree = offer.is_free === true || offer.is_free === 1;
+
+            const teacherImage = offer.teacher_profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(offer.teacher_name || '') + '&background=0f5cbf&color=fff&size=40';
+            
+            let levelDisplay = '';
+            if (offer.education_level) {
+                const levelName = levelMap[offer.education_level] || offer.education_level;
+                levelDisplay = `<div class="offer-info"><i class="fas fa-graduation-cap"></i> المستوى: ${levelName}</div>`;
+            }
+
+            const canBook = isFree || currentBalance >= (offer.price || 0);
+
+            html += `
+                <div class="offer-card">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                            <img src="${teacherImage}" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border:2px solid white; box-shadow:var(--shadow-sm);" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${escapeHtml(offer.teacher_name || '')}')+'&background=0f5cbf&color=fff&size=40'">
+                            <div>
+                                <div style="font-weight: 800; font-size: 0.9rem; color:var(--gray-900);">${escapeHtml(offer.teacher_name || 'غير معروف')}</div>
+                                <div style="font-size: 0.72rem; color: var(--gray-500);">${offer.teacher_specialization || 'تخصص عام'}</div>
+                            </div>
+                        </div>
+                        <div class="offer-title">${escapeHtml(offer.subject_name)}</div>
+                        <div class="offer-info"><i class="fas fa-calendar-alt"></i> ${offerDate.toLocaleDateString('ar')}</div>
+                        <div class="offer-info"><i class="fas fa-clock"></i> ${offerDate.toLocaleTimeString('ar', {hour: '2-digit', minute:'2-digit'})} | ${offer.duration} دقيقة</div>
+                        ${levelDisplay}
+                        <div class="offer-info">${isFree ? '<span class="free-badge"><i class="fas fa-gift"></i> مجانية</span>' : `<span class="paid-badge"><i class="fas fa-money-bill"></i> ${offer.price} دج</span>`}</div>
+                        ${!isFree && currentBalance < (offer.price || 0) ? `<div class="insufficient-balance"><i class="fas fa-exclamation-triangle"></i> رصيدك: ${currentBalance} دج</div>` : ''}
+                    </div>
+                    <button class="book-btn ${isFree ? 'free' : ''}" onclick="bookOffer(${offer.id}, ${isFree}, ${offer.price || 0})" ${!canBook ? 'disabled' : ''}>
+                        ${isFree ? 'تسجيل مجاني' : (canBook ? 'حجز (باستخدام الرصيد)' : 'رصيد غير كافٍ')}
+                    </button>
+                </div>
+            `;
+        }
+        container.innerHTML = html;
+    }
+
+    async function bookOffer(offerId, isFree, price) {
+        if (!studentId) { showToast('الرجاء تسجيل الدخول أولاً', 'error'); return; }
+        if (!isFree && currentBalance < price) {
+            showToast(`⚠️ رصيدك غير كافٍ! رصيدك: ${currentBalance} دج`, 'error');
+            return;
+        }
+        showToast('جاري معالجة طلبك...', 'warning');
+        try {
+            const res = await fetchWithAuth('/api/booking/create', {
+                method: 'POST',
+                body: JSON.stringify({ offer_id: offerId, student_id: studentId })
+            });
+            const data = await res.json();
+            if (data.success) {
+                if (isFree || data.is_free) {
+                    showToast('✅ تم حجز الحصة المجانية بنجاح! سيتم إشعارك عند بدء البث', 'success');
+                } else {
+                    showToast(`✅ تم الحجز! تم خصم ${price} دج. سيتم إشعارك عند بدء البث`, 'success');
+                }
+                loadWallet();
+                loadMyBookings();
+                loadOffers();
+                loadNotifications();
+            } else {
+                if (data.insufficient_balance) {
+                    showToast(`⚠️ رصيدك غير كافٍ! المبلغ المطلوب: ${data.needed} دج`, 'error');
+                } else {
+                    showToast(data.error || 'حدث خطأ', 'error');
+                }
+            }
+        } catch(e) { 
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                showToast('حدث خطأ', 'error');
+            }
+        }
+    }
+
+    // ================================================================
+    // ✅ TEACHERS - مع فلترة حسب المستوى الدراسي
+    // ================================================================
+
+    async function loadTeachers() {
+        const container = document.getElementById('teachersList');
+        container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/public/teachers`);
+            if (!res.ok) {
+                throw new Error(`HTTP error! status: ${res.status}`);
+            }
+            let teachers = await res.json();
+            
+            if (userData && userData.education_level) {
+                teachers = teachers.filter(teacher => {
+                    if (!teacher.teaching_level || teacher.teaching_level === '') return true;
+                    return teacher.teaching_level === userData.education_level;
+                });
+            }
+            
+            renderTeachers(teachers);
+        } catch(e) { 
+            console.error('خطأ في تحميل الأساتذة:', e);
+            showToast('حدث خطأ في تحميل الأساتذة', 'error');
+            container.innerHTML = '<p style="text-align:center; padding:30px; color:var(--gray-400);">حدث خطأ في تحميل الأساتذة</p>';
+        }
+    }
+
+    function renderTeachers(teachers) {
+        const container = document.getElementById('teachersList');
+        if (!teachers || teachers.length === 0) {
+            let message = 'لا يوجد أساتذة معتمدون حالياً';
+            if (userData && userData.education_level) {
+                message = `لا يوجد أساتذة متوافقون مع مستواك الدراسي (${levelMap[userData.education_level] || userData.education_level})`;
+            }
+            container.innerHTML = `<p style="text-align:center; padding:30px; color:var(--gray-400);">${message}</p>`;
+            return;
+        }
+        let html = '';
+        for (const teacher of teachers) {
+            const teacherImage = teacher.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(teacher.full_name || '') + '&background=0f5cbf&color=fff&size=60';
+            
+            let levelDisplay = '';
+            if (teacher.teaching_level) {
+                const levelName = levelMap[teacher.teaching_level] || teacher.teaching_level;
+                levelDisplay = `<div style="font-size:0.7rem; color:var(--accent); margin-top:2px;"><i class="fas fa-graduation-cap"></i> يدرس: ${levelName}</div>`;
+            }
+            
+            html += `
+                <div class="teacher-card" onclick="showTeacherProfile(${teacher.id})">
+                    <div style="text-align: center;">
+                        <img src="${teacherImage}" class="teacher-avatar" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${escapeHtml(teacher.full_name || '')}')+'&background=0f5cbf&color=fff&size=60'">
+                        <div class="teacher-name">${escapeHtml(teacher.full_name || 'غير معروف')}</div>
+                        <div class="teacher-specialty"><i class="fas fa-book" style="color: var(--gray-400); margin-left:6px;"></i> ${teacher.specialization || 'تخصص عام'}</div>
+                        <div class="teacher-specialty"><i class="fas fa-briefcase" style="color: var(--gray-400); margin-left:6px;"></i> ${teacher.experience || '0'} سنة خبرة</div>
+                        ${levelDisplay}
+                        ${teacher.bio ? `<div style="font-size:0.75rem; color:var(--gray-500); margin-top:6px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${escapeHtml(teacher.bio)}</div>` : ''}
+                    </div>
+                    <button class="view-btn" onclick="event.stopPropagation(); showTeacherProfile(${teacher.id})"><i class="fas fa-eye"></i> عرض الملف الشخصي</button>
+                </div>
+            `;
+        }
+        container.innerHTML = html;
+    }
+
+    // ================================================================
+    // ✅ TEACHER PROFILE
+    // ================================================================
+
+    async function showTeacherProfile(teacherId) {
+        try {
+            const res = await fetchWithAuth(`/api/teacher/${teacherId}`);
+            const teacher = await res.json();
+            const teacherImage = teacher.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(teacher.full_name || '') + '&background=0f5cbf&color=fff&size=100';
+            
+            let socialHtml = '';
+            const socialLinks = [
+                { url: teacher.facebook_url, icon: 'fab fa-facebook', color: '#1877f2' },
+                { url: teacher.instagram_url, icon: 'fab fa-instagram', color: '#e4405f' },
+                { url: teacher.linkedin_url, icon: 'fab fa-linkedin-in', color: '#0a66c2' },
+                { url: teacher.youtube_url, icon: 'fab fa-youtube', color: '#ff0000' },
+                { url: teacher.twitter_url, icon: 'fab fa-x-twitter', color: '#1da1f2' },
+                { url: teacher.website_url, icon: 'fas fa-globe', color: 'var(--secondary)' },
+            ];
+            
+            for (const link of socialLinks) {
+                if (link.url) {
+                    socialHtml += `<a href="${link.url}" target="_blank" style="color: ${link.color}; font-size: 1.4rem; margin: 0 8px;"><i class="${link.icon}"></i></a>`;
+                }
+            }
+            
+            let teachingLevelDisplay = '';
+            if (teacher.teaching_level) {
+                const levelName = levelMap[teacher.teaching_level] || teacher.teaching_level;
+                teachingLevelDisplay = `<p style="margin:8px 0; font-size: 0.9rem; color:var(--gray-700);"><strong><i class="fas fa-graduation-cap" style="color:var(--primary); margin-left: 6px; width: 18px;"></i> يدرس المستوى:</strong> ${levelName}</p>`;
+            }
+            
+            document.getElementById('teacherModalName').textContent = teacher.full_name || 'أستاذ';
+            document.getElementById('teacherModalBody').innerHTML = `
+                <div style="text-align: center;">
+                    <img src="${teacherImage}" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 16px; border: 3px solid white; box-shadow:var(--shadow-md);" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${escapeHtml(teacher.full_name || '')}')+'&background=0f5cbf&color=fff&size=100'">
+                    <div style="text-align: right; margin-top: 10px;">
+                        <p style="margin:8px 0; font-size: 0.9rem; color:var(--gray-700);"><strong><i class="fas fa-graduation-cap" style="color:var(--primary); margin-left: 6px; width: 18px;"></i> التخصص:</strong> ${teacher.specialization || 'غير محدد'}</p>
+                        <p style="margin:8px 0; font-size: 0.9rem; color:var(--gray-700);"><strong><i class="fas fa-briefcase" style="color:var(--primary); margin-left: 6px; width: 18px;"></i> الخبرة:</strong> ${teacher.experience || '0'} سنة</p>
+                        ${teachingLevelDisplay}
+                        <p style="margin:8px 0; font-size: 0.9rem; color:var(--gray-700);"><strong><i class="fas fa-envelope" style="color:var(--primary); margin-left: 6px; width: 18px;"></i> البريد الإلكتروني:</strong> ${teacher.email || 'غير محدد'}</p>
+                        <p style="margin:12px 0 6px 0; font-size: 0.9rem; color:var(--gray-700);"><strong><i class="fas fa-align-left" style="color:var(--primary); margin-left: 6px; width: 18px;"></i> نبذة:</strong></p>
+                        <p style="font-size: 0.85rem; color: var(--gray-600); line-height: 1.6; background: var(--gray-50); padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--gray-200);">${teacher.bio || 'لا توجد نبذة'}</p>
+                    </div>
+                    ${socialHtml ? `
+                        <div style="margin-top: 16px; padding: 14px; background: var(--gray-50); border-radius: var(--radius-sm); border: 1px solid var(--gray-200);">
+                            <div style="font-weight: 800; color: var(--gray-800); margin-bottom: 8px; font-size:0.85rem;"><i class="fas fa-share-alt" style="color:var(--primary); margin-left: 6px;"></i> روابط التواصل الاجتماعي</div>
+                            <div style="display: flex; justify-content: center; gap: 4px; flex-wrap: wrap;">${socialHtml}</div>
+                        </div>
+                    ` : ''}
+                    <div style="margin-top: 16px; padding: 10px; background: var(--gold-light); border-radius: var(--radius-sm); border-right: 4px solid var(--gold); text-align: right;">
+                        <p style="font-size: 0.8rem; color: var(--gold-dark); font-weight: 700;"><i class="fas fa-info-circle" style="margin-left: 6px;"></i> يمكنك التواصل مع الأستاذ عبر قسم الرسائل في المنصة</p>
+                    </div>
+                </div>
+            `;
+            document.getElementById('modalOverlay').style.display = 'block';
+            document.getElementById('teacherProfileModal').style.display = 'block';
+        } catch(e) { 
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                showToast('حدث خطأ', 'error');
+            }
+        }
+    }
+
+    // ================================================================
+    // ✅ BOOKINGS - مع عرض كلمة المرور
+    // ================================================================
+
+    async function loadMyBookings() {
+        const container = document.getElementById('bookingsList');
+        container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+        try {
+            const res = await fetchWithAuth(`/api/student/sessions/${studentId}`);
+            const bookings = await res.json();
+            renderBookings(bookings);
+            loadUpcomingBookings(bookings);
+        } catch(e) { 
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                showToast('حدث خطأ', 'error');
+            }
+        }
+    }
+
+    function renderBookings(bookings) {
+        const container = document.getElementById('bookingsList');
+        if (!bookings || bookings.length === 0) {
+            container.innerHTML = '<p style="text-align:center; padding:30px; color:var(--gray-400);">لا توجد حجوزات حالياً</p>';
+            return;
+        }
+        let html = '';
+        for (const booking of bookings) {
+            const offerDate = new Date(booking.offer_date);
+            const isPaid = booking.payment_status === 'paid' || booking.is_free === true;
+            const isLive = booking.offer_status === 'live';
+            const isUpcoming = booking.offer_status === 'upcoming' || booking.offer_status === 'pending';
+            
+            let statusText = '';
+            let statusColor = '';
+            let statusBg = '';
+            if (isLive) {
+                statusText = '🔴 بث مباشر';
+                statusColor = 'var(--danger-dark)';
+                statusBg = 'rgba(239, 68, 68, 0.08)';
+            } else if (isUpcoming) {
+                statusText = '⏳ قادم';
+                statusColor = 'var(--gold-dark)';
+                statusBg = 'var(--gold-light)';
+            } else {
+                statusText = '✅ منتهية';
+                statusColor = 'var(--gray-600)';
+                statusBg = 'var(--gray-100)';
+            }
+
+            let passwordDisplay = '';
+            if (booking.room_password) {
+                passwordDisplay = `
+                    <div style="margin-top: 8px; font-size: 0.85rem;">
+                        <span class="password-label">🔑 كلمة المرور:</span> 
+                        <span class="password-badge">${booking.room_password}</span>
+                        <button onclick="copyPassword('${booking.room_password}')" style="background:transparent; border:none; color:var(--primary); cursor:pointer; font-size:0.75rem; font-weight:700;">
+                            <i class="fas fa-copy"></i> نسخ
+                        </button>
+                    </div>
+                `;
+            }
+
+            const canJoin = isLive && isPaid && booking.stream_url;
+
+            html += `
+                <div class="booking-item">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                        <div style="margin-right: auto; font-size: 0.72rem; font-weight: 800; color: ${statusColor}; background: ${statusBg}; padding: 4px 10px; border-radius:20px;">${statusText}</div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                        <img src="${booking.teacher_profile || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(booking.teacher_name || '') + '&background=0f5cbf&color=fff&size=40'}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border:2px solid white; box-shadow:var(--shadow-sm);" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${escapeHtml(booking.teacher_name || '')}')+'&background=0f5cbf&color=fff&size=40'">
+                        <div>
+                            <div style="font-weight: 800; font-size: 0.95rem; color:var(--gray-900);">${escapeHtml(booking.teacher_name || 'غير معروف')}</div>
+                            <div style="font-size: 0.72rem; color: var(--gray-500);">${escapeHtml(booking.subject_name || '')}</div>
+                        </div>
+                    </div>
+                    <div style="font-size: 0.85rem; margin: 6px 0; color: var(--gray-700);"><i class="fas fa-calendar-alt" style="color:var(--gray-400); margin-left: 8px;"></i> ${offerDate ? offerDate.toLocaleString('ar') : 'غير محدد'}</div>
+                    <div style="font-size: 0.85rem; margin: 6px 0; color: var(--gray-700);"><i class="fas fa-clock" style="color:var(--gray-400); margin-left: 8px;"></i> ${booking.duration || '0'} دقيقة</div>
+                    <div style="font-size: 0.85rem; color: var(--gray-700); font-weight:700;"><i class="fas fa-tags" style="color:var(--gray-400); margin-left: 8px;"></i> ${booking.is_free ? '🎁 مجانية' : `💰 ${booking.price || 0} دج`}</div>
+                    ${passwordDisplay}
+                    ${canJoin ? `<button class="join-stream-btn" style="margin-top: 12px; width: 100%;" onclick="joinLiveStream('${booking.stream_url}', '${booking.room_password || ''}')"><i class="fas fa-video"></i> انضم للبث المباشر</button>` : ''}
+                    ${!canJoin && isLive ? '<div style="color:var(--gray-500); font-size:0.75rem; margin-top:8px;">⏳ انتظر بدء البث...</div>' : ''}
+                </div>
+            `;
+        }
+        container.innerHTML = html;
+    }
+
+    function copyPassword(password) {
+        navigator.clipboard.writeText(password).then(() => {
+            showToast('✅ تم نسخ كلمة المرور!', 'success');
+        }).catch(() => {
+            const textArea = document.createElement('textarea');
+            textArea.value = password;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            showToast('✅ تم نسخ كلمة المرور!', 'success');
+        });
+    }
+
+    function joinLiveStream(streamUrl, password) {
+        if (!streamUrl) {
+            showToast('⚠️ رابط البث غير متاح', 'error');
+            return;
+        }
+        const newWindow = window.open(streamUrl, '_blank');
+        if (newWindow && password) {
+            setTimeout(() => {
+                alert(`🔑 كلمة مرور البث: ${password}\nأدخلها عند الطلب في صفحة البث`);
+            }, 2000);
+        }
+    }
+
+    // ================================================================
+    // ✅ TRANSACTIONS
+    // ================================================================
+
+    async function loadTransactions() {
+        const container = document.getElementById('transactionsList');
+        container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+        try {
+            const res = await fetchWithAuth(`/api/student/balance/${studentId}`);
+            const data = await res.json();
+            const transactions = data.transactions || [];
+            if (transactions.length === 0) {
+                container.innerHTML = '<p style="text-align:center; padding:30px; color:var(--gray-400);">لا توجد معاملات سابقة</p>';
+                return;
+            }
+            let html = '';
+            for (const t of transactions) {
+                const date = new Date(t.created_at);
+                const isDeposit = t.type === 'deposit' || t.type === 'credit';
+                const isReferral = t.type === 'referral_gift' || t.type === 'gift_reward';
+                let icon = isDeposit ? 'fa-arrow-up' : 'fa-arrow-down';
+                let color = isDeposit ? 'var(--secondary)' : 'var(--danger-dark)';
+                let bg = isDeposit ? 'var(--secondary-light)' : 'rgba(239, 68, 68, 0.05)';
+                let label = isDeposit ? 'شحن رصيد' : 'خصم رصيد';
+                if (isReferral) {
+                    icon = 'fa-gift';
+                    color = 'var(--gold-dark)';
+                    bg = 'var(--gold-light)';
+                    label = 'مكافأة إحالة 🎁';
+                }
+                html += `
+                    <div class="transaction-item" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 14px;">
+                            <div style="width: 40px; height: 40px; border-radius: 50%; background: ${bg}; color: ${color}; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink:0;">
+                                <i class="fas ${icon}"></i>
+                            </div>
+                            <div>
+                                <div style="font-weight: 800; color: var(--gray-900); font-size:0.9rem;">
+                                    ${label}
+                                </div>
+                                <div style="font-size: 0.72rem; color: var(--gray-400); margin-top:2px;">${date.toLocaleString('ar')}</div>
+                                <div style="font-size: 0.78rem; margin-top: 4px; color:var(--gray-500);">${t.description || ''}</div>
+                            </div>
+                        </div>
+                        <div style="font-size: 1.15rem; font-weight: 900; color: ${color}">
+                            ${isDeposit || isReferral ? '+' : '-'} ${t.amount || 0} دج
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        } catch(e) { 
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                showToast('حدث خطأ', 'error');
+            }
+        }
+    }
+
+    // ================================================================
+    // ✅ SIDEBAR HELPERS
+    // ================================================================
+
+    function loadFreeOffersSidebar(offers) {
+        const freeOffers = (offers || []).filter(o => o.is_free === 1 || o.is_free === true).slice(0, 5);
+        const container = document.getElementById('freeOffersSidebar');
+        if (!freeOffers || freeOffers.length === 0) {
+            container.innerHTML = '<p style="font-size:0.75rem; color:var(--gray-400);">لا توجد عروض مجانية</p>';
+            return;
+        }
+        let html = '';
+        for (const offer of freeOffers) {
+            const offerDate = new Date(offer.offer_date);
+            html += `
+                <div style="padding: 10px 0; border-bottom: 1px solid var(--gray-100); display: flex; flex-direction: column; gap:4px;">
+                    <div style="font-weight: 700; font-size: 0.8rem; color:var(--gray-900);">${escapeHtml(offer.subject_name)}</div>
+                    <div style="font-size: 0.7rem; color: var(--gray-500);"><i class="fas fa-clock" style="margin-left: 4px;"></i>${offerDate ? offerDate.toLocaleDateString('ar') : 'غير محدد'}</div>
+                    <button style="background:var(--gradient-secondary); color:white; border:none; padding:4px 12px; border-radius:20px; font-size:0.7rem; margin-top:4px; cursor:pointer; font-weight:700; font-family:'Cairo'; transition:var(--transition); align-self: flex-start;" onclick="quickBookFree(${offer.id})">حجز مجاني</button>
+                </div>
+            `;
+        }
+        container.innerHTML = html;
+    }
+
+    async function quickBookFree(offerId) {
+        await bookOffer(offerId, true, 0);
+    }
+
+    function loadUpcomingBookings(bookings) {
+        const upcoming = (bookings || []).filter(b => {
+            const date = new Date(b.offer_date);
+            return date > new Date() && (b.payment_status === 'paid' || b.is_free === true);
+        }).slice(0, 5);
+        const container = document.getElementById('upcomingBookings');
+        if (!upcoming || upcoming.length === 0) {
+            container.innerHTML = '<p style="font-size:0.75rem; color:var(--gray-400);">لا توجد حصص قادمة</p>';
+            return;
+        }
+        let html = '';
+        for (const b of upcoming) {
+            const offerDate = new Date(b.offer_date);
+            const isLive = b.offer_status === 'live';
+            html += `
+                <div style="padding: 10px 0; border-bottom: 1px solid var(--gray-100);">
+                    <div style="font-weight: 700; font-size: 0.8rem; color:var(--gray-900);">${escapeHtml(b.subject_name || '')}</div>
+                    <div style="font-size: 0.7rem; color: var(--gray-500);"><i class="fas fa-calendar-alt" style="margin-left:4px;"></i>${offerDate ? offerDate.toLocaleDateString('ar') : 'غير محدد'}</div>
+                    ${isLive && b.stream_url ? `<button class="join-stream-btn" style="margin-top:6px; font-size:0.65rem; padding:4px 12px;" onclick="joinLiveStream('${b.stream_url}', '${b.room_password || ''}')">انضم</button>` : ''}
+                </div>
+            `;
+        }
+        container.innerHTML = html;
+    }
+
+    // ================================================================
+    // ✅ REFERRAL SYSTEM
+    // ================================================================
+
+    async function loadReferralData() {
+        try {
+            const createRes = await fetchWithAuth('/api/referral/create', {
+                method: 'POST',
+                body: JSON.stringify({ user_id: studentId, role: 'student' })
+            });
+            const createData = await createRes.json();
+            if (createData.success) {
+                document.getElementById('referralCodeText').textContent = createData.referral_code || 'غير متوفر';
+            }
+
+            const infoRes = await fetchWithAuth(`/api/referral/info/${studentId}/student`);
+            const infoData = await infoRes.json();
+            if (infoData.success) {
+                referralData = infoData;
+                document.getElementById('referredCount').textContent = infoData.referred_count || 0;
+                const chances = infoData.gift_box_chances || 0;
+                document.getElementById('giftChances').textContent = chances;
+                document.getElementById('giftChancesDisplay').textContent = chances;
+
+                const giftBtn = document.getElementById('openGiftBtn');
+                if (chances <= 0) {
+                    giftBtn.disabled = true;
+                    giftBtn.innerHTML = '<i class="fas fa-gift"></i> لا توجد فرص متاحة';
+                } else {
+                    giftBtn.disabled = false;
+                    giftBtn.innerHTML = `<i class="fas fa-gift"></i> فتح صندوق الهدايا (${chances} فرصة${chances > 1 ? 'ات' : ''})`;
+                }
+
+                const summaryContainer = document.getElementById('referralSummarySidebar');
+                if (infoData.referred_count > 0) {
+                    summaryContainer.innerHTML = `
+                        <div style="font-size:0.85rem; color:var(--gray-900); font-weight:700; display:flex; align-items:center; gap:6px;">
+                            <i class="fas fa-users" style="color:var(--gold-dark);"></i> ${infoData.referred_count} محال
+                        </div>
+                        <div style="font-size:0.75rem; color:var(--gray-500); margin-top:4px;">
+                            🎁 ${chances} فرصة صندوق هدايا
+                        </div>
+                    `;
+                } else {
+                    summaryContainer.innerHTML = `
+                        <p style="font-size:0.75rem; color:var(--gray-400);">قم بدعوة الأصدقاء للحصول على مكافآت</p>
+                    `;
+                }
+
+                renderRewardHistory(infoData.rewards || []);
+            }
+        } catch(e) {
+            if (e.message !== 'انته�� صلاحية الجلسة') {
+                console.error('خطأ في تحميل بيانات الإحالة:', e);
+            }
+        }
+    }
+
+    function renderRewardHistory(rewards) {
+        const container = document.getElementById('rewardHistory');
+        if (!rewards || rewards.length === 0) {
+            container.innerHTML = '<p style="color:var(--gray-400); font-size:0.85rem; padding: 12px 0;">لا توجد مكافآت سابقة</p>';
+            return;
+        }
+        let html = '';
+        for (const reward of rewards) {
+            const date = new Date(reward.created_at);
+            const isGift = reward.type === 'gift_box_reward';
+            const isChance = reward.type === 'gift_box_chance';
+            let icon = '🎁';
+            let label = 'مكافأة';
+            let amountText = '';
+            
+            if (isGift) {
+                icon = '🎁';
+                label = 'صندوق هدايا';
+                amountText = reward.amount ? `${reward.amount} دج` : '0 دج';
+            } else if (isChance) {
+                icon = '✨';
+                label = 'فرصة صندوق';
+                amountText = '+1 فرصة';
+            } else {
+                icon = '💰';
+                label = 'رصيد';
+                amountText = reward.amount ? `+${reward.amount} دج` : '';
+            }
+
+            html += `
+                <div class="reward-item">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <span class="reward-icon">${icon}</span>
+                        <div>
+                            <span style="font-weight:700; color:var(--gray-800); font-size:0.85rem;">${label}</span>
+                            <div style="font-size:0.7rem; color:var(--gray-400); margin-top:2px;">${date ? date.toLocaleDateString('ar') : ''}</div>
+                        </div>
+                    </div>
+                    <div class="reward-amount">${amountText}</div>
+                </div>
+            `;
+        }
+        container.innerHTML = html;
+    }
+
+    function copyReferralCode() {
+        const code = document.getElementById('referralCodeText').textContent;
+        if (code && code !== 'جاري التحميل...' && code !== 'غير متوفر') {
+            navigator.clipboard.writeText(code).then(() => {
+                showToast('✅ تم نسخ رمز الإحالة!', 'success');
+            }).catch(() => {
+                const textArea = document.createElement('textarea');
+                textArea.value = code;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                showToast('✅ تم نسخ رمز الإحالة!', 'success');
+            });
+        } else {
+            showToast('⚠️ يرجى تسجيل الدخول للحصول على رمز الإحالة', 'warning');
+        }
+    }
+
+    function shareReferral() {
+        const code = document.getElementById('referralCodeText').textContent;
+        const link = `${window.location.origin}?ref=${code}`;
+        if (navigator.share) {
+            navigator.share({
+                title: 'انضم إلى ZoomDz',
+                text: `استخدم رمز الإحالة الخاص بي: ${code}`,
+                url: link
+            }).catch(() => {});
+        } else {
+            navigator.clipboard.writeText(link).then(() => {
+                showToast('✅ تم نسخ رابط الإحالة! شاركه مع أصدقائك', 'success');
+            }).catch(() => {
+                const textArea = document.createElement('textarea');
+                textArea.value = link;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                showToast('✅ تم نسخ رابط الإحالة!', 'success');
+            });
+        }
+    }
+
+    // ================================================================
+    // ✅ GIFT BOX
+    // ================================================================
+
+    async function openGiftBox() {
+        const btn = document.getElementById('openGiftBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري فتح الصندوق...';
+        
+        try {
+            const res = await fetchWithAuth('/api/referral/open-gift-box', {
+                method: 'POST',
+                body: JSON.stringify({ student_id: studentId })
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                const resultModal = document.getElementById('giftResultModal');
+                const overlay = document.getElementById('modalOverlay');
+                
+                let icon, amountClass, message;
+                if (data.reward > 0) {
+                    icon = '🎉';
+                    amountClass = 'gold';
+                    message = `تهانينا! حصلت على ${data.reward} دج! 🎊`;
+                } else {
+                    icon = '😅';
+                    amountClass = 'gray';
+                    message = 'لم يحالفك الحظ هذه المرة، جرب مرة أخرى!';
+                }
+                
+                document.getElementById('giftResultAmount').innerHTML = `${data.reward > 0 ? '+' : ''}${data.reward} دج`;
+                document.getElementById('giftResultAmount').className = `result-amount ${amountClass}`;
+                document.getElementById('giftResultMessage').textContent = message;
+                document.querySelector('#giftResultModal .big-icon').textContent = icon;
+                
+                overlay.style.display = 'block';
+                resultModal.style.display = 'block';
+                
+                await loadReferralData();
+                await loadWallet();
+                await loadNotifications();
+                
+                showToast(data.message, data.reward > 0 ? 'success' : 'warning');
+            } else {
+                showToast(data.error || 'حدث خطأ', 'error');
+            }
+        } catch(e) {
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                showToast('حدث خطأ أثناء فتح الصندوق', 'error');
+            }
+        } finally {
+            btn.disabled = false;
+            const chances = referralData?.gift_box_chances || 0;
+            if (chances > 0) {
+                btn.innerHTML = `<i class="fas fa-gift"></i> فتح صندوق الهدايا (${chances} فرصة${chances > 1 ? 'ات' : ''})`;
+            } else {
+                btn.innerHTML = '<i class="fas fa-gift"></i> لا توجد فرص متاحة';
+            }
+        }
+    }
+
+    function closeGiftResult() {
+        document.getElementById('modalOverlay').style.display = 'none';
+        document.getElementById('giftResultModal').style.display = 'none';
+    }
+
+    // ================================================================
+    // ✅ DEPOSIT
+    // ================================================================
+
+    function showDepositModal() {
+        document.getElementById('modalOverlay').style.display = 'block';
+        document.getElementById('depositModal').style.display = 'block';
+        document.getElementById('depositAmount').value = '';
+    }
+
+    async function depositWallet() {
+        const amount = document.getElementById('depositAmount').value;
+        if (!amount || amount < 100) {
+            showToast('المبلغ يجب أن لا يقل عن 100 دج', 'error');
+            return;
+        }
+        const btn = document.querySelector('#depositModal .save-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري...';
+        try {
+            const res = await fetchWithAuth('/api/wallet/deposit', {
+                method: 'POST',
+                body: JSON.stringify({ student_id: studentId, amount: amount })
+            });
+            const data = await res.json();
+            if (data.success && data.checkout_url) {
+                window.location.href = data.checkout_url;
+            } else {
+                showToast(data.error || 'حدث خطأ', 'error');
+                btn.disabled = false;
+                btn.innerHTML = 'شحن';
+            }
+        } catch(e) {
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                showToast('حدث خطأ', 'error');
+            }
+            btn.disabled = false;
+            btn.innerHTML = 'شحن';
+        }
+    }
+
+    function closeDepositModal() {
+        document.getElementById('modalOverlay').style.display = 'none';
+        document.getElementById('depositModal').style.display = 'none';
+    }
+
+    // ================================================================
+    // ✅ EDIT PROFILE
+    // ================================================================
+
+    function showEditProfileModal() {
+        if (userData) {
+            document.getElementById('editFullName').value = userData.full_name || '';
+            document.getElementById('editPhone').value = userData.phone || '';
+            document.getElementById('editEducationLevel').value = userData.education_level || '';
+            
+            const otherGroup = document.getElementById('editOtherLevelGroup');
+            if (userData.education_level === 'other' || !levelMap[userData.education_level]) {
+                otherGroup.style.display = 'block';
+                document.getElementById('editOtherLevelText').value = userData.education_level || '';
+            } else {
+                otherGroup.style.display = 'none';
+            }
+        }
+        document.getElementById('modalOverlay').style.display = 'block';
+        document.getElementById('editProfileModal').style.display = 'block';
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const levelSelect = document.getElementById('editEducationLevel');
+        if (levelSelect) {
+            levelSelect.addEventListener('change', function() {
+                const otherGroup = document.getElementById('editOtherLevelGroup');
+                if (this.value === 'other') {
+                    otherGroup.style.display = 'block';
+                } else {
+                    otherGroup.style.display = 'none';
+                }
+            });
+        }
+    });
+
+    async function updateProfile() {
+        const formData = new FormData();
+        formData.append('student_id', studentId);
+        formData.append('full_name', document.getElementById('editFullName').value);
+        formData.append('phone', document.getElementById('editPhone').value);
+        
+        let educationLevel = document.getElementById('editEducationLevel').value;
+        if (educationLevel === 'other') {
+            const otherText = document.getElementById('editOtherLevelText').value.trim();
+            if (otherText) {
+                educationLevel = otherText;
+            }
+        }
+        formData.append('education_level', educationLevel);
+        
+        const imageFile = document.getElementById('editProfileImage').files[0];
+        if (imageFile) {
+            formData.append('profile_image', imageFile);
+        }
+        try {
+            const res = await fetchWithAuth('/api/student/update-profile', { 
+                method: 'POST', 
+                body: formData
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast('تم تحديث الملف الشخصي والمستوى الدراسي بنجاح', 'success');
+                userData = data.user;
+                localStorage.setItem('userData', JSON.stringify(data.user));
+                updateUI();
+                closeModal();
+                loadOffers();
+                loadTeachers();
+            } else {
+                showToast(data.error || 'حدث خطأ', 'error');
+            }
+        } catch(e) {
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                showToast('حدث خطأ', 'error');
+            }
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('modalOverlay').style.display = 'none';
+        document.getElementById('editProfileModal').style.display = 'none';
+    }
+
+    function closeTeacherModal() {
+        document.getElementById('modalOverlay').style.display = 'none';
+        document.getElementById('teacherProfileModal').style.display = 'none';
+    }
+
+    // ================================================================
+    // ✅ LOGOUT
+    // ================================================================
+
+    function logout() {
+        localStorage.removeItem('token');
+        localStorage.removeItem('userData');
+        window.location.href = '/';
+    }
+
+    // ================================================================
+    // ✅ UTILITY
+    // ================================================================
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // ================================================================
+    // ✅ CLOSE DROPDOWNS ON CLICK OUTSIDE
+    // ================================================================
+
+    document.addEventListener('click', function(e) {
+        const notifBtn = document.getElementById('notifBtn');
+        const notifDropdown = document.getElementById('notifDropdown');
+        const profileBtn = document.getElementById('profileBtn');
+        const profileDropdown = document.getElementById('profileDropdown');
+
+        if (notifBtn && notifDropdown && !notifBtn.contains(e.target) && !notifDropdown.contains(e.target)) {
+            notifDropdown.classList.remove('open');
+        }
+        if (profileBtn && profileDropdown && !profileBtn.contains(e.target) && !profileDropdown.contains(e.target)) {
+            profileDropdown.classList.remove('open');
+        }
+    });
+
+    // ================================================================
+    // ✅ INIT
+    // ================================================================
+
+    loadUserData().then(() => {
+        showSection('offers');
+    });
+
+    setInterval(() => {
+        if (currentSection === 'offers') loadOffers();
+        else if (currentSection === 'bookings') loadMyBookings();
+        loadWallet();
+    }, 30000);
+
+    setInterval(() => {
+        if (studentId) loadNotifications();
+    }, 60000);
+
+    setInterval(() => {
+        if (studentId) loadReferralData();
+    }, 120000);
+</script>
+</body>
+</html>

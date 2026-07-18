@@ -1,0 +1,11 @@
+{
+  "name": "ZoomDz",
+  "short_name": "ZoomDz",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#0f5cbf",
+  "description": "منصة ZoomDz التعليمية للطلاب والأساتذة في الجزائر",
+  "orientation": "portrait",
+  "icons": []
+}
