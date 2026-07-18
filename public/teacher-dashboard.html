@@ -1865,7 +1865,6 @@
                 <option value="5eme_am">خامسة متوسط</option>
                 <option value="1ere_as">أولى ثانوي</option>
                 <option value="2eme_as">ثانية ثانوي</option>
-                <option value="3eme_as">ثالثة ثانوي</option>
                 <option value="bac">بكالوريا</option>
                 <option value="1ere_uni">أولى جامعي</option>
                 <option value="2eme_uni">ثانية جامعي</option>
@@ -2241,7 +2240,7 @@
                 if (res.status === 401 || res.status === 403) {
                     localStorage.removeItem('token');
                     localStorage.removeItem('userData');
-                    showToast('انتهت صلاحية الجلسة، جاري إعادة التوجيه...', 'error');
+                    showToast('انتهت صلاحية ��لجلسة، جاري إعادة التوجيه...', 'error');
                     setTimeout(() => { window.location.href = '/'; }, 1500);
                 } else {
                     showToast('حدث خطأ في جلب البيانات (كود: ' + res.status + ')', 'error');
@@ -2321,7 +2320,7 @@
         document.getElementById('navProfileName').textContent = userName.split(' ')[0];
         document.getElementById('navProfileImg').src = userImage;
 
-        const levelMap = { '5eme_pri': 'خامسة ابتدائي', '1ere_am': 'أولى متوسط', '2eme_am': 'ثانية متوسط', '3eme_am': 'ثالثة متوسط', '4eme_am': 'رابعة متوسط', '5eme_am': 'خامسة متوسط', '1ere_as': 'أولى ثانوي', '2eme_as': 'ثانية ثانوي', '3eme_as': 'ثالثة ثانوي', 'bac': 'بكالوريا', '1ere_uni': 'أولى جامعي', '2eme_uni': 'ثانية جامعي', '3eme_uni': 'ثالثة جامعي', 'master': 'ماستر', 'doctorat': 'دكتوراه' };
+        const levelMap = { '5eme_pri': 'خامسة ابتدائي', '1ere_am': 'أولى متوسط', '2eme_am': 'ثانية متوسط', '3eme_am': 'ثالثة متوسط', '4eme_am': 'رابعة متوسط', '5eme_am': 'خامسة متوسط', '1ere_as': 'أولى ثانوي', '2eme_as': 'ثانية ثانوي', 'bac': 'بكالوريا', '1ere_uni': 'أولى جامعي', '2eme_uni': 'ثانية جامعي', '3eme_uni': 'ثالثة جامعي', 'master': 'ماستر', 'doctorat': 'دكتوراه' };
         const teachingLevelDisplay = userData.teaching_level ? levelMap[userData.teaching_level] || userData.teaching_level : 'لم يحدد بعد';
 
         document.getElementById('profileInfo').innerHTML = `
@@ -2613,7 +2612,7 @@
         document.getElementById('chatHeader').innerHTML = `
             <div style="display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 2px solid var(--gray-200);">
                 <img src="${currentChatTeacher.image}" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary);">
-                <div><div style="font-weight: 700; font-size: 0.95rem; color:var(--gray-800);">${escapeHtml(currentChatTeacher.name)}</div><div style="font-size: 0.7rem; color: var(--gray-500);">أستاذ</div></div>
+                <div><div style="font-weight: 700; font-size: 0.95rem; color:var(--gray-800);">${escapeHtml(currentChatTeacher.name)}</div><div style="font-size: 0.7rem; color: var(--gray-500);">أستا��</div></div>
             </div>
         `;
     }
@@ -2652,7 +2651,7 @@
         const levelMap = {
             '5eme_pri': 'خامسة ابتدائي', '1ere_am': 'أولى متوسط', '2eme_am': 'ثانية متوسط',
             '3eme_am': 'ثالثة متوسط', '4eme_am': 'رابعة متوسط', '5eme_am': '��امسة متوسط',
-            '1ere_as': 'أولى ثانوي', '2eme_as': 'ثانية ثانوي', '3eme_as': 'ثالثة ثانوي',
+            '1ere_as': 'أولى ثانوي', '2eme_as': 'ثانية ثانوي',
             'bac': 'بكالوريا', '1ere_uni': 'أولى جامعي', '2eme_uni': 'ثانية جامعي',
             '3eme_uni': 'ثالثة جامعي', 'master': 'ماستر', 'doctorat': 'دكتوراه'
         };
@@ -2791,7 +2790,7 @@
         if (streamSyncInterval) clearInterval(streamSyncInterval);
         streamSyncInterval = setInterval(syncStreamStatus, 30000);
         
-        // مراقبة نافذة Jitsi - إذا أُغلقت يتوقف ا��عداد المحلي
+        // مراقبة نافذة Jitsi - إذا أُغلقت يتوق�� ا��عداد المحلي
         startJitsiWindowWatch();
     }
 
@@ -2977,7 +2976,7 @@
             pauseBtn.style.display = 'none';
             resumeBtn.style.display = 'none';
             rejoinBtn.style.display = 'none';
-            // زر إنهاء البث متاح حتى قبل البدء (للإلغاء)
+            // زر إنهاء البث متاح حتى قبل البدء (للإلغ��ء)
             endStreamBtn.disabled = false;
             endStreamBtn.style.opacity = '1';
             endStreamBtn.style.cursor = 'pointer';
@@ -3035,7 +3034,7 @@
                 // وقف العداد المحلي والـ heartbeat
                 if (streamIntervalId) { clearInterval(streamIntervalId); streamIntervalId = null; }
                 if (heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null; }
-                // إعادة ضبط الحالة لتظهر زر "إضافة ال��لاب" مرة أخرى عند إغلاق النافذة بالخطأ
+                // إعادة ضبط الحالة لتظهر زر "إضا��ة ال��لاب" مرة أخرى عند إغلاق النافذة بالخطأ
                 if (timerStarted || streamPaused) {
                     timerStarted = false;
                     streamPaused = false;
@@ -3654,7 +3653,7 @@
             const levelMap = {
                 '5eme_pri': 'خامسة ابتدائي', '1ere_am': 'أولى متوسط', '2eme_am': 'ثانية متوسط',
                 '3eme_am': 'ثالثة متوسط', '4eme_am': 'رابعة متوسط', '5eme_am': 'خامسة متوسط',
-                '1ere_as': 'أولى ثانوي', '2eme_as': 'ثانية ثانوي', '3eme_as': 'ثالثة ثانوي',
+                '1ere_as': 'أولى ثانوي', '2eme_as': 'ثانية ثانوي',
                 'bac': 'بكالوريا', '1ere_uni': 'أولى جامعي', '2eme_uni': 'ثانية جامعي',
                 '3eme_uni': 'ثالثة جامعي', 'master': 'ماستر', 'doctorat': 'دكتوراه'
             };
