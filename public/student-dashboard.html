@@ -1411,6 +1411,10 @@
                 <i class="fas fa-link" style="color:var(--gold);"></i>
                 <span class="tab-label">الإحالة</span>
             </button>
+            <button class="nav-notifications-btn" onclick="toggleNotifications()" id="notifBtn" style="margin-right: auto;">
+                <i class="fas fa-bell"></i>
+                <span class="notif-badge hidden" id="notifBadge">0</span>
+            </button>
         </div>
 
         <div class="nav-balance" onclick="showSection('transactions')" title="الرصيد المتاح">
@@ -1420,11 +1424,8 @@
             <span class="currency">دج</span>
         </div>
 
-        <div class="nav-notifications">
-            <button class="nav-notifications-btn" onclick="toggleNotifications()" id="notifBtn">
-                <i class="fas fa-bell"></i>
-                <span class="notif-badge hidden" id="notifBadge">0</span>
-            </button>
+        <div class="nav-notifications" style="position: absolute; top: 70px; right: 0; width: 100%;">
+
             <div class="notif-dropdown" id="notifDropdown">
                 <div class="notif-dropdown-header">
                     <h4><i class="fas fa-bell" style="color:var(--primary);"></i> الإشعارات</h4>
@@ -1627,6 +1628,12 @@
                 <option value="1ere_am">أولى متوسط</option>
                 <option value="2eme_am">ثانية متوسط</option>
                 <option value="3eme_am">ثالثة متوسط</option>
+                <option value="4eme_am">رابعة متوسط</option>
+                <option value="1ere_as">أولى ثانوي</option>
+                <option value="2eme_as">ثانية ثانوي</option>
+                <option value="bac">بكالوريا</option>
+                <option value="1ere_uni">أولى جامعي</option>
+                <option value="2eme_uni">ثانية جامعي</option>
                 <option value="3eme_uni">ثالثة جامعي</option>
                 <option value="master">ماستر</option>
                 <option value="doctorat">دكتوراه</option>
@@ -1719,6 +1726,12 @@
         '1ere_am': 'أولى متوسط',
         '2eme_am': 'ثانية متوسط',
         '3eme_am': 'ثالثة متوسط',
+        '4eme_am': 'رابعة متوسط',
+        '1ere_as': 'أولى ثانوي',
+        '2eme_as': 'ثانية ثانوي',
+        'bac': 'بكالوريا',
+        '1ere_uni': 'أولى جامعي',
+        '2eme_uni': 'ثانية جامعي',
         '3eme_uni': 'ثالثة جامعي',
         'master': 'ماستر',
         'doctorat': 'دكتوراه',
