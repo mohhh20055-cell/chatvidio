@@ -91,9 +91,6 @@ try {
 // دوال مساعدة عامة
 // ============================================================
 
-// ⚠️ دوال JWT متوفرة الآن في utils/jwt.js
-// ⚠️ دوال التشفير متوفرة الآن في utils/encryption.js
-
 function sanitizeInput(input) {
     if (typeof input === 'string') {
         return input.trim();
@@ -456,7 +453,7 @@ app.use('/api/public', cachePublicResponses());
 // CSRF Protection
 // ============================================================
 
-	const csrfExcludedPaths = [
+const csrfExcludedPaths = [
     '/api/login',
     '/api/student/register',
     '/api/teacher/register',
@@ -913,7 +910,7 @@ const walletRoutes = require('./routes/wallet');
 const notificationRoutes = require('./routes/notification');
 
 // ============================================================
-// ✅ استخ��ام المسارات - الترتيب مهم جداً!
+// ✅ استخدام المسارات - الترتيب مهم جداً!
 // ============================================================
 
 // ✅ 1. المسارات العامة (لا تحتاج مصادقة)
@@ -939,6 +936,220 @@ app.use('/api/support', supportRoutes);
 app.use('/api/referral', referralRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/notifications', notificationRoutes);
+
+// ============================================================
+// ✅ مسارات /me المباشرة (إصلاح مشكلة التوكن)
+// ============================================================
+
+/**
+ * @route   GET /api/teacher/me
+ * @desc    جلب بيانات الأستاذ الحالي
+ * @access  Private (Teacher only)
+ */
+app.get('/api/teacher/me', authenticate, authorize(['teacher']), async (req, res) => {
+    try {
+        const teacherId = req.user.userId;
+        console.log('📥 جلب بيانات الأستاذ:', teacherId);
+        
+        const { data: teacher, error } = await supabase
+            .from('teachers')
+            .select('*')
+            .eq('id', teacherId)
+            .single();
+        
+        if (error || !teacher) {
+            console.error('❌ خطأ في جلب بيانات الأستاذ:', error);
+            return res.status(404).json({ 
+                success: false, 
+                error: 'الأستاذ غير موجود' 
+            });
+        }
+        
+        console.log('✅ تم جلب بيانات الأستاذ:', teacher.full_name);
+        
+        // جلب البث النشط إن وجد
+        const { data: activeStream } = await supabase
+            .from('offers')
+            .select('*')
+            .eq('teacher_id', teacherId)
+            .in('status', ['live', 'teacher_ready', 'paused'])
+            .single();
+        
+        res.json({ 
+            success: true, 
+            teacher: teacher,
+            activeStream: activeStream || null
+        });
+    } catch (error) {
+        console.error('❌ خطأ في جلب بيانات الأستاذ:', error.message);
+        res.status(500).json({ 
+            success: false, 
+            error: 'حدث خطأ في الخادم' 
+        });
+    }
+});
+
+/**
+ * @route   GET /api/student/me
+ * @desc    جلب بيانات الطالب الحالي
+ * @access  Private (Student only)
+ */
+app.get('/api/student/me', authenticate, authorize(['student']), async (req, res) => {
+    try {
+        const studentId = req.user.userId;
+        console.log('📥 جلب بيانات الطالب:', studentId);
+        
+        const { data: student, error } = await supabase
+            .from('students')
+            .select('*')
+            .eq('id', studentId)
+            .single();
+        
+        if (error || !student) {
+            console.error('❌ خطأ في جلب بيانات الطالب:', error);
+            return res.status(404).json({ 
+                success: false, 
+                error: 'الطالب غير موجود' 
+            });
+        }
+        
+        console.log('✅ تم جلب بيانات الطالب:', student.full_name);
+        
+        res.json({ 
+            success: true, 
+            ...student 
+        });
+    } catch (error) {
+        console.error('❌ خطأ في جلب بيانات الطالب:', error.message);
+        res.status(500).json({ 
+            success: false, 
+            error: 'حدث خطأ في الخادم' 
+        });
+    }
+});
+
+// ============================================================
+// ✅ مسار جلب الرصيد للأستاذ (مباشر)
+// ============================================================
+
+app.get('/api/teacher/balance/:teacherId', authenticate, authorize(['teacher']), async (req, res) => {
+    try {
+        const teacherId = parseInt(req.params.teacherId);
+        
+        // التأكد من أن المستخدم يطلب بياناته الخاصة
+        if (req.user.userId !== teacherId) {
+            return res.status(403).json({ success: false, error: 'غير مصرح به' });
+        }
+        
+        // جلب الرصيد الكلي
+        const { data: balanceData, error: balanceError } = await supabase
+            .from('teacher_balances')
+            .select('*')
+            .eq('teacher_id', teacherId)
+            .single();
+        
+        if (balanceError && balanceError.code !== 'PGRST116') {
+            console.error('❌ خطأ في جلب الرصيد:', balanceError);
+            return res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+        }
+        
+        const balance = balanceData?.balance || 0;
+        const totalEarned = balanceData?.total_earned || 0;
+        
+        // جلب المدفوعات المعلقة (جلسات لم تُدفع بعد للأستاذ)
+        const { data: pendingSessions, error: pendingError } = await supabase
+            .from('sessions')
+            .select('id, payment_amount, platform_fee, offer_id, created_at, offers(subject_name)')
+            .eq('teacher_id', teacherId)
+            .eq('payment_status', 'pending')
+            .eq('is_free', false);
+        
+        if (pendingError) {
+            console.error('❌ خطأ في جلب الجلسات المعلقة:', pendingError);
+        }
+        
+        const pendingTotal = pendingSessions?.reduce((sum, s) => {
+            const teacherEarned = s.payment_amount - (s.platform_fee || 0);
+            return sum + (teacherEarned || 0);
+        }, 0) || 0;
+        
+        res.json({
+            success: true,
+            balance: balance,
+            total_earned: totalEarned,
+            pending_withdraw: pendingTotal,
+            sessions: pendingSessions || []
+        });
+    } catch (error) {
+        console.error('❌ خطأ في جلب رصيد الأستاذ:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// ✅ مسار جلب الرصيد للطالب (مباشر)
+// ============================================================
+
+app.get('/api/student/balance/:studentId', authenticate, authorize(['student']), async (req, res) => {
+    try {
+        const studentId = parseInt(req.params.studentId);
+        
+        // التأكد من أن المستخدم يطلب بياناته الخاصة
+        if (req.user.userId !== studentId) {
+            return res.status(403).json({ success: false, error: 'غير مصرح به' });
+        }
+        
+        const { data: balanceData, error } = await supabase
+            .from('student_balances')
+            .select('*')
+            .eq('student_id', studentId)
+            .single();
+        
+        if (error && error.code !== 'PGRST116') {
+            console.error('❌ خطأ في جلب رصيد الطالب:', error);
+            return res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+        }
+        
+        res.json({
+            success: true,
+            balance: balanceData?.balance || 0
+        });
+    } catch (error) {
+        console.error('❌ خطأ في جلب رصيد الطالب:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// ✅ مسار جلب عروض الأستاذ (مباشر)
+// ============================================================
+
+app.get('/api/teacher/offers/:teacherId', authenticate, authorize(['teacher']), async (req, res) => {
+    try {
+        const teacherId = parseInt(req.params.teacherId);
+        
+        // التأكد من أن المستخدم يطلب بياناته الخاصة
+        if (req.user.userId !== teacherId) {
+            return res.status(403).json({ success: false, error: 'غير مصرح به' });
+        }
+        
+        const { data: offers, error } = await supabase
+            .from('offers')
+            .select('*')
+            .eq('teacher_id', teacherId)
+            .order('offer_date', { ascending: true });
+        
+        if (error) {
+            console.error('❌ خطأ في جلب عروض الأستاذ:', error);
+            return res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+        }
+        
+        res.json(offers || []);
+    } catch (error) {
+        console.error('❌ خطأ في جلب عروض الأستاذ:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
 
 // ============================================================
 // المسار الرئيسي
@@ -1173,8 +1384,8 @@ if (require.main === module) {
         console.log('📅 التاريخ:', new Date().toLocaleString('ar-EG'));
         console.log('✅ نظام البث: Jitsi Meet (مجاني 100%)');
         console.log('✅ مسارات المصادقة: /api/student/register و /api/teacher/register');
+        console.log('✅ مسارات /me: /api/student/me و /api/teacher/me');
         console.log('='.repeat(60));
         startOfferCron();
     });
 }
-
