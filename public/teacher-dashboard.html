@@ -486,21 +486,18 @@
         .nav-balance .balance-item.pending i { color: #f59e0b; }
         .nav-balance .balance-item.pending .balance-label { color: #f59e0b; opacity: 1; }
 
-        /* ===== NOTIFICATIONS BUTTON - بجوار تبويبة الرسائل ===== */
         .nav-notifications {
             position: relative;
             flex-shrink: 0;
-            display: flex;
-            align-items: center;
         }
         .nav-notifications-btn {
-            width: 36px;
-            height: 36px;
+            width: 42px;
+            height: 42px;
             border-radius: 50%;
             border: none;
             background: linear-gradient(135deg, var(--gray-100) 0%, var(--gray-50) 100%);
             color: var(--gray-600);
-            font-size: 0.95rem;
+            font-size: 1.1rem;
             cursor: pointer;
             transition: var(--transition);
             display: flex;
@@ -522,10 +519,10 @@
             right: -4px;
             background: var(--danger);
             color: white;
-            font-size: 0.5rem;
+            font-size: 0.55rem;
             font-weight: 800;
-            width: 18px;
-            height: 18px;
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -537,8 +534,8 @@
 
         .notif-dropdown {
             position: absolute;
-            top: 46px;
-            right: 0;
+            top: 52px;
+            left: 0;
             width: 388px;
             max-width: 92vw;
             background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
@@ -559,7 +556,7 @@
             content: '';
             position: absolute;
             top: -8px;
-            right: 16px;
+            left: 16px;
             width: 16px;
             height: 16px;
             background: #ffffff;
@@ -1402,9 +1399,7 @@
             .nav-profile { padding: 2px 6px 2px 2px; }
             .nav-profile .profile-name { max-width: 40px; font-size: 0.68rem; }
             .nav-profile img { width: 26px; height: 26px; }
-            
-            /* أيقونة الإشعارات في الشاشات الصغيرة */
-            .nav-notifications-btn { width: 30px; height: 30px; font-size: 0.8rem; }
+            .nav-notifications-btn { width: 34px; height: 34px; font-size: 0.9rem; }
             .notif-dropdown { width: min(92vw, 300px); left: auto; right: 0; }
             .profile-dropdown { width: min(92vw, 220px); left: auto; right: 0; }
             .main-wrapper { padding: 10px; }
@@ -1524,32 +1519,6 @@
                 <i class="fas fa-envelope"></i>
                 <span class="tab-label">الرسائل</span>
             </button>
-            
-            <!-- ===== أيقونة الإشعارات أصبحت هنا - بجوار تبويبة الرسائل ===== -->
-            <div class="nav-notifications">
-                <button class="nav-notifications-btn" onclick="toggleNotifications()" id="notifBtn">
-                    <i class="fas fa-bell"></i>
-                    <span class="notif-badge hidden" id="notifBadge">0</span>
-                </button>
-                <div class="notif-dropdown" id="notifDropdown">
-                    <div class="notif-dropdown-header">
-                        <div class="notif-title-group">
-                            <i class="fas fa-bell"></i>
-                            <h4>الإشعارات</h4>
-                        </div>
-                        <div style="display:flex; align-items:center;">
-                            <span class="notif-count" id="notifCountLabel">0</span>
-                            <button class="mark-read" onclick="markAllNotifications()">تحديد الكل كمقروء</button>
-                        </div>
-                    </div>
-                    <div class="notif-list" id="notifList">
-                        <div class="notif-empty">
-                            <i class="fas fa-bell-slash"></i>
-                            لا توجد إشعارات
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <div class="nav-balance" onclick="showSection('earnings')" title="الرصيد المتاح">
@@ -1564,6 +1533,31 @@
                 <span class="balance-label">المعلق:</span>
                 <span id="navPendingAmount">0</span>
                 <span class="currency">دج</span>
+            </div>
+        </div>
+
+        <div class="nav-notifications">
+            <button class="nav-notifications-btn" onclick="toggleNotifications()" id="notifBtn">
+                <i class="fas fa-bell"></i>
+                <span class="notif-badge hidden" id="notifBadge">0</span>
+            </button>
+            <div class="notif-dropdown" id="notifDropdown">
+                <div class="notif-dropdown-header">
+                    <div class="notif-title-group">
+                        <i class="fas fa-bell"></i>
+                        <h4>الإشعارات</h4>
+                    </div>
+                    <div style="display:flex; align-items:center;">
+                        <span class="notif-count" id="notifCountLabel">0</span>
+                        <button class="mark-read" onclick="markAllNotifications()">تحديد الكل كمقروء</button>
+                    </div>
+                </div>
+                <div class="notif-list" id="notifList">
+                    <div class="notif-empty">
+                        <i class="fas fa-bell-slash"></i>
+                        لا توجد إشعارات
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1627,7 +1621,7 @@
                     <div class="progress-fill" id="timerProgress" style="width: 100%;"></div>
                 </div>
                 <div style="font-size: 0.75rem; color: rgba(255,255,255,0.5); margin-top: 6px;">
-                    <span id="timerRemainingLabel">اضغط على "إضافة الطلاب" لبدء العد التنازلي</span>
+                    <span id="timerRemainingLabel">اضغط على "��ضافة الطلاب" لبدء العد التنازلي</span>
                 </div>
             </div>
             <div class="timer-actions">
@@ -1675,7 +1669,7 @@
                 <div class="banner-icon"><i class="fas fa-exclamation-triangle"></i></div>
                 <div class="banner-content">
                     <h4>⚠️ قم بإدخال المستوى الدراسي للطلبة</h4>
-                    <p>لا يمكنك إضافة عروض جديدة حتى تقوم بتحديد المستوى الدراسي الذي تدرسه في ملفك الشخصي.</p>
+                    <p>لا يمكنك إضافة عروض جديدة ح��ى تقوم بتحديد المستوى الدراسي الذي تدرسه في ملفك الشخصي.</p>
                 </div>
                 <button class="banner-btn" onclick="showEditProfileModal()">
                     <i class="fas fa-edit"></i> تعديل الملف الشخصي
@@ -1876,7 +1870,7 @@
                 <option value="2eme_uni">ثانية جامعي</option>
                 <option value="3eme_uni">ثالثة جامعي</option>
                 <option value="master">ماستر</option>
-                <option value="doctorat">دكتوراه</option>
+                <option value="doctorat">د��توراه</option>
                 <option value="other">آخر</option>
             </select>
         </div>
@@ -1915,7 +1909,7 @@
     let streamTimer = null;            // معرف الـ Interval
     let streamRemainingSeconds = 0;    // الوقت المتبقي بالثواني
     let streamTotalSeconds = 0;        // الوقت الكلي بالثواني
-    let streamPaused = false;          // هل البث في حالة إيقاف مؤقت
+    let streamPaused = false;          // هل البث في حالة إيقاف مؤقت��
     let streamOfferId = null;          // معرف العرض
     let streamIntervalId = null;       // معرف الـ setInterval
 
@@ -2246,7 +2240,7 @@
                 if (res.status === 401 || res.status === 403) {
                     localStorage.removeItem('token');
                     localStorage.removeItem('userData');
-                    showToast('انتهت صلاحية الجلسة، جاري إعادة التوجيه...', 'error');
+                    showToast('انتهت صلاحية ��لجلسة، جاري إعادة التوجيه...', 'error');
                     setTimeout(() => { window.location.href = '/'; }, 1500);
                 } else {
                     showToast('حدث خطأ في جلب البيانات (كود: ' + res.status + ')', 'error');
@@ -2542,7 +2536,7 @@
             const res = await fetchWithAuth(`/api/messages/${teacherId}/teacher/${otherId}/teacher`);
             const messages = await res.json();
             renderChatMessages(messages);
-        } catch(e) { if (e.message !== 'انتهت صلاحية الجلسة') { console.log(e); container.innerHTML = '<p style="text-align:center; padding:20px; color:var(--danger);">حدث خطأ في تحميل الرسائل</p>'; } }
+        } catch(e) { if (e.message !== 'انتهت صلاحية الجلسة') { console.log(e); container.innerHTML = '<p style="text-align:center; padding:20px; color:var(--danger);">حدث خطأ في تحميل ��لرسائل</p>'; } }
     }
 
     function renderChatMessages(messages) {
@@ -2618,7 +2612,7 @@
         document.getElementById('chatHeader').innerHTML = `
             <div style="display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 2px solid var(--gray-200);">
                 <img src="${currentChatTeacher.image}" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary);">
-                <div><div style="font-weight: 700; font-size: 0.95rem; color:var(--gray-800);">${escapeHtml(currentChatTeacher.name)}</div><div style="font-size: 0.7rem; color: var(--gray-500);">أستاذ</div></div>
+                <div><div style="font-weight: 700; font-size: 0.95rem; color:var(--gray-800);">${escapeHtml(currentChatTeacher.name)}</div><div style="font-size: 0.7rem; color: var(--gray-500);">أستا��</div></div>
             </div>
         `;
     }
@@ -2656,7 +2650,7 @@
         let html = '';
         const levelMap = {
             '5eme_pri': 'خامسة ابتدائي', '1ere_am': 'أولى متوسط', '2eme_am': 'ثانية متوسط',
-            '3eme_am': 'ثالثة متوسط', '4eme_am': 'رابعة متوسط', '5eme_am': 'خامسة متوسط',
+            '3eme_am': 'ثالثة متوسط', '4eme_am': 'رابعة متوسط', '5eme_am': '��امسة متوسط',
             '1ere_as': 'أولى ثانوي', '2eme_as': 'ثانية ثانوي',
             'bac': 'بكالوريا', '1ere_uni': 'أولى جامعي', '2eme_uni': 'ثانية جامعي',
             '3eme_uni': 'ثالثة جامعي', 'master': 'ماستر', 'doctorat': 'دكتوراه'
@@ -2709,7 +2703,7 @@
             if (canStartStream) {
                 streamButton = `<button class="start-stream-btn" onclick="startStreamNow(${offer.id})"><i class="fas fa-play"></i> بدء البث</button>`;
             } else if (notYetTime) {
-                // حساب الوقت المتبقي
+                // حساب الوق�� المتبقي
                 const timeLeft = offerDate - nowForCheck;
                 const hoursLeft = Math.floor(timeLeft / (1000 * 60 * 60));
                 const minutesLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
@@ -2796,7 +2790,7 @@
         if (streamSyncInterval) clearInterval(streamSyncInterval);
         streamSyncInterval = setInterval(syncStreamStatus, 30000);
         
-        // مراقبة نافذة Jitsi - إذا أُغلقت يتوقف العداد المحلي
+        // مراقبة نافذة Jitsi - إذا أُغلقت يتوق�� ا��عداد المحلي
         startJitsiWindowWatch();
     }
 
@@ -2828,7 +2822,7 @@
         }, 1000);
     }
 
-    // دخول فترة السماح (10 دقائق) بعد انتهاء وقت البث
+    // دخول فترة الس��اح (10 دقائق) بعد انتهاء وقت البث
     function enterGracePeriod() {
         streamGracePeriod = true;
         streamGraceSeconds = 10 * 60; // 10 دقائق
@@ -2866,7 +2860,7 @@
     let jitsiWindow = null;        // مرجع نافذة Jitsi المفتوحة
     let jitsiWatchInterval = null; // مراقبة إغلاق نافذة Jitsi
 
-    // إرسال heartbeat للخادم
+    // إرسال heartbeat ل��خادم
     async function sendHeartbeat() {
         if (!streamOfferId || (!timerStarted && !streamGracePeriod)) return;
         try {
@@ -2879,7 +2873,7 @@
                 return;
             }
 
-            // مزامنة الوقت المتبقي مع الخادم (الخادم هو المرجع)
+            // مزامنة الوقت المتبقي مع الخادم (الخ��دم هو المرجع)
             if (data.remaining_seconds !== undefined && !streamGracePeriod) {
                 const diff = Math.abs(streamRemainingSeconds - data.remaining_seconds);
                 if (diff > 5) { // تصحيح فقط إذا كان الفرق أكثر من 5 ثوانٍ
@@ -2982,7 +2976,7 @@
             pauseBtn.style.display = 'none';
             resumeBtn.style.display = 'none';
             rejoinBtn.style.display = 'none';
-            // زر إنهاء البث متاح حتى قبل البدء (للإلغاء)
+            // زر إنهاء البث متاح حتى قبل البدء (للإلغ��ء)
             endStreamBtn.disabled = false;
             endStreamBtn.style.opacity = '1';
             endStreamBtn.style.cursor = 'pointer';
@@ -3040,7 +3034,7 @@
                 // وقف العداد المحلي والـ heartbeat
                 if (streamIntervalId) { clearInterval(streamIntervalId); streamIntervalId = null; }
                 if (heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null; }
-                // إعادة ضبط الحالة لتظهر زر "إضافة الطلاب" مرة أخرى عند إغلاق النافذة بالخطأ
+                // إعادة ضبط الحالة لتظهر زر "إضا��ة ال��لاب" مرة أخرى عند إغلاق النافذة بالخطأ
                 if (timerStarted || streamPaused) {
                     timerStarted = false;
                     streamPaused = false;
@@ -3094,7 +3088,7 @@
     // ✅ HANDLERS للتعامل مع إغلاق الصفحة أو التنقل بعيداً
     // ================================================================
 
-    // عند مغادرة لوحة التحكم (إغلاق/تحديث الصفحة الرئيسية)
+    // عند مغادرة لوحة التحكم (إغلاق/تحدي�� الصفحة الرئيسية)
     // الخادم يستمر بالعد - انقطاع heartbeat سيُفعّل grace period تلقائياً
     window.addEventListener('beforeunload', function(e) {
         if (timerStarted && streamOfferId) {
@@ -3199,7 +3193,7 @@
                 loadBalance();
                 showToast('✅ تم إنهاء البث! تم تحويل الرصيد المعلق إلى رصيدك', 'success');
             } else {
-                showToast(data.error || 'حدث خطأ', 'error');
+                showToast(data.error || 'حدث خ��أ', 'error');
             }
         } catch(e) { if (e.message !== 'انتهت صلاحية الجلسة') showToast('حدث خطأ', 'error'); }
     }
@@ -3211,7 +3205,7 @@
         const elapsedSeconds = streamTotalSeconds - streamRemainingSeconds;
         const completionPercentage = streamTotalSeconds > 0 ? Math.round((elapsedSeconds / streamTotalSeconds) * 100) : 0;
         
-        // إذا لم يبدأ العداد بعد أو كان هناك وقت متبقي
+        // إذا لم يبدأ العداد بعد أو كان هن��ك وقت متبقي
         const isBeforeStart = !timerStarted;
         const isEarlyEnd = timerStarted && streamRemainingSeconds > 0;
         const shouldTerminate = isBeforeStart || isEarlyEnd;
@@ -3359,7 +3353,7 @@
             const terminatedStatuses = ['completed', 'cancelled'];
 
             if (terminatedStatuses.includes(data.status)) {
-                showToast('⚠️ هذا البث انتهى ولا يمكن فتحه مرة أخرى', 'warning');
+                showToast('⚠️ هذا البث انتهى ولا يمكن فتحه مرة أخ��ى', 'warning');
                 return;
             }
 
