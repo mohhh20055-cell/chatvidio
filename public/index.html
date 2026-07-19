@@ -7,7 +7,8 @@
     
     <!-- ===== SEO META TAGS ===== -->
     <meta name="description" content="منصة ZoomDz للتعليم عن بعد في الجزائر - دروس خصوصية عبر الفيديو مع نخبة من الأساتذة المعتمدين. تعلم مع أفضل الأساتذة في الجزائر، بكالوريا، متوسط، جامعي.">
-    <meta name="keywords" content="تعليم عن بعد الجزائر, دروس خصوصية, بكالوريا, أساتذة, منصة تعليمية, ZoomDz, بث مباشر, شارجيلي, إيداهبية, CCP">
+    <meta name="keywords" content="تعليم عن بعد الجزائر, دروس خصوصية, بكالوريا, أساتذة, منصة تعليمية, ZoomDz, بث مباشر, شارجيلي, إيداهبية, CCP, عثمانية محمد الصالح">
+    <meta name="author" content="عثمانية محمد الصالح">
     <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
     <link rel="canonical" href="https://zoomdz.com/">
     
@@ -34,7 +35,11 @@
         "description": "منصة التعليم عن بعد الرائدة في الجزائر",
         "url": "https://zoomdz.com",
         "logo": "https://zoomdz.com/images/zoomdz.png",
-        "foundingDate": "2025",
+        "foundingDate": "2026",
+        "author": {
+            "@type": "Person",
+            "name": "عثمانية محمد الصالح"
+        },
         "foundingLocation": {
             "@type": "Place",
             "address": {
@@ -43,8 +48,7 @@
             }
         },
         "sameAs": [
-            "https://t.me/zoomdz1",
-            "https://facebook.com/zoomdz"
+            "https://t.me/zoomdz1"
         ]
     }
     </script>
@@ -1191,7 +1195,7 @@
         }
 
         /* ============================================================
-           DEVELOPERS GRID
+           DEVELOPERS GRID - تم التعديل هنا حسب الطلب
            ============================================================ */
         .developers-grid {
             display: grid;
@@ -1278,6 +1282,8 @@
         .developer-role.frontend { background: #fce4ec; color: #c62828; }
         .developer-role.marketing { background: #e0f2fe; color: #0369a1; }
         .developer-role.database { background: #dcfce7; color: #15803d; }
+        .developer-role.owner { background: #fef3c7; color: #d97706; }
+        .developer-role.lead { background: #ede9fe; color: #7c3aed; }
 
         /* ============================================================
            PROFILE SECTION
@@ -2290,7 +2296,6 @@
            RESPONSIVE DESIGN - جميع الشاشات
            ============================================================ */
         
-        /* شاشات كبيرة (لابتوب/ديسكتوب) */
         @media (max-width: 1200px) {
             .hero-content h1 { font-size: 2.8rem; }
             .hero-image .badge-float { font-size: 0.75rem; padding: 10px 16px; }
@@ -2312,12 +2317,10 @@
         }
         
         @media (max-width: 768px) {
-            /* Navbar */
             .navbar { padding: 10px 12px; }
             .nav-container { justify-content: center; gap: 8px; }
             .nav-links { width: 100%; justify-content: center; flex-wrap: wrap; }
             .nav-links a { padding: 6px 10px; font-size: 0.73rem; }
-            .nav-links a .nav-label { display: inline; }
             .logo { font-size: 1.2rem; }
             .logo-icon-wrapper { width: 36px; height: 36px; }
             .logo-icon-wrapper i { font-size: 1rem; }
@@ -2325,16 +2328,8 @@
             .logo-text .highlight { font-size: 1.2rem; }
             .logo-badge { font-size: 0.45rem; padding: 1px 8px; }
             .download-app-btn { padding: 6px 14px; font-size: 0.7rem; gap: 4px; }
-            .download-app-btn i { font-size: 0.7rem; }
             
-            /* Hero */
-            .hero { 
-                flex-direction: column; 
-                padding: 24px 16px 36px; 
-                gap: 24px; 
-                text-align: center; 
-                margin: 20px auto 30px;
-            }
+            .hero { flex-direction: column; padding: 24px 16px 36px; gap: 24px; text-align: center; margin: 20px auto 30px; }
             .hero-content { align-items: center; text-align: center; }
             .hero-content h1 { font-size: 1.9rem; line-height: 1.3; }
             .hero-content p { max-width: 100%; font-size: 1rem; }
@@ -2352,30 +2347,25 @@
             .hero-image { width: min(100%, 280px); margin: 0 auto; }
             .hero-image .floating-icon { font-size: 100px; }
             
-            /* Stats */
             .stats-container { flex-direction: column; gap: 10px; }
             .stat-card { min-width: auto; padding: 14px 18px; }
             .stat-card .number { font-size: 1.8rem; }
             
-            /* Sections */
             .section-container { padding: 0 16px; margin: 30px auto; }
             .section-title { font-size: 1.6rem; }
             .section-subtitle { font-size: 0.95rem; }
             
-            /* Teachers */
             .teachers-grid { grid-template-columns: 1fr 1fr; gap: 16px; }
             .teacher-card { padding: 20px 16px; }
             .teacher-image { width: 90px; height: 90px; }
             .teacher-card h3 { font-size: 1rem; }
             .view-profile-btn { font-size: 0.75rem; padding: 8px 14px; }
             
-            /* Developers */
             .developers-grid { grid-template-columns: 1fr 1fr; gap: 16px; }
             .developer-card { padding: 20px 16px; }
             .developer-image { width: 90px; height: 90px; }
             .developer-card h3 { font-size: 1rem; }
             
-            /* About */
             .about-section { padding: 0 16px; margin: 0 auto 30px; }
             .about-card { padding: 24px 18px; }
             .about-grid .about-text h2 { font-size: 1.4rem; }
@@ -2383,20 +2373,17 @@
             .about-grid .about-features { grid-template-columns: 1fr 1fr; }
             .about-steps { grid-template-columns: 1fr; gap: 12px; }
             
-            /* Referral */
             .referral-guide { padding: 24px 18px; }
             .referral-guide h2 { font-size: 1.25rem; }
             .referral-guide .guide-grid { grid-template-columns: 1fr; }
             .referral-stats { grid-template-columns: 1fr 1fr; }
             .referral-card .referral-code { font-size: 1.2rem; }
             
-            /* Forms */
             .form-section { padding: 0 16px; margin: 30px auto; }
             .form-container { padding: 20px; }
             .form-tabs { gap: 6px; }
             .tab-btn { padding: 8px 16px; font-size: 0.8rem; flex: 1; min-width: 80px; }
             
-            /* Profile */
             .profile-section { padding: 0 16px; margin: 20px auto 40px; }
             .profile-card { padding: 20px; }
             .profile-header { flex-direction: column; text-align: center; gap: 16px; }
@@ -2406,10 +2393,8 @@
             .profile-offers-grid { grid-template-columns: 1fr; }
             .social-links-grid { grid-template-columns: 1fr; }
             
-            /* Support */
             .support-card { padding: 20px; margin: 20px auto; }
             
-            /* Download */
             .download-app-section { padding: 0 16px; margin: 30px auto; }
             .download-card { padding: 24px 18px; }
             .download-card h2 { font-size: 1.4rem; }
@@ -2417,16 +2402,12 @@
             .download-btn-android { padding: 12px 24px; font-size: 0.95rem; width: 100%; justify-content: center; }
             .download-card .qr-code img { width: 100px; height: 100px; }
             
-            /* Footer */
             footer { padding: 30px 16px; margin-top: 30px; }
             footer .footer-logo { font-size: 1.2rem; }
             footer .footer-links { gap: 8px; }
             footer .footer-links a { font-size: 0.7rem; }
             
-            /* reCAPTCHA */
             .recaptcha-wrapper .g-recaptcha { transform: scale(0.75); }
-            
-            /* Nav Dropdown */
             .nav-dropdown-menu { min-width: 180px; right: -10px; }
             .nav-dropdown-menu a { font-size: 0.78rem; padding: 8px 14px; }
         }
@@ -2443,7 +2424,6 @@
                 padding: 10px 16px;
             }
             .nav-links a { padding: 4px 8px; font-size: 0.68rem; }
-            .nav-links a .nav-label { display: inline; font-size: 0.68rem; }
             .download-app-btn { font-size: 0.65rem; padding: 4px 10px; }
             .teachers-grid { grid-template-columns: 1fr; }
             .developers-grid { grid-template-columns: 1fr; }
@@ -2479,7 +2459,6 @@
             .btn-primary, .btn-success, .btn-telegram { font-size: 0.8rem; padding: 10px 18px; }
         }
         
-        /* Landscape phones */
         @media (max-height: 500px) and (orientation: landscape) {
             .hero { padding: 15px 20px; margin: 10px auto 20px; }
             .hero-content h1 { font-size: 1.5rem; }
@@ -2492,7 +2471,6 @@
             .logo-icon-wrapper i { font-size: 0.8rem; }
         }
         
-        /* Prevent text selection on mobile */
         @media (max-width: 768px) {
             .btn, .stat-number, .teacher-card, .developer-card, .logo, .nav-links a {
                 -webkit-user-select: none;
@@ -2500,7 +2478,6 @@
             }
         }
         
-        /* Smooth scroll for desktop only */
         @media (prefers-reduced-motion: reduce) {
             html { scroll-behavior: auto; }
             * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
@@ -2742,7 +2719,7 @@
             </div>
         </section>
 
-        <!-- ===== DEVELOPERS SECTION ===== -->
+        <!-- ===== DEVELOPERS SECTION - تم التعديل هنا حسب الطلب ===== -->
         <section id="developersSection" class="section-container" style="display: none;" aria-label="فريق المطورين">
             <div class="section-header">
                 <span class="section-tag"><i class="fas fa-code" aria-hidden="true"></i> فريق الإبداع</span>
@@ -2751,70 +2728,63 @@
             </div>
             
             <div id="developersList" class="developers-grid">
-                <!-- عثمانية محمد الصالح -->
-                <div class="developer-card">
+                <!-- عثمانية محمد الصالح - المالك والمطور الأساسي -->
+                <div class="developer-card" style="border: 2px solid var(--gold);">
                     <img src="/images/othmaniya.jpg" class="developer-image" 
                          onerror="this.src='https://ui-avatars.com/api/?name=عثمانية+محمد+الصالح&background=0f5cbf&color=fff&size=120'"
-                         alt="عثمانية محمد الصالح"
+                         alt="عثمانية محمد الصالح - مالك ومطور المنصة"
                          onclick="showFullImage(this.src)">
-                    <h3>عثمانية محمد الصالح</h3>
-                    <p class="role"><i class="fas fa-server" aria-hidden="true"></i> مطور الواجهة الخلفية</p>
+                    <h3 style="color: var(--gold-dark);">عثمانية محمد الصالح</h3>
+                    <p class="role"><i class="fas fa-crown" style="color: var(--gold);" aria-hidden="true"></i> مطور الواجهة الخلفية</p>
                     <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 8px;">
-                        <span class="developer-role backend"><i class="fas fa-code" aria-hidden="true"></i> Backend Developer</span>
-                        <span class="developer-role database"><i class="fas fa-database" aria-hidden="true"></i> Database Designer</span>
+                        <span class="developer-role lead"><i class="fas fa-code" aria-hidden="true"></i> قائد الفريق</span>
+                        <span class="developer-role backend"><i class="fas fa-server" aria-hidden="true"></i> Backend</span>
+                        <span class="developer-role database"><i class="fas fa-database" aria-hidden="true"></i> قاعدة البيانات</span>
                     </div>
-                    <p style="font-size: 0.85rem; color: var(--gray); margin-top: 10px; line-height: 1.6;">
-                        <i class="fas fa-database" style="color: var(--secondary);" aria-hidden="true"></i> مسؤول عن الخادم، APIs، وتصميم قاعدة البيانات
+                    <p style="font-size: 0.9rem; color: var(--gold-dark); margin-top: 10px; font-weight: 700; line-height: 1.6;">
+                        <i class="fas fa-flag" aria-hidden="true"></i> 
                     </p>
-                    <div style="display: flex; justify-content: center; gap: 14px; margin-top: 12px;">
-                        <a href="#" style="color: var(--gray); font-size: 1.3rem; transition: var(--transition);" aria-label="GitHub"><i class="fab fa-github"></i></a>
-                        <a href="#" style="color: var(--gray); font-size: 1.3rem; transition: var(--transition);" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
-                        <a href="#" style="color: var(--gray); font-size: 1.3rem; transition: var(--transition);" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
-                    </div>
+                    <p style="font-size: 0.85rem; color: var(--gray); margin-top: 6px; line-height: 1.6;">
+                        <i class="fas fa-code" style="color: var(--primary);" aria-hidden="true"></i> مسؤول عن التطوير الكامل، الخادم، واجهات API، وتصميم قاعدة البيانات
+                    </p>
+                    <!-- تم إزالة أيقونات تويتر، فيسبوك، جيتهاب -->
+                    
                 </div>
 
-                <!-- نفيسة هلابي -->
+                <!-- نفيسة هلابي - مطورة الواجهة الأمامية -->
                 <div class="developer-card">
                     <img src="/images/nafissa.jpg" class="developer-image"
                          onerror="this.src='https://ui-avatars.com/api/?name=نفيسة+هلابي&background=c62828&color=fff&size=120'"
-                         alt="نفيسة هلابي"
+                         alt="نفيسة هلابي - مطورة الواجهة الأمامية"
                          onclick="showFullImage(this.src)">
                     <h3>نفيسة هلابي</h3>
-                    <p class="role"><i class="fas fa-laptop-code" aria-hidden="true"></i> مطورة الواجهة الأمامية</p>
+                    <p class="role"><i class="fas fa-laptop-code" style="color: #c62828;" aria-hidden="true"></i> مطورة الواجهة الأمامية</p>
                     <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 8px;">
-                        <span class="developer-role frontend"><i class="fas fa-palette" aria-hidden="true"></i> Frontend Developer</span>
-                        <span class="developer-role" style="background:#e0f2fe; color:#0369a1;"><i class="fas fa-headset" aria-hidden="true"></i> Support</span>
+                        <span class="developer-role frontend"><i class="fas fa-palette" aria-hidden="true"></i> Frontend</span>
+                        <span class="developer-role" style="background:#e0f2fe; color:#0369a1;"><i class="fas fa-headset" aria-hidden="true"></i> دعم فني</span>
                     </div>
                     <p style="font-size: 0.85rem; color: var(--gray); margin-top: 10px; line-height: 1.6;">
-                        <i class="fas fa-paint-brush" style="color: #c62828;" aria-hidden="true"></i> مسؤولة عن تصميم الواجهة، UX/UI، ودعم المستخدمين
+                        <i class="fas fa-paint-brush" style="color: #c62828;" aria-hidden="true"></i> مسؤولة عن تصميم الواجهة، تجربة المستخدم (UX/UI)، ودعم المستخدمين
                     </p>
-                    <div style="display: flex; justify-content: center; gap: 14px; margin-top: 12px;">
-                        <a href="#" style="color: var(--gray); font-size: 1.3rem; transition: var(--transition);" aria-label="GitHub"><i class="fab fa-github"></i></a>
-                        <a href="#" style="color: var(--gray); font-size: 1.3rem; transition: var(--transition);" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
-                        <a href="#" style="color: var(--gray); font-size: 1.3rem; transition: var(--transition);" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
-                    </div>
+                   
                 </div>
 
-                <!-- صالح مليك -->
+                <!-- صالح مليك - مسؤول التسويق والمبيعات -->
                 <div class="developer-card">
                     <img src="/images/salah.jpg" class="developer-image"
                          onerror="this.src='https://ui-avatars.com/api/?name=صالح+مليك&background=0369a1&color=fff&size=120'"
-                         alt="صالح مليك"
+                         alt="صالح مليك - مسؤول التسويق والمبيعات"
                          onclick="showFullImage(this.src)">
                     <h3>صالح مليك</h3>
-                    <p class="role"><i class="fas fa-bullhorn" aria-hidden="true"></i> مسؤول التسويق والمبيعات</p>
+                    <p class="role"><i class="fas fa-bullhorn" style="color: #0369a1;" aria-hidden="true"></i> مسؤول التسويق والمبيعات</p>
                     <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 8px;">
-                        <span class="developer-role marketing"><i class="fas fa-bullhorn" aria-hidden="true"></i> Marketing</span>
-                        <span class="developer-role" style="background:#dcfce7; color:#15803d;"><i class="fas fa-chart-line" aria-hidden="true"></i> Sales</span>
+                        <span class="developer-role marketing"><i class="fas fa-bullhorn" aria-hidden="true"></i> التسويق</span>
+                        <span class="developer-role" style="background:#dcfce7; color:#15803d;"><i class="fas fa-chart-line" aria-hidden="true"></i> المبيعات</span>
                     </div>
                     <p style="font-size: 0.85rem; color: var(--gray); margin-top: 10px; line-height: 1.6;">
-                        <i class="fas fa-chart-line" style="color: #0369a1;" aria-hidden="true"></i> مسؤول عن التسويق الرقمي، استراتيجيات المبيعات، ونمو المنصة
+                        <i class="fas fa-chart-line" style="color: #0369a1;" aria-hidden="true"></i> مسؤول عن التسويق الرقمي، استراتيجيات التسويق، ونمو المنصة
                     </p>
-                    <div style="display: flex; justify-content: center; gap: 14px; margin-top: 12px;">
-                        <a href="#" style="color: var(--gray); font-size: 1.3rem; transition: var(--transition);" aria-label="GitHub"><i class="fab fa-github"></i></a>
-                        <a href="#" style="color: var(--gray); font-size: 1.3rem; transition: var(--transition);" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
-                        <a href="#" style="color: var(--gray); font-size: 1.3rem; transition: var(--transition);" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
-                    </div>
+                   
                 </div>
             </div>
         </section>
@@ -3112,7 +3082,7 @@
                     </div>
                     <div class="feature">
                         <i class="fas fa-credit-card" aria-hidden="true"></i>
-                        <span>الدفع عبر شارجيلي</span>
+                        <span>الدفع عبر </span>
                     </div>
                     <div class="feature">
                         <i class="fas fa-mobile-alt" aria-hidden="true"></i>
@@ -3188,13 +3158,13 @@
         <div class="footer-links">
             <a href="/privacy-policy.html">سياسة الخصوصية</a>
             <a href="/terms.html">الشروط والأحكام</a>
-            <a href="mailto:contact@zoomdz.edu">تواصل معنا</a>
+            <a href="mailto:contact@zoomdz.com">تواصل معنا</a>
         </div>
         <div class="footer-dev">
             <i class="fas fa-code" aria-hidden="true"></i> طور بواسطة: 
             <span>عثمانية محمد الصالح</span> · 
             <span>مليك صالح</span> · 
-            <span>هلالبي نفيسة</span>
+            <spanهلالبي نفيسه</span>
         </div>
     </footer>
 
@@ -3748,7 +3718,7 @@
         }
 
         // ============================================================
-        // TEACHERS - مع فلتر اسم المادة أو التخصص فقط
+        // TEACHERS
         // ============================================================
         async function loadPublicTeachers() {
             var container = document.getElementById('teachersList');
@@ -4186,8 +4156,6 @@
         // ============================================================
         function init() {
             console.log('🚀 بدء تشغيل المنصة مع reCAPTCHA v2...');
-            console.log('🔐 reCAPTCHA v2 مفعل لحماية النماذج');
-            console.log('👨‍💻 المطورين: عثمانية محمد الصالح، مليك صالح، هلالبي نفيسة');
             
             readReferralFromURL();
             showHome();
