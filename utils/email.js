@@ -195,6 +195,7 @@ async function sendTeacherApprovalEmail(toEmail, toName) {
         console.log('📧 محاولة إرسال بريد قبول الأستاذ إلى:', sanitizedEmail);
 
         const platformUrl = process.env.PLATFORM_URL || 'https://chatvidio.onrender.com';
+        const loginUrl = `${platformUrl}/?action=login`;
 
         const { data, error } = await resend.emails.send({
             from: 'ZoomDz <onboarding@resend.dev>',
@@ -219,6 +220,8 @@ async function sendTeacherApprovalEmail(toEmail, toName) {
                         .emoji { font-size: 3rem; margin-bottom: 10px; }
                         .success-box { background: #dcfce7; border-radius: 12px; padding: 20px; border-right: 4px solid #10b981; margin: 15px 0; }
                         .success-box p { color: #166534; margin: 0; }
+                        .login-link-box { background: #f0f4ff; border-radius: 10px; padding: 16px; margin: 20px 0; text-align: center; }
+                        .login-link-box a { color: #0f5cbf; font-weight: 700; word-break: break-all; }
                     </style>
                 </head>
                 <body>
@@ -242,9 +245,13 @@ async function sendTeacherApprovalEmail(toEmail, toName) {
                                 <li>📊 متابعة طلابك وإحصائياتك</li>
                             </ul>
                             <div style="text-align: center;">
-                                <a href="${platformUrl}" class="btn">🚀 الذهاب إلى المنصة</a>
+                                <a href="${loginUrl}" class="btn">🚀 تسجيل الدخول إلى المنصة</a>
                             </div>
                             <p style="font-size: 0.9rem; color: #64748b;">يمكنك تسجيل الدخول باستخدام بريدك الإلكتروني وكلمة المرور التي سجلت بها.</p>
+                            <div class="login-link-box">
+                                <p style="margin: 0 0 8px 0; color: #64748b; font-size: 0.85rem;">إذا لم يعمل الزر، انسخ الرابط التالي:</p>
+                                <a href="${loginUrl}">${loginUrl}</a>
+                            </div>
                         </div>
                         <div class="footer">
                             <p>© 2024 ZoomDz - منصة التعليم الجزائرية</p>

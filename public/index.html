@@ -4156,10 +4156,25 @@
         // ============================================================
         // INIT
         // ============================================================
+        function readActionFromURL() {
+            try {
+                var urlParams = new URLSearchParams(window.location.search);
+                var action = urlParams.get('action');
+                if (action === 'login') {
+                    showLogin();
+                    switchTab('login');
+                    if (window.history && window.history.replaceState) {
+                        window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
+                    }
+                }
+            } catch(e) { console.log('⚠️ خطأ في قراءة إجراء الرابط:', e); }
+        }
+
         function init() {
             console.log('🚀');
-            
+
             readReferralFromURL();
+            readActionFromURL();
             showHome();
             loadStats();
             
