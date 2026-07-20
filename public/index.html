@@ -60,19 +60,19 @@
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#0f5cbf">
     
-    <!-- ===== FONTS & ICONS ===== -->
+    <!-- ===== FONTS & ICONS - تحسين الأداء ===== -->
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     
-    <!-- ===== CONFIG + reCAPTCHA v2 ===== -->
+    <!-- ===== CONFIG + reCAPTCHA v2 (تحميل غير متزامن) ===== -->
     <script>
         window.RECAPTCHA_SITE_KEY = '6Lcv8kctAAAAAHcoWBv_e87vrjP7I6IzQJSV6THf';
         console.log('🔑 تم تعيين مفتاح reCAPTCHA من HTML');
     </script>
-    <script src="/js/recaptcha.js"></script>
+    <script src="/js/recaptcha.js" async defer></script>
     <script src="https://www.google.com/recaptcha/api.js?hl=ar&onload=onRecaptchaLoaded&render=explicit" async defer></script>
     
     <style>
@@ -2733,7 +2733,7 @@
                     <img src="/images/othmaniya.jpg" class="developer-image" 
                          onerror="this.src='https://ui-avatars.com/api/?name=عثمانية+محمد+الصالح&background=0f5cbf&color=fff&size=120'"
                          alt="عثمانية محمد الصالح - مالك ومطور المنصة"
-                         onclick="showFullImage(this.src)">
+                         onclick="showFullImage(this.src)" loading="lazy">
                     <h3 style="color: var(--gold-dark);">عثمانية محمد الصالح</h3>
                     <p class="role"><i class="fas fa-crown" style="color: var(--gold);" aria-hidden="true"></i> مطور الواجهة الخلفية</p>
                     <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 8px;">
@@ -2755,7 +2755,7 @@
                     <img src="/images/nafissa.jpg" class="developer-image"
                          onerror="this.src='https://ui-avatars.com/api/?name=نفيسة+هلابي&background=c62828&color=fff&size=120'"
                          alt="نفيسة هلابي - مطورة الواجهة الأمامية"
-                         onclick="showFullImage(this.src)">
+                         onclick="showFullImage(this.src)" loading="lazy">
                     <h3>نفيسة هلابي</h3>
                     <p class="role"><i class="fas fa-laptop-code" style="color: #c62828;" aria-hidden="true"></i> مطورة الواجهة الأمامية</p>
                     <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 8px;">
@@ -2773,7 +2773,7 @@
                     <img src="/images/salah.jpg" class="developer-image"
                          onerror="this.src='https://ui-avatars.com/api/?name=صالح+مليك&background=0369a1&color=fff&size=120'"
                          alt="صالح مليك - مسؤول التسويق ونمو المنصة"
-                         onclick="showFullImage(this.src)">
+                         onclick="showFullImage(this.src)" loading="lazy">
                     <h3>صالح مليك</h3>
                     <p class="role"><i class="fas fa-bullhorn" style="color: #0369a1;" aria-hidden="true"></i> مسؤول التسويق والمبيعات</p>
                     <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 8px;">
@@ -3089,6 +3089,7 @@
                     </div>
                 </div>
 
+                <!-- تم التعديل: إضافة رابط التحميل مع تعليمات التثبيت -->
                 <a href="https://www.appcreator24.com/app4124532-an3mxi" target="_blank" rel="noopener noreferrer" class="download-btn-android">
                     <i class="fab fa-android" aria-hidden="true"></i>
                     تحميل التطبيق الآن
@@ -3777,7 +3778,7 @@
                 }
                 
                 html += '<div class="teacher-card" onclick="viewTeacherProfile(' + t.id + ')">' +
-                    '<img src="' + imageUrl + '" class="teacher-image" onerror="this.src=\'https://ui-avatars.com/api/?name=' + encodeURIComponent(t.full_name) + '&background=0f5cbf&color=fff&size=120\'" onclick="event.stopPropagation(); showFullImage(this.src)" alt="صورة الأستاذ ' + escapeHtml(t.full_name) + '">' +
+                    '<img src="' + imageUrl + '" class="teacher-image" onerror="this.src=\'https://ui-avatars.com/api/?name=' + encodeURIComponent(t.full_name) + '&background=0f5cbf&color=fff&size=120\'" onclick="event.stopPropagation(); showFullImage(this.src)" alt="صورة الأستاذ ' + escapeHtml(t.full_name) + '" loading="lazy">' +
                     '<h3>' + escapeHtml(t.full_name) + '</h3>' +
                     '<p class="specialization"><i class="fas fa-book" aria-hidden="true"></i> ' + escapeHtml(t.specialization || 'تخصص عام') + '</p>' +
                     levelDisplay +
@@ -3980,7 +3981,7 @@
                             <img src="${imageUrl}" class="profile-image" 
                                  onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.full_name)}&background=0f5cbf&color=fff&size=140'"
                                  onclick="showFullImage(this.src)"
-                                 alt="${escapeHtml(teacher.full_name)}">
+                                 alt="${escapeHtml(teacher.full_name)}" loading="lazy">
                             <div class="profile-info">
                                 <h2>${escapeHtml(teacher.full_name)}</h2>
                                 <div class="specialization"><i class="fas fa-book" aria-hidden="true"></i> ${escapeHtml(teacher.specialization || 'تخصص عام')}</div>
