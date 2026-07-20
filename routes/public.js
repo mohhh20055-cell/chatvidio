@@ -272,59 +272,82 @@ router.get('/public/teacher/:teacherId', [
             };
         }
 
-        const { data: posts, error: postsError } = await supabase
-            .from('posts')
-            .select('*')
-            .eq('teacher_id', teacherId)
-            .order('created_at', { ascending: false });
-
-        if (postsError) {
-            console.error('خطأ في جلب منشورات الأستاذ:', postsError.message);
-        }
-
-        const { count: totalOffers, error: countError } = await supabase
-            .from('offers')
-            .select('*', { count: 'exact', head: true })
-            .eq('teacher_id', teacherId);
-
-        if (countError) {
-            console.error('خطأ في حساب عدد العروض:', countError.message);
-        }
-
-        const { data: offersIds } = await supabase
-            .from('offers')
-            .select('id')
-            .eq('teacher_id', teacherId);
-
-        let totalStudents = 0;
-        if (offersIds && offersIds.length > 0) {
-            const offerIds = offersIds.map(o => o.id);
-            const { count: studentsCount, error: studentsError } = await supabase
-                .from('sessions')
+        // ============================================================
+        // استخدام Promise.all لتنفيذ الطلبات بشكل متزامن
+        // ============================================================
+        const [postsResult, totalOffersResult, studentsResult, pendingResult] = await Promise.all([
+            supabase
+                .from('posts')
+                .select('*')
+                .eq('teacher_id', teacherId)
+                .order('created_at', { ascending: false }),
+            
+            supabase
+                .from('offers')
                 .select('*', { count: 'exact', head: true })
-                .in('offer_id', offerIds)
-                .in('payment_status', ['paid', 'pending_stream']);
+                .eq('teacher_id', teacherId),
+            
+            (async () => {
+                const { data: offersIds } = await supabase
+                    .from('offers')
+                    .select('id')
+                    .eq('teacher_id', teacherId);
+                
+                if (offersIds && offersIds.length > 0) {
+                    const offerIds = offersIds.map(o => o.id);
+                    return supabase
+                        .from('sessions')
+                        .select('*', { count: 'exact', head: true })
+                        .in('offer_id', offerIds)
+                        .in('payment_status', ['paid', 'pending_stream']);
+                }
+                return { data: null, count: 0, error: null };
+            })(),
+            
+            (async () => {
+                const { data: offersIds } = await supabase
+                    .from('offers')
+                    .select('id')
+                    .eq('teacher_id', teacherId);
+                
+                if (offersIds && offersIds.length > 0) {
+                    const offerIds = offersIds.map(o => o.id);
+                    return supabase
+                        .from('sessions')
+                        .select('payment_amount')
+                        .in('offer_id', offerIds)
+                        .eq('payment_status', 'pending_stream');
+                }
+                return { data: [], error: null };
+            })()
+        ]);
 
-            if (studentsError) {
-                console.error('خطأ في حساب عدد الطلاب:', studentsError.message);
-            } else {
-                totalStudents = studentsCount || 0;
-            }
+        // معالجة نتائج المنشورات
+        const posts = postsResult.data || [];
+        if (postsResult.error) {
+            console.error('خطأ في جلب منشورات الأستاذ:', postsResult.error.message);
         }
 
-        // ✅ حساب الرصيد المعلق
-        let pendingBalance = 0;
-        if (offersIds && offersIds.length > 0) {
-            const offerIds = offersIds.map(o => o.id);
-            const { data: pendingData, error: pendingError } = await supabase
-                .from('sessions')
-                .select('payment_amount')
-                .in('offer_id', offerIds)
-                .eq('payment_status', 'pending_stream');
+        // معالجة نتائج إجمالي العروض
+        const totalOffers = totalOffersResult.count || 0;
+        if (totalOffersResult.error) {
+            console.error('خطأ في حساب عدد العروض:', totalOffersResult.error.message);
+        }
 
-            if (!pendingError && pendingData) {
-                pendingBalance = pendingData.reduce((sum, s) => sum + (s.payment_amount || 0), 0);
-            }
+        // معالجة نتائج عدد الطلاب
+        let totalStudents = 0;
+        if (studentsResult.error) {
+            console.error('خطأ في حساب عدد الطلاب:', studentsResult.error.message);
+        } else {
+            totalStudents = studentsResult.count || 0;
+        }
+
+        // معالجة نتائج الرصيد المعلق
+        let pendingBalance = 0;
+        if (pendingResult.error) {
+            console.error('خطأ في حساب الرصيد المعلق:', pendingResult.error.message);
+        } else if (pendingResult.data) {
+            pendingBalance = pendingResult.data.reduce((sum, s) => sum + (s.payment_amount || 0), 0);
         }
 
         res.json({
@@ -350,62 +373,74 @@ router.get('/public/teacher/:teacherId', [
 // ============================================================
 router.get('/public/stats', async (req, res) => {
     try {
-        const { count: teachersCount, error: teachersError } = await supabase
-            .from('teachers')
-            .select('*', { count: 'exact', head: true })
-            .eq('status', 'approved')
-            .eq('is_banned', false);
+        // ============================================================
+        // استخدام Promise.all لتنفيذ جميع طلبات الإحصائيات بشكل متزامن
+        // ============================================================
+        const [
+            teachersResult,
+            studentsResult,
+            liveResult,
+            pausedResult,
+            activeResult,
+            levelsResult
+        ] = await Promise.all([
+            supabase
+                .from('teachers')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'approved')
+                .eq('is_banned', false),
+            
+            supabase
+                .from('students')
+                .select('*', { count: 'exact', head: true })
+                .eq('is_banned', false),
+            
+            supabase
+                .from('offers')
+                .select('*', { count: 'exact', head: true })
+                .in('status', ['live', 'teacher_ready']),
+            
+            supabase
+                .from('offers')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'paused'),
+            
+            supabase
+                .from('active_stream')
+                .select('*', { count: 'exact', head: true }),
+            
+            supabase
+                .from('teachers')
+                .select('teaching_level')
+                .eq('status', 'approved')
+                .not('teaching_level', 'is', null)
+        ]);
 
-        if (teachersError) {
-            console.error('خطأ في حساب الأساتذة:', teachersError.message);
+        // معالجة النتائج
+        if (teachersResult.error) {
+            console.error('خطأ في حساب الأساتذة:', teachersResult.error.message);
         }
 
-        const { count: studentsCount, error: studentsError } = await supabase
-            .from('students')
-            .select('*', { count: 'exact', head: true })
-            .eq('is_banned', false);
-
-        if (studentsError) {
-            console.error('خطأ في حساب الطلاب:', studentsError.message);
+        if (studentsResult.error) {
+            console.error('خطأ في حساب الطلاب:', studentsResult.error.message);
         }
 
-        const { count: liveCount, error: liveError } = await supabase
-            .from('offers')
-            .select('*', { count: 'exact', head: true })
-            .in('status', ['live', 'teacher_ready']);
-
-        if (liveError) {
-            console.error('خطأ في حساب البث المباشر:', liveError.message);
+        if (liveResult.error) {
+            console.error('خطأ في حساب البث المباشر:', liveResult.error.message);
         }
 
-        const { count: pausedCount, error: pausedError } = await supabase
-            .from('offers')
-            .select('*', { count: 'exact', head: true })
-            .eq('status', 'paused');
-
-        if (pausedError) {
-            console.error('خطأ في حساب البث المتوقف:', pausedError.message);
+        if (pausedResult.error) {
+            console.error('خطأ في حساب البث المتوقف:', pausedResult.error.message);
         }
 
-        // ✅ جلب عدد الطلاب في البث
-        const { count: activeStudents, error: activeError } = await supabase
-            .from('active_stream')
-            .select('*', { count: 'exact', head: true });
-
-        if (activeError) {
-            console.error('خطأ في حساب الطلاب النشطين:', activeError.message);
+        if (activeResult.error) {
+            console.error('خطأ في حساب الطلاب النشطين:', activeResult.error.message);
         }
 
-        // ✅ جلب مستويات التعليم المتاحة
-        const { data: levelsData, error: levelsError } = await supabase
-            .from('teachers')
-            .select('teaching_level')
-            .eq('status', 'approved')
-            .not('teaching_level', 'is', null);
-
+        // معالجة مستويات التعليم
         let availableLevels = [];
-        if (!levelsError && levelsData) {
-            const uniqueLevels = [...new Set(levelsData.map(t => t.teaching_level).filter(Boolean))];
+        if (!levelsResult.error && levelsResult.data) {
+            const uniqueLevels = [...new Set(levelsResult.data.map(t => t.teaching_level).filter(Boolean))];
             availableLevels = uniqueLevels.map(level => ({
                 value: level,
                 label: levelMap[level] || level
@@ -413,11 +448,11 @@ router.get('/public/stats', async (req, res) => {
         }
 
         res.json({
-            teachers: teachersCount || 0,
-            students: studentsCount || 0,
-            live: liveCount || 0,
-            paused: pausedCount || 0,
-            active_students: activeStudents || 0,
+            teachers: teachersResult.count || 0,
+            students: studentsResult.count || 0,
+            live: liveResult.count || 0,
+            paused: pausedResult.count || 0,
+            active_students: activeResult.count || 0,
             levels: availableLevels
         });
     } catch (error) {
