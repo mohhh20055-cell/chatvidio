@@ -10,6 +10,33 @@ const { supabase } = require('../config/database');
 const { authenticate, checkBanned } = require('../middleware/auth');
 const { getOne, insert } = require('../utils/helpers');
 
+// ============================================================
+// ✅ حذف الرسائل الأقدم من 15 يوماً (تشغيل دوري خفيف)
+// ============================================================
+const MESSAGE_RETENTION_DAYS = 15;
+const CLEANUP_INTERVAL_MS = 60 * 60 * 1000; // ساعة واحدة
+let lastCleanupAt = 0;
+
+async function cleanupOldMessages() {
+    const now = Date.now();
+    if (now - lastCleanupAt < CLEANUP_INTERVAL_MS) return;
+    lastCleanupAt = now;
+
+    try {
+        const cutoff = new Date(Date.now() - MESSAGE_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+        const { count } = await supabase
+            .from('messages')
+            .delete()
+            .lt('created_at', cutoff);
+
+        if (count && count > 0) {
+            console.log(`🧹 تم حذف ${count} رسالة أقدم من ${MESSAGE_RETENTION_DAYS} يوماً`);
+        }
+    } catch (error) {
+        console.warn('⚠️ خطأ في تنظيف الرسائل القديمة:', error.message);
+    }
+}
+
 // ✅ تعريف authorize محلياً
 function authorize(roles = []) {
     return (req, res, next) => {
@@ -44,6 +71,8 @@ router.post('/send', authenticate, [
         if (req.user.userId !== sender_id || req.user.role !== sender_type) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بإرسال رسائل من هذا الحساب' });
         }
+
+        cleanupOldMessages();
 
         const newMessage = await insert('messages', {
             sender_id,
@@ -90,6 +119,8 @@ router.get('/conversations/:user_id/:user_type', authenticate, [
         if (req.user.userId !== userId || req.user.role !== user_type) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بعرض هذه المحادثات' });
         }
+
+        cleanupOldMessages();
 
         const { data } = await supabase
             .from('messages')
