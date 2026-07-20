@@ -1,4229 +1,1391 @@
+// ============================================================
+// خادم منصة التعليم - الملف الرئيسي (معدل بالكامل)
+// ============================================================
+
+require('dotenv').config();
+
+// دعم WebSocket على Node.js < 22 (يحتاجه Supabase realtime-js)
+if (typeof global.WebSocket === 'undefined') {
+    global.WebSocket = require('ws');
+}
+
+const express = require('express');
+const path = require('path');
+const cors = require('cors');
+const compression = require('compression');
+const cookieParser = require('cookie-parser');
+const helmet = require('helmet');
+const { createClient } = require('@supabase/supabase-js');
+const { Resend } = require('resend');
+const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
+const fs = require('fs');
+
+// ✅ استيراد نظام السجلات
+const logger = require('./utils/logger');
+
+// ✅ استيراد الدوال المساعدة من ملفات منفصلة
+const { generateToken, verifyToken } = require('./utils/jwt');
+const { encrypt, maskIP } = require('./utils/encryption');
+
+// ============================================================
+// ✅ استيراد Middleware من الملف الخارجي
+// ============================================================
+const { authenticate, authorize, checkBanned, checkActiveStream, validateOfferOwnership, validateStudentAccess, checkStreamActive, checkNoActiveStream } = require('./middleware/auth');
+
+// ============================================================
+// الثوابت والإعدادات الأساسية
+// ============================================================
+
+const JWT_SECRET = process.env.JWT_SECRET || 'zoomdz_secret_key_2024_for_testing_only';
+const JWT_EXPIRY = '24h';
+const SALT_ROUNDS = 12;
+const PLATFORM_DOMAIN = process.env.PLATFORM_DOMAIN || 'https://zoomdz.com';
+const APP_DOWNLOAD_URL = process.env.APP_DOWNLOAD_URL || 'https://www.appcreator24.com/app4089108-lwkt4d';
+const PUBLIC_CACHE_TTL_MS = 30000;
+
+// قراءة المتغيرات البيئية
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
+const resendApiKey = process.env.RESEND_API_KEY;
+const recaptchaSiteKey = process.env.RECAPTCHA_SITE_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+    logger.error('متغيرات Supabase غير موجودة', {
+        hasUrl: !!supabaseUrl,
+        hasKey: !!supabaseKey
+    });
+    console.error('❌ خطأ: متغيرات Supabase غير موجودة');
+    process.exit(1);
+}
+
+if (!resendApiKey) {
+    logger.warn('متغير RESEND_API_KEY غير موجود - لن يتم إرسال البريد الإلكتروني', {
+        env: process.env.NODE_ENV
+    });
+}
+
+// تهيئة الاتصالات
+const supabase = createClient(supabaseUrl, supabaseKey);
+const resend = resendApiKey ? new Resend(resendApiKey) : null;
+
+logger.info('تم تهيئة الاتصال بقاعدة البيانات', {
+    supabaseUrl: supabaseUrl ? '(مخفي)' : 'غير موجود',
+    hasResend: !!resend
+});
+
+// ✅ إنشاء ملف config.js العام لتكوين الواجهة الأمامية
+const publicDir = path.join(__dirname, 'public');
+const configJsPath = path.join(publicDir, 'config.js');
+try {
+    if (!fs.existsSync(publicDir)) {
+        fs.mkdirSync(publicDir, { recursive: true });
+    }
+    fs.writeFileSync(configJsPath, `window.RECAPTCHA_SITE_KEY = ${JSON.stringify(recaptchaSiteKey || '')};\nwindow.API_BASE_URL = ${JSON.stringify(process.env.API_BASE_URL || '')};\n`);
+    logger.info('تم إنشاء config.js');
+} catch (e) {
+    logger.error('فشل في كتابة config.js', { error: e.message });
+}
+
+// ============================================================
+// دوال مساعدة عامة
+// ============================================================
+
+function sanitizeInput(input) {
+    if (typeof input === 'string') {
+        return input.trim();
+    }
+    return input;
+}
+
+function sanitizeObject(obj) {
+    if (!obj || typeof obj !== 'object') return obj;
+    if (Buffer.isBuffer(obj)) return obj;
+    if (obj instanceof Date) return obj;
+    const sanitized = {};
+    for (const [key, value] of Object.entries(obj)) {
+        if (typeof value === 'string') {
+            sanitized[key] = sanitizeInput(value);
+        } else if (Array.isArray(value)) {
+            sanitized[key] = value.map(v => typeof v === 'string' ? sanitizeInput(v) : v);
+        } else if (value && typeof value === 'object') {
+            sanitized[key] = sanitizeObject(value);
+        } else {
+            sanitized[key] = value;
+        }
+    }
+    return sanitized;
+}
+
+function generateVerificationToken() {
+    return crypto.randomBytes(32).toString('hex');
+}
+
+function generateReferralCode(name, id) {
+    const prefix = name.substring(0, 3).toUpperCase();
+    const suffix = id.toString(36).toUpperCase();
+    return `${prefix}${suffix}`;
+}
+
+// ============================================================
+// دوال قاعدة البيانات
+// ============================================================
+
+async function getOne(table, column, value) {
+    try {
+        const { data, error } = await supabase
+            .from(table)
+            .select('*')
+            .eq(column, value)
+            .single();
+        if (error && error.code !== 'PGRST116') {
+            logger.error(`خطأ في getOne من جدول ${table}`, { 
+                table, 
+                column, 
+                value,
+                error: error.message 
+            });
+            return null;
+        }
+        return data;
+    } catch (error) {
+        logger.error(`استثناء في getOne من جدول ${table}`, { 
+            table, 
+            column, 
+            error: error.message,
+            stack: error.stack 
+        });
+        return null;
+    }
+}
+
+async function insert(table, data) {
+    try {
+        const sanitizedData = sanitizeObject(data);
+        const { data: result, error } = await supabase.from(table).insert(sanitizedData).select();
+        if (error) {
+            logger.error(`خطأ في insert إلى جدول ${table}`, { 
+                table, 
+                data: sanitizedData,
+                error: error.message 
+            });
+            throw error;
+        }
+        logger.debug(`تم إدخال بيانات في جدول ${table}`, { table, insertedId: result?.[0]?.id });
+        return result[0];
+    } catch (error) {
+        logger.error(`استثناء في insert إلى جدول ${table}`, { 
+            table, 
+            error: error.message,
+            stack: error.stack 
+        });
+        throw error;
+    }
+}
+
+async function update(table, id, data) {
+    try {
+        const sanitizedData = sanitizeObject(data);
+        const { data: result, error } = await supabase.from(table).update(sanitizedData).eq('id', id).select();
+        if (error) {
+            logger.error(`خطأ في update لجدول ${table}`, { 
+                table, 
+                id, 
+                data: sanitizedData,
+                error: error.message 
+            });
+            throw error;
+        }
+        logger.debug(`تم تحديث بيانات في جدول ${table}`, { table, id });
+        return result[0];
+    } catch (error) {
+        logger.error(`استثناء في update لجدول ${table}`, { 
+            table, 
+            id, 
+            error: error.message,
+            stack: error.stack 
+        });
+        throw error;
+    }
+}
+
+async function remove(table, column, value) {
+    try {
+        const { error } = await supabase.from(table).delete().eq(column, value);
+        if (error) {
+            logger.error(`خطأ في remove من جدول ${table}`, { 
+                table, 
+                column, 
+                value,
+                error: error.message 
+            });
+            throw error;
+        }
+        return true;
+    } catch (error) {
+        logger.error(`استثناء في remove من جدول ${table}`, { 
+            table, 
+            column, 
+            value,
+            error: error.message,
+            stack: error.stack 
+        });
+        throw error;
+    }
+}
+
+// ============================================================
+// إعدادات CORS
+// ============================================================
+
+// قائمة النطاقات المسموحة (يمكن تجاوزها عبر CORS_ORIGIN من البيئة)
+const DEFAULT_CORS_ORIGINS = [
+    'https://zoomdz.com',
+    'https://www.zoomdz.com',
+    'https://chatvidio.vercel.app',
+    'https://chatvidio.onrender.com',
+    'https://chatvidio-git-*.vercel.app',
+    'https://chatvidio-*.vercel.app',
+    'https://*.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:3002'
+];
+
+const CORS_ORIGIN = process.env.CORS_ORIGIN 
+    ? process.env.CORS_ORIGIN
+        .split(',')
+        .map(origin => origin.trim())
+        .filter(origin => origin.length > 0)
+    : DEFAULT_CORS_ORIGINS;
+
+logger.info('CORS Origins configured:', {
+    count: CORS_ORIGIN.length,
+    origins: CORS_ORIGIN.slice(0, 5),
+    isFromEnv: !!process.env.CORS_ORIGIN
+});
+
+function isOriginAllowed(origin) {
+    // اسمح بالطلبات بدون origin
+    if (!origin) {
+        return true;
+    }
+
+    // التحقق المباشر
+    if (CORS_ORIGIN.includes(origin)) {
+        return true;
+    }
+
+    // التحقق من Wildcard patterns
+    for (const allowed of CORS_ORIGIN) {
+        if (allowed.includes('*')) {
+            const pattern = allowed
+                .replace(/\./g, '\\.')
+                .replace(/\*/g, '.*');
+            const regex = new RegExp(`^${pattern}$`);
+            if (regex.test(origin)) {
+                return true;
+            }
+        }
+    }
+
+    // رفض المصدر وتسجيل التفاصيل للتصحيح
+    logger.warn('CORS origin rejected', {
+        origin: origin,
+        allowedOrigins: CORS_ORIGIN,
+        checkPassed: false
+    });
+    
+    return false;
+}
+
+// ============================================================
+// تهيئة التطبيق
+// ============================================================
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+const publicCache = new Map();
+
+app.set('trust proxy', 1);
+app.disable('x-powered-by');
+
+function cachePublicResponses(ttlMs = PUBLIC_CACHE_TTL_MS) {
+    return (req, res, next) => {
+        if (req.method !== 'GET') return next();
+
+        const cacheKey = `${req.method}:${req.originalUrl}`;
+        const cached = publicCache.get(cacheKey);
+        if (cached && Date.now() - cached.timestamp < ttlMs) {
+            res.set('X-Cache', 'HIT');
+            return res.json(cached.body);
+        }
+
+        const originalJson = res.json.bind(res);
+        res.json = (body) => {
+            publicCache.set(cacheKey, { timestamp: Date.now(), body });
+            res.set('X-Cache', 'MISS');
+            return originalJson(body);
+        };
+
+        next();
+    };
+}
+
+// ============================================================
+// Middleware الأساسية
+// ============================================================
+
+// Compression
+app.use(compression());
+
+// Helmet - Jitsi Meet فقط
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdnjs.cloudflare.com", "https://vercel.live", "https://*.vercel.app", "https://www.google.com", "https://www.gstatic.com"],
+            scriptSrcAttr: ["'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
+            imgSrc: ["'self'", "data:", "https://ui-avatars.com", "https://api.qrserver.com", "https://*.supabase.co", "https://www.google.com", "https://www.gstatic.com"],
+            connectSrc: ["'self'", "https://*.supabase.co", "https://pay.chargily.net", "https://*.vercel.app", "https://www.google.com", "https://www.gstatic.com"],
+            frameSrc: ["'self'", "https://meet.jit.si", "https://www.google.com", "https://www.gstatic.com"]
+        }
+    },
+    hsts: {
+        maxAge: 31536000,
+        includeSubDomains: true,
+        preload: true
+    },
+    frameguard: { action: 'deny' },
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: false,
+    crossOriginResourcePolicy: false
+}));
+
+// CORS Configuration
+const corsOptions = {
+    origin: function (origin, callback) {
+        // اسمح بالطلبات بدون origin (mobile apps, Postman, etc)
+        if (!origin) {
+            logger.debug('CORS: Allowing request without Origin header');
+            return callback(null, true);
+        }
+
+        // تحقق من المصدر المسموح
+        const allowed = isOriginAllowed(origin);
+        
+        if (allowed) {
+            logger.debug('CORS: Origin allowed', { origin });
+            callback(null, true);
+        } else {
+            // اسمح به حتى في الإنتاج للآن (يمكن تغييره لاحقاً)
+            logger.warn('CORS: Origin rejected but allowing (configured to warn)', { 
+                origin,
+                allowedCount: CORS_ORIGIN.length 
+            });
+            // اسمح به بدلاً من رفضه
+            callback(null, true);
+        }
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH', 'HEAD'],
+    allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'X-Requested-With',
+        'X-CSRF-Token',
+        'X-Signature',
+        'Accept',
+        'Origin',
+        'X-HTTP-Method-Override',
+        'Access-Control-Request-Headers',
+        'Access-Control-Request-Method',
+        'X-API-Key'
+    ],
+    credentials: true,
+    maxAge: 86400,
+    optionsSuccessStatus: 200,
+    preflightContinue: false
+};
+
+app.use(cors(corsOptions));
+
+// معالج OPTIONS العام (for preflight requests)
+app.options('*', cors(corsOptions));
+
+// Cookie Parser
+app.use(cookieParser());
+
+// Webhook Chargily (يجب استقباله كـ raw body قبل JSON parser)
+app.use('/api/wallet/chargily-webhook', express.raw({ type: 'application/json' }));
+
+// JSON و URL-encoded
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// تنقية جميع المدخلات
+app.use((req, res, next) => {
+    if (req.body) {
+        req.body = sanitizeObject(req.body);
+    }
+    if (req.query) {
+        req.query = sanitizeObject(req.query);
+    }
+    if (req.params) {
+        req.params = sanitizeObject(req.params);
+    }
+    next();
+});
+
+// ملفات ثابتة
+app.use(express.static('public', {
+    maxAge: '1d',
+    etag: true,
+    lastModified: true
+}));
+
+// Cache بسيط للواجهات العامة لتقليل الضغط على قاعدة البيانات
+app.use('/api/public', cachePublicResponses());
+
+// ============================================================
+// CSRF Protection
+// ============================================================
+
+const csrfExcludedPaths = [
+    '/api/login',
+    '/api/student/register',
+    '/api/teacher/register',
+    '/api/forgot-password',
+    '/api/reset-password',
+    '/api/verify-reset-token',
+    '/api/verify-email',
+    '/api/resend-verification',
+    '/api/csrf-token',
+    '/api/get-csrf-token',
+    '/api/public/teachers',
+    '/api/public/offers',
+    '/api/public/stats',
+    '/api/public/students-count',
+    '/api/public/teacher',
+    '/api/public/total-offers',
+    '/api/live-offers',
+    '/api/offers',
+    '/api/teachers',
+    '/api/test-cors',
+    '/api/ping',
+    '/api/verify-token',
+    '/api/refresh-token',
+    '/api/stream/save-link',
+    '/api/stream/add-student',
+    '/api/stream/add-all-students',
+    '/api/stream/add-students',
+    '/api/stream/waiting-list',
+    '/api/stream/status',
+    '/api/student',
+    '/api/student/stream-status',
+    '/api/student/me',
+    '/api/student/balance',
+    '/api/student/notifications',
+    '/api/student/sessions',
+    '/api/teacher',
+    '/api/teacher/me',
+    '/api/teacher/balance',
+    '/api/teacher/offers',
+    '/api/teacher/students',
+    '/api/booking',
+    '/api/booking/create',
+    '/api/booking/cancel',
+    '/api/booking/stats',
+    '/api/messages',
+    '/api/messages/conversations',
+    '/api/notifications',
+    '/api/join-stream',
+    '/api/teacher-start-stream',
+    '/api/teacher-stream',
+    '/api/referral',
+    '/api/referral/create',
+    '/api/referral/info',
+    '/api/referral/open-gift-box',
+    '/api/wallet',
+    '/api/wallet/chargily-webhook',
+    '/api/wallet/deposit',
+    '/api/chargily-webhook',
+    '/api/start-jitsi-stream',
+    '/api/join-jitsi',
+    '/api/stream/pause',
+    '/api/stream/resume',
+    '/api/stream/end',
+    '/api/support/send',
+    '/api/logs/stats',
+    '/api/logs/errors',
+    '/api/logs/all'
+];
+
+app.use((req, res, next) => {
+    const publicMethods = ['GET', 'HEAD', 'OPTIONS'];
+    
+    // استخدام req.originalUrl بدلاً من req.path لأن req.path لا يحتوي على mount path
+    const requestPath = req.originalUrl.split('?')[0]; // إزالة query string
+    
+    const isAdminPath = requestPath.startsWith('/api/admin');
+    
+    const isPublicPath = csrfExcludedPaths.some(path => {
+        if (requestPath === path) return true;
+        if (requestPath.startsWith(path + '/')) return true;
+        return false;
+    });
+    
+    const isPublicMethod = publicMethods.includes(req.method);
+    
+    if (isAdminPath || isPublicPath || isPublicMethod) {
+        return next();
+    }
+    
+    const csrfToken = req.headers['x-csrf-token'];
+    const cookieToken = req.cookies.csrf_token;
+    
+    if (!csrfToken || !cookieToken || csrfToken !== cookieToken) {
+        console.log(`❌ CSRF فشل: ${requestPath}`);
+        return res.status(403).json({ 
+            success: false, 
+            error: 'طلب غير مصرح به (CSRF)',
+            code: 'CSRF_ERROR'
+        });
+    }
+    
+    next();
+});
+
+// ============================================================
+// Rate Limiting
+// ============================================================
+
+const rateLimit = require('express-rate-limit');
+
+const authLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 10,
+    message: { success: false, error: 'عدد محاولات تسجيل الدخول كبير جداً، حاول بعد ساعة' },
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => {
+        if (req.body && req.body.email) {
+            return req.body.email;
+        }
+        return req.ip || req.connection?.remoteAddress || 'unknown';
+    }
+});
+
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 300,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, error: 'عدد الطلبات كبير حاليًا، حاول لاحقًا' }
+});
+
+app.use('/api', apiLimiter);
+
+// ============================================================
+// CSRF Token Generator
+// ============================================================
+
+app.get('/api/csrf-token', (req, res) => {
+    const token = crypto.randomBytes(32).toString('hex');
+    res.cookie('csrf_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 3600000
+    });
+    res.json({ csrfToken: token });
+});
+
+app.get('/api/get-csrf-token', authenticate, (req, res) => {
+    const token = crypto.randomBytes(32).toString('hex');
+    res.cookie('csrf_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 3600000
+    });
+    res.json({ csrfToken: token });
+});
+
+// ============================================================
+// API Logs (للوحة الأدمن logs.html)
+// ============================================================
+
+app.get('/api/logs/stats', authenticate, authorize(['admin']), (req, res) => {
+    const stats = logger.getLogStats();
+    res.json({ success: true, stats });
+});
+
+app.get('/api/logs/errors', authenticate, authorize(['admin']), (req, res) => {
+    const limit = parseInt(req.query.limit) || 50;
+    const errors = logger.getRecentErrors(limit);
+    res.json({ success: true, errors });
+});
+
+app.get('/api/logs/all', authenticate, authorize(['admin']), (req, res) => {
+    const type = req.query.type || 'all';
+    const limit = parseInt(req.query.limit) || 100;
+    const logs = logger.getLogs(type, limit);
+    res.json({ success: true, logs });
+});
+
+// ============================================================
+// ✅ نظام البث المباشر باستخدام Jitsi Meet
+// ============================================================
+
+function escapeHtml(text) {
+    if (!text) return '';
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ============================================================
+// ✅ بدء البث باستخدام Jitsi Meet
+// ============================================================
+
+app.post('/api/start-jitsi-stream', authenticate, authorize(['teacher']), [
+    require('express-validator').body('offer_id').isInt().withMessage('معرف العرض غير صالح')
+], async (req, res) => {
+    try {
+        const errors = require('express-validator').validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { offer_id } = req.body;
+        
+        const offer = await getOne('offers', 'id', offer_id);
+        if (!offer) {
+            return res.status(404).json({ success: false, error: 'العرض غير موجود' });
+        }
+        
+        const roomName = `zoomdz_${offer_id}_${Date.now()}`;
+        const password = crypto.randomBytes(6).toString('hex').toUpperCase();
+        const roomUrl = `https://meet.jit.si/${roomName}`;
+        
+        await supabase
+            .from('offers')
+            .update({
+                stream_url: roomUrl,
+                stream_platform: 'jitsi',
+                status: 'live',
+                room_name: roomName,
+                room_password: password,
+                stream_started_at: new Date().toISOString()
+            })
+            .eq('id', offer_id);
+        
+        const { data: sessions } = await supabase
+            .from('sessions')
+            .select('student_id')
+            .eq('offer_id', offer_id)
+            .eq('payment_status', 'paid');
+        
+        if (sessions && sessions.length > 0) {
+            const notifications = sessions.map(s => ({
+                user_id: s.student_id,
+                user_type: 'student',
+                title: '🔴 البث المباشر بدأ',
+                message: `الحصة "${offer.subject_name}" قد بدأت الآن. انضم عبر زر البث المباشر.`,
+                offer_id: offer_id,
+                is_read: false,
+                created_at: new Date().toISOString()
+            }));
+            
+            await supabase
+                .from('notifications')
+                .insert(notifications);
+        }
+        
+        res.json({
+            success: true,
+            room_url: roomUrl,
+            password: password,
+            room_name: roomName,
+            message: 'تم بدء البث بنجاح عبر Jitsi Meet (مجاني 100%)'
+        });
+    } catch (error) {
+        console.error('❌ خطأ في بدء البث:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
+// ✅ التحقق من كلمة مرور Jitsi
+// ============================================================
+
+app.post('/api/verify-jitsi-password', async (req, res) => {
+    try {
+        const { room_name, password } = req.body;
+
+        const { data } = await supabase
+            .from('offers')
+            .select('room_password')
+            .eq('room_name', room_name)
+            .single();
+
+        if (data && data.room_password === password) {
+            res.json({ success: true });
+        } else {
+            res.json({ success: false, error: 'كلمة المرور غير صحيحة' });
+        }
+    } catch (error) {
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
+// ✅ صفحة دخول الطالب للبث (Jitsi Meet فقط)
+// ============================================================
+
+app.get('/api/join-jitsi/:offer_id', authenticate, async (req, res) => {
+    try {
+        const token = req.query.token;
+        const decoded = verifyToken(token);
+        if (!decoded || decoded.role !== 'student') {
+            return res.status(403).json({ error: 'غير مصرح' });
+        }
+        
+        const { offer_id } = req.params;
+        const studentId = decoded.userId;
+        
+        const session = await getOne('sessions', 'offer_id', offer_id);
+        if (!session || session.student_id !== studentId || session.payment_status !== 'paid') {
+            return res.status(403).send(`
+                <!DOCTYPE html>
+                <html dir="rtl" lang="ar">
+                <head><meta charset="UTF-8"><title>خطأ</title></head>
+                <body style="font-family:Cairo;text-align:center;padding:50px;">
+                    <h1 style="color:#ef4444;">❌ يجب حجز الحصة أولاً</h1>
+                    <a href="/student-dashboard.html" style="color:#0f5cbf;font-weight:700;">العودة للوحة التحكم</a>
+                </body></html>
+            `);
+        }
+        
+        const offer = await getOne('offers', 'id', offer_id);
+        if (!offer || offer.status !== 'live') {
+            return res.status(400).send(`
+                <!DOCTYPE html>
+                <html dir="rtl" lang="ar">
+                <head><meta charset="UTF-8"><title>خطأ</title></head>
+                <body style="font-family:Cairo;text-align:center;padding:50px;">
+                    <h1 style="color:#f59e0b;">⏳ البث لم يبدأ بعد</h1>
+                    <a href="/student-dashboard.html" style="color:#0f5cbf;font-weight:700;">العودة للوحة التحكم</a>
+                </body></html>
+            `);
+        }
+        
+        res.send(generateJitsiJoinPage(offer));
+    } catch (error) {
+        console.error('❌ خطأ:', error.message);
+        res.status(500).send(`
+            <!DOCTYPE html>
+            <html dir="rtl" lang="ar">
+            <head><meta charset="UTF-8"><title>خطأ</title></head>
+            <body style="font-family:Cairo;text-align:center;padding:50px;">
+                <h1 style="color:#ef4444;">❌ حدث خطأ</h1>
+                <p style="color:#64748b;">${error.message}</p>
+                <a href="/student-dashboard.html" style="color:#0f5cbf;font-weight:700;">العودة للوحة التحكم</a>
+            </body></html>
+        `);
+    }
+});
+
+function generateJitsiJoinPage(offer) {
+    const roomUrl = offer.stream_url || '';
+    const password = offer.room_password || '';
+    const subjectName = offer.subject_name || 'غير محدد';
+    
+    return `
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ZoomDz | منصة التعليم عن بعد الرائدة في الجزائر - دروس خصوصية مع أفضل الأساتذة</title>
-    
-    <!-- ===== SEO META TAGS ===== -->
-    <meta name="description" content="منصة ZoomDz للتعليم عن بعد في الجزائر - دروس خصوصية عبر الفيديو مع نخبة من الأساتذة المعتمدين. تعلم مع أفضل الأساتذة في الجزائر، بكالوريا، متوسط، جامعي.">
-    <meta name="keywords" content="تعليم عن بعد الجزائر, دروس خصوصية, بكالوريا, أساتذة, منصة تعليمية, ZoomDz, بث مباشر, شارجيلي, إيداهبية, CCP, عثمانية محمد الصالح">
-    <meta name="author" content="عثمانية محمد الصالح">
-    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
-    <link rel="canonical" href="https://zoomdz.com/">
-    
-    <!-- ===== OPEN GRAPH / SOCIAL MEDIA ===== -->
-    <meta property="og:type" content="website">
-    <meta property="og:title" content="ZoomDz | منصة التعليم عن بعد الرائدة في الجزائر">
-    <meta property="og:description" content="منصة ZoomDz للتعليم عن بعد في الجزائر - دروس خصوصية عبر الفيديو مع نخبة من الأساتذة المعتمدين.">
-    <meta property="og:url" content="https://zoomdz.com/">
-    <meta property="og:site_name" content="ZoomDz">
-    <meta property="og:image" content="https://zoomdz.com/images/zoomdz-og.jpg">
-    <meta property="og:locale" content="ar_DZ">
-    
-    <!-- ===== TWITTER CARDS ===== -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="ZoomDz | منصة التعليم عن بعد الرائدة في الجزائر">
-    <meta name="twitter:description" content="منصة ZoomDz للتعليم عن بعد في الجزائر - دروس خصوصية عبر الفيديو مع نخبة من الأساتذة المعتمدين.">
-    
-    <!-- ===== STRUCTURED DATA / SCHEMA.ORG ===== -->
-    <script type="application/ld+json">
-    {
-        "@context": "https://schema.org",
-        "@type": "EducationalOrganization",
-        "name": "ZoomDz",
-        "description": "منصة التعليم عن بعد الرائدة في الجزائر",
-        "url": "https://zoomdz.com",
-        "logo": "https://zoomdz.com/images/zoomdz.png",
-        "foundingDate": "2026",
-        "author": {
-            "@type": "Person",
-            "name": "عثمانية محمد الصالح"
-        },
-        "foundingLocation": {
-            "@type": "Place",
-            "address": {
-                "@type": "PostalAddress",
-                "addressCountry": "DZ"
-            }
-        },
-        "sameAs": [
-            "https://t.me/zoomdz1"
-        ]
-    }
-    </script>
-    
-    <!-- ===== FAVICON & BRANDING ===== -->
-    <link rel="icon" type="image/png" href="/images/zoomdz.png">
-    <link rel="shortcut icon" href="/images/zoomdz.png">
-    <link rel="apple-touch-icon" href="/images/zoomdz.png">
-    <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#0f5cbf">
-    
-    <!-- ===== FONTS & ICONS - تحسين الأداء ===== -->
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>دخول البث المباشر - Jitsi Meet</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    
-    <!-- ===== CONFIG + reCAPTCHA v2 (تحميل غير متزامن) ===== -->
-    <script>
-        window.RECAPTCHA_SITE_KEY = '6Lcv8kctAAAAAHcoWBv_e87vrjP7I6IzQJSV6THf';
-        console.log('🔑 تم تعيين مفتاح reCAPTCHA من HTML');
-    </script>
-    <script src="/js/recaptcha.js" async defer></script>
-    <script src="https://www.google.com/recaptcha/api.js?hl=ar&onload=onRecaptchaLoaded&render=explicit" async defer></script>
-    
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800;900&display=swap" rel="stylesheet">
     <style>
-        /* ============================================================
-           تصميم احترافي وجذاب - ZoomDz
-           محسّن لمحركات البحث وتجربة المستخدم
-           ============================================================ */
-        
-        /* ===== RESET & BASE ===== */
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        :root {
-            --primary: #0f5cbf;
-            --primary-dark: #0b4a9c;
-            --primary-light: #e8f0fe;
-            --primary-gradient: linear-gradient(135deg, #0f5cbf 0%, #1a3a6b 100%);
-            --secondary: #10b981;
-            --secondary-dark: #059669;
-            --secondary-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            --accent: #8b5cf6;
-            --accent-light: #ede9fe;
-            --gold: #f59e0b;
-            --gold-light: #fef3c7;
-            --gold-dark: #d97706;
-            --gold-gradient: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-            --danger: #ef4444;
-            --danger-light: #fef2f2;
-            --danger-gradient: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-            --dark: #1a2332;
-            --dark-light: #2d3748;
-            --gray: #64748b;
-            --gray-light: #f1f5f9;
-            --white: #ffffff;
-            --shadow-sm: 0 2px 8px rgba(0,0,0,0.06);
-            --shadow-md: 0 4px 20px rgba(0,0,0,0.08);
-            --shadow-lg: 0 8px 40px rgba(0,0,0,0.12);
-            --shadow-xl: 0 20px 60px rgba(0,0,0,0.15);
-            --radius-sm: 12px;
-            --radius-md: 16px;
-            --radius-lg: 24px;
-            --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-            --font-family: 'Cairo', 'Segoe UI', system-ui, -apple-system, sans-serif;
-        }
-        
-        html {
-            scroll-behavior: smooth;
-            -webkit-text-size-adjust: 100%;
-        }
-        
-        body { 
-            font-family: var(--font-family); 
-            background: var(--gray-light); 
-            min-height: 100vh;
-            color: var(--dark);
-            overflow-x: hidden;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-            text-rendering: optimizeLegibility;
-        }
-
-        img, svg { display: block; max-width: 100%; height: auto; }
-        button, input, select, textarea { font-family: inherit; font-size: inherit; }
-        * { -webkit-tap-highlight-color: transparent; }
-
-        /* ===== SCROLLBAR ===== */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: var(--gray-light); border-radius: 10px; }
-        ::-webkit-scrollbar-thumb { 
-            background: var(--primary-gradient); 
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb:hover { background: var(--primary-dark); }
-
-        /* ============================================================
-           REFERRAL BANNER - شريط الإحالة
-           ============================================================ */
-        .referral-banner {
-            background: var(--gold-gradient);
-            color: white;
-            padding: 12px 20px;
-            text-align: center;
-            font-weight: 700;
-            font-size: 0.95rem;
-            position: relative;
-            display: none;
-            animation: slideDown 0.5s ease;
-            z-index: 999;
-        }
-        
-        .referral-banner.show { display: block; }
-        
-        @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .referral-banner .close-banner {
-            position: absolute;
-            left: 16px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: rgba(255,255,255,0.2);
-            border: none;
-            color: white;
-            font-size: 1.2rem;
-            cursor: pointer;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: var(--transition);
-        }
-        
-        .referral-banner .close-banner:hover {
-            background: rgba(255,255,255,0.3);
-        }
-        
-        .referral-banner .highlight-text {
-            background: rgba(255,255,255,0.2);
-            padding: 2px 12px;
-            border-radius: 20px;
-            font-family: 'Courier New', monospace;
-            font-size: 1.1rem;
-            letter-spacing: 1px;
-        }
-        
-        .referral-banner .btn-jump {
-            background: rgba(255,255,255,0.2);
-            border: 2px solid rgba(255,255,255,0.3);
-            color: white;
-            padding: 4px 18px;
-            border-radius: 30px;
-            cursor: pointer;
-            font-weight: 700;
-            font-size: 0.8rem;
-            transition: var(--transition);
-            margin-right: 8px;
-        }
-        
-        .referral-banner .btn-jump:hover {
-            background: white;
-            color: var(--gold-dark);
-            border-color: white;
-        }
-
-        /* ============================================================
-           NAVBAR - شريط التنقل المحسن
-           ============================================================ */
-        .navbar {
-            background: rgba(255,255,255,0.95);
-            backdrop-filter: blur(12px) saturate(140%);
-            -webkit-backdrop-filter: blur(12px) saturate(140%);
-            padding: 10px 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-            border-bottom: 1px solid rgba(255,255,255,0.2);
-        }
-        
-        .nav-container {
-            max-width: 1280px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        
-        .logo {
-            font-size: 1.6rem;
-            font-weight: 900;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            cursor: pointer;
-            text-decoration: none;
-            position: relative;
-        }
-        
-        .logo-icon-wrapper {
-            width: 44px;
-            height: 44px;
-            background: var(--primary-gradient);
-            border-radius: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 12px rgba(15, 92, 191, 0.25);
-            transition: var(--transition);
-        }
-        
-        .logo-icon-wrapper:hover {
-            transform: rotate(-8deg) scale(1.05);
-            box-shadow: 0 6px 20px rgba(15, 92, 191, 0.35);
-        }
-        
-        .logo-icon-wrapper i {
-            font-size: 1.4rem;
-            color: white;
-        }
-        
-        .logo-text {
-            display: flex;
-            align-items: baseline;
-            gap: 2px;
-        }
-        
-        .logo-text span:first-child {
-            color: var(--primary);
-            font-size: 1.7rem;
-        }
-        
-        .logo-text .highlight {
-            background: var(--secondary-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            font-size: 1.7rem;
-        }
-        
-        .logo-badge {
-            font-size: 0.55rem;
-            background: var(--accent-gradient);
-            color: white;
-            padding: 2px 10px;
-            border-radius: 20px;
-            font-weight: 700;
-            margin-right: 6px;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-        }
-        
-        .nav-links {
-            display: flex;
-            gap: 4px;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: flex-end;
-        }
-        
-        .nav-links a {
-            text-decoration: none;
-            color: var(--dark-light);
-            font-weight: 600;
-            cursor: pointer;
-            padding: 8px 16px;
-            border-radius: 30px;
-            transition: var(--transition);
-            font-size: 0.85rem;
-            position: relative;
-        }
-        
-        .nav-links a::after {
-            content: '';
-            position: absolute;
-            bottom: 4px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 0;
-            height: 2px;
-            background: var(--primary-gradient);
-            transition: var(--transition);
-            border-radius: 10px;
-        }
-        
-        .nav-links a:hover::after,
-        .nav-links a.active::after {
-            width: 60%;
-        }
-        
-        .nav-links a:hover { 
-            background: var(--primary-light); 
-            color: var(--primary); 
-        }
-        
-        .nav-links a.active { 
-            background: var(--primary); 
-            color: white;
-            box-shadow: 0 4px 12px rgba(15, 92, 191, 0.3);
-        }
-        
-        .nav-links a.active::after {
-            display: none;
-        }
-        
-        .nav-links a .nav-icon {
-            margin-left: 6px;
-        }
-        
-        .nav-links a .nav-badge {
-            background: var(--danger);
-            color: white;
-            font-size: 0.55rem;
-            padding: 1px 8px;
-            border-radius: 20px;
-            margin-right: 4px;
-            font-weight: 700;
-        }
-        
-        .download-app-btn {
-            background: var(--secondary-gradient);
-            color: white;
-            border: none;
-            padding: 8px 22px;
-            border-radius: 30px;
-            cursor: pointer;
-            font-weight: 700;
-            transition: var(--transition);
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
-            font-size: 0.85rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .download-app-btn:hover {
-            transform: translateY(-2px) scale(1.02);
-            box-shadow: 0 6px 24px rgba(16, 185, 129, 0.4);
-        }
-        
-        .download-app-btn i {
-            font-size: 0.9rem;
-        }
-
-        /* ===== NAV DROPDOWN ===== */
-        .nav-dropdown-wrap {
-            position: relative;
-            display: inline-flex;
-            align-items: center;
-        }
-        
-        .nav-dropdown-trigger {
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 16px;
-            border-radius: 30px;
-            transition: var(--transition);
-            font-weight: 600;
-            font-size: 0.85rem;
-            color: var(--dark-light);
-        }
-        
-        .nav-dropdown-trigger:hover {
-            background: var(--primary-light);
-            color: var(--primary);
-        }
-        
-        .nav-caret {
-            font-size: 10px;
-            transition: var(--transition);
-        }
-        
-        .nav-dropdown-wrap:hover .nav-caret {
-            transform: rotate(180deg);
-        }
-        
-        .nav-dropdown-menu {
-            display: none;
-            position: absolute;
-            top: 100%;
-            right: 0;
-            margin-top: 8px;
-            background: white;
-            border: 1px solid rgba(0,0,0,0.08);
-            border-radius: var(--radius-sm);
-            box-shadow: var(--shadow-lg);
-            min-width: 220px;
-            overflow: hidden;
-            z-index: 1001;
-            padding: 6px 0;
-        }
-        
-        .nav-dropdown-wrap:hover .nav-dropdown-menu,
-        .nav-dropdown-menu.show {
-            display: block;
-            animation: dropdownFade 0.2s ease;
-        }
-        
-        @keyframes dropdownFade {
-            from { opacity: 0; transform: translateY(-8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .nav-dropdown-menu a {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 18px;
-            font-size: 0.85rem;
-            color: var(--dark-light);
-            text-decoration: none;
-            transition: var(--transition);
-            font-weight: 600;
-        }
-        
-        .nav-dropdown-menu a:hover {
-            background: var(--gray-light);
-            color: var(--primary);
-        }
-        
-        .nav-dropdown-menu a i {
-            width: 20px;
-            color: var(--primary);
-        }
-
-        /* ============================================================
-           HERO SECTION - القسم الرئيسي
-           ============================================================ */
-        .hero {
-            width: 100%;
-            max-width: 100%;
-            margin: 40px auto 60px;
-            padding: 0 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 50px;
-            position: relative;
-        }
-        
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: -100px;
-            right: -100px;
-            width: 600px;
-            height: 600px;
-            background: radial-gradient(circle, rgba(15,92,191,0.04) 0%, transparent 70%);
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 0;
-        }
-        
-        .hero-content {
-            flex: 1;
-            min-width: 300px;
-            position: relative;
-            z-index: 1;
-        }
-        
-        .hero-badge {
-            display: inline-block;
-            background: var(--accent-light);
-            color: var(--accent);
-            padding: 6px 18px;
-            border-radius: 30px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            margin-bottom: 16px;
-            letter-spacing: 0.5px;
-            border: 1px solid rgba(139, 92, 246, 0.15);
-        }
-        
-        .hero-badge i {
-            margin-left: 6px;
-        }
-        
-        .hero-content h1 {
-            font-size: 3.2rem;
-            font-weight: 900;
-            line-height: 1.15;
-            margin-bottom: 16px;
-            color: var(--dark);
-        }
-        
-        .hero-content h1 .highlight {
-            background: var(--primary-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            position: relative;
-        }
-        
-        .hero-content h1 .highlight::after {
-            content: '';
-            position: absolute;
-            bottom: 2px;
-            left: 0;
-            right: 0;
-            height: 6px;
-            background: var(--primary-gradient);
-            opacity: 0.15;
-            border-radius: 10px;
-        }
-        
-        .hero-content p {
-            font-size: 1.1rem;
-            color: var(--gray);
-            margin-bottom: 28px;
-            line-height: 1.8;
-            max-width: 500px;
-        }
-        
-        .hero-buttons {
-            display: flex;
-            gap: 14px;
-            flex-wrap: wrap;
-            width: 100%;
-        }
-
-        /* ===== STATS - الإحصائيات ===== */
-        .stats-container {
-            display: flex;
-            gap: 16px;
-            flex-wrap: wrap;
-            margin: 30px 0;
-        }
-        
-        .stat-card {
-            background: white;
-            border-radius: var(--radius-md);
-            padding: 20px 28px;
-            box-shadow: var(--shadow-sm);
-            text-align: center;
-            flex: 1;
-            min-width: 120px;
-            transition: var(--transition);
-            border: 1px solid rgba(0,0,0,0.04);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: var(--primary-gradient);
-            opacity: 0;
-            transition: var(--transition);
-        }
-        
-        .stat-card:hover::before {
-            opacity: 1;
-        }
-        
-        .stat-card:hover {
-            transform: translateY(-6px);
-            box-shadow: var(--shadow-md);
-            border-color: var(--primary-light);
-        }
-        
-        .stat-card .number {
-            font-size: 2.2rem;
-            font-weight: 900;
-            background: var(--primary-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            line-height: 1.2;
-        }
-        
-        .stat-card .label {
-            font-size: 0.85rem;
-            color: var(--gray);
-            margin-top: 2px;
-            font-weight: 600;
-        }
-        
-        .stat-card .icon {
-            font-size: 1.5rem;
-            color: var(--primary);
-            margin-bottom: 6px;
-            display: block;
-            opacity: 0.5;
-        }
-
-        /* ============================================================
-           ABOUT SECTION - قسم عن المنصة
-           ============================================================ */
-        .about-section {
-            width: 100%;
-            max-width: 100%;
-            margin: 0 auto 60px;
-            padding: 0 30px;
-        }
-        
-        .about-card {
-            background: white;
-            border-radius: var(--radius-lg);
-            padding: 50px 40px;
-            box-shadow: var(--shadow-sm);
-            border: 1px solid rgba(0,0,0,0.04);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .about-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 5px;
-            background: var(--primary-gradient);
-        }
-        
-        .about-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 40px;
-            margin-top: 20px;
-            width: 100%;
-        }
-        
-        .about-grid .about-text h2 {
-            font-size: 1.8rem;
-            font-weight: 900;
-            color: var(--dark);
-            margin-bottom: 20px;
-        }
-        
-        .about-grid .about-text h2 i {
-            color: var(--primary);
-            margin-left: 10px;
-        }
-        
-        .about-grid .about-text p {
-            font-size: 1.05rem;
-            color: var(--gray);
-            line-height: 1.9;
-            margin-bottom: 16px;
-        }
-        
-        .about-grid .about-text .highlight-text {
-            color: var(--primary);
-            font-weight: 700;
-        }
-        
-        .about-grid .about-features {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            align-content: start;
-        }
-        
-        .about-feature-item {
-            background: var(--gray-light);
-            border-radius: var(--radius-sm);
-            padding: 20px;
-            text-align: center;
-            transition: var(--transition);
-            border: 1px solid rgba(0,0,0,0.04);
-        }
-        
-        .about-feature-item:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-md);
-            border-color: var(--primary-light);
-        }
-        
-        .about-feature-item .icon {
-            font-size: 2rem;
-            margin-bottom: 10px;
-            display: block;
-        }
-        .about-feature-item .icon.blue { color: var(--primary); }
-        .about-feature-item .icon.green { color: var(--secondary); }
-        .about-feature-item .icon.gold { color: var(--gold); }
-        .about-feature-item .icon.purple { color: var(--accent); }
-        
-        .about-feature-item h4 {
-            font-size: 0.95rem;
-            color: var(--dark);
-            margin-bottom: 4px;
-        }
-        .about-feature-item p {
-            font-size: 0.8rem;
-            color: var(--gray);
-        }
-        
-        .about-steps {
-            margin-top: 30px;
-            padding-top: 30px;
-            border-top: 2px dashed #edf2f7;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-        }
-        
-        .about-step {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            padding: 12px 16px;
-            background: var(--gray-light);
-            border-radius: var(--radius-sm);
-            border: 1px solid rgba(0,0,0,0.04);
-        }
-        
-        .about-step .step-number {
-            width: 36px;
-            height: 36px;
-            background: var(--primary-gradient);
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 900;
-            font-size: 0.9rem;
-            flex-shrink: 0;
-        }
-        
-        .about-step .step-text {
-            font-size: 0.9rem;
-            color: var(--dark-light);
-            font-weight: 600;
-        }
-
-        /* ============================================================
-           BUTTONS - الأزرار
-           ============================================================ */
-        .btn-primary {
-            background: var(--primary-gradient);
-            color: white;
-            border: none;
-            padding: 14px 34px;
-            border-radius: 50px;
-            font-size: 0.95rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: var(--transition);
-            box-shadow: 0 4px 16px rgba(15, 92, 191, 0.25);
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 30px rgba(15, 92, 191, 0.35);
-        }
-        
-        .btn-outline {
-            background: transparent;
-            border: 2px solid var(--primary);
-            color: var(--primary);
-            padding: 12px 30px;
-            border-radius: 50px;
-            font-size: 0.95rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: var(--transition);
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .btn-outline:hover {
-            background: var(--primary);
-            color: white;
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(15, 92, 191, 0.2);
-        }
-        
-        .btn-success {
-            background: var(--secondary-gradient);
-            color: white;
-            border: none;
-            padding: 14px 34px;
-            border-radius: 50px;
-            font-size: 0.95rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: var(--transition);
-            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.25);
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .btn-success:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 30px rgba(16, 185, 129, 0.35);
-        }
-        
-        .btn-telegram {
-            background: linear-gradient(135deg, #0088cc 0%, #0077b6 100%);
-            color: white;
-            border: none;
-            padding: 14px 34px;
-            border-radius: 50px;
-            font-size: 0.95rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: var(--transition);
-            box-shadow: 0 4px 16px rgba(0, 136, 204, 0.25);
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            text-decoration: none;
-        }
-        
-        .btn-telegram:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 30px rgba(0, 136, 204, 0.35);
-        }
-        
-        .btn-accent {
-            background: var(--accent-gradient);
-            color: white;
-            border: none;
-            padding: 14px 34px;
-            border-radius: 50px;
-            font-size: 0.95rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: var(--transition);
-            box-shadow: 0 4px 16px rgba(139, 92, 246, 0.25);
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .btn-accent:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 30px rgba(139, 92, 246, 0.35);
-        }
-        
-        .btn-gold {
-            background: var(--gold-gradient);
-            color: white;
-            border: none;
-            padding: 14px 34px;
-            border-radius: 50px;
-            font-size: 0.95rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: var(--transition);
-            box-shadow: 0 4px 16px rgba(245, 158, 11, 0.25);
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .btn-gold:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 30px rgba(245, 158, 11, 0.35);
-        }
-
-        /* ============================================================
-           HERO IMAGE
-           ============================================================ */
-        .hero-image {
-            flex: 1;
-            min-width: 250px;
-            max-width: 100%;
-            position: relative;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .hero-image-wrapper {
-            position: relative;
-            display: inline-block;
-        }
-        
-        .hero-image .floating-icon {
-            font-size: 200px;
-            color: rgba(15, 92, 191, 0.06);
-            animation: float 4s ease-in-out infinite;
-        }
-        
-        .hero-image .badge-float {
-            position: absolute;
-            background: rgba(255,255,255,0.95);
-            backdrop-filter: blur(8px);
-            border-radius: var(--radius-sm);
-            padding: 14px 20px;
-            box-shadow: var(--shadow-md);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-weight: 600;
-            animation: float 3.5s ease-in-out infinite;
-            border: 1px solid rgba(255,255,255,0.3);
-            font-size: 0.85rem;
-        }
-        
-        .hero-image .badge-float:nth-child(2) { 
-            top: 5%; 
-            right: -10%; 
-            animation-delay: 0.2s; 
-        }
-        
-        .hero-image .badge-float:nth-child(3) { 
-            bottom: 10%; 
-            left: -10%; 
-            animation-delay: 0.8s; 
-        }
-        
-        .hero-image .badge-float i { 
-            color: var(--secondary); 
-            font-size: 1.4rem;
-        }
-        
-        .hero-image .badge-float .badge-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .badge-float .badge-icon.video { background: #dbeafe; color: #2563eb; }
-        .badge-float .badge-icon.star { background: var(--gold-light); color: var(--gold); }
-        
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-16px); }
-        }
-
-        /* ============================================================
-           SECTIONS - الأقسام
-           ============================================================ */
-        .section-container {
-            max-width: 1280px;
-            margin: 60px auto;
-            padding: 0 30px;
-        }
-        
-        .section-header {
-            text-align: center;
-            margin-bottom: 40px;
-        }
-        
-        .section-tag {
-            display: inline-block;
-            background: var(--primary-light);
-            color: var(--primary);
-            padding: 4px 16px;
-            border-radius: 30px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            margin-bottom: 10px;
-            letter-spacing: 0.5px;
-        }
-        
-        .section-title {
-            font-size: 2.2rem;
-            font-weight: 900;
-            color: var(--dark);
-            position: relative;
-        }
-        
-        .section-title i { 
-            color: var(--primary); 
-            margin-left: 10px;
-        }
-        
-        .section-subtitle {
-            color: var(--gray);
-            font-size: 1.05rem;
-            margin-top: 8px;
-        }
-
-        /* ============================================================
-           TEACHERS GRID
-           ============================================================ */
-        .teachers-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 28px;
-            margin-top: 10px;
-        }
-        
-        .teacher-card {
-            background: white;
-            border-radius: var(--radius-md);
-            padding: 28px 24px;
-            box-shadow: var(--shadow-sm);
-            transition: var(--transition);
-            text-align: center;
-            cursor: pointer;
-            border: 1px solid rgba(0,0,0,0.04);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .teacher-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: var(--primary-gradient);
-            opacity: 0;
-            transition: var(--transition);
-        }
-        
-        .teacher-card:hover::before { 
-            opacity: 1; 
-        }
-        
-        .teacher-card:hover {
-            transform: translateY(-8px);
-            box-shadow: var(--shadow-lg);
-            border-color: var(--primary-light);
-        }
-        
-        .teacher-image {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            object-fit: cover;
-            margin-bottom: 14px;
-            border: 4px solid white;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-            transition: var(--transition);
-            cursor: pointer;
-        }
-        
-        .teacher-card:hover .teacher-image {
-            transform: scale(1.05);
-            border-color: var(--primary-light);
-        }
-        
-        .teacher-card h3 { 
-            font-size: 1.1rem; 
-            color: var(--dark);
-            margin-bottom: 2px;
-        }
-        
-        .teacher-card .specialization {
-            color: var(--gray); 
-            font-size: 0.85rem;
-            margin: 4px 0;
-        }
-        
-        .teacher-level-badge {
-            display: inline-block;
-            background: var(--accent-light);
-            color: var(--accent);
-            padding: 4px 14px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            margin: 6px 0;
-            border: 1px solid rgba(139, 92, 246, 0.2);
-        }
-        .teacher-level-badge i {
-            margin-left: 5px;
-        }
-        
-        .view-profile-btn {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 30px;
-            cursor: pointer;
-            margin-top: 14px;
-            width: 100%;
-            font-weight: 700;
-            transition: var(--transition);
-            font-size: 0.85rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-        
-        .view-profile-btn:hover {
-            background: var(--primary-dark);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(15, 92, 191, 0.2);
-        }
-
-        /* ===== SEARCH BOX ===== */
-        .search-box {
-            max-width: 500px;
-            margin: 0 auto 30px;
-            display: flex;
-            align-items: center;
-            background: white;
-            border-radius: 50px;
-            padding: 0 18px;
-            transition: var(--transition);
-            border: 2px solid var(--gray-light);
-            box-shadow: var(--shadow-sm);
-        }
-        
-        .search-box:focus-within {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 4px rgba(15, 92, 191, 0.06);
-        }
-        
-        .search-box i {
-            color: var(--primary);
-            font-size: 1rem;
-            opacity: 0.6;
-        }
-        
-        .search-box input {
-            border: none;
-            background: transparent;
-            padding: 12px 14px;
-            font-family: var(--font-family);
-            font-size: 0.95rem;
-            width: 100%;
-            outline: none;
-            color: var(--dark);
-        }
-        
-        .search-box input::placeholder {
-            color: var(--gray);
-        }
-
-        /* ============================================================
-           DEVELOPERS GRID - تم التعديل هنا حسب الطلب
-           ============================================================ */
-        .developers-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 28px;
-            margin-top: 10px;
-        }
-        
-        .developer-card {
-            background: white;
-            border-radius: var(--radius-md);
-            padding: 28px 24px;
-            box-shadow: var(--shadow-sm);
-            transition: var(--transition);
-            text-align: center;
-            border: 1px solid rgba(0,0,0,0.04);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .developer-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: var(--accent-gradient);
-            opacity: 0;
-            transition: var(--transition);
-        }
-        
-        .developer-card:hover::before { 
-            opacity: 1; 
-        }
-        
-        .developer-card:hover {
-            transform: translateY(-8px);
-            box-shadow: var(--shadow-lg);
-            border-color: var(--accent-light);
-        }
-        
-        .developer-image {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            object-fit: cover;
-            margin-bottom: 14px;
-            border: 4px solid white;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-            transition: var(--transition);
-            cursor: pointer;
-        }
-        
-        .developer-card:hover .developer-image {
-            transform: scale(1.05);
-            border-color: var(--accent-light);
-        }
-        
-        .developer-card h3 { 
-            font-size: 1.1rem; 
-            color: var(--dark);
-            margin-bottom: 2px;
-        }
-        
-        .developer-card .role {
-            color: var(--gray); 
-            font-size: 0.85rem;
-            margin: 4px 0;
-        }
-        
-        .developer-role {
-            display: inline-block;
-            background: var(--primary-light);
-            color: var(--primary);
-            padding: 4px 14px;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            font-weight: 700;
-            margin-top: 6px;
-        }
-        
-        .developer-role.backend { background: #dbeafe; color: #1d4ed8; }
-        .developer-role.frontend { background: #fce4ec; color: #c62828; }
-        .developer-role.marketing { background: #e0f2fe; color: #0369a1; }
-        .developer-role.database { background: #dcfce7; color: #15803d; }
-        .developer-role.owner { background: #fef3c7; color: #d97706; }
-        .developer-role.lead { background: #ede9fe; color: #7c3aed; }
-
-        /* ============================================================
-           PROFILE SECTION
-           ============================================================ */
-        .profile-section {
-            max-width: 1000px;
-            margin: 40px auto 60px;
-            padding: 0 30px;
-        }
-        
-        .profile-card {
-            background: white;
-            border-radius: var(--radius-lg);
-            padding: 40px;
-            box-shadow: var(--shadow-sm);
-            border: 1px solid rgba(0,0,0,0.04);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .profile-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 5px;
-            background: var(--primary-gradient);
-        }
-        
-        .profile-header {
-            display: flex;
-            align-items: center;
-            gap: 30px;
-            flex-wrap: wrap;
-            margin-bottom: 30px;
-            padding-bottom: 30px;
-            border-bottom: 2px solid var(--gray-light);
-        }
-        
-        .profile-header .profile-image {
-            width: 140px;
-            height: 140px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 5px solid white;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            cursor: pointer;
-        }
-        
-        .profile-header .profile-info h2 {
-            font-size: 2rem;
-            color: var(--dark);
-            margin-bottom: 6px;
-        }
-        
-        .profile-header .profile-info .specialization {
-            color: var(--primary);
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-        
-        .profile-header .profile-info .experience {
-            color: var(--gray);
-            font-size: 0.95rem;
-        }
-        
-        .profile-header .profile-info .experience i {
-            color: var(--gold);
-        }
-        
-        .profile-body {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 30px;
-        }
-        
-        .profile-body .bio-section h3 {
-            color: var(--dark);
-            font-size: 1.2rem;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .profile-body .bio-section h3 i {
-            color: var(--primary);
-        }
-        
-        .profile-body .bio-section p {
-            color: var(--gray);
-            line-height: 1.9;
-            font-size: 1rem;
-        }
-        
-        .profile-back-btn {
-            background: var(--gray-light);
-            color: var(--dark-light);
-            border: none;
-            padding: 10px 24px;
-            border-radius: 30px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: var(--transition);
-            font-size: 0.9rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 20px;
-        }
-        
-        .profile-back-btn:hover {
-            background: var(--primary);
-            color: white;
-            transform: translateX(-4px);
-        }
-
-        /* ============================================================
-           SOCIAL LINKS
-           ============================================================ */
-        .social-section {
-            margin-top: 24px;
-            padding-top: 24px;
-            border-top: 2px solid var(--gray-light);
-        }
-        
-        .social-section h3 {
-            color: var(--dark);
-            font-size: 1.2rem;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .social-section h3 i {
-            color: var(--primary);
-        }
-        
-        .social-links-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-        
-        .social-link-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 16px;
-            background: var(--gray-light);
-            border-radius: var(--radius-sm);
-            transition: var(--transition);
-            text-decoration: none;
-            color: var(--dark);
-            border: 1px solid rgba(0,0,0,0.04);
-        }
-        
-        .social-link-item:hover {
-            transform: translateY(-3px);
-            box-shadow: var(--shadow-sm);
-            border-color: var(--primary-light);
-        }
-        
-        .social-link-item i {
-            font-size: 1.3rem;
-            width: 28px;
-            text-align: center;
-        }
-        
-        .social-link-item .social-name {
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: var(--dark-light);
-        }
-        
-        .no-social-message {
-            text-align: center;
-            padding: 20px;
-            color: var(--gray);
-            font-size: 0.95rem;
-        }
-
-        /* ============================================================
-           PROFILE OFFERS
-           ============================================================ */
-        .profile-offers-section {
-            margin-top: 30px;
-            padding-top: 30px;
-            border-top: 2px solid var(--gray-light);
-        }
-        
-        .profile-offers-section h3 {
-            color: var(--dark);
-            font-size: 1.2rem;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .profile-offers-section h3 i {
-            color: var(--primary);
-        }
-        
-        .profile-offers-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 16px;
-        }
-        
-        .profile-offer-item {
-            background: var(--gray-light);
-            border-radius: var(--radius-sm);
-            padding: 16px 20px;
-            border: 1px solid rgba(0,0,0,0.04);
-            transition: var(--transition);
-        }
-        
-        .profile-offer-item:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-sm);
-            border-color: var(--primary-light);
-        }
-        
-        .profile-offer-item .subject {
-            font-weight: 700;
-            color: var(--dark);
-            font-size: 1rem;
-        }
-        
-        .profile-offer-item .details {
-            color: var(--gray);
-            font-size: 0.85rem;
-            margin-top: 4px;
-        }
-        
-        .profile-offer-item .details i {
-            color: var(--primary);
-            width: 18px;
-        }
-        
-        .profile-offer-item .price-tag-small {
-            display: inline-block;
-            background: var(--secondary-gradient);
-            color: white;
-            padding: 2px 14px;
-            border-radius: 20px;
-            font-weight: 700;
-            font-size: 0.75rem;
-            margin-top: 6px;
-        }
-        
-        .profile-offer-item .free-tag-small {
-            display: inline-block;
-            background: var(--gold);
-            color: white;
-            padding: 2px 14px;
-            border-radius: 20px;
-            font-weight: 700;
-            font-size: 0.75rem;
-            margin-top: 6px;
-        }
-        
-        .no-offers-message {
-            text-align: center;
-            padding: 30px 20px;
-            color: var(--gray);
-            font-size: 1rem;
-            background: var(--gray-light);
-            border-radius: var(--radius-sm);
-        }
-        
-        .no-offers-message i {
-            font-size: 2.5rem;
-            display: block;
-            margin-bottom: 12px;
-            color: var(--gray);
-            opacity: 0.5;
-        }
-
-        /* ============================================================
-           REFERRAL SECTION
-           ============================================================ */
-        .referral-guide {
-            background: white;
-            border-radius: var(--radius-lg);
-            padding: 40px;
-            margin-bottom: 30px;
-            box-shadow: var(--shadow-sm);
-            border: 1px solid rgba(0,0,0,0.04);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .referral-guide::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 5px;
-            background: var(--gold-gradient);
-        }
-        
-        .referral-guide h2 {
-            font-size: 1.6rem;
-            font-weight: 900;
-            color: var(--dark);
-            margin-bottom: 24px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .referral-guide h2 i {
-            color: var(--gold);
-        }
-        
-        .referral-guide .guide-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 24px;
-        }
-        
-        .referral-guide .guide-card {
-            background: var(--gray-light);
-            border-radius: var(--radius-sm);
-            padding: 24px 20px;
-            text-align: center;
-            transition: var(--transition);
-            border: 1px solid rgba(0,0,0,0.04);
-        }
-        
-        .referral-guide .guide-card:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-sm);
-            border-color: var(--gold-light);
-        }
-        
-        .referral-guide .guide-card .step-icon {
-            font-size: 2.8rem;
-            margin-bottom: 12px;
-            display: block;
-        }
-        
-        .referral-guide .guide-card .step-number-badge {
-            display: inline-block;
-            background: var(--gold-gradient);
-            color: white;
-            padding: 2px 16px;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            font-weight: 700;
-            margin-bottom: 10px;
-        }
-        
-        .referral-guide .guide-card h4 {
-            font-size: 1.05rem;
-            color: var(--dark);
-            margin-bottom: 6px;
-        }
-        
-        .referral-guide .guide-card p {
-            font-size: 0.85rem;
-            color: var(--gray);
-            line-height: 1.6;
-        }
-        
-        .referral-guide .guide-card .reward-badge {
-            display: inline-block;
-            margin-top: 12px;
-            padding: 6px 18px;
-            border-radius: 30px;
-            font-weight: 700;
-            font-size: 0.8rem;
-        }
-        
-        .referral-guide .guide-card .reward-badge.teacher {
-            background: #dbeafe;
-            color: #1d4ed8;
-        }
-        
-        .referral-guide .guide-card .reward-badge.student {
-            background: var(--gold-light);
-            color: var(--gold-dark);
-        }
-        
-        .referral-guide .guide-card .reward-badge.gift {
-            background: var(--accent-light);
-            color: var(--accent);
-        }
-        
-        .referral-guide .guide-divider {
-            text-align: center;
-            padding: 16px 0;
-            font-size: 1.2rem;
-            color: var(--gold);
-            font-weight: 700;
-        }
-
-        /* ===== REFERRAL CARD ===== */
-        .referral-card {
-            background: var(--gold-gradient);
-            color: white;
-            border-radius: var(--radius-sm);
-            padding: 24px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 20px rgba(245, 158, 11, 0.15);
-        }
-        
-        .referral-card .referral-code {
-            background: rgba(255, 255, 255, 0.2);
-            border: 2px dashed rgba(255, 255, 255, 0.4);
-            border-radius: var(--radius-sm);
-            padding: 12px;
-            text-align: center;
-            font-size: 1.5rem;
-            font-weight: 900;
-            letter-spacing: 2px;
-            font-family: 'Courier New', monospace, sans-serif;
-            cursor: pointer;
-            transition: var(--transition);
-            margin: 12px 0;
-        }
-        
-        .referral-card .referral-code:hover { background: rgba(255, 255, 255, 0.3); }
-        
-        .referral-card .share-btn {
-            background: white;
-            color: var(--gold-dark);
-            border: none;
-            padding: 10px 18px;
-            border-radius: 30px;
-            cursor: pointer;
-            width: 100%;
-            font-weight: 800;
-            font-size: 0.88rem;
-            font-family: var(--font-family);
-            transition: var(--transition);
-            margin-top: 10px;
-            box-shadow: var(--shadow-sm);
-        }
-        .referral-card .share-btn:hover { 
-            background: var(--gray-50); 
-            transform: translateY(-2px); 
-        }
-        
-        .referral-stats {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-top: 16px;
-        }
-        
-        .referral-stats .stat-item {
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: var(--radius-sm);
-            padding: 12px;
-            text-align: center;
-        }
-        
-        .referral-stats .stat-item .stat-number { 
-            font-size: 1.6rem; 
-            font-weight: 900; 
-        }
-        .referral-stats .stat-item .stat-label { 
-            font-size: 0.75rem; 
-            opacity: 0.9; 
-            margin-top: 4px; 
-        }
-        
-        .reward-item {
-            background: white;
-            border-radius: var(--radius-sm);
-            padding: 14px 18px;
-            margin-bottom: 10px;
-            border: 1px solid var(--gray-200);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .reward-item .reward-icon { font-size: 1.3rem; margin-left: 10px; }
-        .reward-item .reward-amount { font-weight: 800; color: var(--gold-dark); font-size: 1rem; }
-
-        /* ============================================================
-           FORMS - نماذج تسجيل الدخول والتسجيل
-           ============================================================ */
-        .form-section {
-            max-width: 540px;
-            margin: 50px auto;
-            padding: 0 20px;
-        }
-        
-        .form-tabs {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin-bottom: 30px;
-            flex-wrap: wrap;
-        }
-        
-        .tab-btn {
-            padding: 12px 28px;
-            background: var(--gray-light);
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-            font-weight: 700;
-            transition: var(--transition);
-            font-size: 0.9rem;
-            color: var(--gray);
-            border: 2px solid transparent;
-        }
-        
-        .tab-btn.active {
-            background: var(--primary);
-            color: white;
-            box-shadow: 0 4px 16px rgba(15, 92, 191, 0.25);
-            border-color: var(--primary);
-        }
-        
-        .tab-btn:hover:not(.active) {
-            background: #e2e8f0;
-            border-color: #e2e8f0;
-        }
-        
-        .form-container {
-            background: white;
-            padding: 35px;
-            border-radius: var(--radius-md);
-            box-shadow: var(--shadow-sm);
-            border: 1px solid rgba(0,0,0,0.04);
-        }
-        
-        .form-container h3 {
-            text-align: center;
-            margin-bottom: 24px;
-            color: var(--dark);
-            font-size: 1.3rem;
-        }
-        
-        .form-container h3 i { 
-            color: var(--primary); 
-            margin-left: 8px;
-        }
-        
-        .form-container input, 
-        .form-container select, 
-        .form-container textarea {
-            width: 100%;
-            padding: 14px 18px;
-            margin-bottom: 14px;
-            border: 2px solid #edf2f7;
-            border-radius: var(--radius-sm);
-            font-family: var(--font-family);
-            font-size: 0.95rem;
-            transition: var(--transition);
-            background: #fafbfc;
-        }
-        
-        .form-container input:focus, 
-        .form-container select:focus, 
-        .form-container textarea:focus {
-            border-color: var(--primary);
-            outline: none;
-            background: white;
-            box-shadow: 0 0 0 4px rgba(15, 92, 191, 0.06);
-        }
-        
-        .form-container input[type="file"] {
-            padding: 10px 14px;
-            background: white;
-        }
-        
-        .form-container label {
-            display: block;
-            margin-bottom: 6px;
-            font-weight: 600;
-            color: var(--dark-light);
-            font-size: 0.9rem;
-        }
-        
-        .form-container label i { 
-            color: var(--primary); 
-            margin-left: 6px;
-        }
-
-        /* ===== reCAPTCHA ===== */
-        .recaptcha-wrapper {
-            display: flex;
-            justify-content: center;
-            margin: 16px 0;
-            min-height: 78px;
-        }
-        
-        .recaptcha-error {
-            color: var(--danger);
-            font-size: 0.85rem;
-            text-align: center;
-            margin-top: -6px;
-            margin-bottom: 14px;
-            display: none;
-        }
-        .recaptcha-error.show { display: block; }
-
-        /* ===== NAME VALIDATION ===== */
-        .name-error {
-            color: var(--danger);
-            font-size: 0.75rem;
-            margin-top: -8px;
-            margin-bottom: 10px;
-            display: none;
-            text-align: right;
-        }
-        .name-error.show { display: block; }
-        .name-error i { margin-left: 6px; }
-
-        /* ============================================================
-           DOWNLOAD APP SECTION
-           ============================================================ */
-        .download-app-section {
-            max-width: 800px;
-            margin: 50px auto;
-            padding: 0 20px;
-        }
-        
-        .download-card {
-            background: white;
-            border-radius: var(--radius-lg);
-            padding: 50px 40px;
-            box-shadow: var(--shadow-sm);
-            text-align: center;
-            border: 1px solid rgba(0,0,0,0.04);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .download-card::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            right: -50%;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle, rgba(15,92,191,0.03) 0%, transparent 70%);
-            border-radius: 50%;
-            pointer-events: none;
-        }
-        
-        .download-card .app-icon {
-            font-size: 4rem;
-            background: var(--primary-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 16px;
-            position: relative;
-            z-index: 1;
-        }
-        
-        .download-card h2 {
-            font-size: 1.8rem;
-            color: var(--dark);
-            margin-bottom: 10px;
-            position: relative;
-            z-index: 1;
-        }
-        
-        .download-card .subtitle {
-            color: var(--gray);
-            font-size: 1.05rem;
-            margin-bottom: 8px;
-            position: relative;
-            z-index: 1;
-            font-weight: 600;
-        }
-        
-        .download-card .features {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 12px;
-            margin: 25px 0;
-            text-align: right;
-            position: relative;
-            z-index: 1;
-        }
-        
-        .download-card .features .feature {
-            background: var(--gray-light);
-            padding: 14px 18px;
-            border-radius: var(--radius-sm);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            border: 1px solid rgba(0,0,0,0.04);
-            transition: var(--transition);
-        }
-        
-        .download-card .features .feature:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-sm);
-        }
-        
-        .download-card .features .feature i {
-            color: var(--secondary);
-            font-size: 1.2rem;
-            width: 24px;
-        }
-        
-        .download-card .features .feature span {
-            font-size: 0.9rem;
-            color: var(--dark-light);
-            font-weight: 600;
-        }
-        
-        .download-btn-android {
-            background: #3ddc84;
-            color: #1a1a1a;
-            border: none;
-            padding: 16px 44px;
-            border-radius: 50px;
-            font-size: 1.1rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: var(--transition);
-            display: inline-flex;
-            align-items: center;
-            gap: 14px;
-            margin-top: 8px;
-            box-shadow: 0 4px 24px rgba(61, 220, 132, 0.35);
-            position: relative;
-            z-index: 1;
-            text-decoration: none;
-        }
-        
-        .download-btn-android:hover {
-            transform: translateY(-4px) scale(1.02);
-            box-shadow: 0 8px 36px rgba(61, 220, 132, 0.45);
-        }
-        
-        .download-btn-android i { 
-            font-size: 1.6rem; 
-        }
-        
-        .download-card .qr-code {
-            margin: 25px 0;
-            padding: 16px;
-            background: var(--gray-light);
-            border-radius: var(--radius-sm);
-            display: inline-block;
-            border: 1px solid rgba(0,0,0,0.04);
-            position: relative;
-            z-index: 1;
-        }
-        
-        .download-card .qr-code img {
-            width: 140px;
-            height: 140px;
-            border-radius: 10px;
-        }
-        
-        .download-card .version-info {
-            color: #94a3b8;
-            font-size: 0.8rem;
-            margin-top: 16px;
-            position: relative;
-            z-index: 1;
-        }
-        
-        .download-card .install-instructions {
-            background: var(--primary-light);
-            border-radius: var(--radius-sm);
-            padding: 20px 24px;
-            margin-top: 18px;
-            text-align: right;
-            position: relative;
-            z-index: 1;
-        }
-        
-        .download-card .install-instructions h4 {
-            color: var(--primary);
-            margin-bottom: 10px;
-        }
-        
-        .download-card .install-instructions ol {
-            padding-right: 20px;
-            color: var(--dark-light);
-            font-size: 0.9rem;
-        }
-        
-        .download-card .install-instructions ol li { 
-            margin-bottom: 4px; 
-        }
-
-        /* ============================================================
-           SUPPORT SECTION
-           ============================================================ */
-        .support-card {
-            background: white;
-            border-radius: var(--radius-md);
-            padding: 35px;
-            margin: 30px auto;
-            max-width: 800px;
-            box-shadow: var(--shadow-sm);
-            border: 1px solid rgba(0,0,0,0.04);
-        }
-        
-        .support-card h3 {
-            color: var(--dark);
-            margin-bottom: 24px;
-            text-align: center;
-            font-size: 1.4rem;
-        }
-        
-        .support-card h3 i { 
-            color: var(--primary); 
-            margin-left: 8px;
-        }
-        
-        .support-card .form-group { 
-            margin-bottom: 18px; 
-        }
-        
-        .support-card label {
-            display: block;
-            margin-bottom: 6px;
-            font-weight: 600;
-            color: var(--dark-light);
-        }
-        
-        .support-card input, 
-        .support-card textarea {
-            width: 100%;
-            padding: 14px 18px;
-            border: 2px solid #edf2f7;
-            border-radius: var(--radius-sm);
-            font-family: var(--font-family);
-            font-size: 0.95rem;
-            transition: var(--transition);
-            background: #fafbfc;
-        }
-        
-        .support-card input:focus, 
-        .support-card textarea:focus {
-            border-color: var(--primary);
-            outline: none;
-            background: white;
-            box-shadow: 0 0 0 4px rgba(15, 92, 191, 0.06);
-        }
-        
-        .support-card textarea {
-            resize: vertical;
-            min-height: 140px;
-        }
-
-        /* ============================================================
-           TOAST NOTIFICATIONS
-           ============================================================ */
-        .notification-toast {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            left: 30px;
-            background: var(--dark);
-            color: white;
-            padding: 16px 24px;
-            border-radius: var(--radius-sm);
-            z-index: 2000;
-            display: none;
-            animation: slideIn 0.4s ease;
-            box-shadow: var(--shadow-lg);
-            font-size: 0.95rem;
-            max-width: 440px;
-            margin: 0 auto;
-            border-right: 4px solid var(--secondary);
-            backdrop-filter: blur(8px);
-        }
-        
-        .notification-toast.error { 
-            border-color: var(--danger); 
-        }
-        
-        .notification-toast.warning { 
-            border-color: var(--gold); 
-        }
-        
-        @keyframes slideIn {
-            from { 
-                transform: translateY(100%) scale(0.95); 
-                opacity: 0; 
-            }
-            to { 
-                transform: translateY(0) scale(1); 
-                opacity: 1; 
-            }
-        }
-
-        /* ============================================================
-           IMAGE MODAL
-           ============================================================ */
-        .image-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.9);
-            z-index: 9999;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-        }
-        
-        .image-modal img {
-            max-width: 90%;
-            max-height: 90%;
-            border-radius: 12px;
-            object-fit: contain;
-        }
-
-        /* ============================================================
-           FOOTER
-           ============================================================ */
-        footer {
-            text-align: center;
-            padding: 40px 30px;
-            background: var(--dark);
-            color: #94a3b8;
-            margin-top: 60px;
-        }
-        
-        footer .footer-logo {
-            font-size: 1.4rem;
-            font-weight: 900;
-            margin-bottom: 12px;
-        }
-        
-        footer .footer-logo span {
-            background: var(--primary-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        footer .footer-logo .highlight {
-            background: var(--secondary-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        footer p { 
-            margin: 4px 0; 
-            font-size: 0.9rem;
-        }
-        
-        footer i { 
-            color: var(--secondary); 
-        }
-        
-        footer .footer-dev {
-            font-size: 0.8rem;
-            margin-top: 10px;
-            color: #64748b;
-        }
-        
-        footer .footer-dev span {
-            color: #93c5fd;
-        }
-        
-        footer .footer-links {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 12px;
-            margin-top: 12px;
-            font-size: 0.8rem;
-        }
-        
-        footer .footer-links a {
-            color: #64748b;
-            text-decoration: none;
-            transition: var(--transition);
-        }
-        
-        footer .footer-links a:hover {
-            color: white;
-        }
-
-        /* ============================================================
-           LOADING
-           ============================================================ */
-        .loading {
-            text-align: center;
-            padding: 50px;
-            color: var(--gray);
-        }
-        
-        .loading i { 
-            color: var(--primary); 
-            font-size: 1.8rem;
-        }
-
-        /* ============================================================
-           RESPONSIVE DESIGN - جميع الشاشات
-           ============================================================ */
-        
-        @media (max-width: 1200px) {
-            .hero-content h1 { font-size: 2.8rem; }
-            .hero-image .badge-float { font-size: 0.75rem; padding: 10px 16px; }
-            .hero-image .badge-float i { font-size: 1.1rem; }
-            .hero-image .badge-float .badge-icon { width: 32px; height: 32px; }
-        }
-        
-        @media (max-width: 1024px) {
-            .hero { gap: 30px; }
-            .hero-content h1 { font-size: 2.4rem; }
-            .hero-image .floating-icon { font-size: 140px; }
-            .hero-image .badge-float { display: none; }
-            .about-grid { grid-template-columns: 1fr; gap: 30px; }
-            .profile-body { grid-template-columns: 1fr; }
-            .social-links-grid { grid-template-columns: 1fr 1fr; }
-            .referral-guide .guide-grid { grid-template-columns: 1fr 1fr; }
-            .teachers-grid { grid-template-columns: repeat(2, 1fr); }
-            .developers-grid { grid-template-columns: repeat(2, 1fr); }
-        }
-        
-        @media (max-width: 768px) {
-            .navbar { padding: 10px 12px; }
-            .nav-container { justify-content: center; gap: 8px; }
-            .nav-links { width: 100%; justify-content: center; flex-wrap: wrap; }
-            .nav-links a { padding: 6px 10px; font-size: 0.73rem; }
-            .logo { font-size: 1.2rem; }
-            .logo-icon-wrapper { width: 36px; height: 36px; }
-            .logo-icon-wrapper i { font-size: 1rem; }
-            .logo-text span:first-child { font-size: 1.2rem; }
-            .logo-text .highlight { font-size: 1.2rem; }
-            .logo-badge { font-size: 0.45rem; padding: 1px 8px; }
-            .download-app-btn { padding: 6px 14px; font-size: 0.7rem; gap: 4px; }
-            
-            .hero { flex-direction: column; padding: 24px 16px 36px; gap: 24px; text-align: center; margin: 20px auto 30px; }
-            .hero-content { align-items: center; text-align: center; }
-            .hero-content h1 { font-size: 1.9rem; line-height: 1.3; }
-            .hero-content p { max-width: 100%; font-size: 1rem; }
-            .hero-buttons { width: 100%; justify-content: center; flex-wrap: wrap; }
-            .hero-buttons .btn-primary,
-            .hero-buttons .btn-success,
-            .hero-buttons .btn-telegram,
-            .hero-buttons .btn-outline {
-                flex: 1;
-                min-width: 140px;
-                justify-content: center;
-                font-size: 0.85rem;
-                padding: 12px 20px;
-            }
-            .hero-image { width: min(100%, 280px); margin: 0 auto; }
-            .hero-image .floating-icon { font-size: 100px; }
-            
-            .stats-container { flex-direction: column; gap: 10px; }
-            .stat-card { min-width: auto; padding: 14px 18px; }
-            .stat-card .number { font-size: 1.8rem; }
-            
-            .section-container { padding: 0 16px; margin: 30px auto; }
-            .section-title { font-size: 1.6rem; }
-            .section-subtitle { font-size: 0.95rem; }
-            
-            .teachers-grid { grid-template-columns: 1fr 1fr; gap: 16px; }
-            .teacher-card { padding: 20px 16px; }
-            .teacher-image { width: 90px; height: 90px; }
-            .teacher-card h3 { font-size: 1rem; }
-            .view-profile-btn { font-size: 0.75rem; padding: 8px 14px; }
-            
-            .developers-grid { grid-template-columns: 1fr 1fr; gap: 16px; }
-            .developer-card { padding: 20px 16px; }
-            .developer-image { width: 90px; height: 90px; }
-            .developer-card h3 { font-size: 1rem; }
-            
-            .about-section { padding: 0 16px; margin: 0 auto 30px; }
-            .about-card { padding: 24px 18px; }
-            .about-grid .about-text h2 { font-size: 1.4rem; }
-            .about-grid .about-text p { font-size: 0.95rem; }
-            .about-grid .about-features { grid-template-columns: 1fr 1fr; }
-            .about-steps { grid-template-columns: 1fr; gap: 12px; }
-            
-            .referral-guide { padding: 24px 18px; }
-            .referral-guide h2 { font-size: 1.25rem; }
-            .referral-guide .guide-grid { grid-template-columns: 1fr; }
-            .referral-stats { grid-template-columns: 1fr 1fr; }
-            .referral-card .referral-code { font-size: 1.2rem; }
-            
-            .form-section { padding: 0 16px; margin: 30px auto; }
-            .form-container { padding: 20px; }
-            .form-tabs { gap: 6px; }
-            .tab-btn { padding: 8px 16px; font-size: 0.8rem; flex: 1; min-width: 80px; }
-            
-            .profile-section { padding: 0 16px; margin: 20px auto 40px; }
-            .profile-card { padding: 20px; }
-            .profile-header { flex-direction: column; text-align: center; gap: 16px; }
-            .profile-header .profile-image { width: 100px; height: 100px; }
-            .profile-header .profile-info h2 { font-size: 1.4rem; }
-            .profile-body { grid-template-columns: 1fr; }
-            .profile-offers-grid { grid-template-columns: 1fr; }
-            .social-links-grid { grid-template-columns: 1fr; }
-            
-            .support-card { padding: 20px; margin: 20px auto; }
-            
-            .download-app-section { padding: 0 16px; margin: 30px auto; }
-            .download-card { padding: 24px 18px; }
-            .download-card h2 { font-size: 1.4rem; }
-            .download-card .features { grid-template-columns: 1fr; }
-            .download-btn-android { padding: 12px 24px; font-size: 0.95rem; width: 100%; justify-content: center; }
-            .download-card .qr-code img { width: 100px; height: 100px; }
-            
-            footer { padding: 30px 16px; margin-top: 30px; }
-            footer .footer-logo { font-size: 1.2rem; }
-            footer .footer-links { gap: 8px; }
-            footer .footer-links a { font-size: 0.7rem; }
-            
-            .recaptcha-wrapper .g-recaptcha { transform: scale(0.75); }
-            .nav-dropdown-menu { min-width: 180px; right: -10px; }
-            .nav-dropdown-menu a { font-size: 0.78rem; padding: 8px 14px; }
-        }
-        
-        @media (max-width: 480px) {
-            .hero-content h1 { font-size: 1.6rem; }
-            .hero-buttons .btn-primary,
-            .hero-buttons .btn-success,
-            .hero-buttons .btn-telegram,
-            .hero-buttons .btn-outline {
-                width: 100%;
-                min-width: auto;
-                font-size: 0.8rem;
-                padding: 10px 16px;
-            }
-            .nav-links a { padding: 4px 8px; font-size: 0.68rem; }
-            .download-app-btn { font-size: 0.65rem; padding: 4px 10px; }
-            .teachers-grid { grid-template-columns: 1fr; }
-            .developers-grid { grid-template-columns: 1fr; }
-            .about-grid .about-features { grid-template-columns: 1fr; }
-            .form-container { padding: 16px; }
-            .section-title { font-size: 1.3rem; }
-            .stat-card .number { font-size: 1.5rem; }
-            .referral-stats { grid-template-columns: 1fr; }
-            .profile-header .profile-image { width: 80px; height: 80px; }
-            .profile-header .profile-info h2 { font-size: 1.2rem; }
-            .profile-card { padding: 16px; }
-            .profile-body .bio-section p { font-size: 0.9rem; }
-            .social-links-grid { grid-template-columns: 1fr; }
-            .search-box { padding: 0 12px; }
-            .search-box input { font-size: 0.85rem; padding: 10px 10px; }
-        }
-        
-        @media (max-width: 359px) {
-            .hero-content h1 { font-size: 1.3rem; }
-            .hero-content p { font-size: 0.85rem; }
-            .logo-text span:first-child { font-size: 1rem; }
-            .logo-text .highlight { font-size: 1rem; }
-            .logo-icon-wrapper { width: 30px; height: 30px; }
-            .logo-icon-wrapper i { font-size: 0.8rem; }
-            .nav-links a { font-size: 0.6rem; padding: 3px 6px; }
-            .download-app-btn { font-size: 0.55rem; padding: 3px 8px; }
-            .section-title { font-size: 1.1rem; }
-            .tab-btn { font-size: 0.7rem; padding: 6px 10px; }
-            .form-container { padding: 12px; }
-            .form-container input, 
-            .form-container select, 
-            .form-container textarea { font-size: 0.85rem; padding: 10px 12px; }
-            .btn-primary, .btn-success, .btn-telegram { font-size: 0.8rem; padding: 10px 18px; }
-        }
-        
-        @media (max-height: 500px) and (orientation: landscape) {
-            .hero { padding: 15px 20px; margin: 10px auto 20px; }
-            .hero-content h1 { font-size: 1.5rem; }
-            .hero-image .floating-icon { font-size: 80px; }
-            .stats-container { flex-direction: row; gap: 10px; }
-            .stat-card { padding: 10px 16px; }
-            .stat-card .number { font-size: 1.3rem; }
-            .navbar { padding: 6px 12px; }
-            .logo-icon-wrapper { width: 30px; height: 30px; }
-            .logo-icon-wrapper i { font-size: 0.8rem; }
-        }
-        
-        @media (max-width: 768px) {
-            .btn, .stat-number, .teacher-card, .developer-card, .logo, .nav-links a {
-                -webkit-user-select: none;
-                user-select: none;
-            }
-        }
-        
-        @media (prefers-reduced-motion: reduce) {
-            html { scroll-behavior: auto; }
-            * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
-        }
+        body { font-family: 'Cairo', sans-serif; background: #0a0a1a; color: white; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .container { max-width: 450px; width: 90%; background: #1a1a2e; border-radius: 24px; padding: 40px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+        h1 { color: #0f5cbf; font-size: 1.5rem; margin-bottom: 10px; }
+        .subtitle { color: #94a3b8; font-size: 0.9rem; margin-bottom: 20px; }
+        .password-box { background: #0f3460; padding: 20px; border-radius: 12px; margin: 20px 0; border: 2px dashed rgba(96, 165, 250, 0.3); }
+        .password-box span { color: #60a5fa; font-size: 2.2rem; font-weight: 900; letter-spacing: 8px; font-family: 'Courier New', monospace; }
+        .password-label { color: #94a3b8; font-size: 0.8rem; margin-bottom: 8px; }
+        .btn { background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; padding: 16px 30px; border-radius: 12px; font-size: 1.1rem; font-weight: 700; cursor: pointer; width: 100%; transition: all 0.3s; margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .btn:hover { transform: scale(1.02); box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4); }
+        .info { color: #64748b; font-size: 0.8rem; margin-top: 16px; line-height: 1.6; }
+        .info i { color: #f59e0b; }
+        .copy-btn { background: transparent; border: 1px solid #333; color: #94a3b8; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.8rem; transition: all 0.3s; margin-top: 8px; }
+        .copy-btn:hover { background: #1a1a2e; border-color: #0f5cbf; color: white; }
+        .warning { color: #f59e0b; font-size: 0.75rem; margin-top: 10px; }
+        .jitsi-badge { display: inline-block; background: #0f3460; padding: 4px 16px; border-radius: 20px; font-size: 0.7rem; color: #60a5fa; margin-bottom: 10px; border: 1px solid #0f5cbf; }
     </style>
 </head>
 <body>
-    <!-- ===== REFERRAL BANNER ===== -->
-    <div id="referralBanner" class="referral-banner">
-        <button class="close-banner" onclick="closeReferralBanner()">&times;</button>
-        <div id="referralBannerContent">
-            <i class="fas fa-gift"></i>
-            <span id="referralMessage">تمت دعوتك من قبل <span id="referrerName">أحد المستخدمين</span>!</span>
-            <span class="highlight-text" id="referralCodeDisplay">---</span>
-            <button class="btn-jump" onclick="jumpToRegister()">
-                <i class="fas fa-arrow-left"></i> سجل الآن
+    <div class="container">
+        <div class="jitsi-badge"><i class="fas fa-video"></i> Jitsi Meet</div>
+        <h1>🎥 ${escapeHtml(subjectName)}</h1>
+        <p class="subtitle">🔐 أدخل كلمة المرور للدخول إلى البث المباشر</p>
+        
+        <div class="password-box">
+            <div class="password-label">🔑 كلمة مرور البث</div>
+            <span id="roomPassword">${password}</span>
+            <br>
+            <button class="copy-btn" onclick="copyPassword()">
+                <i class="fas fa-copy"></i> نسخ كلمة المرور
             </button>
         </div>
+        
+        <button class="btn" onclick="joinJitsi()">
+            <i class="fas fa-video"></i> فتح البث المباشر (Jitsi Meet)
+        </button>
+        
+        <p class="info">
+            <i class="fas fa-info-circle"></i> سيتم فتح Jitsi Meet في نافذة جديدة<br>
+            ⚠️ أدخل كلمة المرور أعلاه عند الطلب<br>
+            ✅ مجاني 100% ولا يحتاج إلى تثبيت
+        </p>
+        <p class="warning">
+            ⚠️ لا تشارك كلمة المرور مع أي شخص خارج الحصة
+        </p>
     </div>
-
-    <!-- ===== NAVBAR ===== -->
-    <nav class="navbar" role="navigation" aria-label="شريط التنقل الرئيسي">
-        <div class="nav-container">
-            <div class="logo" onclick="showHome()" role="button" tabindex="0" aria-label="الذهاب إلى الصفحة الرئيسية">
-                <div class="logo-icon-wrapper">
-                    <i class="fas fa-graduation-cap" aria-hidden="true"></i>
-                </div>
-                <div class="logo-text">
-                    <span>Zoom</span>
-                    <span class="highlight">Dz</span>
-                    <span class="logo-badge">.edu</span>
-                </div>
-            </div>
-
-            <div class="nav-links">
-                <a onclick="showHome()" id="homeTab" class="active" role="tab" aria-selected="true">
-                    <i class="fas fa-home nav-icon" aria-hidden="true"></i>
-                    <span class="nav-label">الرئيسية</span>
-                </a>
-                <a onclick="showTeachers()" id="teachersTab" role="tab" aria-selected="false">
-                    <i class="fas fa-chalkboard-user nav-icon" aria-hidden="true"></i>
-                    <span class="nav-label">الأساتذة</span>
-                </a>
-                <a onclick="showReferral()" id="referralTab" role="tab" aria-selected="false">
-                    <i class="fas fa-gift nav-icon" style="color:var(--gold);" aria-hidden="true"></i>
-                    <span class="nav-label">الإحالة</span>
-                </a>
-                <a onclick="showDevelopers()" id="developersTab" role="tab" aria-selected="false">
-                    <i class="fas fa-code nav-icon" aria-hidden="true"></i>
-                    <span class="nav-label">المطورون</span>
-                </a>
-                <a onclick="showSupport()" id="helpTab" role="tab" aria-selected="false">
-                    <i class="fas fa-headset nav-icon" aria-hidden="true"></i>
-                    <span class="nav-label">مساعدة</span>
-                </a>
-                <a onclick="showLogin()" id="loginTabNav" role="tab" aria-selected="false">
-                    <i class="fas fa-user nav-icon" aria-hidden="true"></i>
-                    <span class="nav-label">تسجيل الدخول</span>
-                </a>
-                
-                <div class="nav-dropdown-wrap" id="createAccountWrap">
-                    <a class="nav-dropdown-trigger" onclick="toggleCreateAccountNav(event)" role="button" tabindex="0">
-                        <i class="fas fa-user-plus nav-icon" aria-hidden="true"></i>
-                        <span class="nav-label">إنشاء حساب</span>
-                        <i class="fas fa-chevron-down nav-caret" aria-hidden="true"></i>
-                    </a>
-                    <div class="nav-dropdown-menu" id="createAccountMenuNav" role="menu">
-                        <a onclick="showRegister('student-register')" role="menuitem">
-                            <i class="fas fa-user-graduate" aria-hidden="true"></i> إنشاء حساب طالب
-                        </a>
-                        <a onclick="showRegister('teacher-register')" role="menuitem">
-                            <i class="fas fa-chalkboard-teacher" aria-hidden="true"></i> إنشاء حساب أستاذ
-                        </a>
-                    </div>
-                </div>
-
-                <!-- تم التعديل: زر التطبيق أصبح ينقل إلى قسم التحميل في نفس الصفحة -->
-                <a onclick="showDownloadApp()" class="download-app-btn" role="button" aria-label="تحميل التطبيق">
-                    <i class="fas fa-download" aria-hidden="true"></i>
-                    <span class="nav-label">التطبيق</span>
-                </a>
-            </div>
-        </div>
-    </nav>
-
-    <!-- ===== MAIN CONTENT ===== -->
-    <main>
-        <!-- ===== HOME SECTION ===== -->
-        <section id="homeSection" class="hero" aria-label="القسم الرئيسي">
-            <div class="hero-content">
-                <div class="hero-badge">
-                    <i class="fas fa-star" aria-hidden="true"></i>
-                    
-                </div>
-                <h1>
-                    تعلم مع أفضل الأساتذة
-                    <span class="highlight">في الجزائر</span>
-                </h1>
-                <p>دروس خصوصية عبر الفيديو مع نخبة من الأساتذة المعتمدين. ادفع عبر البطاقة الذهبية بسهولة وأمان</p>
-                
-                <div class="stats-container">
-                    <div class="stat-card">
-                        <span class="icon" aria-hidden="true"><i class="fas fa-chalkboard-user"></i></span>
-                        <div class="number" id="teacherCount">0</div>
-                        <div class="label">أستاذ معتمد</div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <span class="icon" aria-hidden="true"><i class="fas fa-users"></i></span>
-                        <div class="number" id="studentCount">0</div>
-                        <div class="label">طالب مسجل</div>
-                    </div>
-                </div>
-                
-                <div class="hero-buttons">
-                    <button class="btn-primary" onclick="showTeachers()">
-                        <i class="fas fa-users" aria-hidden="true"></i>
-                        تعرف على أساتذتنا
-                    </button>
-                    <button class="btn-success" onclick="showRegister('teacher-register')">
-                        <i class="fas fa-chalkboard-user" aria-hidden="true"></i>
-                        انضم كأستاذ
-                    </button>
-                    <a href="https://t.me/zoomdz1" target="_blank" rel="noopener noreferrer" class="btn-telegram">
-                        <i class="fab fa-telegram" aria-hidden="true"></i>
-                        قناتنا
-                    </a>
-                </div>
-            </div>
-            
-            <div class="hero-image" aria-hidden="true">
-                <div class="hero-image-wrapper">
-                    <div class="floating-icon"><i class="fas fa-graduation-cap"></i></div>
-                    <div class="badge-float">
-                        <span class="badge-icon video"><i class="fas fa-mobile-alt"></i></span>
-                        <div>
-                            <div style="font-size:0.9rem; color:var(--dark);">تطبيق موبايل</div>
-                            <div style="font-size:0.7rem; color:var(--gray);">تجربة سلسة</div>
-                        </div>
-                    </div>
-                    <div class="badge-float">
-                        <span class="badge-icon star"><i class="fas fa-star"></i></span>
-                        <div>
-                            <div style="font-size:0.9rem; color:var(--dark);">أفضل الأساتذة</div>
-                            <div style="font-size:0.7rem; color:var(--gray);">معتمدون</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- ===== ABOUT SECTION ===== -->
-        <section class="about-section" id="aboutSection" aria-label="عن المنصة">
-            <div class="about-card">
-                <div class="about-grid">
-                    <div class="about-text">
-                        <h2><i class="fas fa-info-circle" aria-hidden="true"></i> عن منصة ZoomDz</h2>
-                        <p>
-                            <span class="highlight-text">ZoomDz</span>
-                            هي منصة تعليمية جزائرية مبتكرة تهدف إلى ربط الطلاب مع أفضل الأساتذة في مختلف التخصصات عبر دروس خصوصية مباشرة عن بعد.
-                        </p>
-                        <p>
-                            <i class="fas fa-check-circle" style="color:var(--primary);" aria-hidden="true"></i>
-                            <strong>رؤيتنا:</strong>
-                            تمكين كل طالب في الجزائر من الوصول إلى تعليم نوعي بأسعار معقولة، دون قيود جغرافية أو زمانية.
-                        </p>
-                        <p>
-                            <i class="fas fa-bullseye" style="color:var(--secondary);" aria-hidden="true"></i>
-                            <strong>هدفنا:</strong>
-                            بناء مجتمع تعليمي رقمي متكامل يجمع بين الجودة، السهولة، والأمان، حيث يمكن للطلاب التعلم بمرونة والأساتذة مشاركة خبراتهم بكفاءة.
-                        </p>
-                        <p style="font-size:0.95rem; color:var(--gray); background:var(--gray-light); padding:14px; border-radius:var(--radius-sm); border-right:4px solid var(--primary);">
-                            <i class="fas fa-quote-right" style="color:var(--primary);" aria-hidden="true"></i>
-                            نؤمن بأن التعليم الجيد هو حق لكل جزائري، ومنصتنا هي الجسر الذي يوصلك إلى أفضل الكفاءات في وطننا.
-                        </p>
-                    </div>
-                    <div class="about-features">
-                        <div class="about-feature-item">
-                            <span class="icon blue" aria-hidden="true"><i class="fas fa-mobile-alt"></i></span>
-                            <h4>تطبيق موبايل</h4>
-                            <p>منصة حديثة وسريعة تعمل بسلاسة على الهاتف</p>
-                        </div>
-                        <div class="about-feature-item">
-                            <span class="icon green" aria-hidden="true"><i class="fas fa-credit-card"></i></span>
-                            <h4>دفع آمن</h4>
-                            <p>عبر شارجيلي، EDAHABIA، و CCP</p>
-                        </div>
-                        <div class="about-feature-item">
-                            <span class="icon gold" aria-hidden="true"><i class="fas fa-trophy"></i></span>
-                            <h4>أساتذة معتمدون</h4>
-                            <p>نخبة من أفضل الأساتذة في الجزائر</p>
-                        </div>
-                        <div class="about-feature-item">
-                            <span class="icon purple" aria-hidden="true"><i class="fas fa-mobile-alt"></i></span>
-                            <h4>سهولة الاستخدام</h4>
-                            <p>تصميم عصري يتكيف مع جميع الأجهزة</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="about-steps">
-                    <div class="about-step">
-                        <span class="step-number">1</span>
-                        <span class="step-text">اختر الأستاذ المناسب</span>
-                    </div>
-                    <div class="about-step">
-                        <span class="step-number">2</span>
-                        <span class="step-text">احجز الدرس المناسب</span>
-                    </div>
-                    <div class="about-step">
-                        <span class="step-number">3</span>
-                        <span class="step-text">ادفع بأمان عبر شارجيلي</span>
-                    </div>
-                    <div class="about-step">
-                        <span class="step-number">4</span>
-                        <span class="step-text">استخدم التطبيق من هاتفك مباشرة</span>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- ===== TEACHERS SECTION ===== -->
-        <section id="teachersSection" class="section-container" style="display: none;" aria-label="قائمة الأساتذة">
-            <div class="section-header">
-                <span class="section-tag"><i class="fas fa-chalkboard-user" aria-hidden="true"></i> نخبة الأساتذة</span>
-                <h2 class="section-title">أساتذتنا المعتمدون <i class="fas fa-chalkboard-user" aria-hidden="true"></i></h2>
-                <p class="section-subtitle">تعلم على يد أفضل الخبراء في مختلف التخصصات</p>
-            </div>
-            
-            <div class="search-box">
-                <i class="fas fa-search" aria-hidden="true"></i>
-                <input type="text" id="searchTeacher" placeholder="ابحث عن الأستاذ بالاسم أو المادة" oninput="filterTeachers()" aria-label="البحث عن أستاذ">
-            </div>
-            
-            <div id="teachersList" class="teachers-grid"></div>
-            <div id="teachersEmpty" style="display:none; text-align:center; padding:60px 20px; color:var(--gray);">
-                <i class="fas fa-search" style="font-size:3rem; display:block; margin-bottom:16px; opacity:0.4;" aria-hidden="true"></i>
-                <h3 style="color:var(--dark); margin-bottom:8px;">لم يتم العثور على نتائج</h3>
-                <p>حاول تعديل معايير البحث</p>
-            </div>
-        </section>
-
-        <!-- ===== DEVELOPERS SECTION ===== -->
-        <section id="developersSection" class="section-container" style="display: none;" aria-label="فريق المطورين">
-            <div class="section-header">
-                <span class="section-tag"><i class="fas fa-code" aria-hidden="true"></i> فريق الإبداع</span>
-                <h2 class="section-title">فريق المطورين <i class="fas fa-rocket" aria-hidden="true"></i></h2>
-                <p class="section-subtitle">هذا المشروع من إبداع من مطورين جزائريين طموحين</p>
-            </div>
-            
-            <div id="developersList" class="developers-grid">
-                <!-- عثمانية محمد الصالح - المالك والمطور الأساسي -->
-                <div class="developer-card" style="border: 2px solid var(--gold);">
-                    <img src="/images/othmaniya.jpg" class="developer-image" 
-                         onerror="this.src='https://ui-avatars.com/api/?name=عثمانية+محمد+الصالح&background=0f5cbf&color=fff&size=120'"
-                         alt="عثمانية محمد الصالح - مالك ومطور المنصة"
-                         onclick="showFullImage(this.src)" loading="lazy">
-                    <h3 style="color: var(--gold-dark);">عثمانية محمد الصالح</h3>
-                    <p class="role"><i class="fas fa-crown" style="color: var(--gold);" aria-hidden="true"></i> مطور الواجهة الخلفية</p>
-                    <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 8px;">
-                        <span class="developer-role backend"><i class="fas fa-server" aria-hidden="true"></i> Backend</span>
-                        <span class="developer-role database"><i class="fas fa-database" aria-hidden="true"></i> قاعدة البيانات</span>
-                    </div>
-                    <p style="font-size: 0.9rem; color: var(--gold-dark); margin-top: 10px; font-weight: 700; line-height: 1.6;">
-                        <i class="fas fa-flag" aria-hidden="true"></i> 
-                    </p>
-                    <p style="font-size: 0.85rem; color: var(--gray); margin-top: 6px; line-height: 1.6;">
-                        <i class="fas fa-code" style="color: var(--primary);" aria-hidden="true"></i> مسؤول عن ، الخادم، واجهات API، وتصميم قاعدة البيانات
-                    </p>
-                    
-                </div>
-
-                <!-- نفيسة هلابي - مطورة الواجهة الأمامية -->
-                <div class="developer-card">
-                    <img src="/images/nafissa.jpg" class="developer-image"
-                         onerror="this.src='https://ui-avatars.com/api/?name=نفيسة+هلابي&background=c62828&color=fff&size=120'"
-                         alt="نفيسة هلابي - مطورة الواجهة الأمامية"
-                         onclick="showFullImage(this.src)" loading="lazy">
-                    <h3>نفيسة هلابي</h3>
-                    <p class="role"><i class="fas fa-laptop-code" style="color: #c62828;" aria-hidden="true"></i> مطورة الواجهة الأمامية</p>
-                    <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 8px;">
-                        <span class="developer-role frontend"><i class="fas fa-palette" aria-hidden="true"></i> Frontend</span>
-                        <span class="developer-role" style="background:#e0f2fe; color:#0369a1;"><i class="fas fa-headset" aria-hidden="true"></i> دعم فني</span>
-                    </div>
-                    <p style="font-size: 0.85rem; color: var(--gray); margin-top: 10px; line-height: 1.6;">
-                        <i class="fas fa-paint-brush" style="color: #c62828;" aria-hidden="true"></i> مسؤولة عن تصميم الواجهة، تجربة المستخدم (UX/UI)، ودعم المستخدمين
-                    </p>
-                   
-                </div>
-
-                <!-- صالح مليك - مسؤول التسويق والمبيعات -->
-                <div class="developer-card">
-                    <img src="/images/salah.jpg" class="developer-image"
-                         onerror="this.src='https://ui-avatars.com/api/?name=صالح+مليك&background=0369a1&color=fff&size=120'"
-                         alt="صالح مليك - مسؤول التسويق ونمو المنصة"
-                         onclick="showFullImage(this.src)" loading="lazy">
-                    <h3>صالح مليك</h3>
-                    <p class="role"><i class="fas fa-bullhorn" style="color: #0369a1;" aria-hidden="true"></i> مسؤول التسويق والمبيعات</p>
-                    <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 8px;">
-                        <span class="developer-role marketing"><i class="fas fa-bullhorn" aria-hidden="true"></i> التسويق</span>
-                        <span class="developer-role" style="background:#dcfce7; color:#15803d;"><i class="fas fa-chart-line" aria-hidden="true"></i> المبيعات</span>
-                    </div>
-                    <p style="font-size: 0.85rem; color: var(--gray); margin-top: 10px; line-height: 1.6;">
-                        <i class="fas fa-chart-line" style="color: #0369a1;" aria-hidden="true"></i> مسؤول عن التسويق الرقمي، استراتيجيات التسويق، ونمو المنصة
-                    </p>
-                   
-                </div>
-            </div>
-        </section>
-
-        <!-- ===== PROFILE SECTION ===== -->
-        <section id="profileSection" class="profile-section" style="display: none;" aria-label="ملف الأستاذ">
-            <div id="profileContent"></div>
-        </section>
-
-        <!-- ===== REFERRAL SECTION ===== -->
-        <section id="referralSection" class="section-container" style="display: none;" aria-label="نظام الإحالة">
-            <div class="section-header">
-                <span class="section-tag"><i class="fas fa-gift" aria-hidden="true"></i> مكافآت</span>
-                <h2 class="section-title">نظام الإحالة والمكافآت <i class="fas fa-gift" style="color:var(--gold);" aria-hidden="true"></i></h2>
-                <p class="section-subtitle">ادعُ أصدقاءك واحصل على مكافآت مجزية</p>
-            </div>
-            
-            <div class="referral-guide">
-                <h2><i class="fas fa-info-circle" aria-hidden="true"></i> كيف يعمل نظام الإحالة؟</h2>
-                
-                <div class="guide-grid">
-                    <div class="guide-card">
-                        <span class="step-icon" aria-hidden="true">🔗</span>
-                        <span class="step-number-badge">الخطوة 1</span>
-                        <h4>احصل على رمز الإحالة الخاص بك</h4>
-                        <p>سجل دخولك إلى المنصة وانسخ رمز الإحالة الفريد الخاص بك من لوحة التحكم.</p>
-                    </div>
-                    
-                    <div class="guide-card">
-                        <span class="step-icon" aria-hidden="true">📤</span>
-                        <span class="step-number-badge">الخطوة 2</span>
-                        <h4>شارك الرمز مع أصدقائك</h4>
-                        <p>أرسل رمز الإحالة الخاص بك إلى أصدقائك، زملائك، أو طلابك عبر واتساب، فيسبوك، أو أي وسيلة أخرى.</p>
-                    </div>
-                    
-                    <div class="guide-card">
-                        <span class="step-icon" aria-hidden="true">✅</span>
-                        <span class="step-number-badge">الخطوة 3</span>
-                        <h4>يُسجل الشخص المحال</h4>
-                        <p>عندما يسجل شخص جديد باستخدام رمزك، يتم ربط حسابه تلقائياً بإحالتك.</p>
-                    </div>
-                    
-                    <div class="guide-card">
-                        <span class="step-icon" aria-hidden="true">🎁</span>
-                        <span class="step-number-badge">الخطوة 4</span>
-                        <h4>احصل على مكافأتك</h4>
-                        <p>بمجرد تفعيل الحساب، تحصل على المكافأة المخصصة حسب نوع الشخص المحال.</p>
-                    </div>
-                </div>
-                
-                <div class="guide-divider">
-                    <i class="fas fa-arrow-down" aria-hidden="true"></i>
-                    تفاصيل المكافآت
-                    <i class="fas fa-arrow-down" aria-hidden="true"></i>
-                </div>
-                
-                <div class="guide-grid" style="margin-top: 10px;">
-                    <div class="guide-card" style="border: 2px solid #dbeafe;">
-                        <span class="step-icon" aria-hidden="true">👨‍🏫</span>
-                        <h4>مكافأة إحالة الأستاذ</h4>
-                        <p>عندما تحيل أستاذاً جديداً إلى المنصة، تحصل على <strong>100 دج</strong> فور قبوله من الإدارة.</p>
-                        <span class="reward-badge teacher">💰 +100 دج</span>
-                    </div>
-                    
-                    <div class="guide-card" style="border: 2px solid var(--gold-light);">
-                        <span class="step-icon" aria-hidden="true">🎓</span>
-                        <h4>مكافأة إحالة الطالب</h4>
-                        <p>عندما تحيل طالباً جديداً، تحصل على <strong>فرصة لفتح صندوق الهدايا</strong> بعد أن يحجز المحال درساً مدفوعاً.</p>
-                        <span class="reward-badge student">🎁 فرصة صندوق هدايا</span>
-                    </div>
-                    
-                    <div class="guide-card" style="border: 2px solid var(--accent-light);">
-                        <span class="step-icon" aria-hidden="true">🎉</span>
-                        <h4>مكافآت إضافية</h4>
-                        <p>يمكن أن يحتوي صندوق الهدايا على <strong>50 أو 100 دج</strong> إضافية! كلما زادت إحالاتك، زادت فرصك.</p>
-                        <span class="reward-badge gift">🎁 50 - 100 دج</span>
-                    </div>
-                </div>
-                
-                <div style="margin-top: 24px; padding: 16px; background: var(--gold-light); border-radius: var(--radius-sm); border-right: 4px solid var(--gold);">
-                    <p style="font-size: 0.9rem; color: var(--gold-dark); font-weight: 700;">
-                        <i class="fas fa-lightbulb" aria-hidden="true"></i>
-                        نصيحة: شارك رمز الإحالة الخاص بك في مجموعات الطلاب والأساتذة على فيسبوك وواتساب لتحقيق أقصى استفادة!
-                    </p>
-                </div>
-            </div>
-            
-            <div class="referral-card">
-                <h4 style="margin-bottom:6px; font-weight:800;"><i class="fas fa-gift" aria-hidden="true"></i> رمز الإحالة الخاص بك</h4>
-                <p style="font-size:0.8rem; opacity:0.9; margin-bottom:6px;">شارك هذا الرمز مع أصدقائك واحصل على مكافآت</p>
-                <div class="referral-code" onclick="copyReferralCode()" role="button" tabindex="0">
-                    <span id="referralCodeText">جاري التحميل...</span>
-                </div>
-                <button class="share-btn" onclick="shareReferral()"><i class="fas fa-share-alt" aria-hidden="true"></i> مشاركة الرابط</button>
-                
-                <div class="referral-stats">
-                    <div class="stat-item">
-                        <div class="stat-number" id="referredCount">0</div>
-                        <div class="stat-label">عدد المحالين</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number" id="referralBalance">0 دج</div>
-                        <div class="stat-label">مكافآت الإحالة</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div style="margin-top:24px;">
-                <h4 style="font-size:1rem; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
-                    <i class="fas fa-history" style="color:var(--gold);" aria-hidden="true"></i>
-                    سجل المكافآت
-                </h4>
-                <div id="rewardHistory"></div>
-            </div>
-        </section>
-
-        <!-- ===== LOGIN & REGISTER SECTION ===== -->
-        <section id="loginSection" class="form-section" style="display: none;" aria-label="تسجيل الدخول والتسجيل">
-            <div class="form-tabs" role="tablist">
-                <button class="tab-btn active" onclick="switchTab('login')" role="tab" aria-selected="true">
-                    <i class="fas fa-sign-in-alt" aria-hidden="true"></i> تسجيل الدخول
-                </button>
-                <button class="tab-btn" onclick="switchTab('student-register')" role="tab" aria-selected="false">
-                    <i class="fas fa-user-graduate" aria-hidden="true"></i> حساب طالب
-                </button>
-                <button class="tab-btn" onclick="switchTab('teacher-register')" role="tab" aria-selected="false">
-                    <i class="fas fa-chalkboard-teacher" aria-hidden="true"></i> حساب أستاذ
-                </button>
-            </div>
-
-            <!-- ===== LOGIN TAB ===== -->
-            <div id="loginTab" class="form-container" role="tabpanel">
-                <h3><i class="fas fa-sign-in-alt" aria-hidden="true"></i> تسجيل الدخول</h3>
-                <input type="email" id="loginEmail" placeholder="البريد الإلكتروني" aria-label="البريد الإلكتروني">
-                <input type="password" id="loginPassword" placeholder="كلمة المرور" aria-label="كلمة المرور">
-                
-                <select id="loginRole" aria-label="نوع المستخدم">
-                    <option value="student">طالب</option>
-                    <option value="teacher">أستاذ</option>
-                    <option value="admin">مدير</option>
-                </select>
-                
-                <div class="recaptcha-wrapper">
-                    <div id="loginRecaptcha" class="g-recaptcha"></div>
-                </div>
-                <div id="loginRecaptchaError" class="recaptcha-error">
-                    <i class="fas fa-exclamation-circle" aria-hidden="true"></i> يرجى تأكيد أنك لست روبوتاً
-                </div>
-                
-                <button class="btn-primary" onclick="login()" style="width:100%; justify-content:center;">دخول</button>
-                <a href="#" class="forgot-link" onclick="showForgotPassword()" style="display:block; text-align:center; margin-top:12px; color:var(--primary); font-weight:600; text-decoration:none;">
-                    <i class="fas fa-key" aria-hidden="true"></i> نسيت كلمة المرور؟
-                </a>
-            </div>
-
-            <!-- ===== FORGOT PASSWORD TAB ===== -->
-            <div id="forgotPasswordTab" class="form-container" style="display: none;" role="tabpanel">
-                <h3><i class="fas fa-key" aria-hidden="true"></i> استعادة كلمة المرور</h3>
-                <p style="color: var(--gray); margin-bottom: 18px;">أدخل بريدك الإلكتروني وسنرسل لك رابطاً لإعادة تعيين كلمة المرور</p>
-                <input type="email" id="resetEmail" placeholder="البريد الإلكتروني" aria-label="البريد الإلكتروني">
-                <select id="resetRole" aria-label="نوع المستخدم">
-                    <option value="student">طالب</option>
-                    <option value="teacher">أستاذ</option>
-                </select>
-                <button class="btn-primary" onclick="sendResetLink()" style="width:100%; justify-content:center;">
-                    <i class="fas fa-paper-plane" aria-hidden="true"></i> إرسال رابط إعادة التعيين
-                </button>
-                <a href="#" class="back-link" onclick="hideForgotPassword()" style="display:block; text-align:center; margin-top:12px; color:var(--gray); font-weight:600; text-decoration:none;">
-                    <i class="fas fa-arrow-right" aria-hidden="true"></i> العودة إلى تسجيل الدخول
-                </a>
-            </div>
-
-            <!-- ===== STUDENT REGISTER TAB ===== -->
-            <div id="studentRegisterTab" class="form-container" style="display: none;" role="tabpanel">
-                <h3><i class="fas fa-user-plus" aria-hidden="true"></i> تسجيل طالب جديد</h3>
-                
-                <input type="text" id="studentName" placeholder="الاسم الكامل (بالحروف اللاتينية فقط)" 
-                       oninput="validateLatinName('student')" onblur="validateLatinName('student')" aria-label="الاسم الكامل">
-                <div id="studentNameError" class="name-error">
-                    <i class="fas fa-exclamation-circle" aria-hidden="true"></i> 
-                    الاسم يجب أن يحتوي على أحرف لاتينية فقط (A-Z, a-z)
-                </div>
-                
-                <input type="email" id="studentEmail" placeholder="البريد الإلكتروني" aria-label="البريد الإلكتروني">
-                <input type="password" id="studentPassword" placeholder="كلمة المرور" aria-label="كلمة المرور">
-                <input type="tel" id="studentPhone" placeholder="رقم الهاتف" aria-label="رقم الهاتف">
-                
-                <div style="margin-bottom: 14px;">
-                    <label style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--dark-light); font-size: 0.9rem;">
-                        <i class="fas fa-graduation-cap" style="color: var(--primary); margin-left: 6px;" aria-hidden="true"></i>
-                        المستوى الدراسي <span style="color: var(--danger);">*</span>
-                    </label>
-                    <select id="studentEducationLevel" required aria-label="المستوى الدراسي" style="width: 100%; padding: 14px 18px; border: 2px solid #edf2f7; border-radius: var(--radius-sm); font-family: var(--font-family); font-size: 0.95rem; transition: var(--transition); background: #fafbfc;">
-                        <option value="">-- اختر المستوى --</option>
-                        <option value="5eme_pri">خامسة ابتدائي</option>
-                        <option value="1ere_am">أولى متوسط</option>
-                        <option value="2eme_am">ثانية متوسط</option>
-                        <option value="3eme_am">ثالثة متوسط</option>
-                        <option value="4eme_am">رابعة متوسط</option>
-                        <option value="1ere_as">أولى ثانوي</option>
-                        <option value="2eme_as">ثانية ثانوي</option>
-                        <option value="bac">بكالوريا</option>
-                        <option value="1ere_uni">أولى جامعي</option>
-                        <option value="2ere_uni">ثانية جامعي</option>
-                        <option value="3ere_uni">ثالثة جامعي</option>
-                        <option value="master">ماستر</option>
-                        <option value="doctorat">دكتوراه</option>
-                    </select>
-                </div>
-                
-                <div class="recaptcha-wrapper">
-                    <div id="studentRecaptcha" class="g-recaptcha"></div>
-                </div>
-                <div id="studentRecaptchaError" class="recaptcha-error">
-                    <i class="fas fa-exclamation-circle" aria-hidden="true"></i> يرجى تأكيد أنك لست روبوتاً
-                </div>
-                
-                <button class="btn-primary" onclick="registerStudent()" style="width:100%; justify-content:center;">تسجيل</button>
-            </div>
-
-            <!-- ===== TEACHER REGISTER TAB ===== -->
-            <div id="teacherRegisterTab" class="form-container" style="display: none;" role="tabpanel">
-                <h3><i class="fas fa-chalkboard-user" aria-hidden="true"></i> تقديم طلب أستاذ</h3>
-                
-                <input type="text" id="teacherName" placeholder="الاسم الكامل (بالحروف اللاتينية فقط)" required
-                       oninput="validateLatinName('teacher')" onblur="validateLatinName('teacher')" aria-label="الاسم الكامل">
-                <div id="teacherNameError" class="name-error">
-                    <i class="fas fa-exclamation-circle" aria-hidden="true"></i> 
-                    الاسم يجب أن يحتوي على أحرف لاتينية فقط (A-Z, a-z)
-                </div>
-                
-                <input type="email" id="teacherEmail" placeholder="البريد الإلكتروني" required aria-label="البريد الإلكتروني">
-                <input type="password" id="teacherPassword" placeholder="كلمة المرور" required aria-label="كلمة المرور">
-                <input type="tel" id="teacherPhone" placeholder="رقم الهاتف" required aria-label="رقم الهاتف">
-                <input type="text" id="teacherSpecialization" placeholder="التخصص" required aria-label="التخصص">
-                <textarea id="teacherBio" placeholder="نبذة عنك" required aria-label="نبذة عنك"></textarea>
-                <input type="text" id="teacherExperience" placeholder="سنوات الخبرة" required aria-label="سنوات الخبرة">
-                
-                <div style="margin-bottom: 14px;">
-                    <label style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--dark-light); font-size: 0.9rem;">
-                        <i class="fas fa-graduation-cap" style="color: var(--primary); margin-left: 6px;" aria-hidden="true"></i>
-                        المستوى الدراسي الذي ستدرسه <span style="color: var(--danger);">*</span>
-                    </label>
-                    <select id="teacherTeachingLevel" required aria-label="المستوى الدراسي" style="width: 100%; padding: 14px 18px; border: 2px solid #edf2f7; border-radius: var(--radius-sm); font-family: var(--font-family); font-size: 0.95rem; transition: var(--transition); background: #fafbfc;">
-                        <option value="">-- اختر المستوى --</option>
-                        <option value="5eme_pri">خامسة ابتدائي</option>
-                        <option value="1ere_am">أولى متوسط</option>
-                        <option value="2eme_am">ثانية متوسط</option>
-                        <option value="3eme_am">ثالثة متوسط</option>
-                        <option value="4eme_am">رابعة متوسط</option>
-                        <option value="1ere_as">أولى ثانوي</option>
-                        <option value="2eme_as">ثانية ثانوي</option>
-                        <option value="bac">بكالوريا</option>
-                        <option value="1ere_uni">أولى جامعي</option>
-                        <option value="2ere_uni">ثانية جامعي</option>
-                        <option value="3ere_uni">ثالثة جامعي</option>
-                        <option value="master">ماستر</option>
-                        <option value="doctorat">دكتوراه</option>
-                    </select>
-                </div>
-                
-                <label><i class="fas fa-user" aria-hidden="true"></i> الصورة الشخصية</label>
-                <input type="file" id="profileImage" accept="image/*" aria-label="الصورة الشخصية">
-                <label><i class="fas fa-graduation-cap" aria-hidden="true"></i> صورة الدبلوم</label>
-                <input type="file" id="diplomaImage" accept="image/*" aria-label="صورة الدبلوم">
-                <label><i class="fas fa-id-card" aria-hidden="true"></i> صورة بطاقة الهوية</label>
-                <input type="file" id="idImage" accept="image/*" aria-label="صورة بطاقة الهوية">
-                
-                <div class="recaptcha-wrapper">
-                    <div id="teacherRecaptcha" class="g-recaptcha"></div>
-                </div>
-                <div id="teacherRecaptchaError" class="recaptcha-error">
-                    <i class="fas fa-exclamation-circle" aria-hidden="true"></i> يرجى تأكيد أنك لست روبوتاً
-                </div>
-                
-                <button class="btn-primary" onclick="registerTeacher()" style="width:100%; justify-content:center;">تقديم الطلب</button>
-            </div>
-        </section>
-
-        <!-- ===== DOWNLOAD APP SECTION ===== -->
-        <section id="downloadAppSection" class="download-app-section" style="display: none;" aria-label="تحميل التطبيق">
-            <div class="download-card">
-                <div class="app-icon" aria-hidden="true"><i class="fas fa-graduation-cap"></i></div>
-                <h2>📱 تحميل تطبيق ZoomDz</h2>
-                <p class="subtitle">🎓 تعلم مع أفضل الأساتذة في الجزائر</p>
-                
-                <div class="features">
-                    <div class="feature">
-                        <i class="fas fa-video" aria-hidden="true"></i>
-                        <span>دروس فيديو مباشرة</span>
-                    </div>
-                    <div class="feature">
-                        <i class="fas fa-chalkboard-teacher" aria-hidden="true"></i>
-                        <span>أفضل الأساتذة المعتمدين</span>
-                    </div>
-                    <div class="feature">
-                        <i class="fas fa-credit-card" aria-hidden="true"></i>
-                        <span>الدفع عبر </span>
-                    </div>
-                    <div class="feature">
-                        <i class="fas fa-mobile-alt" aria-hidden="true"></i>
-                        <span>تجربة سلسة على الجوال</span>
-                    </div>
-                </div>
-
-                <a href="https://www.appcreator24.com/app4124532-an3mxi" target="_blank" rel="noopener noreferrer" class="download-btn-android">
-                    <i class="fab fa-android" aria-hidden="true"></i>
-                    تحميل التطبيق الآن
-                </a>
-
-                <div class="qr-code">
-                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://www.appcreator24.com/app4124532-an3mxi" alt="رمز QR لتحميل التطبيق" loading="lazy">
-                </div>
-
-                <div class="install-instructions">
-                    <h4><i class="fas fa-info-circle" aria-hidden="true"></i> خطوات التثبيت:</h4>
-                    <ol>
-                        <li>اضغط على زر "تحميل التطبيق الآن"</li>
-                        <li>سيتم تحميل ملف APK</li>
-                        <li>افتح الملف واختر "تثبيت"</li>
-                        <li>قد تحتاج إلى تفعيل خيار "التثبيت من مصادر غير معروفة او التثبيت من دون فحص" عند فشل التثبيت</li>
-                    </ol>
-                </div>
-
-                <div class="version-info">
-                    <i class="fas fa-code-branch" aria-hidden="true"></i> الإصدار 1.0.0 | <i class="fas fa-calendar-alt" aria-hidden="true"></i> آخر تحديث: يونيو 2026
-                </div>
-            </div>
-        </section>
-
-        <!-- ===== SUPPORT SECTION ===== -->
-        <section id="supportSection" class="section-container" style="display: none;" aria-label="الدعم الفني">
-            <div class="support-card">
-                <h3><i class="fas fa-headset" aria-hidden="true"></i> تواصل مع الدعم الفني</h3>
-                <form id="supportForm">
-                    <div class="form-group">
-                        <label for="supportName">الاسم الكامل</label>
-                        <input type="text" id="supportName" placeholder="أدخل اسمك" required aria-label="الاسم الكامل">
-                    </div>
-                    <div class="form-group">
-                        <label for="supportEmail">البريد الإلكتروني</label>
-                        <input type="email" id="supportEmail" placeholder="بريدك الإلكتروني" required aria-label="البريد الإلكتروني">
-                    </div>
-                    <div class="form-group">
-                        <label for="supportPhone">رقم الهاتف (اختياري)</label>
-                        <input type="tel" id="supportPhone" placeholder="رقم الهاتف" aria-label="رقم الهاتف">
-                    </div>
-                    <div class="form-group">
-                        <label for="supportSubject">الموضوع</label>
-                        <input type="text" id="supportSubject" placeholder="موضوع الرسالة" required aria-label="الموضوع">
-                    </div>
-                    <div class="form-group">
-                        <label for="supportMessage">الرسالة</label>
-                        <textarea id="supportMessage" placeholder="اكتب رسالتك هنا..." required aria-label="الرسالة"></textarea>
-                    </div>
-                    <button type="submit" class="btn-primary" style="width: 100%; justify-content:center;">
-                        <i class="fas fa-paper-plane" aria-hidden="true"></i> إرسال الرسالة
-                    </button>
-                </form>
-            </div>
-        </section>
-    </main>
-
-    <!-- ===== FOOTER ===== -->
-    <footer>
-        <div class="footer-logo">
-            <span>Zoom</span><span class="highlight">Dz</span> <span style="color:#64748b; font-weight:400;">.com</span>
-        </div>
-        <p><i class="fas fa-credit-card" aria-hidden="true"></i> الدفع عبر الذهبية | EDAHABIA | CCP</p>
-        <p style="font-size: 0.85rem;">© 2026 ZoomDz - منصة التعليم الجزائرية - جميع الحقوق محفوظة</p>
-        <div class="footer-links">
-            <a href="/privacy-policy.html">سياسة الخصوصية</a>
-            <a href="/terms.html">الشروط والأحكام</a>
-            <a href="mailto:contact@zoomdz.com">تواصل معنا</a>
-        </div>
-        <div class="footer-dev">
-            <i class="fas fa-code" aria-hidden="true"></i> طور بواسطة: 
-            <span>عثمانية محمد الصالح</span> · 
-            <span>مليك صالح</span> · 
-            <span>هلابي نفيسه</span>
-        </div>
-    </footer>
-
-    <!-- ===== TOAST ===== -->
-    <div id="notificationToast" class="notification-toast" role="alert" aria-live="polite"></div>
-
-    <!-- ===== IMAGE MODAL ===== -->
-    <div id="imageModal" class="image-modal" onclick="closeImageModal()" role="dialog" aria-label="عرض الصورة">
-        <img id="fullImage" src="" alt="صورة مكبرة">
-    </div>
-
+    
     <script>
-        // ============================================================
-        // IMAGE MODAL
-        // ============================================================
-        function showFullImage(src) {
-            document.getElementById('fullImage').src = src;
-            document.getElementById('imageModal').style.display = 'flex';
-        }
-
-        function closeImageModal() {
-            document.getElementById('imageModal').style.display = 'none';
-        }
-
-        // ============================================================
-        // reCAPTCHA - يتم إدارتها من /js/recaptcha.js
-        // ============================================================
-
-        // ============================================================
-        // NAME VALIDATION
-        // ============================================================
-        function validateLatinName(type) {
-            var input, errorEl;
-            if (type === 'student') {
-                input = document.getElementById('studentName');
-                errorEl = document.getElementById('studentNameError');
-            } else {
-                input = document.getElementById('teacherName');
-                errorEl = document.getElementById('teacherNameError');
-            }
-            
-            var value = input.value;
-            var latinPattern = /^[A-Za-z\s\.\-']+$/;
-            var hasNumbers = /\d/.test(value);
-            var hasSpecialChars = /[^A-Za-z\s\.\-']/.test(value);
-            
-            if (value.length > 0 && (hasNumbers || hasSpecialChars || !latinPattern.test(value))) {
-                errorEl.classList.add('show');
-                input.style.borderColor = '#ef4444';
-                return false;
-            } else if (value.length > 0) {
-                errorEl.classList.remove('show');
-                input.style.borderColor = '#10b981';
-                return true;
-            } else {
-                errorEl.classList.remove('show');
-                input.style.borderColor = '#edf2f7';
-                return true;
-            }
-        }
-
-        function isNameValid(type) {
-            var input = type === 'student' ? document.getElementById('studentName') : document.getElementById('teacherName');
-            var value = input.value.trim();
-            if (!value) return false;
-            var latinPattern = /^[A-Za-z\s\.\-']+$/;
-            return !/\d/.test(value) && !/[^A-Za-z\s\.\-']/.test(value) && latinPattern.test(value);
-        }
-
-        // ============================================================
-        // REFERRAL SYSTEM
-        // ============================================================
-        var referralCode = null;
-        var referralData = null;
-        var allTeachers = [];
-        var filteredTeachers = [];
-
-        function readReferralFromURL() {
-            try {
-                var urlParams = new URLSearchParams(window.location.search);
-                var ref = urlParams.get('ref');
-                if (ref && ref.length > 3) {
-                    referralCode = ref;
-                    var banner = document.getElementById('referralBanner');
-                    document.getElementById('referralCodeDisplay').innerText = referralCode;
-                    fetchReferrerInfo(ref);
-                    banner.classList.add('show');
-                    if (window.history && window.history.replaceState) {
-                        window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
-                    }
-                }
-            } catch(e) { console.log('⚠️ خطأ في قراءة رمز الإحالة:', e); }
-        }
-
-        async function fetchReferrerInfo(refCode) {
-            try {
-                var res = await fetch('/api/referral/info?code=' + encodeURIComponent(refCode));
-                if (res.ok) {
-                    var data = await res.json();
-                    if (data.success && data.referrer_name) {
-                        document.getElementById('referrerName').innerText = data.referrer_name;
-                        referralData = data;
-                    }
-                }
-            } catch(e) { console.log('⚠️ لا يمكن جلب معلومات المحيل:', e); }
-        }
-
-        function closeReferralBanner() {
-            document.getElementById('referralBanner').classList.remove('show');
-            try { localStorage.setItem('referralBannerClosed', 'true'); } catch(e) {}
-        }
-
-        function jumpToRegister() {
-            showLogin();
-            switchTab('student-register');
-            if (referralCode) {
-                try { localStorage.setItem('pendingReferral', referralCode); } catch(e) {}
-                showNotification('🔗 تم تطبيق رمز الإحالة: ' + referralCode, 'success');
-            }
-            closeReferralBanner();
-        }
-
-        // ============================================================
-        // NAVIGATION
-        // ============================================================
-        function showHome() {
-            document.getElementById('homeSection').style.display = 'flex';
-            document.getElementById('aboutSection').style.display = 'block';
-            document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('referralSection').style.display = 'none';
-            document.getElementById('developersSection').style.display = 'none';
-            document.getElementById('profileSection').style.display = 'none';
-            document.getElementById('loginSection').style.display = 'none';
-            document.getElementById('downloadAppSection').style.display = 'none';
-            document.getElementById('supportSection').style.display = 'none';
-            setActiveTab('homeTab');
-            loadStats();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function showTeachers() {
-            document.getElementById('homeSection').style.display = 'none';
-            document.getElementById('aboutSection').style.display = 'none';
-            document.getElementById('teachersSection').style.display = 'block';
-            document.getElementById('referralSection').style.display = 'none';
-            document.getElementById('developersSection').style.display = 'none';
-            document.getElementById('profileSection').style.display = 'none';
-            document.getElementById('loginSection').style.display = 'none';
-            document.getElementById('downloadAppSection').style.display = 'none';
-            document.getElementById('supportSection').style.display = 'none';
-            setActiveTab('teachersTab');
-            loadPublicTeachers();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function showReferral() {
-            document.getElementById('homeSection').style.display = 'none';
-            document.getElementById('aboutSection').style.display = 'none';
-            document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('referralSection').style.display = 'block';
-            document.getElementById('developersSection').style.display = 'none';
-            document.getElementById('profileSection').style.display = 'none';
-            document.getElementById('loginSection').style.display = 'none';
-            document.getElementById('downloadAppSection').style.display = 'none';
-            document.getElementById('supportSection').style.display = 'none';
-            setActiveTab('referralTab');
-            loadReferralData();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function showDevelopers() {
-            document.getElementById('homeSection').style.display = 'none';
-            document.getElementById('aboutSection').style.display = 'none';
-            document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('referralSection').style.display = 'none';
-            document.getElementById('developersSection').style.display = 'block';
-            document.getElementById('profileSection').style.display = 'none';
-            document.getElementById('loginSection').style.display = 'none';
-            document.getElementById('downloadAppSection').style.display = 'none';
-            document.getElementById('supportSection').style.display = 'none';
-            setActiveTab('developersTab');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function showLogin() {
-            document.getElementById('homeSection').style.display = 'none';
-            document.getElementById('aboutSection').style.display = 'none';
-            document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('referralSection').style.display = 'none';
-            document.getElementById('developersSection').style.display = 'none';
-            document.getElementById('profileSection').style.display = 'none';
-            document.getElementById('loginSection').style.display = 'block';
-            document.getElementById('downloadAppSection').style.display = 'none';
-            document.getElementById('supportSection').style.display = 'none';
-            setActiveTab('loginTabNav');
-            switchTab('login');
-            resetRecaptchaState();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function showRegister(tab) {
-            document.getElementById('homeSection').style.display = 'none';
-            document.getElementById('aboutSection').style.display = 'none';
-            document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('referralSection').style.display = 'none';
-            document.getElementById('developersSection').style.display = 'none';
-            document.getElementById('profileSection').style.display = 'none';
-            document.getElementById('loginSection').style.display = 'block';
-            document.getElementById('downloadAppSection').style.display = 'none';
-            document.getElementById('supportSection').style.display = 'none';
-            setActiveTab('loginTabNav');
-            switchTab(tab);
-            document.getElementById('createAccountMenuNav').classList.remove('show');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function toggleCreateAccountNav(e) {
-            e.stopPropagation();
-            document.getElementById('createAccountMenuNav').classList.toggle('show');
-        }
-
-        function showSupport() {
-            document.getElementById('homeSection').style.display = 'none';
-            document.getElementById('aboutSection').style.display = 'none';
-            document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('referralSection').style.display = 'none';
-            document.getElementById('developersSection').style.display = 'none';
-            document.getElementById('profileSection').style.display = 'none';
-            document.getElementById('loginSection').style.display = 'none';
-            document.getElementById('downloadAppSection').style.display = 'none';
-            document.getElementById('supportSection').style.display = 'block';
-            setActiveTab('');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        // ===== وظيفة جديدة لعرض قسم تحميل التطبيق =====
-        function showDownloadApp() {
-            document.getElementById('homeSection').style.display = 'none';
-            document.getElementById('aboutSection').style.display = 'none';
-            document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('referralSection').style.display = 'none';
-            document.getElementById('developersSection').style.display = 'none';
-            document.getElementById('profileSection').style.display = 'none';
-            document.getElementById('loginSection').style.display = 'none';
-            document.getElementById('downloadAppSection').style.display = 'block';
-            document.getElementById('supportSection').style.display = 'none';
-            setActiveTab('');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function showForgotPassword() {
-            document.getElementById('loginTab').style.display = 'none';
-            document.getElementById('forgotPasswordTab').style.display = 'block';
-        }
-
-        function hideForgotPassword() {
-            document.getElementById('forgotPasswordTab').style.display = 'none';
-            document.getElementById('loginTab').style.display = 'block';
-        }
-
-        function setActiveTab(tabId) {
-            var tabs = ['homeTab', 'teachersTab', 'referralTab', 'developersTab', 'loginTabNav'];
-            tabs.forEach(function(id) {
-                var el = document.getElementById(id);
-                if (el) el.classList.remove('active');
+        const roomUrl = '${roomUrl}';
+        const password = '${password}';
+        
+        function copyPassword() {
+            navigator.clipboard.writeText(password).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                btn.innerHTML = '✅ تم النسخ';
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fas fa-copy"></i> نسخ كلمة المرور';
+                }, 2000);
             });
-            var activeEl = document.getElementById(tabId);
-            if (activeEl) activeEl.classList.add('active');
         }
-
-        // ============================================================
-        // SWITCH TAB
-        // ============================================================
-        function switchTab(tab) {
-            document.getElementById('loginTab').style.display = 'none';
-            document.getElementById('forgotPasswordTab').style.display = 'none';
-            document.getElementById('studentRegisterTab').style.display = 'none';
-            document.getElementById('teacherRegisterTab').style.display = 'none';
-
-            if (tab === 'login') document.getElementById('loginTab').style.display = 'block';
-            else if (tab === 'student-register') document.getElementById('studentRegisterTab').style.display = 'block';
-            else if (tab === 'teacher-register') document.getElementById('teacherRegisterTab').style.display = 'block';
-
-            document.querySelectorAll('.tab-btn').forEach(function(btn, index) {
-                btn.classList.remove('active');
-                if ((tab === 'login' && index === 0) ||
-                    (tab === 'student-register' && index === 1) ||
-                    (tab === 'teacher-register' && index === 2)) {
-                    btn.classList.add('active');
-                }
-            });
-
-            switchTabRecaptcha(tab);
-        }
-
-        // ============================================================
-        // NOTIFICATION
-        // ============================================================
-        function showNotification(message, type) {
-            if (type === undefined) type = 'success';
-            var toast = document.getElementById('notificationToast');
-            toast.className = 'notification-toast';
-            if (type === 'error') toast.classList.add('error');
-            else if (type === 'warning') toast.classList.add('warning');
-            toast.innerHTML = '<i class="fas ' + (type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle') + '" aria-hidden="true"></i> ' + message;
-            toast.style.display = 'block';
-            setTimeout(function() { toast.style.display = 'none'; }, 5000);
-        }
-
-        // ============================================================
-        // STATS
-        // ============================================================
-        async function loadStats() {
-            try {
-                var res = await fetch('/api/public/stats');
-                if (!res.ok) throw new Error('HTTP error! status: ' + res.status);
-                var stats = await res.json();
-                
-                document.getElementById('teacherCount').innerText = stats.teachers || 0;
-                document.getElementById('studentCount').innerText = stats.students || 0;
-            } catch (error) {
-                console.error('خطأ في جلب الإحصائيات:', error);
-            }
-        }
-
-        // ============================================================
-        // SEND RESET LINK
-        // ============================================================
-        async function sendResetLink() {
-            var email = document.getElementById('resetEmail').value;
-            var role = document.getElementById('resetRole').value;
-            if (!email) {
-                showNotification('الرجاء إدخال البريد الإلكتروني', 'error');
-                return;
-            }
-            var btn = event.target;
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> جاري الإرسال...';
-            try {
-                var res = await fetch('/api/forgot-password', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: email, role: role })
-                });
-                var data = await res.json();
-                if (data.success) {
-                    showNotification('تم إرسال رابط إعادة التعيين إلى بريدك الإلكتروني', 'success');
-                    hideForgotPassword();
-                } else {
-                    showNotification(data.error, 'error');
-                }
-            } catch(e) {
-                showNotification('حدث خطأ', 'error');
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-paper-plane" aria-hidden="true"></i> إرسال رابط إعادة التعيين';
-            }
-        }
-
-        // ============================================================
-        // LOGIN
-        // ============================================================
-        async function login() {
-            var email = document.getElementById('loginEmail').value;
-            var password = document.getElementById('loginPassword').value;
-            var role = document.getElementById('loginRole').value;
+        
+        function joinJitsi() {
+            const newWindow = window.open(roomUrl, '_blank');
             
-            if (!email || !password) { 
-                showNotification('يرجى إدخال البريد الإلكتروني وكلمة المرور', 'error'); 
-                return; 
-            }
-            
-            var recaptchaToken = recaptchaWidgets.login !== null ? grecaptcha.getResponse(recaptchaWidgets.login) : grecaptcha.getResponse();
-            if (!recaptchaToken) {
-                document.getElementById('loginRecaptchaError').classList.add('show');
-                showNotification('يرجى تأكيد أنك لست روبوتاً', 'error');
-                return;
-            }
-            document.getElementById('loginRecaptchaError').classList.remove('show');
-
-            try {
-                var res = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email: email,
-                        password: password,
-                        role: role,
-                        recaptcha_token: recaptchaToken
-                    })
-                });
-                var data = await res.json();
-
-                if (data.success) {
-                    if (!data.token || !data.user || data.user.id === undefined || data.user.id === null) {
-                        console.error('❌ استجابة_login غير صالحة:', data);
-                        showNotification('حدث خطأ في تسجيل الدخول، يرجى المحاولة مرة أخرى', 'error');
-                        return;
-                    }
-                    
-                    localStorage.setItem('token', data.token);
-                    localStorage.setItem('userData', JSON.stringify(data.user));
-                    
-                    var redirectPath = data.redirectTo || '/teacher/dashboard';
-                    window.location.href = redirectPath;
-                } else {
-                    showNotification(data.error, 'error');
-                    if (recaptchaWidgets.login !== null) grecaptcha.reset(recaptchaWidgets.login);
-                    recaptchaState.login = false;
-                }
-            } catch(e) {
-                console.error('❌ خطأ في تسجيل الدخول:', e);
-                showNotification('خطأ في الاتصال بالخادم', 'error');
-            }
-        }
-
-        // ============================================================
-        // REGISTER STUDENT
-        // ============================================================
-        async function registerStudent() {
-            if (!isNameValid('student')) {
-                showNotification('⚠️ الاسم يجب أن يحتوي على أحرف لاتينية فقط (A-Z, a-z)', 'error');
-                document.getElementById('studentNameError').classList.add('show');
-                document.getElementById('studentName').style.borderColor = '#ef4444';
-                return;
-            }
-            
-            var full_name = document.getElementById('studentName').value.trim();
-            var email = document.getElementById('studentEmail').value;
-            var password = document.getElementById('studentPassword').value;
-            var phone = document.getElementById('studentPhone').value;
-            var educationLevel = document.getElementById('studentEducationLevel').value;
-            
-            if (!full_name || !email || !password || !phone) {
-                showNotification('يرجى ملء جميع الحقول', 'error');
-                return;
-            }
-            
-            if (!educationLevel) {
-                showNotification('⚠️ الرجاء اختيار المستوى الدراسي', 'error');
-                document.getElementById('studentEducationLevel').style.borderColor = '#ef4444';
-                return;
-            }
-            
-            var recaptchaToken = recaptchaWidgets.student !== null ? grecaptcha.getResponse(recaptchaWidgets.student) : grecaptcha.getResponse();
-            if (!recaptchaToken) {
-                document.getElementById('studentRecaptchaError').classList.add('show');
-                showNotification('يرجى تأكيد أنك لست روبوتاً', 'error');
-                return;
-            }
-            document.getElementById('studentRecaptchaError').classList.remove('show');
-
-            var refCode = localStorage.getItem('pendingReferral') || referralCode;
-
-            try {
-                var res = await fetch('/api/student/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        full_name: full_name,
-                        email: email,
-                        password: password,
-                        phone: phone,
-                        education_level: educationLevel,
-                        ref: refCode,
-                        recaptcha_token: recaptchaToken
-                    })
-                });
-                var data = await res.json();
-                if (data.success) {
-                    var msg = 'تم التسجيل بنجاح! يمكنك تسجيل الدخول الآن';
-                    if (refCode) {
-                        msg += ' 🎉 تم تطبيق رمز الإحالة الخاص بك!';
-                        localStorage.removeItem('pendingReferral');
-                    }
-                    showNotification(msg, 'success');
-                    switchTab('login');
-                    if (recaptchaWidgets.student !== null) grecaptcha.reset(recaptchaWidgets.student);
-                } else {
-                    showNotification(data.error, 'error');
-                    if (recaptchaWidgets.student !== null) grecaptcha.reset(recaptchaWidgets.student);
-                }
-            } catch(e) {
-                showNotification('خطأ في الاتصال بالخادم', 'error');
-            }
-        }
-
-        // ============================================================
-        // REGISTER TEACHER
-        // ============================================================
-        async function registerTeacher() {
-            if (!isNameValid('teacher')) {
-                showNotification('⚠️ الاسم يجب أن يحتوي على أحرف لاتينية فقط (A-Z, a-z)', 'error');
-                document.getElementById('teacherNameError').classList.add('show');
-                document.getElementById('teacherName').style.borderColor = '#ef4444';
-                return;
-            }
-            
-            var teachingLevel = document.getElementById('teacherTeachingLevel').value;
-            if (!teachingLevel) {
-                showNotification('⚠️ الرجاء اختيار المستوى الدراسي الذي ستدرسه', 'error');
-                document.getElementById('teacherTeachingLevel').style.borderColor = '#ef4444';
-                return;
-            }
-            
-            var formData = new FormData();
-            formData.append('full_name', document.getElementById('teacherName').value.trim());
-            formData.append('email', document.getElementById('teacherEmail').value);
-            formData.append('password', document.getElementById('teacherPassword').value);
-            formData.append('phone', document.getElementById('teacherPhone').value);
-            formData.append('specialization', document.getElementById('teacherSpecialization').value);
-            formData.append('bio', document.getElementById('teacherBio').value);
-            formData.append('experience', document.getElementById('teacherExperience').value);
-            formData.append('teaching_level', teachingLevel);
-            
-            var profileImage = document.getElementById('profileImage');
-            var diplomaImage = document.getElementById('diplomaImage');
-            var idImage = document.getElementById('idImage');
-            
-            if (profileImage && profileImage.files[0]) {
-                formData.append('profile_image', profileImage.files[0]);
-            }
-            if (diplomaImage && diplomaImage.files[0]) {
-                formData.append('diploma_image', diplomaImage.files[0]);
-            }
-            if (idImage && idImage.files[0]) {
-                formData.append('id_image', idImage.files[0]);
-            }
-            
-            var refCode = localStorage.getItem('pendingReferral') || referralCode;
-            if (refCode) {
-                formData.append('ref', refCode);
-            }
-            
-            var recaptchaToken = recaptchaWidgets.teacher !== null ? grecaptcha.getResponse(recaptchaWidgets.teacher) : grecaptcha.getResponse();
-            if (!recaptchaToken) {
-                document.getElementById('teacherRecaptchaError').classList.add('show');
-                showNotification('يرجى تأكيد أنك لست روبوتاً', 'error');
-                return;
-            }
-            document.getElementById('teacherRecaptchaError').classList.remove('show');
-            formData.append('recaptcha_token', recaptchaToken);
-
-            try {
-                var res = await fetch('/api/teacher/register', {
-                    method: 'POST',
-                    body: formData
-                });
-                var data = await res.json();
-                if (data.success) {
-                    var msg = 'تم إرسال طلبك بنجاح! سيتم مراجعته';
-                    if (refCode) {
-                        msg += ' 🎉 تم تطبيق رمز الإحالة الخاص بك!';
-                        localStorage.removeItem('pendingReferral');
-                    }
-                    showNotification(msg, 'success');
-                    switchTab('login');
-                    if (recaptchaWidgets.teacher !== null) grecaptcha.reset(recaptchaWidgets.teacher);
-                } else {
-                    showNotification(data.error, 'error');
-                    if (recaptchaWidgets.teacher !== null) grecaptcha.reset(recaptchaWidgets.teacher);
-                }
-            } catch(e) {
-                showNotification('خطأ في الاتصال بالخادم', 'error');
-            }
-        }
-
-        // ============================================================
-        // TEACHERS
-        // ============================================================
-        async function loadPublicTeachers() {
-            var container = document.getElementById('teachersList');
-            container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> جاري التحميل...</div>';
-            try {
-                var res = await fetch('/api/public/teachers');
-                if (!res.ok) throw new Error('HTTP error! status: ' + res.status);
-                allTeachers = await res.json();
-                filteredTeachers = [...allTeachers];
-                
-                if (!allTeachers || allTeachers.length === 0) {
-                    container.innerHTML = '<p style="text-align:center; padding:40px; color:#94a3b8;">لا يوجد أساتذة معتمدون حالياً</p>';
-                    return;
-                }
-                
-                renderTeachers(allTeachers);
-            } catch(e) {
-                console.error(e);
-                container.innerHTML = '<p style="text-align:center; padding:40px; color:#ef4444;">حدث خطأ في تحميل البيانات</p>';
-            }
-        }
-
-        function renderTeachers(teachers) {
-            var container = document.getElementById('teachersList');
-            var emptyMsg = document.getElementById('teachersEmpty');
-            
-            if (!teachers || teachers.length === 0) {
-                container.innerHTML = '';
-                emptyMsg.style.display = 'block';
-                return;
-            }
-            emptyMsg.style.display = 'none';
-            
-            var levelMap = {
-                '5eme_pri': 'خامسة ابتدائي',
-                '1ere_am': 'أولى متوسط',
-                '2eme_am': 'ثانية متوسط',
-                '3eme_am': 'ثالثة متوسط',
-                '4eme_am': 'رابعة متوسط',
-                '1ere_as': 'أولى ثانوي',
-                '2eme_as': 'ثانية ثانوي',
-                'bac': 'بكالوريا',
-                '1ere_uni': 'أولى جامعي',
-                '2ere_uni': 'ثانية جامعي',
-                '3ere_uni': 'ثالثة جامعي',
-                'master': 'ماستر',
-                'doctorat': 'دكتوراه'
-            };
-            
-            var html = '';
-            teachers.forEach(function(t) {
-                var imageUrl = t.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(t.full_name) + '&background=0f5cbf&color=fff&size=120';
-                var levelDisplay = '';
-                if (t.teaching_level) {
-                    var levelName = levelMap[t.teaching_level] || t.teaching_level;
-                    levelDisplay = '<span class="teacher-level-badge"><i class="fas fa-graduation-cap" aria-hidden="true"></i> ' + levelName + '</span>';
-                }
-                
-                html += '<div class="teacher-card" onclick="viewTeacherProfile(' + t.id + ')">' +
-                    '<img src="' + imageUrl + '" class="teacher-image" onerror="this.src=\'https://ui-avatars.com/api/?name=' + encodeURIComponent(t.full_name) + '&background=0f5cbf&color=fff&size=120\'" onclick="event.stopPropagation(); showFullImage(this.src)" alt="صورة الأستاذ ' + escapeHtml(t.full_name) + '" loading="lazy">' +
-                    '<h3>' + escapeHtml(t.full_name) + '</h3>' +
-                    '<p class="specialization"><i class="fas fa-book" aria-hidden="true"></i> ' + escapeHtml(t.specialization || 'تخصص عام') + '</p>' +
-                    levelDisplay +
-                    '<button class="view-profile-btn" onclick="event.stopPropagation(); viewTeacherProfile(' + t.id + ')">زيارة صفحة الأستاذ</button>' +
-                '</div>';
-            });
-            container.innerHTML = html;
-        }
-
-        function filterTeachers() {
-            var searchTerm = document.getElementById('searchTeacher').value.toLowerCase().trim();
-            
-            filteredTeachers = allTeachers.filter(function(t) {
-                var matchesSearch = true;
-                if (searchTerm) {
-                    var name = (t.full_name || '').toLowerCase();
-                    var spec = (t.specialization || '').toLowerCase();
-                    matchesSearch = name.includes(searchTerm) || spec.includes(searchTerm);
-                }
-                return matchesSearch;
-            });
-            
-            renderTeachers(filteredTeachers);
-        }
-
-        // ============================================================
-        // VIEW TEACHER PROFILE
-        // ============================================================
-        async function viewTeacherProfile(teacherId) {
-            document.getElementById('homeSection').style.display = 'none';
-            document.getElementById('aboutSection').style.display = 'none';
-            document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('referralSection').style.display = 'none';
-            document.getElementById('developersSection').style.display = 'none';
-            document.getElementById('loginSection').style.display = 'none';
-            document.getElementById('downloadAppSection').style.display = 'none';
-            document.getElementById('supportSection').style.display = 'none';
-            
-            var profileSection = document.getElementById('profileSection');
-            profileSection.style.display = 'block';
-            
-            var container = document.getElementById('profileContent');
-            container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> جاري تحميل الملف...</div>';
-            
-            try {
-                var res = await fetch('/api/public/teacher/' + teacherId);
-                
-                if (!res.ok) {
-                    var errorText = '';
-                    try {
-                        var errorData = await res.json();
-                        errorText = errorData.error || errorData.message || 'خطأ غير معروف';
-                    } catch(e) {
-                        errorText = 'خطأ في الاتصال بالخادم (الرمز: ' + res.status + ')';
-                    }
-                    
-                    container.innerHTML = `
-                        <div style="text-align:center; padding:40px; background: white; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid rgba(0,0,0,0.04);">
-                            <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: var(--danger); margin-bottom: 16px;" aria-hidden="true"></i>
-                            <h3 style="color: var(--danger); margin-bottom: 12px;">عذراً، حدث خطأ</h3>
-                            <p style="color: var(--gray); margin-bottom: 20px;">${escapeHtml(errorText)}</p>
-                            <button class="btn-primary" onclick="showTeachers()">
-                                <i class="fas fa-arrow-right" aria-hidden="true"></i> العودة إلى قائمة الأساتذة
-                            </button>
-                        </div>
-                    `;
-                    return;
-                }
-                
-                var teacher = await res.json();
-                
-                if (!teacher || !teacher.id) {
-                    container.innerHTML = `
-                        <div style="text-align:center; padding:40px; background: white; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid rgba(0,0,0,0.04);">
-                            <i class="fas fa-user-slash" style="font-size: 3rem; color: var(--gray); margin-bottom: 16px;" aria-hidden="true"></i>
-                            <h3 style="color: var(--dark); margin-bottom: 12px;">لم يتم العثور على الأستاذ</h3>
-                            <p style="color: var(--gray); margin-bottom: 20px;">قد يكون الأستاذ قد حذف حسابه أو لم يتم تفعيله بعد.</p>
-                            <button class="btn-primary" onclick="showTeachers()">
-                                <i class="fas fa-arrow-right" aria-hidden="true"></i> العودة إلى قائمة الأساتذة
-                            </button>
-                        </div>
-                    `;
-                    return;
-                }
-                
-                var imageUrl = teacher.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(teacher.full_name) + '&background=0f5cbf&color=fff&size=140';
-                
-                var socialLinks = [];
-                var socialIcons = {
-                    facebook_url: { icon: 'fab fa-facebook', name: 'فيسبوك', color: '#1877f2' },
-                    instagram_url: { icon: 'fab fa-instagram', name: 'انستغرام', color: '#e4405f' },
-                    twitter_url: { icon: 'fab fa-twitter', name: 'تويتر', color: '#1da1f2' },
-                    linkedin_url: { icon: 'fab fa-linkedin', name: 'لينكدإن', color: '#0a66c2' },
-                    youtube_url: { icon: 'fab fa-youtube', name: 'يوتيوب', color: '#ff0000' },
-                    whatsapp_url: { icon: 'fab fa-whatsapp', name: 'واتساب', color: '#25d366' },
-                    website_url: { icon: 'fas fa-globe', name: 'موقع شخصي', color: '#0f5cbf' }
-                };
-                
-                for (var key in socialIcons) {
-                    if (teacher[key] && teacher[key].trim() !== '') {
-                        socialLinks.push({
-                            url: teacher[key],
-                            icon: socialIcons[key].icon,
-                            name: socialIcons[key].name,
-                            color: socialIcons[key].color
-                        });
-                    }
-                }
-                
-                var offersHtml = '';
-                if (teacher.offers && teacher.offers.length > 0) {
-                    offersHtml = `
-                        <div class="profile-offers-section">
-                            <h3><i class="fas fa-calendar-alt" aria-hidden="true"></i> الدروس المتاحة</h3>
-                            <div class="profile-offers-grid">
-                                ${teacher.offers.map(function(o) {
-                                    var offerDate = new Date(o.offer_date);
-                                    return `
-                                        <div class="profile-offer-item">
-                                            <div class="subject">${escapeHtml(o.subject_name)}</div>
-                                            <div class="details"><i class="fas fa-calendar-alt" aria-hidden="true"></i> ${offerDate.toLocaleString('ar')}</div>
-                                            <div class="details"><i class="fas fa-clock" aria-hidden="true"></i> ${o.duration} دقيقة</div>
-                                            ${o.is_free ? '<span class="free-tag-small"><i class="fas fa-gift" aria-hidden="true"></i> مجانية</span>' : '<span class="price-tag-small"><i class="fas fa-money-bill" aria-hidden="true"></i> ' + o.price + ' دج</span>'}
-                                        </div>
-                                    `;
-                                }).join('')}
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    offersHtml = `
-                        <div class="profile-offers-section">
-                            <h3><i class="fas fa-calendar-alt" aria-hidden="true"></i> الدروس المتاحة</h3>
-                            <div class="no-offers-message">
-                                <i class="fas fa-book-open" aria-hidden="true"></i>
-                                <p>لا توجد دروس متاحة لهذا الأستاذ حالياً</p>
-                            </div>
-                        </div>
-                    `;
-                }
-                
-                var socialHtml = '';
-                if (socialLinks.length > 0) {
-                    socialHtml = `
-                        <div class="social-section">
-                            <h3><i class="fas fa-share-alt" aria-hidden="true"></i> روابط التواصل الاجتماعي</h3>
-                            <div class="social-links-grid">
-                                ${socialLinks.map(function(link) {
-                                    return `
-                                        <a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer" class="social-link-item" style="border-right: 4px solid ${link.color};">
-                                            <i class="${link.icon}" style="color: ${link.color};" aria-hidden="true"></i>
-                                            <span class="social-name">${link.name}</span>
-                                        </a>
-                                    `;
-                                }).join('')}
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    socialHtml = `
-                        <div class="social-section">
-                            <h3><i class="fas fa-share-alt" aria-hidden="true"></i> روابط التواصل الاجتماعي</h3>
-                            <div class="no-social-message">
-                                <i class="fas fa-link" style="font-size: 2rem; display: block; margin-bottom: 10px; opacity: 0.5;" aria-hidden="true"></i>
-                                <p>لم يضف الأستاذ أي روابط تواصل اجتماعي بعد</p>
-                            </div>
-                        </div>
-                    `;
-                }
-                
-                var levelMap = {
-                    '5eme_pri': 'خامسة ابتدائي',
-                    '1ere_am': 'أولى متوسط',
-                    '2eme_am': 'ثانية متوسط',
-                    '3eme_am': 'ثالثة متوسط',
-                    '4eme_am': 'رابعة متوسط',
-                    '1ere_as': 'أولى ثانوي',
-                    '2eme_as': 'ثانية ثانوي',
-                    'bac': 'بكالوريا',
-                    '1ere_uni': 'أولى جامعي',
-                    '2ere_uni': 'ثانية جامعي',
-                    '3ere_uni': 'ثالثة جامعي',
-                    'master': 'ماستر',
-                    'doctorat': 'دكتوراه'
-                };
-                var levelDisplay = '';
-                if (teacher.teaching_level) {
-                    var levelName = levelMap[teacher.teaching_level] || teacher.teaching_level;
-                    levelDisplay = `<div style="background: var(--accent-light); color: var(--accent); padding: 4px 16px; border-radius: 20px; display: inline-block; font-size: 0.8rem; font-weight: 700; margin-top: 4px; border: 1px solid rgba(139, 92, 246, 0.15);">
-                        <i class="fas fa-graduation-cap" aria-hidden="true"></i> المستوى: ${levelName}
-                    </div>`;
-                }
-                
-                var html = `
-                    <button class="profile-back-btn" onclick="showTeachers()">
-                        <i class="fas fa-arrow-right" aria-hidden="true"></i> العودة إلى قائمة الأساتذة
-                    </button>
-                    <div class="profile-card">
-                        <div class="profile-header">
-                            <img src="${imageUrl}" class="profile-image" 
-                                 onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.full_name)}&background=0f5cbf&color=fff&size=140'"
-                                 onclick="showFullImage(this.src)"
-                                 alt="${escapeHtml(teacher.full_name)}" loading="lazy">
-                            <div class="profile-info">
-                                <h2>${escapeHtml(teacher.full_name)}</h2>
-                                <div class="specialization"><i class="fas fa-book" aria-hidden="true"></i> ${escapeHtml(teacher.specialization || 'تخصص عام')}</div>
-                                <div class="experience"><i class="fas fa-briefcase" aria-hidden="true"></i> ${teacher.experience || '0'} سنة خبرة</div>
-                                ${levelDisplay}
-                            </div>
-                        </div>
-                        <div class="profile-body">
-                            <div class="bio-section">
-                                <h3><i class="fas fa-align-right" aria-hidden="true"></i> نبذة عن الأستاذ</h3>
-                                <p>${teacher.bio ? escapeHtml(teacher.bio) : 'لا توجد نبذة متاحة حالياً.'}</p>
-                                ${offersHtml}
-                            </div>
-                            <div>
-                                ${socialHtml}
-                                <div style="margin-top: 20px;">
-                                    <button class="btn-primary" onclick="showTeachers()" style="width:100%; justify-content:center;">
-                                        <i class="fas fa-arrow-right" aria-hidden="true"></i> العودة إلى قائمة الأساتذة
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                container.innerHTML = html;
-                document.title = teacher.full_name + ' | ZoomDz';
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                
-            } catch(e) {
-                console.error('❌ خطأ في جلب بيانات الأستاذ:', e);
-                container.innerHTML = `
-                    <div style="text-align:center; padding:40px; background: white; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid rgba(0,0,0,0.04);">
-                        <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: var(--danger); margin-bottom: 16px;" aria-hidden="true"></i>
-                        <h3 style="color: var(--danger); margin-bottom: 12px;">حدث خطأ غير متوقع</h3>
-                        <p style="color: var(--gray); margin-bottom: 20px;">${escapeHtml(e.message || 'يرجى المحاولة مرة أخرى')}</p>
-                        <button class="btn-primary" onclick="showTeachers()">
-                            <i class="fas fa-arrow-right" aria-hidden="true"></i> العودة إلى قائمة الأساتذة
-                        </button>
-                    </div>
-                `;
-            }
-        }
-
-        // ============================================================
-        // REFERRAL DATA
-        // ============================================================
-        async function loadReferralData() {
-            try {
-                var token = localStorage.getItem('token');
-                if (!token) {
-                    document.getElementById('referralCodeText').textContent = 'يرجى تسجيل الدخول';
-                    return;
-                }
-                
-                var headers = {
-                    'Authorization': 'Bearer ' + token,
-                    'Content-Type': 'application/json'
-                };
-                
-                var createRes = await fetch('/api/referral/create', {
-                    method: 'POST',
-                    headers: headers,
-                    body: JSON.stringify({ user_id: 1, role: 'student' })
-                });
-                var createData = await createRes.json();
-                if (createData.success) {
-                    document.getElementById('referralCodeText').textContent = createData.referral_code || 'غير متوفر';
-                }
-            } catch(e) {
-                console.error('خطأ في تحميل بيانات الإحالة:', e);
-                document.getElementById('referralCodeText').textContent = 'حدث خطأ';
-            }
-        }
-
-        function copyReferralCode() {
-            var code = document.getElementById('referralCodeText').textContent;
-            if (code && code !== 'جاري التحميل...' && code !== 'يرجى تسجيل الدخول' && code !== 'حدث خطأ') {
-                navigator.clipboard.writeText(code).then(function() {
-                    showNotification('✅ تم نسخ رمز الإحالة!', 'success');
-                }).catch(function() {
-                    var textArea = document.createElement('textarea');
-                    textArea.value = code;
-                    document.body.appendChild(textArea);
-                    textArea.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(textArea);
-                    showNotification('✅ تم نسخ رمز الإحالة!', 'success');
-                });
+            if (newWindow) {
+                setTimeout(() => {
+                    alert('🔑 كلمة المرور: ' + password + '\\n\\nأدخلها عند الطلب في صفحة Jitsi Meet');
+                }, 2000);
             } else {
-                showNotification('⚠️ يرجى تسجيل الدخول للحصول على رمز الإحالة', 'warning');
+                alert('⚠️ يرجى السماح بفتح النوافذ المنبثقة');
             }
         }
-
-        function shareReferral() {
-            var code = document.getElementById('referralCodeText').textContent;
-            var link = window.location.origin + '?ref=' + code;
-            if (navigator.share) {
-                navigator.share({
-                    title: 'انضم إلى ZoomDz',
-                    text: 'استخدم رمز الإحالة الخاص بي: ' + code + ' واحصل على مكافآت!',
-                    url: link
-                }).catch(function() {});
-            } else {
-                navigator.clipboard.writeText(link).then(function() {
-                    showNotification('✅ تم نسخ رابط الإحالة! شاركه مع أصدقائك', 'success');
-                }).catch(function() {
-                    var textArea = document.createElement('textarea');
-                    textArea.value = link;
-                    document.body.appendChild(textArea);
-                    textArea.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(textArea);
-                    showNotification('✅ تم نسخ رابط الإحالة!', 'success');
-                });
-            }
-        }
-
-        // ============================================================
-        // SUPPORT FORM
-        // ============================================================
-        document.getElementById('supportForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            var name = document.getElementById('supportName').value;
-            var email = document.getElementById('supportEmail').value;
-            var phone = document.getElementById('supportPhone').value;
-            var subject = document.getElementById('supportSubject').value;
-            var message = document.getElementById('supportMessage').value;
-            
-            if (!name || !email || !subject || !message) {
-                showNotification('الرجاء ملء جميع الحقول المطلوبة', 'error');
-                return;
-            }
-            
-            var btn = e.target.querySelector('button');
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> جاري الإرسال...';
-            
-            try {
-                var res = await fetch('/api/support/send', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: name, email: email, phone: phone, subject: subject, message: message })
-                });
-                var data = await res.json();
-                if (data.success) {
-                    showNotification('تم إرسال رسالتك بنجاح! سيتم الرد عليك قريباً', 'success');
-                    document.getElementById('supportForm').reset();
-                } else {
-                    showNotification(data.error || 'حدث خطأ', 'error');
-                }
-            } catch(e) {
-                showNotification('حدث خطأ في الاتصال', 'error');
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-paper-plane" aria-hidden="true"></i> إرسال الرسالة';
-            }
-        });
-
-        // ============================================================
-        // UTILITY
-        // ============================================================
-        function escapeHtml(text) {
-            if (!text) return '';
-            var div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        // ============================================================
-        // INIT
-        // ============================================================
-        function init() {
-            console.log('🚀 بدء تشغيل المنصة مع reCAPTCHA v2...');
-            
-            readReferralFromURL();
-            showHome();
-            loadStats();
-            
-            setInterval(loadStats, 60000);
-            
-            if (referralCode) {
-                console.log('🔗 تم اكتشاف رمز إحالة:', referralCode);
-            }
-            
-            console.log('✅ تم تحميل المنصة بنجاح');
-        }
-
-        // ============================================================
-        // CLOSE DROPDOWN ON CLICK OUTSIDE
-        // ============================================================
-        document.addEventListener('click', function() {
-            document.getElementById('createAccountMenuNav').classList.remove('show');
-        });
-
-        document.getElementById('createAccountMenuNav').addEventListener('click', function(e) {
-            e.stopPropagation();
-        });
-
-        document.addEventListener('DOMContentLoaded', init);
-
-        // Export functions to global scope for onclick handlers
-        window.showHome = showHome;
-        window.showTeachers = showTeachers;
-        window.showReferral = showReferral;
-        window.showDevelopers = showDevelopers;
-        window.showSupport = showSupport;
-        window.showLogin = showLogin;
-        window.showRegister = showRegister;
-        window.showDownloadApp = showDownloadApp;
-        window.showForgotPassword = showForgotPassword;
-        window.hideForgotPassword = hideForgotPassword;
-        window.switchTab = switchTab;
-        window.toggleCreateAccountNav = toggleCreateAccountNav;
-        window.viewTeacherProfile = viewTeacherProfile;
-        window.filterTeachers = filterTeachers;
-        window.copyReferralCode = copyReferralCode;
-        window.shareReferral = shareReferral;
-        window.showFullImage = showFullImage;
-        window.closeImageModal = closeImageModal;
-        window.closeReferralBanner = closeReferralBanner;
-        window.jumpToRegister = jumpToRegister;
-        window.login = login;
-        window.registerStudent = registerStudent;
-        window.registerTeacher = registerTeacher;
-        window.sendResetLink = sendResetLink;
-        window.validateLatinName = validateLatinName;
-        window.showNotification = showNotification;
     </script>
 </body>
 </html>
+    `;
+}
+
+// ============================================================
+// ✅ استيراد المسارات
+// ============================================================
+
+const authRoutes = require('./routes/auth');
+const adminRoutes = require('./routes/admin');
+const teacherRoutes = require('./routes/teacher');
+const studentRoutes = require('./routes/student');
+const offerRoutes = require('./routes/offer');
+const publicRoutes = require('./routes/public');
+const bookingRoutes = require('./routes/booking');
+const streamRoutes = require('./routes/stream');
+const postRoutes = require('./routes/post');
+const messageRoutes = require('./routes/message');
+const supportRoutes = require('./routes/support');
+const referralRoutes = require('./routes/referral');
+const walletRoutes = require('./routes/wallet');
+const notificationRoutes = require('./routes/notification');
+
+// ============================================================
+// ✅ استخدام المسارات - الترتيب مهم جداً!
+// ============================================================
+
+// ✅ 1. المسارات العامة (لا تحتاج مصادقة)
+app.use('/api', publicRoutes);
+
+// ✅ 2. مسارات المصادقة (تسجيل الدخول، تسجيل طالب، تسجيل أستاذ)
+app.use('/api', authRoutes);
+
+// ✅ 3. مسارات الإدارة (تحتاج مصادقة إدارية)
+app.use('/api/admin', adminRoutes);
+
+// ✅ 4. مسارات الأستاذ والطالب (تحتاج مصادقة)
+app.use('/api/teacher', authenticate, teacherRoutes);
+app.use('/api/student', authenticate, studentRoutes);
+
+// ✅ 5. باقي المسارات
+app.use('/api', offerRoutes);
+app.use('/api/booking', bookingRoutes);
+app.use('/api/stream', streamRoutes);
+app.use('/api/post', postRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/support', supportRoutes);
+app.use('/api/referral', referralRoutes);
+app.use('/api/wallet', walletRoutes);
+app.use('/api/notifications', notificationRoutes);
+
+// ============================================================
+// ✅ مسارات /me المباشرة (إصلاح مشكلة التوكن)
+// ============================================================
+
+/**
+ * @route   GET /api/teacher/me
+ * @desc    جلب بيانات الأستاذ الحالي
+ * @access  Private (Teacher only)
+ */
+app.get('/api/teacher/me', authenticate, authorize(['teacher']), async (req, res) => {
+    try {
+        const teacherId = req.user.userId;
+        console.log('📥 جلب بيانات الأستاذ:', teacherId);
+        
+        const { data: teacher, error } = await supabase
+            .from('teachers')
+            .select('*')
+            .eq('id', teacherId)
+            .single();
+        
+        if (error || !teacher) {
+            console.error('❌ خطأ في جلب بيانات الأستاذ:', error);
+            return res.status(404).json({ 
+                success: false, 
+                error: 'الأستاذ غير موجود' 
+            });
+        }
+        
+        console.log('✅ تم جلب بيانات الأستاذ:', teacher.full_name);
+        
+        // جلب البث النشط إن وجد
+        const { data: activeStream } = await supabase
+            .from('offers')
+            .select('*')
+            .eq('teacher_id', teacherId)
+            .in('status', ['live', 'teacher_ready', 'paused'])
+            .single();
+        
+        res.json({ 
+            success: true, 
+            teacher: teacher,
+            activeStream: activeStream || null
+        });
+    } catch (error) {
+        console.error('❌ خطأ في جلب بيانات الأستاذ:', error.message);
+        res.status(500).json({ 
+            success: false, 
+            error: 'حدث خطأ في الخادم' 
+        });
+    }
+});
+
+/**
+ * @route   GET /api/student/me
+ * @desc    جلب بيانات الطالب الحالي
+ * @access  Private (Student only)
+ */
+app.get('/api/student/me', authenticate, authorize(['student']), async (req, res) => {
+    try {
+        const studentId = req.user.userId;
+        console.log('📥 جلب بيانات الطالب:', studentId);
+        
+        const { data: student, error } = await supabase
+            .from('students')
+            .select('*')
+            .eq('id', studentId)
+            .single();
+        
+        if (error || !student) {
+            console.error('❌ خطأ في جلب بيانات الطالب:', error);
+            return res.status(404).json({ 
+                success: false, 
+                error: 'الطالب غير موجود' 
+            });
+        }
+        
+        console.log('✅ تم جلب بيانات الطالب:', student.full_name);
+        
+        res.json({ 
+            success: true, 
+            ...student 
+        });
+    } catch (error) {
+        console.error('❌ خطأ في جلب بيانات الطالب:', error.message);
+        res.status(500).json({ 
+            success: false, 
+            error: 'حدث خطأ في الخادم' 
+        });
+    }
+});
+
+// ============================================================
+// ✅ مسار جلب الرصيد للأستاذ (مباشر)
+// ============================================================
+
+app.get('/api/teacher/balance/:teacherId', authenticate, authorize(['teacher']), async (req, res) => {
+    try {
+        const teacherId = parseInt(req.params.teacherId);
+        
+        // التأكد من أن المستخدم يطلب بياناته الخاصة
+        if (req.user.userId !== teacherId) {
+            return res.status(403).json({ success: false, error: 'غير مصرح به' });
+        }
+        
+        // جلب الرصيد الكلي
+        const { data: balanceData, error: balanceError } = await supabase
+            .from('teacher_balances')
+            .select('*')
+            .eq('teacher_id', teacherId)
+            .single();
+        
+        if (balanceError && balanceError.code !== 'PGRST116') {
+            console.error('❌ خطأ في جلب الرصيد:', balanceError);
+            return res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+        }
+        
+        const balance = balanceData?.balance || 0;
+        const totalEarned = balanceData?.total_earned || 0;
+        
+        // جلب المدفوعات المعلقة (جلسات لم تُدفع بعد للأستاذ)
+        const { data: pendingSessions, error: pendingError } = await supabase
+            .from('sessions')
+            .select('id, payment_amount, platform_fee, offer_id, created_at, offers(subject_name)')
+            .eq('teacher_id', teacherId)
+            .eq('payment_status', 'pending')
+            .eq('is_free', false);
+        
+        if (pendingError) {
+            console.error('❌ خطأ في جلب الجلسات المعلقة:', pendingError);
+        }
+        
+        const pendingTotal = pendingSessions?.reduce((sum, s) => {
+            const teacherEarned = s.payment_amount - (s.platform_fee || 0);
+            return sum + (teacherEarned || 0);
+        }, 0) || 0;
+        
+        res.json({
+            success: true,
+            balance: balance,
+            total_earned: totalEarned,
+            pending_withdraw: pendingTotal,
+            sessions: pendingSessions || []
+        });
+    } catch (error) {
+        console.error('❌ خطأ في جلب رصيد الأستاذ:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// ✅ مسار جلب الرصيد للطالب (مباشر)
+// ============================================================
+
+app.get('/api/student/balance/:studentId', authenticate, authorize(['student']), async (req, res) => {
+    try {
+        const studentId = parseInt(req.params.studentId);
+        
+        // التأكد من أن المستخدم يطلب بياناته الخاصة
+        if (req.user.userId !== studentId) {
+            return res.status(403).json({ success: false, error: 'غير مصرح به' });
+        }
+        
+        const { data: balanceData, error } = await supabase
+            .from('student_balances')
+            .select('*')
+            .eq('student_id', studentId)
+            .single();
+        
+        if (error && error.code !== 'PGRST116') {
+            console.error('❌ خطأ في جلب رصيد الطالب:', error);
+            return res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+        }
+        
+        res.json({
+            success: true,
+            balance: balanceData?.balance || 0
+        });
+    } catch (error) {
+        console.error('❌ خطأ في جلب رصيد الطالب:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// ✅ مسار جلب عروض الأستاذ (مباشر)
+// ============================================================
+
+app.get('/api/teacher/offers/:teacherId', authenticate, authorize(['teacher']), async (req, res) => {
+    try {
+        const teacherId = parseInt(req.params.teacherId);
+        
+        // التأكد من أن المستخدم يطلب بياناته الخاصة
+        if (req.user.userId !== teacherId) {
+            return res.status(403).json({ success: false, error: 'غير مصرح به' });
+        }
+        
+        const { data: offers, error } = await supabase
+            .from('offers')
+            .select('*')
+            .eq('teacher_id', teacherId)
+            .order('offer_date', { ascending: true });
+        
+        if (error) {
+            console.error('❌ خطأ في جلب عروض الأستاذ:', error);
+            return res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+        }
+        
+        res.json(offers || []);
+    } catch (error) {
+        console.error('❌ خطأ في جلب عروض الأستاذ:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// المسار الرئيسي
+// ============================================================
+
+app.get('/', (req, res) => {
+    const refCode = req.query.ref;
+    if (refCode) {
+        res.cookie('referral_code', refCode, { 
+            maxAge: 7 * 24 * 60 * 60 * 1000, 
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict'
+        });
+    }
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// ============================================================
+// مسار اختبار CORS
+// ============================================================
+
+app.get('/api/test-cors', (req, res) => {
+    res.json({
+        success: true,
+        message: '✅ CORS يعمل بشكل صحيح',
+        origin: req.headers.origin || 'no origin',
+        timestamp: new Date().toISOString()
+    });
+});
+
+// ============================================================
+// مسار Ping
+// ============================================================
+
+app.post('/api/ping', authenticate, async (req, res) => {
+    try {
+        const { offer_id, teacher_id } = req.body;
+        
+        if (offer_id && teacher_id) {
+            await supabase
+                .from('active_stream')
+                .update({ 
+                    last_ping: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                })
+                .eq('offer_id', offer_id)
+                .eq('teacher_id', teacher_id);
+        }
+        
+        res.json({ 
+            success: true, 
+            timestamp: Date.now()
+        });
+    } catch (error) {
+        console.error('❌ خطأ في ping:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// مسار التحقق من التوكن
+// ============================================================
+
+app.get('/api/verify-token', authenticate, (req, res) => {
+    res.json({ 
+        success: true, 
+        valid: true,
+        user: req.user,
+        expiresIn: 24 * 60 * 60 * 1000
+    });
+});
+
+// ============================================================
+// مسار تجديد التوكن
+// ============================================================
+
+app.post('/api/refresh-token', authenticate, (req, res) => {
+    try {
+        const { userId, role, email } = req.user;
+        const newToken = generateToken(userId, role, email);
+        res.json({ 
+            success: true, 
+            token: newToken,
+            expiresIn: 24 * 60 * 60 * 1000
+        });
+    } catch (error) {
+        console.error('❌ خطأ في تجديد التوكن:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في تجديد الجلسة' });
+    }
+});
+
+// ============================================================
+// معالج الأخطاء
+// ============================================================
+
+const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
+
+// رابط تحميل التطبيق
+app.get('/download-app', (req, res) => {
+    res.redirect(302, APP_DOWNLOAD_URL);
+});
+
+// جلب حالة الخادم
+app.get('/api/health', (req, res) => {
+    const memoryUsage = process.memoryUsage();
+
+    res.json({
+        success: true,
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        memory: {
+            heapUsed: Math.round(memoryUsage.heapUsed / 1024 / 1024),
+            heapTotal: Math.round(memoryUsage.heapTotal / 1024 / 1024),
+            rss: Math.round(memoryUsage.rss / 1024 / 1024)
+        },
+        nodeVersion: process.version,
+        environment: process.env.NODE_ENV || 'development'
+    });
+});
+
+// تطبيق معالج 404
+app.use(notFoundHandler);
+
+// تطبيق معالج الأخطاء العام
+app.use(errorHandler);
+
+// ============================================================
+// مسارات السجلات والمراقبة (للأدمن)
+// ============================================================
+
+// جلب آخر الأخطاء
+app.get('/api/logs/errors', authenticate, authorize(['admin']), (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 50;
+        const errors = logger.getRecentErrors(limit);
+        
+        res.json({
+            success: true,
+            errors: errors,
+            count: errors.length
+        });
+    } catch (error) {
+        logger.error('خطأ في جلب السجلات', { error: error.message });
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// جلب جميع السجلات
+app.get('/api/logs/all', authenticate, authorize(['admin']), (req, res) => {
+    try {
+        const type = req.query.type || 'all';
+        const limit = parseInt(req.query.limit) || 100;
+        const logs = logger.getLogs(type, limit);
+        
+        res.json({
+            success: true,
+            logs: logs,
+            type: type
+        });
+    } catch (error) {
+        logger.error('خطأ في جلب السجلات', { error: error.message });
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// جلب إحصائيات السجلات
+app.get('/api/logs/stats', authenticate, authorize(['admin']), (req, res) => {
+    try {
+        const stats = logger.getLogStats();
+        
+        res.json({
+            success: true,
+            stats: stats
+        });
+    } catch (error) {
+        logger.error('خطأ في جلب إحصائيات السجلات', { error: error.message });
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// مسح سجلات الذاكرة
+app.post('/api/logs/clear', authenticate, authorize(['admin']), (req, res) => {
+    try {
+        logger.clearMemory();
+        
+        logger.info('تم مسح سجلات الذاكرة من قبل الأدمن', {
+            userId: req.user.userId
+        });
+        
+        res.json({
+            success: true,
+            message: 'تم مسح السجلات بنجاح'
+        });
+    } catch (error) {
+        logger.error('خطأ في مسح السجلات', { error: error.message });
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// ✅ Cron: مراقبة العروض المنتهية والبث غير المغلق (كل دقيقة)
+// ============================================================
+const { checkAndExpireOverdueOffers } = require('./utils/streamVerification');
+
+function startOfferCron() {
+    // تشغيل فوري عند بدء الخادم
+    checkAndExpireOverdueOffers().catch(err =>
+        console.error('Cron checkAndExpireOverdueOffers error:', err.message)
+    );
+    // ثم كل 60 ثانية
+    setInterval(() => {
+        checkAndExpireOverdueOffers().catch(err =>
+            console.error('Cron checkAndExpireOverdueOffers error:', err.message)
+        );
+    }, 60 * 1000);
+
+    console.log('⏰ Cron: مراقبة العروض المنتهية والبث غير المغلق - يعمل كل دقيقة');
+}
+
+// ============================================================
+// تشغيل الخادم
+// ============================================================
+
+module.exports = app;
+
+if (require.main === module) {
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`🚀 الخادم يعمل على http://localhost:${PORT}`);
+        console.log('='.repeat(60));
+        console.log('📅 التاريخ:', new Date().toLocaleString('ar-EG'));
+        console.log('✅ نظام البث: Jitsi Meet (مجاني 100%)');
+        console.log('✅ مسارات المصادقة: /api/student/register و /api/teacher/register');
+        console.log('✅ مسارات /me: /api/student/me و /api/teacher/me');
+        console.log('='.repeat(60));
+        startOfferCron();
+    });
+}
