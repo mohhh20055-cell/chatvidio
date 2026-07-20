@@ -2554,7 +2554,8 @@
                     </div>
                 </div>
 
-                <a href="/download-app" class="download-app-btn" target="_blank" rel="noopener noreferrer" aria-label="تحميل التطبيق">
+                <!-- تم التعديل: زر التطبيق أصبح ينقل إلى قسم التحميل في نفس الصفحة -->
+                <a onclick="showDownloadApp()" class="download-app-btn" role="button" aria-label="تحميل التطبيق">
                     <i class="fas fa-download" aria-hidden="true"></i>
                     <span class="nav-label">التطبيق</span>
                 </a>
@@ -2719,7 +2720,7 @@
             </div>
         </section>
 
-        <!-- ===== DEVELOPERS SECTION - تم التعديل هنا حسب الطلب ===== -->
+        <!-- ===== DEVELOPERS SECTION ===== -->
         <section id="developersSection" class="section-container" style="display: none;" aria-label="فريق المطورين">
             <div class="section-header">
                 <span class="section-tag"><i class="fas fa-code" aria-hidden="true"></i> فريق الإبداع</span>
@@ -2746,7 +2747,6 @@
                     <p style="font-size: 0.85rem; color: var(--gray); margin-top: 6px; line-height: 1.6;">
                         <i class="fas fa-code" style="color: var(--primary);" aria-hidden="true"></i> مسؤول عن ، الخادم، واجهات API، وتصميم قاعدة البيانات
                     </p>
-                    <!-- تم إزالة أيقونات تويتر، فيسبوك، جيتهاب -->
                     
                 </div>
 
@@ -3089,7 +3089,6 @@
                     </div>
                 </div>
 
-                <!-- تم التعديل: إضافة رابط التحميل مع تعليمات التثبيت -->
                 <a href="https://www.appcreator24.com/app4124532-an3mxi" target="_blank" rel="noopener noreferrer" class="download-btn-android">
                     <i class="fab fa-android" aria-hidden="true"></i>
                     تحميل التطبيق الآن
@@ -3396,6 +3395,21 @@
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('downloadAppSection').style.display = 'none';
             document.getElementById('supportSection').style.display = 'block';
+            setActiveTab('');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // ===== وظيفة جديدة لعرض قسم تحميل التطبيق =====
+        function showDownloadApp() {
+            document.getElementById('homeSection').style.display = 'none';
+            document.getElementById('aboutSection').style.display = 'none';
+            document.getElementById('teachersSection').style.display = 'none';
+            document.getElementById('referralSection').style.display = 'none';
+            document.getElementById('developersSection').style.display = 'none';
+            document.getElementById('profileSection').style.display = 'none';
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('downloadAppSection').style.display = 'block';
+            document.getElementById('supportSection').style.display = 'none';
             setActiveTab('');
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
@@ -4191,6 +4205,7 @@
         window.showSupport = showSupport;
         window.showLogin = showLogin;
         window.showRegister = showRegister;
+        window.showDownloadApp = showDownloadApp;
         window.showForgotPassword = showForgotPassword;
         window.hideForgotPassword = hideForgotPassword;
         window.switchTab = switchTab;
