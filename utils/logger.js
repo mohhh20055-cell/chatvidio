@@ -30,14 +30,21 @@ const AUDIT_LOG_FILE = path.join(LOG_DIR, 'audit.log');
 // إنشاء مجلد السجلات إذا لم يكن موجوداً
 // ============================================================
 
+let fileLoggingEnabled = true;
+
 function ensureLogDir() {
-    if (!fs.existsSync(LOG_DIR)) {
-        try {
+    try {
+        if (!fs.existsSync(LOG_DIR)) {
             fs.mkdirSync(LOG_DIR, { recursive: true });
             console.log('✅ تم إنشاء مجلد السجلات:', LOG_DIR);
-        } catch (error) {
-            console.error('❌ فشل في إنشاء مجلد السجلات:', error.message);
         }
+        // تحقق أن المجلد قابل للكتابة فعلاً (بعض بيئات الاستضافة تمنع الكتابة)
+        const probe = path.join(LOG_DIR, '.write_probe');
+        fs.writeFileSync(probe, '');
+        fs.unlinkSync(probe);
+    } catch (error) {
+        fileLoggingEnabled = false;
+        console.warn('⚠️ تعطيل كتابة السجلات إلى الملفات (المسار غير قابل للكتابة):', LOG_DIR, '-', error.message);
     }
 }
 
@@ -77,10 +84,13 @@ function formatLogEntry(level, message, details = {}) {
 // ============================================================
 
 function writeToFile(filePath, content) {
+    if (!fileLoggingEnabled) return;
     try {
         fs.appendFileSync(filePath, content + '\n');
     } catch (error) {
-        console.error('❌ فشل في كتابة السجل:', error.message);
+        // تعطيل كتابة الملفات نهائياً بعد أول فشل لتجنب تكرار الخطأ
+        fileLoggingEnabled = false;
+        console.warn('⚠️ تعطيل كتابة السجلات إلى الملفات:', error.message);
     }
 }
 
