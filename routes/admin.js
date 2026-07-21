@@ -44,14 +44,19 @@ function getPublicImageUrl(bucketName, folder, fileName) {
     return `${supabaseUrl}/storage/v1/object/public/${bucketName}/${fullPath}`;
 }
 
-// ✅ دالة مساعدة لإضافة روابط الصور لبيانات الأستاذ
+// ✅ دالة مساعدة لإضافة روابط الصور لبيانات الأستاذ (معدلة)
+// تم التصحيح: استخدام أسماء الأعمدة الصحيحة من قاعدة البيانات
+// profile_image, id_image, diploma_image
 function attachImageUrls(teacher) {
     if (!teacher) return teacher;
     return {
         ...teacher,
+        // ✅ الصورة الشخصية
         profile_image_url: getPublicImageUrl('profiles', 'teachers', teacher.profile_image),
-        id_card_image_url: getPublicImageUrl('profiles', 'teachers', teacher.id_card_image),
-        certificate_image_url: getPublicImageUrl('profiles', 'teachers', teacher.certificate_image)
+        // ✅ بطاقة الهوية - العمود الصحيح هو id_image
+        id_card_image_url: getPublicImageUrl('profiles', 'teachers', teacher.id_image),
+        // ✅ الشهادة/الدبلوم - العمود الصحيح هو diploma_image
+        certificate_image_url: getPublicImageUrl('profiles', 'teachers', teacher.diploma_image)
     };
 }
 
@@ -100,6 +105,15 @@ router.get('/pending-teachers', authenticate, authorize(['admin']), async (req, 
 
         // ✅ إضافة روابط الصور العامة لكل أستاذ
         const teachersWithImages = (data || []).map(attachImageUrls);
+
+        // ✅ طباعة أول أستاذ مع روابط الصور للتحقق (في سجل الخادم)
+        if (teachersWithImages.length > 0) {
+            console.log('✅ أول أستاذ مع روابط الصور:', {
+                profile_image_url: teachersWithImages[0].profile_image_url,
+                id_card_image_url: teachersWithImages[0].id_card_image_url,
+                certificate_image_url: teachersWithImages[0].certificate_image_url
+            });
+        }
 
         console.log(`✅ تم جلب ${teachersWithImages.length} أستاذ معلق`);
         res.json(teachersWithImages);
