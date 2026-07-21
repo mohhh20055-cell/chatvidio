@@ -9,9 +9,9 @@ const resendApiKey = process.env.RESEND_API_KEY;
 
 // ✅ عنوان المُرسِل: استخدم نطاقاً مخصصاً إن وُجد، وإلا النطاق التجريبي
 // ملاحظة: النطاق التجريبي onboarding@resend.dev لا يرسل إلا إلى بريد حساب Resend فقط
-const senderDomain = process.env.RESEND_SENDER_DOMAIN || 'onboarding.resend.dev';
+const senderDomain = process.env.RESEND_SENDER_DOMAIN || 'zoomdz.com';
 const senderName = process.env.RESEND_SENDER_NAME || 'ZoomDz';
-const senderEmail = process.env.RESEND_SENDER_EMAIL || `onboarding@resend.dev`;
+const senderEmail = process.env.RESEND_SENDER_EMAIL || `no-reply@zoomdz.com`;
 const fromAddress = `${senderName} <${senderEmail}>`;
 
 // ✅ التحقق من وجود مفتاح Resend
@@ -32,6 +32,7 @@ const resend = resendApiKey ? new Resend(resendApiKey) : null;
  */
 async function sendVerificationEmail(toEmail, toName, verificationUrl) {
     try {
+        // ✅ التحقق من وجود المفتاح
         if (!resend) {
             console.warn('⚠️ لا يمكن إرسال البريد: RESEND_API_KEY غير موجود');
             return false;
@@ -327,13 +328,17 @@ async function sendTeacherRejectionEmail(toEmail, toName, reason) {
                             <p style="color: #64748b; font-size: 0.9rem;">منصة التعليم الجزائرية</p>
                         </div>
                         <div class="content">
-                            <h2>مرحباً ${sanitizedName}</h2>
+                            <h2>مرحباً ${sanitizedName} 👋</h2>
                             <div class="error-box">
-                                <p style="font-size: 1.1rem; font-weight: 700;">❌ لم يتم قبول طلب التسجيل</p>
+                                <p style="font-size: 1.1rem; font-weight: 700;">❌ تم رفض طلب التسجيل</p>
                             </div>
-                            <p>نأسف لإعلامك بأن طلب التسجيل الخاص بك لم يتم قبوله في هذه المرة.</p>
-                            <p><strong>السبب:</strong> ${sanitizedReason}</p>
-                            <p>إذا كان لديك أي استفسار، يمكنك التواصل مع الدعم.</p>
+                            <p>نأسف لإعلامك بأن طلب التسجيل الخاص بك كأستاذ في منصة <strong>ZoomDz</strong> لم يتم قبوله.</p>
+                            <p><strong>سبب الرفض:</strong></p>
+                            <div style="background: #f1f5f9; padding: 12px 16px; border-radius: 8px; margin: 10px 0; color: #1a2332;">
+                                ${sanitizedReason}
+                            </div>
+                            <p style="font-size: 0.9rem; color: #64748b;">يمكنك التقدم بطلب جديد في أي وقت مع استيفاء الشروط المطلوبة.</p>
+                            <p style="font-size: 0.9rem; color: #64748b;">للمزيد من المعلومات، يرجى التواصل مع فريق الدعم.</p>
                         </div>
                         <div class="footer">
                             <p>© 2024 ZoomDz - منصة التعليم الجزائرية</p>
