@@ -87,7 +87,7 @@ async function sendVerificationEmail(toEmail, toName, verificationUrl) {
                             <p style="font-size: 0.85rem; color: #94a3b8;">⏳ هذا الرابط صالح لمدة 24 ساعة</p>
                         </div>
                         <div class="footer">
-                            <p>© 2024 ZoomDz - منصة التعليم الجزائرية</p>
+                            <p>© 2026 ZoomDz - منصة التعليم الجزائرية</p>
                             <p style="font-size: 0.75rem;">هذا بريد آلي، يرجى عدم الرد عليه</p>
                         </div>
                     </div>
@@ -169,7 +169,7 @@ async function sendResetEmail(toEmail, toName, resetUrl) {
                             <p style="font-size: 0.85rem; color: #94a3b8;">🔒 إذا لم تطلب إعادة تعيين كلمة المرور، يرجى تجاهل هذا البريد</p>
                         </div>
                         <div class="footer">
-                            <p>© 2024 ZoomDz - منصة التعليم الجزائرية</p>
+                            <p>© 2026 ZoomDz - منصة التعليم الجزائرية</p>
                             <p style="font-size: 0.75rem;">هذا بريد آلي، يرجى عدم الرد عليه</p>
                         </div>
                     </div>
@@ -206,7 +206,7 @@ async function sendTeacherApprovalEmail(toEmail, toName) {
 
         console.log('📧 محاولة إرسال بريد قبول الأستاذ إلى:', sanitizedEmail);
 
-        const platformUrl = process.env.PLATFORM_URL || 'https://chatvidio.onrender.com';
+        const platformUrl = process.env.PLATFORM_URL || 'https://zoomdz.com';
 
         const { data, error } = await resend.emails.send({
             from: fromAddress,
@@ -259,7 +259,7 @@ async function sendTeacherApprovalEmail(toEmail, toName) {
                             <p style="font-size: 0.9rem; color: #64748b;">يمكنك تسجيل الدخول باستخدام بريدك الإلكتروني وكلمة المرور التي سجلت بها.</p>
                         </div>
                         <div class="footer">
-                            <p>© 2024 ZoomDz - منصة التعليم الجزائرية</p>
+                            <p>© 2026 ZoomDz - منصة التعليم الجزائرية</p>
                             <p style="font-size: 0.75rem;">هذا بريد آلي، يرجى عدم الرد عليه</p>
                         </div>
                     </div>
@@ -341,7 +341,7 @@ async function sendTeacherRejectionEmail(toEmail, toName, reason) {
                             <p style="font-size: 0.9rem; color: #64748b;">للمزيد من المعلومات، يرجى التواصل مع فريق الدعم.</p>
                         </div>
                         <div class="footer">
-                            <p>© 2024 ZoomDz - منصة التعليم الجزائرية</p>
+                            <p>© 2026 ZoomDz - منصة التعليم الجزائرية</p>
                             <p style="font-size: 0.75rem;">هذا بريد آلي، يرجى عدم الرد عليه</p>
                         </div>
                     </div>
