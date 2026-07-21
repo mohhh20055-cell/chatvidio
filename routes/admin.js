@@ -32,6 +32,29 @@ function authorize(roles = []) {
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@platform.com';
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || bcrypt.hashSync('admin123', 12);
 
+// ✅ دالة مساعدة لتوليد رابط الصورة العامة من Supabase Storage
+function getPublicImageUrl(bucketName, folder, fileName) {
+    if (!fileName) return null;
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+    if (!supabaseUrl) return null;
+    // إذا كان fileName يحتوي بالفعل على http، أرجعه كما هو
+    if (fileName.startsWith('http')) return fileName;
+    // إذا كان يحتوي على مسار كامل (مثل teachers/xxx.jpg)، استخدمه مباشرة
+    const fullPath = fileName.includes('/') ? fileName : `${folder}/${fileName}`;
+    return `${supabaseUrl}/storage/v1/object/public/${bucketName}/${fullPath}`;
+}
+
+// ✅ دالة مساعدة لإضافة روابط الصور لبيانات الأستاذ
+function attachImageUrls(teacher) {
+    if (!teacher) return teacher;
+    return {
+        ...teacher,
+        profile_image_url: getPublicImageUrl('profiles', 'teachers', teacher.profile_image),
+        id_card_image_url: getPublicImageUrl('profiles', 'teachers', teacher.id_card_image),
+        certificate_image_url: getPublicImageUrl('profiles', 'teachers', teacher.certificate_image)
+    };
+}
+
 // ============================================================
 // ✅ جلب جميع الطلاب (مع المستوى التعليمي)
 // ============================================================
@@ -58,7 +81,7 @@ router.get('/students', authenticate, authorize(['admin']), async (req, res) => 
 });
 
 // ============================================================
-// ✅ جلب جميع الأساتذة المعلقين (مع المستوى التعليمي)
+// ✅ جلب جميع الأساتذة المعلقين (مع روابط الصور)
 // ============================================================
 router.get('/pending-teachers', authenticate, authorize(['admin']), async (req, res) => {
     try {
@@ -75,8 +98,11 @@ router.get('/pending-teachers', authenticate, authorize(['admin']), async (req, 
             return res.status(500).json({ success: false, error: error.message });
         }
 
-        console.log(`✅ تم جلب ${data?.length || 0} أستاذ معلق`);
-        res.json(data || []);
+        // ✅ إضافة روابط الصور العامة لكل أستاذ
+        const teachersWithImages = (data || []).map(attachImageUrls);
+
+        console.log(`✅ تم جلب ${teachersWithImages.length} أستاذ معلق`);
+        res.json(teachersWithImages);
     } catch (error) {
         console.error('❌ خطأ في جلب الأساتذة المعلقين:', error.message);
         res.status(500).json({ success: false, error: error.message });
@@ -84,7 +110,7 @@ router.get('/pending-teachers', authenticate, authorize(['admin']), async (req, 
 });
 
 // ============================================================
-// ✅ جلب جميع الأساتذة المقبولين (مع المستوى التعليمي)
+// ✅ جلب جميع الأساتذة المقبولين (مع روابط الصور)
 // ============================================================
 router.get('/approved-teachers', authenticate, authorize(['admin']), async (req, res) => {
     try {
@@ -101,8 +127,10 @@ router.get('/approved-teachers', authenticate, authorize(['admin']), async (req,
             return res.status(500).json({ success: false, error: error.message });
         }
 
-        console.log(`✅ تم جلب ${data?.length || 0} أستاذ مقبول`);
-        res.json(data || []);
+        const teachersWithImages = (data || []).map(attachImageUrls);
+
+        console.log(`✅ تم جلب ${teachersWithImages.length} أستاذ مقبول`);
+        res.json(teachersWithImages);
     } catch (error) {
         console.error('❌ خطأ في جلب الأساتذة المقبولين:', error.message);
         res.status(500).json({ success: false, error: error.message });
@@ -110,7 +138,7 @@ router.get('/approved-teachers', authenticate, authorize(['admin']), async (req,
 });
 
 // ============================================================
-// ✅ جلب جميع الأساتذة (جميع الحالات) مع إحصائيات البث
+// ✅ جلب جميع الأساتذة (جميع الحالات) مع إحصائيات البث وروابط الصور
 // ============================================================
 router.get('/all-teachers', authenticate, authorize(['admin']), async (req, res) => {
     try {
@@ -167,7 +195,7 @@ router.get('/all-teachers', authenticate, authorize(['admin']), async (req, res)
             }
         }
 
-        // ✅ تنسيق البيانات
+        // ✅ تنسيق البيانات مع روابط الصور
         const formatted = teachers.map(teacher => {
             const stats = streamStats[teacher.id] || {
                 active_streams: 0,
@@ -175,12 +203,12 @@ router.get('/all-teachers', authenticate, authorize(['admin']), async (req, res)
                 total_pending: 0
             };
             
-            return {
+            return attachImageUrls({
                 ...teacher,
                 active_streams: stats.active_streams,
                 total_students: stats.total_students,
                 total_pending_balance: stats.total_pending
-            };
+            });
         });
 
         console.log(`✅ تم جلب ${formatted.length} أستاذ مع إحصائياتهم`);
@@ -237,11 +265,13 @@ router.post('/approve-teacher/:id', [
 
         // ✅ إرسال بريد قبول للأستاذ
         let emailSent = false;
+        let emailError = null;
         try {
             emailSent = await sendTeacherApprovalEmail(teacher.email, teacher.full_name);
             console.log(`📧 بريد القبول: ${emailSent ? 'تم الإرسال ✅' : 'فشل الإرسال ❌'}`);
-        } catch (emailError) {
-            console.error('❌ خطأ في إرسال بريد القبول:', emailError.message);
+        } catch (emailErr) {
+            emailError = emailErr.message;
+            console.error('❌ خطأ في إرسال بريد القبول:', emailError);
         }
 
         // ✅ معالجة مكافأة الإحالة
@@ -275,8 +305,11 @@ router.post('/approve-teacher/:id', [
         console.log(`✅ تم قبول الأستاذ ${teacherId} بنجاح`);
         res.json({ 
             success: true, 
-            message: '✅ تم قبول الأستاذ بنجاح! تم إرسال بريد إعلامي إليه.',
+            message: emailSent 
+                ? '✅ تم قبول الأستاذ بنجاح! تم إرسال بريد إعلامي إليه.'
+                : '✅ تم قبول الأستاذ بنجاح! لكن تعذر إرسال البريد الإلكتروني (تحقق من إعدادات Resend).',
             email_sent: emailSent,
+            email_error: emailError,
             teaching_level: teacher.teaching_level || null
         });
     } catch (error) {
@@ -305,7 +338,6 @@ router.post('/reject-teacher/:id', [
 
         console.log(`📥 رفض الأستاذ ID: ${teacherId}, السبب: ${reason || 'غير محدد'}`);
 
-        // ✅ جلب بيانات الأستاذ
         const teacher = await getOne('teachers', 'id', teacherId);
         if (!teacher) {
             return res.status(404).json({ success: false, error: 'الأستاذ غير موجود' });
@@ -315,7 +347,6 @@ router.post('/reject-teacher/:id', [
             return res.status(400).json({ success: false, error: 'هذا الأستاذ مرفوض بالفعل' });
         }
 
-        // ✅ تحديث حالة الأستاذ إلى rejected
         const { error: updateError } = await supabase
             .from('teachers')
             .update({
@@ -330,7 +361,6 @@ router.post('/reject-teacher/:id', [
             return res.status(500).json({ success: false, error: updateError.message });
         }
 
-        // ✅ إرسال بريد رفض للأستاذ
         let emailSent = false;
         try {
             emailSent = await sendTeacherRejectionEmail(teacher.email, teacher.full_name, reason);
@@ -339,7 +369,6 @@ router.post('/reject-teacher/:id', [
             console.error('❌ خطأ في إرسال بريد الرفض:', emailError.message);
         }
 
-        // ✅ إرسال إشعار للمدير
         await insert('notifications', {
             user_id: 1,
             user_type: 'admin',
@@ -352,7 +381,9 @@ router.post('/reject-teacher/:id', [
         console.log(`✅ تم رفض الأستاذ ${teacherId}`);
         res.json({ 
             success: true,
-            message: '❌ تم رفض الأستاذ! تم إرسال بريد إعلامي إليه.',
+            message: emailSent
+                ? '❌ تم رفض الأستاذ! تم إرسال بريد إعلامي إليه.'
+                : '❌ تم رفض الأستاذ! لكن تعذر إرسال البريد الإلكتروني.',
             email_sent: emailSent
         });
     } catch (error) {
@@ -368,56 +399,40 @@ router.get('/stats', authenticate, authorize(['admin']), async (req, res) => {
     try {
         console.log('📥 جلب إحصائيات المنصة...');
 
-        // ✅ عدد الطلاب
         const { count: studentsCount, error: studentsError } = await supabase
             .from('students')
             .select('*', { count: 'exact', head: true });
 
-        if (studentsError) {
-            console.error('❌ خطأ في جلب عدد الطلاب:', studentsError);
-        }
+        if (studentsError) console.error('❌ خطأ في جلب عدد الطلاب:', studentsError);
 
-        // ✅ عدد الأساتذة
         const { count: teachersCount, error: teachersError } = await supabase
             .from('teachers')
             .select('*', { count: 'exact', head: true })
             .eq('status', 'approved');
 
-        if (teachersError) {
-            console.error('❌ خطأ في جلب عدد الأساتذة:', teachersError);
-        }
+        if (teachersError) console.error('❌ خطأ في جلب عدد الأساتذة:', teachersError);
 
-        // ✅ عدد الأساتذة المعلقين
         const { count: pendingTeachers, error: pendingError } = await supabase
             .from('teachers')
             .select('*', { count: 'exact', head: true })
             .eq('status', 'pending');
 
-        if (pendingError) {
-            console.error('❌ خطأ في جلب عدد الأساتذة المعلقين:', pendingError);
-        }
+        if (pendingError) console.error('❌ خطأ في جلب عدد الأساتذة المعلقين:', pendingError);
 
-        // ✅ عدد البث المباشر
         const { count: liveStreams, error: liveError } = await supabase
             .from('offers')
             .select('*', { count: 'exact', head: true })
             .in('status', ['live', 'teacher_ready']);
 
-        if (liveError) {
-            console.error('❌ خطأ في جلب عدد البث المباشر:', liveError);
-        }
+        if (liveError) console.error('❌ خطأ في جلب عدد البث المباشر:', liveError);
 
-        // ✅ عدد البث المتوقف مؤقتاً
         const { count: pausedStreams, error: pausedError } = await supabase
             .from('offers')
             .select('*', { count: 'exact', head: true })
             .eq('status', 'paused');
 
-        if (pausedError) {
-            console.error('❌ خطأ في جلب عدد البث المتوقف:', pausedError);
-        }
+        if (pausedError) console.error('❌ خطأ في جلب عدد البث المتوقف:', pausedError);
 
-        // ✅ إجمالي الرصيد المعلق
         const { data: pendingData, error: pendingBalanceError } = await supabase
             .from('sessions')
             .select('payment_amount')
@@ -428,7 +443,6 @@ router.get('/stats', authenticate, authorize(['admin']), async (req, res) => {
             totalPendingBalance = pendingData.reduce((sum, s) => sum + (s.payment_amount || 0), 0);
         }
 
-        // ✅ إجمالي الأرباح المدفوعة
         const { data: paidData, error: paidError } = await supabase
             .from('sessions')
             .select('teacher_earned')
@@ -439,32 +453,23 @@ router.get('/stats', authenticate, authorize(['admin']), async (req, res) => {
             totalPaid = paidData.reduce((sum, s) => sum + (s.teacher_earned || 0), 0);
         }
 
-        // ✅ عدد الطلاب في البث
         const { count: activeStudents, error: activeError } = await supabase
             .from('active_stream')
             .select('*', { count: 'exact', head: true });
 
-        if (activeError) {
-            console.error('❌ خطأ في جلب عدد الطلاب النشطين:', activeError);
-        }
+        if (activeError) console.error('❌ خطأ في جلب عدد الطلاب النشطين:', activeError);
 
-        // ✅ عدد العروض الكلي
         const { count: totalOffers, error: offersError } = await supabase
             .from('offers')
             .select('*', { count: 'exact', head: true });
 
-        if (offersError) {
-            console.error('❌ خطأ في جلب عدد العروض:', offersError);
-        }
+        if (offersError) console.error('❌ خطأ في جلب عدد العروض:', offersError);
 
-        // ✅ عدد الحجوزات الكلي
         const { count: totalSessions, error: sessionsError } = await supabase
             .from('sessions')
             .select('*', { count: 'exact', head: true });
 
-        if (sessionsError) {
-            console.error('❌ خطأ في جلب عدد الحجوزات:', sessionsError);
-        }
+        if (sessionsError) console.error('❌ خطأ في جلب عدد الحجوزات:', sessionsError);
 
         res.json({
             success: true,
@@ -505,7 +510,6 @@ router.get('/all-offers', authenticate, authorize(['admin']), async (req, res) =
             return res.status(500).json({ success: false, error: error.message });
         }
 
-        // ✅ جلب عدد الطلاب لكل عرض
         for (const offer of offers || []) {
             const { count, error: countError } = await supabase
                 .from('sessions')
@@ -551,7 +555,6 @@ router.post('/cancel-offer/:id', [
             return res.status(404).json({ success: false, error: 'العرض غير موجود' });
         }
 
-        // ✅ تحديث حالة العرض إلى cancelled
         await supabase
             .from('offers')
             .update({
@@ -562,7 +565,6 @@ router.post('/cancel-offer/:id', [
             })
             .eq('id', offerId);
 
-        // ✅ استرداد الرصيد المعلق للطلاب
         const { data: sessions } = await supabase
             .from('sessions')
             .select('student_id, payment_amount')
@@ -572,7 +574,6 @@ router.post('/cancel-offer/:id', [
         if (sessions && sessions.length > 0) {
             for (const session of sessions) {
                 if (session.payment_amount > 0) {
-                    // ✅ إعادة المبلغ للطالب
                     const student = await getOne('students', 'id', session.student_id);
                     if (student) {
                         await update('students', session.student_id, {
@@ -580,7 +581,6 @@ router.post('/cancel-offer/:id', [
                         });
                     }
 
-                    // ✅ تحديث الجلسة إلى cancelled
                     await update('sessions', session.id, {
                         payment_status: 'cancelled',
                         pending_balance: 0,
@@ -590,11 +590,9 @@ router.post('/cancel-offer/:id', [
             }
         }
 
-        // ✅ تنظيف الجداول المؤقتة
         await supabase.from('active_stream').delete().eq('offer_id', offerId);
         await supabase.from('waiting_room').delete().eq('offer_id', offerId);
 
-        // ✅ إرسال إشعارات للطلاب
         const { data: allSessions } = await supabase
             .from('sessions')
             .select('student_id')
@@ -614,7 +612,6 @@ router.post('/cancel-offer/:id', [
             await supabase.from('notifications').insert(notifications);
         }
 
-        // ✅ إرسال إشعار للأستاذ
         await insert('notifications', {
             user_id: offer.teacher_id,
             user_type: 'teacher',
@@ -889,7 +886,8 @@ router.post('/ban-user', [
             banned_by: 'admin'
         });
         
-        const { error } = await supabase            .from(tableName)
+        const { error } = await supabase
+            .from(tableName)
             .update({ is_banned: true, ban_reason: reason || 'لم يتم تحديد سبب' })
             .eq('id', user_id);
 
@@ -1342,37 +1340,27 @@ router.get('/performance', authenticate, authorize(['admin']), async (req, res) 
             .from('active_stream')
             .select('count', { count: 'exact' });
 
-        if (connError) {
-            console.error('❌ خطأ في جلب البث المباشر:', connError);
-        }
+        if (connError) console.error('❌ خطأ في جلب البث المباشر:', connError);
 
         const { data: sessions, error: sessError } = await supabase
             .from('sessions')
             .select('count', { count: 'exact' });
 
-        if (sessError) {
-            console.error('❌ خطأ في جلب الجلسات:', sessError);
-        }
+        if (sessError) console.error('❌ خطأ في جلب الجلسات:', sessError);
 
-        // ✅ جلب عدد العروض المباشرة
         const { count: liveOffers, error: liveError } = await supabase
             .from('offers')
             .select('count', { count: 'exact' })
             .in('status', ['live', 'teacher_ready']);
 
-        if (liveError) {
-            console.error('❌ خطأ في جلب العروض المباشرة:', liveError);
-        }
+        if (liveError) console.error('❌ خطأ في جلب العروض المباشرة:', liveError);
 
-        // ✅ جلب عدد العروض المتوقفة مؤقتاً
         const { count: pausedOffers, error: pausedError } = await supabase
             .from('offers')
             .select('count', { count: 'exact' })
             .eq('status', 'paused');
 
-        if (pausedError) {
-            console.error('❌ خطأ في جلب العروض المتوقفة:', pausedError);
-        }
+        if (pausedError) console.error('❌ خطأ في جلب العروض المتوقفة:', pausedError);
 
         const memoryUsage = process.memoryUsage();
         const uptime = process.uptime();
