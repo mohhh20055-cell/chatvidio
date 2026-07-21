@@ -1272,7 +1272,7 @@
                 const data = await res.json();
                 
                 if (data.success) {
-                    let msg = `✅ ت�� حذف ${currentActionRole === 'student' ? 'الطالب' : 'الأستاذ'} بنجاح`;
+                    let msg = `✅ تم حذف ${currentActionRole === 'student' ? 'الطالب' : 'الأستاذ'} بنجاح`;
                     if (banUser) {
                         msg += ' 🔒 وتم حظر IP الخاص به';
                     }
@@ -1340,7 +1340,7 @@
             currentActionId = userId;
             currentActionRole = userRole;
             document.getElementById('unbanUserMessage').innerHTML = 
-                `هل أنت متأكد من إلغاء حظر <strong>${escapeHtml(userName)}</strong> (${userRole === 'student' ? 'طالب' : 'أستاذ'})？<br><br>` +
+                `هل أنت متأكد من إلغاء حظر <strong>${escapeHtml(userName)}</strong> (${userRole === 'student' ? 'طالب' : 'أستاذ'})؟<br><br>` +
                 `<span style="font-size:0.8rem; color:#64748b;">سبب الحظر: ${escapeHtml(banReason || 'غير محدد')}</span>`;
             document.getElementById('modalOverlay').style.display = 'block';
             document.getElementById('unbanUserModal').style.display = 'block';
@@ -1477,7 +1477,8 @@
             let html = '<div class="users-grid">';
             for (const student of students) {
                 const isBanned = student.is_banned === true;
-                const imageUrl = student.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(student.full_name) + '&background=0f5cbf&color=fff&size=80';
+                // ✅ التعديل هنا: profile_url -> profile_image_url
+                const imageUrl = student.profile_image_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(student.full_name) + '&background=0f5cbf&color=fff&size=80';
                 const levelDisplay = student.education_level ? getLevelDisplay(student.education_level) : null;
                 
                 html += `
@@ -1557,7 +1558,8 @@
             let html = '<div class="teachers-grid">';
             for (const t of teachers) {
                 const isBanned = t.is_banned === true;
-                const imageUrl = t.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(t.full_name) + '&background=0f5cbf&color=fff&size=80';
+                // ✅ التعديل هنا: profile_url -> profile_image_url
+                const imageUrl = t.profile_image_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(t.full_name) + '&background=0f5cbf&color=fff&size=80';
                 const levelDisplay = t.teaching_level ? getLevelDisplay(t.teaching_level) : null;
                 
                 html += `
@@ -1696,7 +1698,7 @@
         }
 
         // ============================================================
-        // ✅ دوال طلبات الأساتذة المعلقين
+        // ✅ دوال طلبات الأساتذة المعلقين (المعدلة بالكامل)
         // ============================================================
         async function loadPendingTeachers() {
             const container = document.getElementById('pendingTeachers');
@@ -1710,7 +1712,8 @@
                 }
                 let html = '<div class="teachers-grid">';
                 for (const t of data) {
-                    const imageUrl = t.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(t.full_name) + '&background=0f5cbf&color=fff&size=80';
+                    // ✅ التعديل الرئيسي: profile_url -> profile_image_url
+                    const imageUrl = t.profile_image_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(t.full_name) + '&background=0f5cbf&color=fff&size=80';
                     const levelDisplay = t.teaching_level ? getLevelDisplay(t.teaching_level) : null;
                     
                     html += `
@@ -1723,6 +1726,17 @@
                             <p><i class="fas fa-briefcase"></i> ${t.experience} سنة خبرة</p>
                             ${levelDisplay ? `<p><span class="level-badge"><i class="fas fa-graduation-cap"></i> يدرس: ${levelDisplay}</span></p>` : ''}
                             <p><i class="fas fa-align-left"></i> ${escapeHtml(t.bio)}</p>
+                            
+                            <!-- ✅ عرض المستندات المرفقة (بطاقة الهوية + الشهادة) -->
+                            ${(t.id_card_image_url || t.certificate_image_url) ? `
+                            <div class="documents-section">
+                                <div class="documents-title"><i class="fas fa-paperclip"></i> المستندات المرفقة:</div>
+                                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 5px;">
+                                    ${t.id_card_image_url ? `<img src="${t.id_card_image_url}" class="image-preview" onclick="event.stopPropagation(); showFullImage('${t.id_card_image_url}')" alt="بطاقة التعريف" title="بطاقة التعريف">` : ''}
+                                    ${t.certificate_image_url ? `<img src="${t.certificate_image_url}" class="image-preview" onclick="event.stopPropagation(); showFullImage('${t.certificate_image_url}')" alt="الشهادة" title="الشهادة">` : ''}
+                                </div>
+                            </div>` : ''}
+                            
                             <div class="button-group">
                                 <button class="btn-approve" onclick="approveTeacher(${t.id})"><i class="fas fa-check"></i> قبول</button>
                                 <button class="btn-reject" onclick="showRejectModal(${t.id})"><i class="fas fa-times"></i> رفض</button>
