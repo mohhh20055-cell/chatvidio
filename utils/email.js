@@ -7,10 +7,22 @@ const { sanitizeInput } = require('./helpers');
 
 const resendApiKey = process.env.RESEND_API_KEY;
 
+// ✅ عنوان المُرسِل: استخدم نطاقاً مخصصاً إن وُجد، وإلا النطاق التجريبي
+// ملاحظة: النطاق التجريبي onboarding@resend.dev لا يرسل إلا إلى بريد حساب Resend فقط
+const senderDomain = process.env.RESEND_SENDER_DOMAIN || 'onboarding.resend.dev';
+const senderName = process.env.RESEND_SENDER_NAME || 'ZoomDz';
+const senderEmail = process.env.RESEND_SENDER_EMAIL || `onboarding@resend.dev`;
+const fromAddress = `${senderName} <${senderEmail}>`;
+
 // ✅ التحقق من وجود مفتاح Resend
 if (!resendApiKey) {
     console.warn('⚠️ تحذير: متغير RESEND_API_KEY غير موجود. لن يتم إرسال البريد الإلكتروني.');
     console.warn('⚠️ يمكنك الحصول على مفتاح مجاني من https://resend.com');
+} else if (senderEmail === 'onboarding@resend.dev') {
+    console.warn('⚠️ تحذير: تستخدم النطاق التجريبي onboarding@resend.dev.');
+    console.warn('⚠️ هذا النطاق لا يرسل البريد إلا إلى البريد المرتبط بحساب Resend الخاص بك.');
+    console.warn('⚠️ لإرسال البريد إلى أي عنوان، أضف نطاقك في https://resend.com/domains');
+    console.warn('⚠️ ثم عيّن RESEND_SENDER_EMAIL في متغيرات البيئة (مثال: noreply@yourdomain.com)');
 }
 
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
@@ -33,7 +45,7 @@ async function sendVerificationEmail(toEmail, toName, verificationUrl) {
         console.log('📧 محاولة إرسال بريد تأكيد إلى:', sanitizedEmail);
 
         const { data, error } = await resend.emails.send({
-            from: 'ZoomDz <onboarding@resend.dev>',
+            from: fromAddress,
             to: [sanitizedEmail],
             subject: '✅ تأكيد حسابك - ZoomDz',
             html: `
@@ -114,7 +126,7 @@ async function sendResetEmail(toEmail, toName, resetUrl) {
         console.log('📧 محاولة إرسال بريد إعادة تعيين إلى:', sanitizedEmail);
 
         const { data, error } = await resend.emails.send({
-            from: 'ZoomDz <onboarding@resend.dev>',
+            from: fromAddress,
             to: [sanitizedEmail],
             subject: '🔑 إعادة تعيين كلمة المرور - ZoomDz',
             html: `
@@ -197,7 +209,7 @@ async function sendTeacherApprovalEmail(toEmail, toName) {
         const platformUrl = process.env.PLATFORM_URL || 'https://chatvidio.onrender.com';
 
         const { data, error } = await resend.emails.send({
-            from: 'ZoomDz <onboarding@resend.dev>',
+            from: fromAddress,
             to: [sanitizedEmail],
             subject: '🎉 تم قبول حسابك - ZoomDz',
             html: `
@@ -286,7 +298,7 @@ async function sendTeacherRejectionEmail(toEmail, toName, reason) {
         console.log('📧 محاولة إرسال بريد رفض الأستاذ إلى:', sanitizedEmail);
 
         const { data, error } = await resend.emails.send({
-            from: 'ZoomDz <onboarding@resend.dev>',
+            from: fromAddress,
             to: [sanitizedEmail],
             subject: '❌ تحديث بشأن طلب التسجيل - ZoomDz',
             html: `
