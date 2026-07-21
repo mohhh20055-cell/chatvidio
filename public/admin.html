@@ -1477,7 +1477,7 @@
             let html = '<div class="users-grid">';
             for (const student of students) {
                 const isBanned = student.is_banned === true;
-                // ✅ التعديل هنا: profile_url -> profile_image_url
+                // ✅ استخدم profile_image_url بدلاً من profile_url
                 const imageUrl = student.profile_image_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(student.full_name) + '&background=0f5cbf&color=fff&size=80';
                 const levelDisplay = student.education_level ? getLevelDisplay(student.education_level) : null;
                 
@@ -1558,7 +1558,7 @@
             let html = '<div class="teachers-grid">';
             for (const t of teachers) {
                 const isBanned = t.is_banned === true;
-                // ✅ التعديل هنا: profile_url -> profile_image_url
+                // ✅ استخدم profile_image_url بدلاً من profile_url
                 const imageUrl = t.profile_image_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(t.full_name) + '&background=0f5cbf&color=fff&size=80';
                 const levelDisplay = t.teaching_level ? getLevelDisplay(t.teaching_level) : null;
                 
@@ -1712,7 +1712,7 @@
                 }
                 let html = '<div class="teachers-grid">';
                 for (const t of data) {
-                    // ✅ التعديل الرئيسي: profile_url -> profile_image_url
+                    // ✅ استخدم profile_image_url بدلاً من profile_url
                     const imageUrl = t.profile_image_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(t.full_name) + '&background=0f5cbf&color=fff&size=80';
                     const levelDisplay = t.teaching_level ? getLevelDisplay(t.teaching_level) : null;
                     
