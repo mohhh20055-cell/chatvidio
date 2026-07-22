@@ -34,15 +34,16 @@
         }
 
         .navbar {
-            background: white;
+            background: #ffffff;
             padding: 12px 24px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04);
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             z-index: 100;
             width: 100%;
+            border-bottom: 1px solid #f1f5f9;
         }
         
         @media (max-width: 768px) {
@@ -70,7 +71,7 @@
         .logo { 
             font-size: 1.5rem; 
             font-weight: 800; 
-            color: #0f5cbf; 
+            color: #1e40af; 
             cursor: pointer;
             white-space: nowrap;
         }
@@ -184,9 +185,9 @@
                 font-size: 0.7rem;
             }
         }
-        .nav-tab.active { background: #0f5cbf; color: white; }
+        .nav-tab.active { background: #1e40af; color: white; }
         .nav-tab.notification-tab { background: #fef3c7; color: #92400e; }
-        .nav-tab.notification-tab.active { background: #0f5cbf; color: white; }
+        .nav-tab.notification-tab.active { background: #1e40af; color: white; }
         .nav-tab.banned-tab { background: #fecaca; color: #991b1b; }
         .nav-tab.banned-tab.active { background: #dc2626; color: white; }
         .nav-tab .badge-count {
@@ -384,14 +385,14 @@
         .btn-ban:hover { background: #6d28d9; }
         .btn-unban { background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 25px; cursor: pointer; margin: 5px; }
         .btn-unban:hover { background: #059669; }
-        .btn-complete { background: #0f5cbf; color: white; border: none; padding: 8px 16px; border-radius: 25px; cursor: pointer; }
-        .btn-small { background: #0f5cbf; color: white; border: none; padding: 5px 10px; border-radius: 15px; cursor: pointer; margin-top: 5px; width: 100%; }
-        .btn-small-danger { background: #ef4444; }
-        .btn-notification { background: #8b5cf6; color: white; border: none; padding: 8px 16px; border-radius: 25px; cursor: pointer; margin: 5px; }
-        .btn-notification:hover { background: #7c3aed; }
-        .btn-message { background: #0f5cbf; color: white; border: none; padding: 6px 14px; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 0.78rem; transition: 0.3s; display: inline-flex; align-items: center; gap: 6px; }
-        .btn-message:hover { background: #1e3c72; transform: translateY(-1px); }
-        .request-amount { font-size: 1.5rem; font-weight: 700; color: #0f5cbf; }
+        .btn-complete { background: #1e40af; color: white; border: none; padding: 8px 16px; border-radius: 25px; cursor: pointer; }
+        .btn-small { background: #1e40af; color: white; border: none; padding: 5px 10px; border-radius: 15px; cursor: pointer; margin-top: 5px; width: 100%; }
+        .btn-small-danger { background: #dc2626; }
+        .btn-notification { background: #6366f1; color: white; border: none; padding: 8px 16px; border-radius: 25px; cursor: pointer; margin: 5px; }
+        .btn-notification:hover { background: #4f46e5; }
+        .btn-message { background: #1e40af; color: white; border: none; padding: 6px 14px; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 0.78rem; transition: 0.3s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-message:hover { background: #1e3a8a; transform: translateY(-1px); }
+        .request-amount { font-size: 1.5rem; font-weight: 700; color: #1e40af; }
         .notification-toast {
             position: fixed;
             bottom: 20px;
@@ -555,7 +556,7 @@
         }
         .notification-card .notif-title {
             font-weight: 700;
-            color: #0f5cbf;
+            color: #1e40af;
         }
         .notification-card .notif-date {
             font-size: 0.7rem;
