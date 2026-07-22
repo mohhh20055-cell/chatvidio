@@ -40,6 +40,14 @@ TO anon, authenticated USING (true);
 -- ============================================================
 -- Trigger for updated_at
 -- ============================================================
+CREATE OR REPLACE FUNCTION update_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 DROP TRIGGER IF EXISTS trigger_courses_updated_at ON courses;
 CREATE TRIGGER trigger_courses_updated_at
     BEFORE UPDATE ON courses
