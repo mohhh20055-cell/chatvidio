@@ -671,10 +671,10 @@
         }
         .section-title i { color: var(--primary); }
 
-        .offers-grid, .teachers-grid {
+        .offers-grid, .teachers-grid, .courses-grid {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 20px;
+            gap: 14px;
         }
         
         @media (max-width: 640px) {
@@ -1298,7 +1298,7 @@
             .profile-dropdown { width: min(92vw, 230px); left: auto; right: 0; }
             .main-wrapper { padding: 12px; }
             .content-area { padding: 16px; }
-            .offers-grid, .teachers-grid { grid-template-columns: 1fr; }
+            .offers-grid, .teachers-grid, .courses-grid { grid-template-columns: 1fr; }
             .modal { width: 94%; }
             .referral-stats { grid-template-columns: 1fr 1fr; gap: 8px; }
             .referral-stats .stat-item .stat-number { font-size: 1.3rem; }
@@ -1398,6 +1398,10 @@
             <button class="nav-tab" data-section="teachers" onclick="showSection('teachers')">
                 <i class="fas fa-chalkboard-user"></i>
                 <span class="tab-label">الأساتذة</span>
+            </button>
+            <button class="nav-tab" data-section="courses" onclick="showSection('courses')">
+                <i class="fas fa-play-circle"></i>
+                <span class="tab-label">الدورات</span>
             </button>
             <button class="nav-tab" data-section="bookings" onclick="showSection('bookings')">
                 <i class="fas fa-bookmark"></i>
@@ -1521,6 +1525,12 @@
         <div id="teachersSection" style="display: none;">
             <div class="section-title"><i class="fas fa-chalkboard-user"></i> الأساتذة المتوافقون مع مستواك</div>
             <div id="teachersList" class="teachers-grid"></div>
+        </div>
+
+        <!-- COURSES SECTION -->
+        <div id="coursesSection" style="display: none;">
+            <div class="section-title"><i class="fas fa-play-circle"></i> الدورات المتوفرة</div>
+            <div id="coursesList" class="courses-grid"></div>
         </div>
 
         <!-- BOOKINGS SECTION -->
@@ -2055,6 +2065,7 @@
         currentSection = section;
         document.getElementById('offersSection').style.display = section === 'offers' ? 'block' : 'none';
         document.getElementById('teachersSection').style.display = section === 'teachers' ? 'block' : 'none';
+        document.getElementById('coursesSection').style.display = section === 'courses' ? 'block' : 'none';
         document.getElementById('bookingsSection').style.display = section === 'bookings' ? 'block' : 'none';
         document.getElementById('transactionsSection').style.display = section === 'transactions' ? 'block' : 'none';
         document.getElementById('referralSection').style.display = section === 'referral' ? 'block' : 'none';
@@ -2067,6 +2078,7 @@
 
         if (section === 'offers') loadOffers();
         else if (section === 'teachers') loadTeachers();
+        else if (section === 'courses') loadStudentCourses();
         else if (section === 'bookings') loadMyBookings();
         else if (section === 'transactions') loadTransactions();
         else if (section === 'referral') loadReferralData();
@@ -2463,6 +2475,54 @@
                 showToast('حدث خطأ', 'error');
             }
         }
+    }
+
+    // ================================================================
+    // ✅ COURSES - قائمة الدورات
+    // ================================================================
+
+    async function loadStudentCourses() {
+        const container = document.getElementById('coursesList');
+        container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/course/public`);
+            if (!res.ok) throw new Error('HTTP error!');
+            const data = await res.json();
+            renderStudentCourses(data.courses || []);
+        } catch(e) {
+            console.error('خطأ في تحميل الدورات:', e);
+            showToast('حدث خطأ في تحميل الدورات', 'error');
+            container.innerHTML = '<p style="text-align:center; padding:30px; color:var(--gray-400);">حدث خطأ في تحميل الدورات</p>';
+        }
+    }
+
+    function renderStudentCourses(courses) {
+        const container = document.getElementById('coursesList');
+        if (!courses || courses.length === 0) {
+            container.innerHTML = '<p style="text-align:center; padding:30px; color:var(--gray-400);">لا توجد دورات متوفرة حالياً</p>';
+            return;
+        }
+        let html = '<div class="courses-grid">';
+        for (const c of courses) {
+            html += `
+                <div class="course-card">
+                    <div style="display:flex; justify-content:space-between; align-items:start; gap:10px;">
+                        <div style="flex:1; min-width:0;">
+                            <h3 style="font-size:1rem; margin-bottom:4px; color:var(--gray-900);">${escapeHtml(c.title)}</h3>
+                            <p style="font-size:0.8rem; color:var(--gray-600); margin-bottom:6px;">${escapeHtml(c.description || '')}</p>
+                            <p style="font-size:0.8rem;"><strong>الأستاذ:</strong> ${escapeHtml(c.teacher_name || 'غير معروف')}</p>
+                            <p style="font-size:0.8rem;"><strong>المستوى:</strong> ${escapeHtml(c.education_level || 'غير محدد')}</p>
+                            <p style="font-size:0.8rem;"><strong>السعر:</strong> ${c.is_free ? 'مجاني' : c.price + ' دج'}</p>
+                            <p style="font-size:0.75rem; color:var(--gray-500); word-break: break-all; margin-top:6px;">
+                                <a href="${escapeHtml(c.course_url)}" target="_blank" rel="noopener" style="color:var(--primary); text-decoration:none; font-weight:700;">🔗 فتح رابط الدورة</a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        html += '</div>';
+        container.innerHTML = html;
     }
 
     // ================================================================

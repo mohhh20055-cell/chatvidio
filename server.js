@@ -908,6 +908,7 @@ const supportRoutes = require('./routes/support');
 const referralRoutes = require('./routes/referral');
 const walletRoutes = require('./routes/wallet');
 const notificationRoutes = require('./routes/notification');
+const courseRoutes = require('./routes/course');
 
 // ============================================================
 // ✅ استخدام المسارات - الترتيب مهم جداً!
@@ -928,6 +929,7 @@ app.use('/api/student', authenticate, studentRoutes);
 
 // ✅ 5. باقي المسارات
 app.use('/api', offerRoutes);
+app.use('/api/course', courseRoutes);
 app.use('/api/booking', bookingRoutes);
 app.use('/api/stream', streamRoutes);
 app.use('/api/post', postRoutes);

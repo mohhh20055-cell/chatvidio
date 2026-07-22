@@ -832,13 +832,18 @@
             grid-template-columns: 1fr;
             gap: 14px;
         }
+        .courses-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 14px;
+        }
         .teachers-grid {
             display: grid;
             grid-template-columns: 1fr;
             gap: 14px;
         }
 
-        .offer-card, .teacher-card {
+        .offer-card, .teacher-card, .course-card {
             background: var(--gray-50);
             border-radius: var(--radius-sm);
             padding: 16px;
@@ -1503,6 +1508,10 @@
                 <span class="tab-label">عروضي</span>
                 <span class="nav-badge" id="offersBadge" style="display:none;">0</span>
             </button>
+            <button class="nav-tab" data-section="courses" onclick="showSection('courses')">
+                <i class="fas fa-play-circle"></i>
+                <span class="tab-label">دوراتي</span>
+            </button>
             <button class="nav-tab" data-section="earnings" onclick="showSection('earnings')">
                 <i class="fas fa-money-bill-wave"></i>
                 <span class="tab-label">الأرباح</span>
@@ -1680,6 +1689,19 @@
                 <button class="btn-danger" onclick="deleteExpiredOffers()"><i class="fas fa-trash"></i> حذف المنتهية</button>
             </div>
             <div id="offersList" class="offers-grid"></div>
+        </div>
+
+        <!-- COURSES SECTION -->
+        <div id="coursesSection" style="display: none;">
+            <div class="section-title"><i class="fas fa-play-circle"></i> دوراتي</div>
+            <div style="background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 12px; padding: 14px 18px; margin-bottom: 18px; font-size: 0.85rem; color: #0c4a6e;">
+                <i class="fas fa-info-circle"></i>
+                لرفع مقاطع الدورة ننصح باستخدام <a href="https://1024terabox.com/s/14V-GPony-cv6UEaL6EzEIQ" target="_blank" rel="noopener" style="color: #0369a1; font-weight: 700; text-decoration: underline;">منصة 1024terabox</a> لضمان سرعة تحميل عالية ومساحة تخزين كافية.
+            </div>
+            <div class="section-actions">
+                <button class="btn-primary" onclick="showCreateCourseModal()"><i class="fas fa-plus"></i> دورة جديدة</button>
+            </div>
+            <div id="coursesList" class="courses-grid"></div>
         </div>
 
         <!-- EARNINGS SECTION -->
@@ -1886,6 +1908,67 @@
     <div class="modal-footer">
         <button class="cancel-btn" onclick="closeModal()">إلغاء</button>
         <button class="save-btn" onclick="createOffer()">إنشاء</button>
+    </div>
+</div>
+
+<!-- CREATE COURSE MODAL -->
+<div id="createCourseModal" class="modal">
+    <div class="modal-header">
+        <h3><i class="fas fa-plus"></i> دورة جديدة</h3>
+        <button class="close-modal" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+        <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; font-size: 0.8rem; color: #0c4a6e; line-height: 1.6;">
+            <i class="fas fa-info-circle"></i>
+            لرفع الفيديو ننصح باستخدام <a href="https://1024terabox.com/s/14V-GPony-cv6UEaL6EzEIQ" target="_blank" rel="noopener" style="color: #0369a1; font-weight: 700; text-decoration: underline;">منصة 1024terabox</a>:
+            افتح حساب من الرابط أعلى، ارفع الفيديو، ثم انسخ رابط المشاركة وضعه هنا.
+        </div>
+        <label style="display:block; margin-bottom:6px; font-weight:700; color:var(--gray-800);">
+            <i class="fas fa-heading" style="color:var(--primary); margin-left:6px;"></i> اسم الدورة
+        </label>
+        <input type="text" id="courseTitle" placeholder="أدخل اسم الدورة" required>
+
+        <label style="display:block; margin-bottom:6px; margin-top:10px; font-weight:700; color:var(--gray-800);">
+            <i class="fas fa-align-left" style="color:var(--primary); margin-left:6px;"></i> الوصف
+        </label>
+        <textarea id="courseDescription" rows="3" placeholder="وصف مختصر للدورة..."></textarea>
+
+        <label style="display:block; margin-bottom:6px; margin-top:10px; font-weight:700; color:var(--gray-800);">
+            <i class="fas fa-dollar-sign" style="color:var(--primary); margin-left:6px;"></i> السعر (دج)
+        </label>
+        <input type="number" id="coursePrice" placeholder="السعر" value="0" min="0">
+
+        <div class="education-level-group">
+            <label><i class="fas fa-graduation-cap"></i> المستوى التعليمي</label>
+            <select id="courseEducationLevel">
+                <option value="">-- اختر المستوى --</option>
+                <option value="5eme_pri">خامسة ابتدائي</option>
+                <option value="1ere_am">أولى متوسط</option>
+                <option value="2eme_am">ثانية متوسط</option>
+                <option value="3eme_am">ثالثة متوسط</option>
+                <option value="4eme_am">رابعة متوسط</option>
+                <option value="5eme_am">خامسة متوسط</option>
+                <option value="1ere_as">أولى ثانوي</option>
+                <option value="2eme_as">ثانية ثانوي</option>
+                <option value="bac">بكالوريا</option>
+                <option value="1ere_uni">أولى جامعي</option>
+                <option value="2eme_uni">ثانية جامعي</option>
+                <option value="3eme_uni">ثالثة جامعي</option>
+                <option value="master">ماستر</option>
+                <option value="doctorat">دكتوراه</option>
+                <option value="other">آخر</option>
+            </select>
+        </div>
+
+        <label style="display:block; margin-bottom:6px; margin-top:10px; font-weight:700; color:var(--gray-800);">
+            <i class="fas fa-link" style="color:var(--primary); margin-left:6px;"></i> رابط الدورة
+        </label>
+        <input type="url" id="courseUrl" placeholder="https://1024terabox.com/s/..." required>
+        <p style="font-size:0.75rem; color:var(--gray-500); margin-top:4px;">يجب أن يكون الرابط من منصة Terabox/1024terabox فقط</p>
+    </div>
+    <div class="modal-footer">
+        <button class="cancel-btn" onclick="closeModal()">إلغاء</button>
+        <button class="save-btn" onclick="createCourse()">إنشاء الدورة</button>
     </div>
 </div>
 
@@ -2146,12 +2229,13 @@
     function showSection(section) {
         document.getElementById('profileSection').style.display = 'none';
         document.getElementById('offersSection').style.display = 'none';
+        document.getElementById('coursesSection').style.display = 'none';
         document.getElementById('earningsSection').style.display = 'none';
         document.getElementById('referralSection').style.display = 'none';
         document.getElementById('teachersSection').style.display = 'none';
         document.getElementById('messagesSection').style.display = 'none';
 
-        const sectionMap = { 'profile': 'profileSection', 'offers': 'offersSection', 'earnings': 'earningsSection', 'referral': 'referralSection', 'teachers': 'teachersSection', 'messages': 'messagesSection' };
+        const sectionMap = { 'profile': 'profileSection', 'offers': 'offersSection', 'courses': 'coursesSection', 'earnings': 'earningsSection', 'referral': 'referralSection', 'teachers': 'teachersSection', 'messages': 'messagesSection' };
         const target = document.getElementById(sectionMap[section]);
         if (target) target.style.display = 'block';
 
@@ -2162,6 +2246,7 @@
         closeAllDropdowns();
 
         if (section === 'offers') loadOffers();
+        if (section === 'courses') loadCourses();
         if (section === 'earnings') loadBalance();
         if (section === 'referral') loadReferralData();
         if (section === 'teachers') loadTeachers();
@@ -3760,6 +3845,141 @@
     });
 
     // ================================================================
+    // ✅ COURSES - إدارة الدورات
+    // ================================================================
+
+    async function loadCourses() {
+        const container = document.getElementById('coursesList');
+        container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+        try {
+            const res = await fetchWithAuth(`/api/course/teacher/${teacherId}`);
+            const data = await res.json();
+            renderCourses(data.courses || []);
+        } catch(e) { if (e.message !== 'انتهت صلاحية الجلسة') showToast('حدث خطأ', 'error'); }
+    }
+
+    function renderCourses(courses) {
+        const container = document.getElementById('coursesList');
+        if (courses.length === 0) {
+            container.innerHTML = '<p style="text-align:center; padding:25px; color:var(--gray-400);">لا توجد دورات حالياً</p>';
+            return;
+        }
+        let html = '<div class="courses-grid">';
+        for (const c of courses) {
+            html += `
+                <div class="course-card">
+                    <div style="display:flex; justify-content:space-between; align-items:start; gap:10px;">
+                        <div style="flex:1; min-width:0;">
+                            <h3 style="font-size:1rem; margin-bottom:4px; color:var(--gray-900);">${escapeHtml(c.title)}</h3>
+                            <p style="font-size:0.8rem; color:var(--gray-600); margin-bottom:6px;">${escapeHtml(c.description || '')}</p>
+                            <p style="font-size:0.8rem;"><strong>المستوى:</strong> ${escapeHtml(c.education_level || 'غير محدد')}</p>
+                            <p style="font-size:0.8rem;"><strong>السعر:</strong> ${c.is_free ? 'مجاني' : c.price + ' دج'}</p>
+                            <p style="font-size:0.75rem; color:var(--gray-500); word-break: break-all;">
+                                <a href="${escapeHtml(c.course_url)}" target="_blank" rel="noopener" style="color:var(--primary); text-decoration:none;">🔗 فتح رابط الدورة</a>
+                            </p>
+                        </div>
+                        <div class="button-group" style="flex-direction:column; gap:6px;">
+                            <button class="btn-edit" onclick="showEditCourseModal(${c.id}, '${escapeHtml(c.title)}', '${escapeHtml(c.description || '')}', ${c.price}, ${c.is_free}, '${escapeHtml(c.education_level)}', '${escapeHtml(c.course_url)}')">
+                                <i class="fas fa-edit"></i> تعديل
+                            </button>
+                            <button class="btn-delete" onclick="deleteCourse(${c.id})">
+                                <i class="fas fa-trash"></i> حذف
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    function showCreateCourseModal() {
+        document.getElementById('createCourseModal').style.display = 'block';
+        document.getElementById('courseTitle').value = '';
+        document.getElementById('courseDescription').value = '';
+        document.getElementById('coursePrice').value = '0';
+        document.getElementById('courseEducationLevel').value = '';
+        document.getElementById('courseUrl').value = '';
+    }
+
+    function showEditCourseModal(id, title, description, price, isFree, educationLevel, courseUrl) {
+        document.getElementById('createCourseModal').style.display = 'block';
+        document.getElementById('courseTitle').value = title;
+        document.getElementById('courseDescription').value = description;
+        document.getElementById('coursePrice').value = price;
+        document.getElementById('courseEducationLevel').value = educationLevel;
+        document.getElementById('courseUrl').value = courseUrl;
+        window.editingCourseId = id;
+    }
+
+    async function createCourse() {
+        const title = document.getElementById('courseTitle').value.trim();
+        const description = document.getElementById('courseDescription').value.trim();
+        const price = document.getElementById('coursePrice').value;
+        const educationLevel = document.getElementById('courseEducationLevel').value;
+        const courseUrl = document.getElementById('courseUrl').value.trim();
+        const editingId = window.editingCourseId;
+
+        if (!title) { showToast('يرجى إدخال اسم الدورة', 'error'); return; }
+        if (!educationLevel) { showToast('يرجى اختيار المستوى التعليمي', 'error'); return; }
+        if (!courseUrl) { showToast('يرجى إدخال رابط الدورة', 'error'); return; }
+
+        const url = new URL(courseUrl);
+        const hostname = url.hostname.replace(/^www\./, '');
+        const allowed = ['1024terabox.com', 'terabox.com', '4funbox.com', 'mirrobox.com', 'teraboxlink.com', 'teraboxlinks.com', 'nephobox.com', 'terabox.club', '1024tera.com'];
+        if (!allowed.includes(hostname)) {
+            showToast('الرابط يجب أن يكون من منصة Terabox/1024terabox فقط', 'error');
+            return;
+        }
+
+        const payload = {
+            title,
+            description: description || null,
+            price: parseFloat(price) || 0,
+            is_free: (parseFloat(price) || 0) === 0,
+            education_level: educationLevel,
+            course_url: courseUrl
+        };
+
+        try {
+            const endpoint = editingId ? `/api/course/update/${editingId}` : '/api/course/create';
+            const method = editingId ? 'PUT' : 'POST';
+            const res = await fetchWithAuth(endpoint, {
+                method,
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(editingId ? '✅ تم تحديث الدورة' : '✅ تم إنشاء الدورة بنجاح', 'success');
+                closeModal();
+                window.editingCourseId = null;
+                loadCourses();
+            } else {
+                showToast(data.error || '❌ حدث خطأ', 'error');
+            }
+        } catch(e) {
+            if (e.message !== 'انتهت صلاحية الجلسة') showToast('❌ حدث خطأ في الاتصال', 'error');
+        }
+    }
+
+    async function deleteCourse(id) {
+        if (!confirm('هل أنت متأكد من حذف هذه الدورة؟')) return;
+        try {
+            const res = await fetchWithAuth(`/api/course/delete/${id}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.success) {
+                showToast('✅ تم حذف الدورة', 'success');
+                loadCourses();
+            } else {
+                showToast(data.error || '❌ حدث خطأ', 'error');
+            }
+        } catch(e) {
+            if (e.message !== 'انتهت صلاحية الجلسة') showToast('❌ حدث خطأ', 'error');
+        }
+    }
+
+    // ================================================================
     // INIT
     // ================================================================
 
@@ -3774,6 +3994,7 @@
         if (visibleSection) {
             const section = visibleSection.dataset.section;
             if (section === 'offers') loadOffers();
+            if (section === 'courses') loadCourses();
             if (section === 'messages') loadConversations();
             if (section === 'referral') loadReferralData();
             if (section === 'earnings') loadBalance();
