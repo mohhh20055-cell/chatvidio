@@ -9,6 +9,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const multer = require('multer');
 const path = require('path');
+const axios = require('axios');
 
 const { supabase } = require('../config/database');
 const { authenticate, authorize, checkBanned } = require('../middleware/auth');
@@ -669,6 +670,185 @@ router.post('/login', checkBanned, authLimiter, [
             success: false, 
             error: 'حدث خطأ في الخادم. يرجى المحاولة مرة أخرى.' 
         });
+    }
+});
+
+// ============================================================
+// ✅ تسجيل الدخول / تسجيل بحساب Google
+// ============================================================
+router.post('/google', [
+    body('id_token').notEmpty().withMessage('رمز Google مطلوب'),
+    body('role').isIn(['student', 'teacher']).withMessage('دور غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { id_token, role } = req.body;
+        const googleClientId = process.env.GOOGLE_CLIENT_ID;
+
+        if (!googleClientId) {
+            return res.status(500).json({ success: false, error: 'GOOGLE_CLIENT_ID غير معرف في متغيرات البيئة' });
+        }
+
+        let tokenInfo;
+        try {
+            const { data } = await axios.get('https://oauth2.googleapis.com/tokeninfo', { params: { id_token } });
+            tokenInfo = data;
+        } catch (err) {
+            return res.status(401).json({ success: false, error: 'رمز Google غير صالح أو منتهي' });
+        }
+
+        if (tokenInfo.aud !== googleClientId) {
+            return res.status(401).json({ success: false, error: 'العميل غير مطابق' });
+        }
+
+        const googleId = tokenInfo.sub;
+        const email = tokenInfo.email;
+        const name = tokenInfo.name || tokenInfo.email.split('@')[0];
+        const picture = tokenInfo.picture || null;
+
+        if (!email) {
+            return res.status(400).json({ success: false, error: 'البريد الإلكتروني مطلوب من Google' });
+        }
+
+        let existingByGoogle = await getOne(role === 'teacher' ? 'teachers' : 'students', 'google_id', googleId);
+        let existingByEmail = await getOne(role === 'teacher' ? 'teachers' : 'students', 'email', email);
+
+        if (existingByGoogle || existingByEmail) {
+            const user = existingByGoogle || existingByEmail;
+            if (user.is_banned) {
+                return res.status(403).json({ success: false, error: '⛔ تم حظر حسابك من المنصة' });
+            }
+            if (role === 'teacher' && user.status === 'pending') {
+                return res.status(403).json({ success: false, error: '⏳ حسابك قيد المراجعة', pending_approval: true });
+            }
+            if (role === 'teacher' && user.status === 'rejected') {
+                return res.status(403).json({ success: false, error: '❌ تم رفض طلبك', rejected: true });
+            }
+
+            const token = generateToken(user.id, role, email);
+            return res.json({ success: true, token, redirectTo: role === 'teacher' ? '/teacher-dashboard.html' : '/student-dashboard.html', user: { id: user.id, name: user.full_name, role, email, profile_url: user.profile_url } });
+        }
+
+        const randomPassword = crypto.randomBytes(16).toString('hex');
+        const hashedPassword = bcrypt.hashSync(randomPassword, 12);
+
+        const newUser = await insert(role === 'teacher' ? 'teachers' : 'students', {
+            full_name: name,
+            email,
+            password: hashedPassword,
+            google_id: googleId,
+            profile_url: picture,
+            email_verified: true,
+            is_banned: false,
+            referral_balance: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        });
+
+        const token = generateToken(newUser.id, role, email);
+        res.json({
+            success: true,
+            token,
+            needs_completion: true,
+            role,
+            user: { id: newUser.id, name, email, role, profile_url: picture }
+        });
+    } catch (error) {
+        console.error('❌ خطأ في تسجيل Google:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// ✅ إكمال ملف الأستاذ بعد تسجيل Google (مع صور)
+// ============================================================
+router.post('/google/complete', authenticate, upload.fields([
+    { name: 'profile_image', maxCount: 1 },
+    { name: 'id_image', maxCount: 1 },
+    { name: 'diploma_image', maxCount: 1 }
+]), validateUploadedFiles, [
+    body('role').isIn(['student', 'teacher']).withMessage('دور غير صالح'),
+    body('full_name').optional().isLength({ max: 100 }),
+    body('phone').optional(),
+    body('specialization').optional().isLength({ max: 100 }),
+    body('bio').optional().isLength({ max: 500 }),
+    body('experience').optional(),
+    body('teaching_level').optional(),
+    body('education_level').optional()
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { role } = req.body;
+        const userId = req.user.userId;
+
+        if (req.user.role !== role) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        const table = role === 'teacher' ? 'teachers' : 'students';
+        const user = await getOne(table, 'id', userId);
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
+        }
+
+        const updateData = {};
+        if (req.body.full_name) updateData.full_name = req.body.full_name.trim();
+        if (req.body.phone) updateData.phone = req.body.phone.trim();
+
+        if (role === 'teacher') {
+            if (req.body.specialization) updateData.specialization = req.body.specialization.trim();
+            if (req.body.bio !== undefined) updateData.bio = req.body.bio ? req.body.bio.trim() : null;
+            if (req.body.experience) updateData.experience = req.body.experience.trim();
+            if (req.body.teaching_level) updateData.teaching_level = req.body.teaching_level.trim();
+
+            if (req.files) {
+                if (req.files['profile_image'] && req.files['profile_image'][0]) {
+                    const uploaded = await uploadToSupabase(req.files['profile_image'][0], 'teachers', user.profile_image);
+                    if (uploaded) {
+                        updateData.profile_image = uploaded.filename;
+                        updateData.profile_url = uploaded.url;
+                    }
+                }
+                if (req.files['id_image'] && req.files['id_image'][0]) {
+                    const uploaded = await uploadToSupabase(req.files['id_image'][0], 'ids', user.id_image);
+                    if (uploaded) updateData.id_image = uploaded.filename;
+                }
+                if (req.files['diploma_image'] && req.files['diploma_image'][0]) {
+                    const uploaded = await uploadToSupabase(req.files['diploma_image'][0], 'diplomas', user.diploma_image);
+                    if (uploaded) updateData.diploma_image = uploaded.filename;
+                }
+            }
+        } else {
+            if (req.body.education_level) updateData.education_level = req.body.education_level.trim();
+
+            if (req.files && req.files['profile_image'] && req.files['profile_image'][0]) {
+                const uploaded = await uploadToSupabase(req.files['profile_image'][0], 'students', user.profile_image);
+                if (uploaded) {
+                    updateData.profile_image = uploaded.filename;
+                    updateData.profile_url = uploaded.url;
+                }
+            }
+        }
+
+        const updated = await update(table, userId, updateData);
+
+        res.json({
+            success: true,
+            message: '✅ تم إكمال الملف الشخصي بنجاح',
+            user: updated,
+            redirectTo: role === 'teacher' ? '/teacher-dashboard.html' : '/student-dashboard.html'
+        });
+    } catch (error) {
+        console.error('❌ خطأ في إكمال الملف:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
 
