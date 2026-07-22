@@ -53,10 +53,8 @@ function attachImageUrls(teacher) {
         ...teacher,
         // ✅ الصورة الشخصية
         profile_image_url: getPublicImageUrl('profiles', 'teachers', teacher.profile_image),
-        // ✅ بطاقة الهوية - العمود الصحيح هو id_image
-        id_card_image_url: getPublicImageUrl('profiles', 'teachers', teacher.id_image),
-        // ✅ الشهادة/الدبلوم - العمود الصحيح هو diploma_image
-        certificate_image_url: getPublicImageUrl('profiles', 'teachers', teacher.diploma_image)
+        id_card_image_url: getPublicImageUrl('profiles', 'ids', teacher.id_image),
+        certificate_image_url: getPublicImageUrl('profiles', 'diplomas', teacher.diploma_image)
     };
 }
 
