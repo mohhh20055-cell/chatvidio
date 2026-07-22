@@ -16,7 +16,7 @@
             --primary-dark: #1e3a8a;
             --primary-light: #eff6ff;
             --primary-soft: #dbeafe;
-            --secondary: #059669;
+            --secondary: #047857;
             --secondary-dark: #047857;
             --secondary-soft: #d1fae5;
             --accent: #6366f1;
@@ -40,9 +40,9 @@
             --gray-800: #1e293b;
             --gray-900: #0f172a;
             --gradient-main: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
-            --gradient-secondary: linear-gradient(135deg, #059669 0%, #10b981 100%);
+            --gradient-secondary: linear-gradient(135deg, #047857 0%, #047857 100%);
             --gradient-gold: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
-            --gradient-danger: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+            --gradient-danger: linear-gradient(135deg, #dc2626 0%, #dc2626 100%);
             --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04);
             --shadow-md: 0 4px 6px rgba(0,0,0,0.02), 0 12px 28px rgba(0,0,0,0.06);
             --shadow-lg: 0 8px 20px rgba(0,0,0,0.04), 0 24px 56px rgba(0,0,0,0.08);
@@ -178,7 +178,7 @@
             width: 12px;
             height: 12px;
             border-radius: 50%;
-            background: #ef4444;
+            background: #dc2626;
             animation: pulse-dot 1.5s infinite;
         }
         .stream-timer-container .timer-header .stream-status .live-dot.paused {
@@ -234,7 +234,7 @@
             text-shadow: 0 0 30px rgba(245, 158, 11, 0.3);
         }
         .stream-timer-container .timer-display .time.danger {
-            color: #ef4444;
+            color: #dc2626;
             text-shadow: 0 0 30px rgba(239, 68, 68, 0.3);
             animation: pulse-time 1s infinite;
         }
@@ -252,7 +252,7 @@
         }
         .stream-timer-container .timer-display .progress-bar .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, #10b981, #f59e0b, #ef4444);
+            background: linear-gradient(90deg, #047857, #f59e0b, #dc2626);
             border-radius: 10px;
             transition: width 1s linear;
             width: 100%;
@@ -283,7 +283,7 @@
         }
         .stream-timer-container .timer-actions .btn-pause:hover { background: #d97706; transform: translateY(-2px); }
         .stream-timer-container .timer-actions .btn-resume {
-            background: #059669;
+            background: #047857;
             color: white;
         }
         .stream-timer-container .timer-actions .btn-resume:hover { background: #047857; transform: translateY(-2px); }
@@ -631,7 +631,7 @@
             cursor: pointer;
             transition: var(--transition);
             margin-bottom: 8px;
-            background: white;
+            background: #ffffff;
             box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
         }
         .notif-item:hover {
@@ -718,7 +718,7 @@
             top: 52px;
             left: 0;
             width: 260px;
-            background: white;
+            background: #ffffff;
             border-radius: var(--radius-md);
             box-shadow: var(--shadow-lg);
             border: 1px solid var(--gray-200);
@@ -775,7 +775,7 @@
         }
         
         .content-area {
-            background: white;
+            background: #ffffff;
             border-radius: var(--radius-md);
             padding: 20px;
             box-shadow: var(--shadow-sm);
@@ -919,7 +919,7 @@
         .status-upcoming { background: var(--gold); color: white; }
         .status-live { background: var(--danger); color: white; animation: pulse 1.5s infinite; }
         .status-completed { background: var(--gray-500); color: white; }
-        .status-teacher-ready { background: #8b5cf6; color: white; }
+        .status-teacher-ready { background: #6366f1; color: white; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
         .expired-label {
             position: absolute;
@@ -1116,7 +1116,7 @@
             box-shadow: 0 1px 4px rgba(0,0,0,0.04);
         }
         .message-bubble.sent .message-content { background: var(--gradient-main); color: white; }
-        .message-bubble.received .message-content { background: white; color: var(--gray-800); border: 1px solid var(--gray-200); }
+        .message-bubble.received .message-content { background: #ffffff; color: var(--gray-800); border: 1px solid var(--gray-200); }
         .message-time { font-size: 0.6rem; margin-top: 5px; opacity: 0.6; }
 
         .chat-input-area {
@@ -1133,7 +1133,7 @@
             font-size: 0.85rem;
             min-width: 0;
             transition: var(--transition);
-            background: white;
+            background: #ffffff;
         }
         .chat-input-area input:focus {
             border-color: var(--primary);
@@ -1225,7 +1225,7 @@
             font-size: 0.85rem;
             font-weight: 600;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04);
         }
         .social-link-item:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 6px 20px rgba(0,0,0,0.2); }
         .social-link-item i { font-size: 1.1rem; }
@@ -1253,7 +1253,7 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: white;
+            background: #ffffff;
             border-radius: var(--radius-md);
             width: 92%;
             max-width: 540px;
@@ -1291,7 +1291,7 @@
         .modal-body input:focus, .modal-body textarea:focus, .modal-body select:focus {
             border-color: var(--primary);
             outline: none;
-            background: white;
+            background: #ffffff;
             box-shadow: 0 0 0 4px rgba(15, 92, 191, 0.06);
         }
         .modal-body .social-input-group {
@@ -1624,14 +1624,14 @@
         <div id="streamTimerContainer" class="stream-timer-container" style="display: none;">
             <!-- تعليمات فتح البث -->
             <div id="streamInstructions" class="stream-instructions" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 12px 16px; margin-bottom: 14px;">
-                <div style="font-weight: 700; color: #10b981; margin-bottom: 8px; font-size: 0.9rem;">
+                <div style="font-weight: 700; color: #047857; margin-bottom: 8px; font-size: 0.9rem;">
                     <i class="fas fa-info-circle"></i> خطوات فتح البث:
                 </div>
                 <div style="font-size: 0.8rem; color: rgba(255,255,255,0.8); line-height: 1.6;">
-                    <div style="margin-bottom: 4px;"><span style="background: #10b981; color: white; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; margin-left: 6px;">1</span> اضغط على <strong style="color: #60a5fa;">"فتح البث"</strong> لفتح نافذة البث</div>
-                    <div style="margin-bottom: 4px;"><span style="background: #10b981; color: white; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; margin-left: 6px;">2</span> ادخل كلمة المرور عندما يُطلب منك</div>
+                    <div style="margin-bottom: 4px;"><span style="background: #047857; color: white; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; margin-left: 6px;">1</span> اضغط على <strong style="color: #60a5fa;">"فتح البث"</strong> لفتح نافذة البث</div>
+                    <div style="margin-bottom: 4px;"><span style="background: #047857; color: white; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; margin-left: 6px;">2</span> ادخل كلمة المرور عندما يُطلب منك</div>
                     <div style="margin-bottom: 4px;"><span style="background: #f59e0b; color: white; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; margin-left: 6px;">⚠️</span> <strong style="color: #f59e0b;">مهم:</strong> لا تضغط على "إضافة الطلاب" إلا بعد دخولك للبث كمضيف!</div>
-                    <div><span style="background: #10b981; color: white; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; margin-left: 6px;">3</span> اضغط على <strong style="color: #60a5fa;">"إضافة الطلاب"</strong> لبدء العد التنازلي وإضافة الطلاب</div>
+                    <div><span style="background: #047857; color: white; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; margin-left: 6px;">3</span> اضغط على <strong style="color: #60a5fa;">"إضافة الطلاب"</strong> لبدء العد التنازلي وإضافة الطلاب</div>
                 </div>
             </div>
             
@@ -2788,7 +2788,7 @@
             let levelDisplay = '';
             if (offer.education_level) {
                 const levelName = levelMap[offer.education_level] || offer.education_level;
-                levelDisplay = `<div style="font-size:0.75rem; color:#8b5cf6; margin-top:4px;"><i class="fas fa-graduation-cap"></i> المستوى: ${levelName}</div>`;
+                levelDisplay = `<div style="font-size:0.75rem; color:#6366f1; margin-top:4px;"><i class="fas fa-graduation-cap"></i> المستوى: ${levelName}</div>`;
             }
 
             let streamButton = '';
@@ -2938,7 +2938,7 @@
     function showGraceWarning() {
         const remaining = document.getElementById('timerRemainingLabel');
         if (remaining) {
-            remaining.style.color = '#ef4444';
+            remaining.style.color = '#dc2626';
             remaining.style.fontWeight = '700';
         }
         showToast('⚠️ انتهى وقت الحصة! لديك 10 دقائق لإنهاء البث قبل الإغلاق التلقائي', 'warning', 8000);
@@ -3033,7 +3033,7 @@
         // تحديث النص حسب حالة العداد
         if (streamGracePeriod) {
             remainingLabel.textContent = '⚠️ فترة السماح - سيُغلق البث تلقائياً';
-            remainingLabel.style.color = '#ef4444';
+            remainingLabel.style.color = '#dc2626';
         } else if (!timerStarted) {
             remainingLabel.textContent = '⏳ اضغط على "إضافة الطلاب" لبدء العد التنازلي';
             remainingLabel.style.color = '';
