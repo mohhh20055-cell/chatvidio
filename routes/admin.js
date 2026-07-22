@@ -49,12 +49,28 @@ function getPublicImageUrl(bucketName, folder, fileName) {
 // profile_image, id_image, diploma_image
 function attachImageUrls(teacher) {
     if (!teacher) return teacher;
+    const profile_image_url = getPublicImageUrl('profiles', 'teachers', teacher.profile_image);
+    const id_card_image_url = getPublicImageUrl('profiles', 'ids', teacher.id_image);
+    const certificate_image_url = getPublicImageUrl('profiles', 'diplomas', teacher.diploma_image);
+
+    if (profile_image_url || id_card_image_url || certificate_image_url) {
+        console.log('🖼️ روابط الصور للأستاذ:', {
+            id: teacher.id,
+            name: teacher.full_name,
+            profile_image_url,
+            id_card_image_url,
+            certificate_image_url,
+            raw_profile_image: teacher.profile_image,
+            raw_id_image: teacher.id_image,
+            raw_diploma_image: teacher.diploma_image
+        });
+    }
+
     return {
         ...teacher,
-        // ✅ الصورة الشخصية
-        profile_image_url: getPublicImageUrl('profiles', 'teachers', teacher.profile_image),
-        id_card_image_url: getPublicImageUrl('profiles', 'ids', teacher.id_image),
-        certificate_image_url: getPublicImageUrl('profiles', 'diplomas', teacher.diploma_image)
+        profile_image_url,
+        id_card_image_url,
+        certificate_image_url
     };
 }
 
