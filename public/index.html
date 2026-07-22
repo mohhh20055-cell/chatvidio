@@ -459,7 +459,7 @@
             right: 0;
             margin-top: 8px;
             background: #ffffff;
-            border: 1px solid rgba(0,0,0,0.08);
+            border: 1px solid #f1f5f9;
             border-radius: var(--radius-sm);
             box-shadow: var(--shadow-lg);
             min-width: 220px;
@@ -1874,7 +1874,7 @@
             width: 100%;
             padding: 14px 18px;
             margin-bottom: 14px;
-            border: 2px solid #edf2f7;
+            border: 2px solid #f1f5f9;
             border-radius: var(--radius-sm);
             font-family: var(--font-family);
             font-size: 0.95rem;
@@ -2156,7 +2156,7 @@
         .support-card textarea {
             width: 100%;
             padding: 14px 18px;
-            border: 2px solid #edf2f7;
+            border: 2px solid #f1f5f9;
             border-radius: var(--radius-sm);
             font-family: var(--font-family);
             font-size: 0.95rem;
@@ -3007,7 +3007,7 @@
                         <i class="fas fa-graduation-cap" style="color: var(--primary); margin-left: 6px;" aria-hidden="true"></i>
                         المستوى الدراسي <span style="color: var(--danger);">*</span>
                     </label>
-                    <select id="studentEducationLevel" required aria-label="المستوى الدراسي" style="width: 100%; padding: 14px 18px; border: 2px solid #edf2f7; border-radius: var(--radius-sm); font-family: var(--font-family); font-size: 0.95rem; transition: var(--transition); background: #fafbfc;">
+                    <select id="studentEducationLevel" required aria-label="المستوى الدراسي" style="width: 100%; padding: 14px 18px; border: 2px solid #f1f5f9; border-radius: var(--radius-sm); font-family: var(--font-family); font-size: 0.95rem; transition: var(--transition); background: #fafbfc;">
                         <option value="">-- اختر المستوى --</option>
                         <option value="5eme_pri">خامسة ابتدائي</option>
                         <option value="1ere_am">أولى متوسط</option>
@@ -3033,6 +3033,16 @@
                 </div>
                 
                 <button class="btn-primary" onclick="registerStudent()" style="width:100%; justify-content:center;">تسجيل</button>
+
+                <div style="margin-top: 14px; display: flex; align-items: center; gap: 10px;">
+                    <div style="flex:1; height:1px; background:#e2e8f0;"></div>
+                    <span style="color: var(--gray); font-size: 0.8rem;">أو</span>
+                    <div style="flex:1; height:1px; background:#e2e8f0;"></div>
+                </div>
+                <button id="googleSignInBtnStudentRegister" onclick="signInWithGoogle('student')" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px 16px; border:1px solid #dadce0; border-radius:8px; background:#ffffff; cursor:pointer; font-family:var(--font-family); font-size:0.95rem; color:#3c4043; margin-top:8px;">
+                    <svg width="18" height="18" viewBox="0 0 48 48" style="flex-shrink:0;"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.2l6.8-6.8C35.9 2.7 30.4 0 24 0 14.6 0 6.5 5.4 2.6 13.3l8.1 6.3C12.3 13.1 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.2-.4-4.7H24v9.4h12.7c-.5 2.5-2 4.6-4.2 6l6.9 5.3c4-3.7 6.3-9.1 6.3-15.9z"/><path fill="#FBBC05" d="M10.7 28.6c-1.1-3.3-1.1-6.8 0-10.1L2.6 13.3C.5 19.3.5 25.7 2.6 31.7l8.1-3.1z"/><path fill="#34A853" d="M24 48c6.5 0 12-2.1 16-5.7l-8-6.3c-2.5 1.7-5.7 2.7-9 2.7-6.2 0-11.7-3.4-14.3-8.3l-8.1 3.1C6.5 42.6 14.6 48 24 48z"/></svg>
+                    تسجيل الدخول بحساب Google
+                </button>
             </div>
 
             <!-- ===== TEACHER REGISTER TAB ===== -->
@@ -3058,7 +3068,7 @@
                         <i class="fas fa-graduation-cap" style="color: var(--primary); margin-left: 6px;" aria-hidden="true"></i>
                         المستوى الدراسي الذي ستدرسه <span style="color: var(--danger);">*</span>
                     </label>
-                    <select id="teacherTeachingLevel" required aria-label="المستوى الدراسي" style="width: 100%; padding: 14px 18px; border: 2px solid #edf2f7; border-radius: var(--radius-sm); font-family: var(--font-family); font-size: 0.95rem; transition: var(--transition); background: #fafbfc;">
+                    <select id="teacherTeachingLevel" required aria-label="المستوى الدراسي" style="width: 100%; padding: 14px 18px; border: 2px solid #f1f5f9; border-radius: var(--radius-sm); font-family: var(--font-family); font-size: 0.95rem; transition: var(--transition); background: #fafbfc;">
                         <option value="">-- اختر المستوى --</option>
                         <option value="5eme_pri">خامسة ابتدائي</option>
                         <option value="1ere_am">أولى متوسط</option>
@@ -3091,6 +3101,16 @@
                 </div>
                 
                 <button class="btn-primary" onclick="registerTeacher()" style="width:100%; justify-content:center;">تقديم الطلب</button>
+
+                <div style="margin-top: 14px; display: flex; align-items: center; gap: 10px;">
+                    <div style="flex:1; height:1px; background:#e2e8f0;"></div>
+                    <span style="color: var(--gray); font-size: 0.8rem;">أو</span>
+                    <div style="flex:1; height:1px; background:#e2e8f0;"></div>
+                </div>
+                <button id="googleSignInBtnTeacherRegister" onclick="signInWithGoogle('teacher')" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px 16px; border:1px solid #dadce0; border-radius:8px; background:#ffffff; cursor:pointer; font-family:var(--font-family); font-size:0.95rem; color:#3c4043; margin-top:8px;">
+                    <svg width="18" height="18" viewBox="0 0 48 48" style="flex-shrink:0;"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.2l6.8-6.8C35.9 2.7 30.4 0 24 0 14.6 0 6.5 5.4 2.6 13.3l8.1 6.3C12.3 13.1 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.2-.4-4.7H24v9.4h12.7c-.5 2.5-2 4.6-4.2 6l6.9 5.3c4-3.7 6.3-9.1 6.3-15.9z"/><path fill="#FBBC05" d="M10.7 28.6c-1.1-3.3-1.1-6.8 0-10.1L2.6 13.3C.5 19.3.5 25.7 2.6 31.7l8.1-3.1z"/><path fill="#34A853" d="M24 48c6.5 0 12-2.1 16-5.7l-8-6.3c-2.5 1.7-5.7 2.7-9 2.7-6.2 0-11.7-3.4-14.3-8.3l-8.1 3.1C6.5 42.6 14.6 48 24 48z"/></svg>
+                    تسجيل الدخول بحساب Google
+                </button>
             </div>
         </section>
 
@@ -4278,11 +4298,15 @@
         var googleAccessToken = null;
         var googleNeedsCompletion = false;
 
-        function signInWithGoogle() {
+        function signInWithGoogle(role) {
             if (!window.GOOGLE_CLIENT_ID) {
                 showNotification('Google Client ID غير مضبوط', 'error');
                 return;
             }
+            if (!role) {
+                role = document.getElementById('loginRole').value;
+            }
+            document.getElementById('googleRole').value = role;
             google.accounts.id.initialize({
                 client_id: window.GOOGLE_CLIENT_ID,
                 callback: handleGoogleCredential
