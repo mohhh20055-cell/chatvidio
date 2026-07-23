@@ -104,7 +104,7 @@ async function formatOffers(offers) {
 router.get(['/teachers', '/public/teachers'], async (req, res) => {
     try {
         const { level } = req.query;
-        
+
         let teachers = await fetchApprovedTeachers();
 
         // ✅ فلتر حسب المستوى التعليمي
@@ -115,7 +115,7 @@ router.get(['/teachers', '/public/teachers'], async (req, res) => {
         // ✅ إضافة معلومات البث لكل أستاذ
         const teacherIds = teachers.map(t => t.id);
         let streamInfo = {};
-        
+
         if (teacherIds.length > 0) {
             const { data: liveOffers, error: liveError } = await supabase
                 .from('offers')
@@ -133,7 +133,7 @@ router.get(['/teachers', '/public/teachers'], async (req, res) => {
                             remaining_seconds: 0
                         };
                     }
-                    
+
                     if (offer.status === 'live' || offer.status === 'teacher_ready') {
                         streamInfo[offer.teacher_id].has_live_stream = true;
                         streamInfo[offer.teacher_id].stream_status = offer.status;
@@ -281,18 +281,18 @@ router.get('/public/teacher/:teacherId', [
                 .select('*')
                 .eq('teacher_id', teacherId)
                 .order('created_at', { ascending: false }),
-            
+
             supabase
                 .from('offers')
                 .select('*', { count: 'exact', head: true })
                 .eq('teacher_id', teacherId),
-            
+
             (async () => {
                 const { data: offersIds } = await supabase
                     .from('offers')
                     .select('id')
                     .eq('teacher_id', teacherId);
-                
+
                 if (offersIds && offersIds.length > 0) {
                     const offerIds = offersIds.map(o => o.id);
                     return supabase
@@ -303,13 +303,13 @@ router.get('/public/teacher/:teacherId', [
                 }
                 return { data: null, count: 0, error: null };
             })(),
-            
+
             (async () => {
                 const { data: offersIds } = await supabase
                     .from('offers')
                     .select('id')
                     .eq('teacher_id', teacherId);
-                
+
                 if (offersIds && offersIds.length > 0) {
                     const offerIds = offersIds.map(o => o.id);
                     return supabase
@@ -397,26 +397,26 @@ router.get('/public/stats', async (req, res) => {
                 .select('*', { count: 'exact', head: true })
                 .eq('status', 'approved')
                 .eq('is_banned', false),
-            
+
             supabase
                 .from('students')
                 .select('*', { count: 'exact', head: true })
                 .eq('is_banned', false),
-            
+
             supabase
                 .from('offers')
                 .select('*', { count: 'exact', head: true })
                 .in('status', ['live', 'teacher_ready']),
-            
+
             supabase
                 .from('offers')
                 .select('*', { count: 'exact', head: true })
                 .eq('status', 'paused'),
-            
+
             supabase
                 .from('active_stream')
                 .select('*', { count: 'exact', head: true }),
-            
+
             supabase
                 .from('teachers')
                 .select('teaching_level')

@@ -66,7 +66,7 @@ function trackLoginAttempt(email) {
     }
 
     const record = loginAttempts.get(email);
-    
+
     if (now - record.firstAttempt > LOCKOUT_TIME) {
         loginAttempts.set(email, { count: 1, firstAttempt: now, lastAttempt: now });
         return { count: 1, locked: false };
@@ -182,10 +182,10 @@ router.post('/teacher/register', checkBanned, upload.fields([
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             const errorMessages = errors.array().map(e => e.msg).join('، ');
-            return res.status(400).json({ 
-                success: false, 
+            return res.status(400).json({
+                success: false,
                 error: errorMessages,
-                errors: errors.array() 
+                errors: errors.array()
             });
         }
 
@@ -196,33 +196,33 @@ router.post('/teacher/register', checkBanned, upload.fields([
         // ✅ 2. التحقق من reCAPTCHA
         const recaptchaResult = await verifyRecaptcha(recaptcha_token);
         if (!recaptchaResult.success) {
-            return res.status(400).json({ 
-                success: false, 
-                error: recaptchaResult.error || 'فشل التحقق من reCAPTCHA، يرجى المحاولة مرة أخرى' 
+            return res.status(400).json({
+                success: false,
+                error: recaptchaResult.error || 'فشل التحقق من reCAPTCHA، يرجى المحاولة مرة أخرى'
             });
         }
 
         // ✅ 3. التحقق من وجود البريد
         const existingTeacher = await getOne('teachers', 'email', email);
         if (existingTeacher) {
-            return res.status(400).json({ 
-                success: false, 
-                error: '⚠️ البريد الإلكتروني مستخدم مسبقاً. يرجى استخدام بريد إلكتروني آخر.' 
+            return res.status(400).json({
+                success: false,
+                error: '⚠️ البريد الإلكتروني مستخدم مسبقاً. يرجى استخدام بريد إلكتروني آخر.'
             });
         }
 
         // ✅ 4. التحقق من وجود البريد في جدول الطلاب أيضاً (لا يمكن استخدام نفس البريد)
         const existingStudent = await getOne('students', 'email', email);
         if (existingStudent) {
-            return res.status(400).json({ 
-                success: false, 
-                error: '⚠️ هذا البريد الإلكتروني مستخدم كطالب. يرجى استخدام بريد إلكتروني آخر.' 
+            return res.status(400).json({
+                success: false,
+                error: '⚠️ هذا البريد الإلكتروني مستخدم كطالب. يرجى استخدام بريد إلكتروني آخر.'
             });
         }
 
         // ✅ 5. تشفير كلمة المرور
         const hashedPassword = bcrypt.hashSync(password, SALT_ROUNDS);
-        
+
         // ✅ 6. رفع الملفات
         let profile_image = null;
         let profile_url = null;
@@ -302,8 +302,8 @@ router.post('/teacher/register', checkBanned, upload.fields([
         }
 
         // ✅ 11. الرد بنجاح - لا يتم إرسال بريد تحقق للأستاذ
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
             message: '✅ تم تسجيل حسابك بنجاح! سيتم مراجعة طلبك من قبل الإدارة. سيتم إعلامك عبر البريد الإلكتروني عند قبول حسابك.',
             teacher_id: newTeacher.id,
             email: email,
@@ -316,9 +316,9 @@ router.post('/teacher/register', checkBanned, upload.fields([
     } catch (error) {
         console.error('❌ خطأ في تسجيل أستاذ:', error.message);
         console.error('📚 Stack:', error.stack);
-        res.status(500).json({ 
-            success: false, 
-            error: 'حدث خطأ أثناء التسجيل. يرجى المحاولة مرة أخرى.' 
+        res.status(500).json({
+            success: false,
+            error: 'حدث خطأ أثناء التسجيل. يرجى المحاولة مرة أخرى.'
         });
     }
 });
@@ -340,10 +340,10 @@ router.post('/student/register', checkBanned, [
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             const errorMessages = errors.array().map(e => e.msg).join('، ');
-            return res.status(400).json({ 
-                success: false, 
+            return res.status(400).json({
+                success: false,
                 error: errorMessages,
-                errors: errors.array() 
+                errors: errors.array()
             });
         }
 
@@ -354,33 +354,33 @@ router.post('/student/register', checkBanned, [
         // ✅ 2. التحقق من reCAPTCHA
         const recaptchaResult = await verifyRecaptcha(recaptcha_token);
         if (!recaptchaResult.success) {
-            return res.status(400).json({ 
-                success: false, 
-                error: recaptchaResult.error || 'فشل التحقق من reCAPTCHA، يرجى المحاولة مرة أخرى' 
+            return res.status(400).json({
+                success: false,
+                error: recaptchaResult.error || 'فشل التحقق من reCAPTCHA، يرجى المحاولة مرة أخرى'
             });
         }
 
         // ✅ 3. التحقق من وجود البريد في جدول الطلاب
         const existingStudent = await getOne('students', 'email', email);
         if (existingStudent) {
-            return res.status(400).json({ 
-                success: false, 
-                error: '⚠️ البريد الإلكتروني مستخدم مسبقاً. يرجى استخدام بريد إلكتروني آخر.' 
+            return res.status(400).json({
+                success: false,
+                error: '⚠️ البريد الإلكتروني مستخدم مسبقاً. يرجى استخدام بريد إلكتروني آخر.'
             });
         }
 
         // ✅ 4. التحقق من وجود البريد في جدول الأساتذة أيضاً
         const existingTeacher = await getOne('teachers', 'email', email);
         if (existingTeacher) {
-            return res.status(400).json({ 
-                success: false, 
-                error: '⚠️ هذا البريد الإلكتروني مستخدم كأستاذ. يرجى استخدام بريد إلكتروني آخر.' 
+            return res.status(400).json({
+                success: false,
+                error: '⚠️ هذا البريد الإلكتروني مستخدم كأستاذ. يرجى استخدام بريد إلكتروني آخر.'
             });
         }
 
         // ✅ 5. تشفير كلمة المرور
         const hashedPassword = bcrypt.hashSync(password, SALT_ROUNDS);
-        
+
         // ✅ 6. إنشاء الطالب في قاعدة البيانات
         const newStudent = await insert('students', {
             full_name: full_name.trim(),
@@ -429,8 +429,8 @@ router.post('/student/register', checkBanned, [
         }
 
         // ✅ 11. الرد بنجاح - لا يتم إرسال بريد تحقق للطالب
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
             message: '✅ تم تسجيل حسابك بنجاح! يمكنك الآن تسجيل الدخول والبدء في التعلم.',
             student_id: newStudent.id,
             email: email,
@@ -444,9 +444,9 @@ router.post('/student/register', checkBanned, [
     } catch (error) {
         console.error('❌ خطأ في تسجيل طالب:', error.message);
         console.error('📚 Stack:', error.stack);
-        res.status(500).json({ 
-            success: false, 
-            error: 'حدث خطأ أثناء التسجيل. يرجى المحاولة مرة أخرى.' 
+        res.status(500).json({
+            success: false,
+            error: 'حدث خطأ أثناء التسجيل. يرجى المحاولة مرة أخرى.'
         });
     }
 });
@@ -463,9 +463,9 @@ router.post('/login', checkBanned, authLimiter, [
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             const errorMessages = errors.array().map(e => e.msg).join('، ');
-            return res.status(400).json({ 
-                success: false, 
-                error: errorMessages 
+            return res.status(400).json({
+                success: false,
+                error: errorMessages
             });
         }
 
@@ -476,21 +476,21 @@ router.post('/login', checkBanned, authLimiter, [
             if (email !== ADMIN_EMAIL) {
                 return res.status(401).json({ success: false, error: '❌ بيانات الدخول غير صحيحة' });
             }
-            
+
             const isValid = bcrypt.compareSync(password, ADMIN_PASSWORD_HASH);
             if (!isValid) {
                 return res.status(401).json({ success: false, error: '❌ بيانات الدخول غير صحيحة' });
             }
-            
+
             const token = generateToken(0, 'admin', email);
-            
+
             return res.json({
                 success: true,
                 token: token,
                 redirectTo: '/admin.html',
-                user: { 
-                    id: 0, 
-                    name: 'مدير المنصة', 
+                user: {
+                    id: 0,
+                    name: 'مدير المنصة',
                     role: 'admin',
                     email: ADMIN_EMAIL
                 }
@@ -519,20 +519,20 @@ router.post('/login', checkBanned, authLimiter, [
             userRole = 'student';
         }
 
-        logger.info('نتيجة جلب المستخدم', { 
-            email, 
-            role, 
-            userFound: !!user, 
-            userId: user?.id 
+        logger.info('نتيجة جلب المستخدم', {
+            email,
+            role,
+            userFound: !!user,
+            userId: user?.id
         });
 
         // ✅ التحقق من وجود المستخدم
         if (!user) {
             trackLoginAttempt(email);
             logger.warn('تسجيل دخول فاشل - مستخدم غير موجود', { email, role });
-            return res.status(404).json({ 
-                success: false, 
-                error: '❌ البريد الإلكتروني غير موجود. يرجى التحقق من البريد أو التسجيل أولاً.' 
+            return res.status(404).json({
+                success: false,
+                error: '❌ البريد الإلكتروني غير موجود. يرجى التحقق من البريد أو التسجيل أولاً.'
             });
         }
 
@@ -550,9 +550,9 @@ router.post('/login', checkBanned, authLimiter, [
         const validPassword = bcrypt.compareSync(password, user.password);
         if (!validPassword) {
             trackLoginAttempt(email);
-            return res.status(401).json({ 
-                success: false, 
-                error: '❌ كلمة المرور خاطئة. يرجى المحاولة مرة أخرى.' 
+            return res.status(401).json({
+                success: false,
+                error: '❌ كلمة المرور خاطئة. يرجى المحاولة مرة أخرى.'
             });
         }
 
@@ -561,22 +561,22 @@ router.post('/login', checkBanned, authLimiter, [
         // ✅ التحقق من حالة الأستاذ (pending / approved / rejected)
         if (userRole === 'teacher') {
             if (user.status === 'pending') {
-                return res.status(403).json({ 
-                    success: false, 
+                return res.status(403).json({
+                    success: false,
                     error: '⏳ حسابك قيد المراجعة من قبل الإدارة. سيتم إعلامك عند قبول حسابك.',
                     pending_approval: true
                 });
             }
             if (user.status === 'rejected') {
-                return res.status(403).json({ 
-                    success: false, 
+                return res.status(403).json({
+                    success: false,
                     error: `❌ تم رفض طلبك. السبب: ${user.rejection_reason || 'لم يتم تحديد سبب'}`,
                     rejected: true
                 });
             }
             if (user.status !== 'approved') {
-                return res.status(403).json({ 
-                    success: false, 
+                return res.status(403).json({
+                    success: false,
                     error: '❌ حسابك غير مفعل. يرجى التواصل مع الإدارة.',
                     status: user.status
                 });
@@ -629,7 +629,7 @@ router.post('/login', checkBanned, authLimiter, [
         // ✅ إنشاء التوكن
         const token = generateToken(user.id, userRole, email);
         const redirectPath = userRole === 'teacher' ? '/teacher-dashboard.html' : '/student-dashboard.html';
-        
+
         // ✅ بيانات المستخدم المرجعة
         const userData = {
             id: user.id,
@@ -645,13 +645,13 @@ router.post('/login', checkBanned, authLimiter, [
             status: user.status || null,
             has_active_stream: hasActiveStream // ✅ إعلام العميل بوجود بث نشط
         };
-        
+
         logger.info('تسجيل دخول ناجح', {
             userId: user.id,
             role: userRole,
             email: email
         });
-        
+
         res.json({
             success: true,
             token: token,
@@ -666,9 +666,9 @@ router.post('/login', checkBanned, authLimiter, [
             error: error.message,
             stack: error.stack
         });
-        res.status(500).json({ 
-            success: false, 
-            error: 'حدث خطأ في الخادم. يرجى المحاولة مرة أخرى.' 
+        res.status(500).json({
+            success: false,
+            error: 'حدث خطأ في الخادم. يرجى المحاولة مرة أخرى.'
         });
     }
 });
@@ -1017,9 +1017,9 @@ router.post('/forgot-password', [
         const user = await getOne(table, 'email', email);
 
         if (!user) {
-            return res.status(404).json({ 
-                success: false, 
-                error: '❌ لا يوجد حساب بهذا البريد الإلكتروني' 
+            return res.status(404).json({
+                success: false,
+                error: '❌ لا يوجد حساب بهذا البريد الإلكتروني'
             });
         }
 
@@ -1036,9 +1036,9 @@ router.post('/forgot-password', [
         const emailSent = await sendResetEmail(email, user.full_name, resetUrl);
 
         if (emailSent) {
-            res.json({ 
-                success: true, 
-                message: '✅ تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني' 
+            res.json({
+                success: true,
+                message: '✅ تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني'
             });
         } else {
             res.json({
@@ -1076,9 +1076,9 @@ router.post('/verify-reset-token', [
             reset.role !== role ||
             reset.used ||
             new Date(reset.expires_at) < new Date()) {
-            return res.status(400).json({ 
-                success: false, 
-                error: '❌ رابط إعادة التعيين غير صالح أو منتهي الصلاحية' 
+            return res.status(400).json({
+                success: false,
+                error: '❌ رابط إعادة التعيين غير صالح أو منتهي الصلاحية'
             });
         }
 
@@ -1112,9 +1112,9 @@ router.post('/reset-password', [
             reset.role !== role ||
             reset.used ||
             new Date(reset.expires_at) < new Date()) {
-            return res.status(400).json({ 
-                success: false, 
-                error: '❌ رابط إعادة التعيين غير صالح أو منتهي الصلاحية' 
+            return res.status(400).json({
+                success: false,
+                error: '❌ رابط إعادة التعيين غير صالح أو منتهي الصلاحية'
             });
         }
 
@@ -1133,9 +1133,9 @@ router.post('/reset-password', [
 
         await markPasswordResetUsed(token);
 
-        res.json({ 
-            success: true, 
-            message: '✅ تم تغيير كلمة المرور بنجاح' 
+        res.json({
+            success: true,
+            message: '✅ تم تغيير كلمة المرور بنجاح'
         });
     } catch (error) {
         console.error('خطأ في إعادة تعيين كلمة المرور:', error.message);
@@ -1153,9 +1153,9 @@ router.get('/me', authenticate, async (req, res) => {
 
         let user = null;
         let table = role === 'student' ? 'students' : 'teachers';
-        
+
         user = await getOne(table, 'id', userId);
-        
+
         if (!user) {
             return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
         }

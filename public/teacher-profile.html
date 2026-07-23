@@ -4,26 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>ZoomDz | منصة تعليمية</title>
-    
+
     <!-- ===== FAVICON & BRANDING ===== -->
     <link rel="icon" type="image/png" href="/images/zoomdz-logo.png">
     <link rel="shortcut icon" href="/images/zoomdz-logo.png">
     <link rel="apple-touch-icon" href="/images/zoomdz-logo.png">
-    
+
     <!-- ===== FONTS & ICONS ===== -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    
+
     <!-- ===== CONFIG + reCAPTCHA v2 ===== -->
     <script src="/config.js"></script>
     <script src="/js/recaptcha.js"></script>
     <script src="https://www.google.com/recaptcha/api.js?hl=ar&onload=onRecaptchaLoaded&render=explicit" async defer></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    
+
     <style>
         /* ===== RESET & BASE ===== */
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+
         :root {
             --primary: #1e40af;
             --primary-dark: #1e3a8a;
@@ -59,10 +59,10 @@
             --radius-lg: 24px;
             --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        
-        body { 
-            font-family: 'Cairo', sans-serif; 
-            background: #f8fafc; 
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: #f8fafc;
             min-height: 100vh;
             color: var(--dark);
             overflow-x: hidden;
@@ -70,8 +70,8 @@
 
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f8fafc; }
-        ::-webkit-scrollbar-thumb { 
-            background: var(--gradient-main); 
+        ::-webkit-scrollbar-thumb {
+            background: var(--gradient-main);
             border-radius: 10px;
         }
         ::-webkit-scrollbar-thumb:hover { background: var(--primary-dark); }
@@ -89,14 +89,14 @@
             animation: slideDown 0.5s ease;
             z-index: 999;
         }
-        
+
         .referral-banner.show { display: block; }
-        
+
         @keyframes slideDown {
             from { opacity: 0; transform: translateY(-20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        
+
         .referral-banner .close-banner {
             position: absolute;
             left: 16px;
@@ -115,11 +115,11 @@
             justify-content: center;
             transition: var(--transition);
         }
-        
+
         .referral-banner .close-banner:hover {
             background: rgba(255,255,255,0.3);
         }
-        
+
         .referral-banner .highlight-text {
             background: rgba(255,255,255,0.2);
             padding: 2px 12px;
@@ -128,7 +128,7 @@
             font-size: 1.1rem;
             letter-spacing: 1px;
         }
-        
+
         .referral-banner .btn-jump {
             background: rgba(255,255,255,0.2);
             border: 2px solid rgba(255,255,255,0.3);
@@ -141,7 +141,7 @@
             transition: var(--transition);
             margin-right: 8px;
         }
-        
+
         .referral-banner .btn-jump:hover {
             background: #ffffff;
             color: var(--gold-dark);
@@ -159,7 +159,7 @@
             z-index: 1000;
             border-bottom: 1px solid rgba(255,255,255,0.2);
         }
-        
+
         .nav-container {
             max-width: 1280px;
             margin: 0 auto;
@@ -169,7 +169,7 @@
             flex-wrap: wrap;
             gap: 10px;
         }
-        
+
         .logo {
             font-size: 1.6rem;
             font-weight: 900;
@@ -180,7 +180,7 @@
             text-decoration: none;
             position: relative;
         }
-        
+
         .logo-icon-wrapper {
             width: 44px;
             height: 44px;
@@ -192,28 +192,28 @@
             box-shadow: 0 4px 12px rgba(15, 92, 191, 0.25);
             transition: var(--transition);
         }
-        
+
         .logo-icon-wrapper:hover {
             transform: rotate(-8deg) scale(1.05);
             box-shadow: 0 6px 20px rgba(15, 92, 191, 0.35);
         }
-        
+
         .logo-icon-wrapper i {
             font-size: 1.4rem;
             color: white;
         }
-        
+
         .logo-text {
             display: flex;
             align-items: baseline;
             gap: 2px;
         }
-        
+
         .logo-text span:first-child {
             color: var(--primary);
             font-size: 1.7rem;
         }
-        
+
         .logo-text .highlight {
             background: var(--gradient-secondary);
             -webkit-background-clip: text;
@@ -221,7 +221,7 @@
             background-clip: text;
             font-size: 1.7rem;
         }
-        
+
         .logo-badge {
             font-size: 0.55rem;
             background: var(--gradient-accent);
@@ -233,14 +233,14 @@
             letter-spacing: 0.5px;
             text-transform: uppercase;
         }
-        
+
         .nav-links {
             display: flex;
             gap: 4px;
             flex-wrap: wrap;
             align-items: center;
         }
-        
+
         .nav-links a {
             text-decoration: none;
             color: var(--dark-light);
@@ -252,7 +252,7 @@
             font-size: 0.85rem;
             position: relative;
         }
-        
+
         .nav-links a::after {
             content: '';
             position: absolute;
@@ -265,27 +265,27 @@
             transition: var(--transition);
             border-radius: 10px;
         }
-        
+
         .nav-links a:hover::after,
         .nav-links a.active::after {
             width: 60%;
         }
-        
-        .nav-links a:hover { 
-            background: var(--primary-light); 
-            color: var(--primary); 
+
+        .nav-links a:hover {
+            background: var(--primary-light);
+            color: var(--primary);
         }
-        
-        .nav-links a.active { 
-            background: var(--primary); 
+
+        .nav-links a.active {
+            background: var(--primary);
             color: white;
             box-shadow: 0 4px 12px rgba(15, 92, 191, 0.3);
         }
-        
+
         .nav-links a.active::after {
             display: none;
         }
-        
+
         .download-app-btn {
             background: var(--gradient-secondary);
             color: white;
@@ -301,12 +301,12 @@
             align-items: center;
             gap: 8px;
         }
-        
+
         .download-app-btn:hover {
             transform: translateY(-2px) scale(1.02);
             box-shadow: 0 6px 24px rgba(16, 185, 129, 0.4);
         }
-        
+
         .download-app-btn i {
             font-size: 0.9rem;
         }
@@ -323,7 +323,7 @@
             gap: 50px;
             position: relative;
         }
-        
+
         .hero::before {
             content: '';
             position: absolute;
@@ -336,14 +336,14 @@
             pointer-events: none;
             z-index: 0;
         }
-        
+
         .hero-content {
             flex: 1;
             min-width: 300px;
             position: relative;
             z-index: 1;
         }
-        
+
         .hero-badge {
             display: inline-block;
             background: var(--accent-light);
@@ -356,11 +356,11 @@
             letter-spacing: 0.5px;
             border: 1px solid rgba(139, 92, 246, 0.15);
         }
-        
+
         .hero-badge i {
             margin-left: 6px;
         }
-        
+
         .hero-content h1 {
             font-size: 3rem;
             font-weight: 900;
@@ -368,7 +368,7 @@
             margin-bottom: 16px;
             color: var(--dark);
         }
-        
+
         .hero-content h1 .highlight {
             background: var(--gradient-main);
             -webkit-background-clip: text;
@@ -376,7 +376,7 @@
             background-clip: text;
             position: relative;
         }
-        
+
         .hero-content h1 .highlight::after {
             content: '';
             position: absolute;
@@ -388,7 +388,7 @@
             opacity: 0.15;
             border-radius: 10px;
         }
-        
+
         .hero-content p {
             font-size: 1.1rem;
             color: var(--gray);
@@ -396,7 +396,7 @@
             line-height: 1.8;
             max-width: 500px;
         }
-        
+
         .hero-buttons {
             display: flex;
             gap: 14px;
@@ -409,7 +409,7 @@
             margin: 0 auto 60px;
             padding: 0 30px;
         }
-        
+
         .about-card {
             background: #ffffff;
             border-radius: var(--radius-lg);
@@ -419,7 +419,7 @@
             position: relative;
             overflow: hidden;
         }
-        
+
         .about-card::before {
             content: '';
             position: absolute;
@@ -429,49 +429,49 @@
             height: 5px;
             background: var(--gradient-main);
         }
-        
+
         .about-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 40px;
             margin-top: 20px;
         }
-        
+
         .about-grid .about-text {
             text-align: right;
         }
-        
+
         .about-grid .about-text h2 {
             font-size: 1.8rem;
             font-weight: 900;
             color: var(--dark);
             margin-bottom: 20px;
         }
-        
+
         .about-grid .about-text h2 i {
             color: var(--primary);
             margin-left: 10px;
         }
-        
+
         .about-grid .about-text p {
             font-size: 1.05rem;
             color: var(--gray);
             line-height: 1.9;
             margin-bottom: 16px;
         }
-        
+
         .about-grid .about-text .highlight-text {
             color: var(--primary);
             font-weight: 700;
         }
-        
+
         .about-grid .about-features {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 16px;
             align-content: start;
         }
-        
+
         .about-feature-item {
             background: #f8fafc;
             border-radius: var(--radius-sm);
@@ -480,35 +480,35 @@
             transition: var(--transition);
             border: 1px solid rgba(0,0,0,0.04);
         }
-        
+
         .about-feature-item:hover {
             transform: translateY(-4px);
             box-shadow: var(--shadow-md);
             border-color: var(--primary-light);
         }
-        
+
         .about-feature-item .icon {
             font-size: 2rem;
             margin-bottom: 10px;
             display: block;
         }
-        
+
         .about-feature-item .icon.blue { color: var(--primary); }
         .about-feature-item .icon.green { color: var(--secondary); }
         .about-feature-item .icon.gold { color: var(--gold); }
         .about-feature-item .icon.purple { color: var(--accent); }
-        
+
         .about-feature-item h4 {
             font-size: 0.95rem;
             color: var(--dark);
             margin-bottom: 4px;
         }
-        
+
         .about-feature-item p {
             font-size: 0.8rem;
             color: var(--gray);
         }
-        
+
         .about-steps {
             margin-top: 30px;
             padding-top: 30px;
@@ -517,7 +517,7 @@
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
         }
-        
+
         .about-step {
             display: flex;
             align-items: center;
@@ -527,7 +527,7 @@
             border-radius: var(--radius-sm);
             border: 1px solid rgba(0,0,0,0.04);
         }
-        
+
         .about-step .step-number {
             width: 36px;
             height: 36px;
@@ -541,7 +541,7 @@
             font-size: 0.9rem;
             flex-shrink: 0;
         }
-        
+
         .about-step .step-text {
             font-size: 0.9rem;
             color: var(--dark-light);
@@ -564,12 +564,12 @@
             align-items: center;
             gap: 10px;
         }
-        
+
         .btn-primary:hover {
             transform: translateY(-3px);
             box-shadow: 0 8px 30px rgba(15, 92, 191, 0.35);
         }
-        
+
         .btn-outline {
             background: transparent;
             border: 2px solid var(--primary);
@@ -584,14 +584,14 @@
             align-items: center;
             gap: 10px;
         }
-        
+
         .btn-outline:hover {
             background: var(--primary);
             color: white;
             transform: translateY(-3px);
             box-shadow: 0 8px 25px rgba(15, 92, 191, 0.2);
         }
-        
+
         .btn-success {
             background: var(--gradient-secondary);
             color: white;
@@ -607,12 +607,12 @@
             align-items: center;
             gap: 10px;
         }
-        
+
         .btn-success:hover {
             transform: translateY(-3px);
             box-shadow: 0 8px 30px rgba(16, 185, 129, 0.35);
         }
-        
+
         .btn-accent {
             background: var(--gradient-accent);
             color: white;
@@ -628,12 +628,12 @@
             align-items: center;
             gap: 10px;
         }
-        
+
         .btn-accent:hover {
             transform: translateY(-3px);
             box-shadow: 0 8px 30px rgba(139, 92, 246, 0.35);
         }
-        
+
         .btn-gold {
             background: var(--gradient-gold);
             color: white;
@@ -649,12 +649,12 @@
             align-items: center;
             gap: 10px;
         }
-        
+
         .btn-gold:hover {
             transform: translateY(-3px);
             box-shadow: 0 8px 30px rgba(245, 158, 11, 0.35);
         }
-        
+
         .hero-image {
             flex: 1;
             min-width: 280px;
@@ -662,18 +662,18 @@
             position: relative;
             z-index: 1;
         }
-        
+
         .hero-image-wrapper {
             position: relative;
             display: inline-block;
         }
-        
+
         .hero-image .floating-icon {
             font-size: 200px;
             color: rgba(15, 92, 191, 0.06);
             animation: float 4s ease-in-out infinite;
         }
-        
+
         .hero-image .badge-float {
             position: absolute;
             background: rgba(255,255,255,0.95);
@@ -689,24 +689,24 @@
             border: 1px solid rgba(255,255,255,0.3);
             font-size: 0.85rem;
         }
-        
-        .hero-image .badge-float:nth-child(2) { 
-            top: 5%; 
-            right: -10%; 
-            animation-delay: 0.2s; 
+
+        .hero-image .badge-float:nth-child(2) {
+            top: 5%;
+            right: -10%;
+            animation-delay: 0.2s;
         }
-        
-        .hero-image .badge-float:nth-child(3) { 
-            bottom: 10%; 
-            left: -10%; 
-            animation-delay: 0.8s; 
+
+        .hero-image .badge-float:nth-child(3) {
+            bottom: 10%;
+            left: -10%;
+            animation-delay: 0.8s;
         }
-        
-        .hero-image .badge-float i { 
-            color: var(--secondary); 
+
+        .hero-image .badge-float i {
+            color: var(--secondary);
             font-size: 1.4rem;
         }
-        
+
         .hero-image .badge-float .badge-icon {
             width: 40px;
             height: 40px;
@@ -715,10 +715,10 @@
             align-items: center;
             justify-content: center;
         }
-        
+
         .badge-float .badge-icon.video { background: #dbeafe; color: #2563eb; }
         .badge-float .badge-icon.star { background: var(--gold-light); color: var(--gold); }
-        
+
         @keyframes float {
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-16px); }
@@ -731,7 +731,7 @@
             flex-wrap: wrap;
             margin: 30px 0;
         }
-        
+
         .stat-card {
             background: #ffffff;
             border-radius: var(--radius-md);
@@ -745,7 +745,7 @@
             position: relative;
             overflow: hidden;
         }
-        
+
         .stat-card::before {
             content: '';
             position: absolute;
@@ -757,17 +757,17 @@
             opacity: 0;
             transition: var(--transition);
         }
-        
+
         .stat-card:hover::before {
             opacity: 1;
         }
-        
+
         .stat-card:hover {
             transform: translateY(-6px);
             box-shadow: var(--shadow-md);
             border-color: var(--primary-light);
         }
-        
+
         .stat-card .number {
             font-size: 2.2rem;
             font-weight: 900;
@@ -777,14 +777,14 @@
             background-clip: text;
             line-height: 1.2;
         }
-        
+
         .stat-card .label {
             font-size: 0.85rem;
             color: var(--gray);
             margin-top: 2px;
             font-weight: 600;
         }
-        
+
         .stat-card .icon {
             font-size: 1.5rem;
             color: var(--primary);
@@ -799,12 +799,12 @@
             margin: 60px auto;
             padding: 0 30px;
         }
-        
+
         .section-header {
             text-align: center;
             margin-bottom: 40px;
         }
-        
+
         .section-tag {
             display: inline-block;
             background: var(--primary-light);
@@ -816,19 +816,19 @@
             margin-bottom: 10px;
             letter-spacing: 0.5px;
         }
-        
+
         .section-title {
             font-size: 2.2rem;
             font-weight: 900;
             color: var(--dark);
             position: relative;
         }
-        
-        .section-title i { 
-            color: var(--primary); 
+
+        .section-title i {
+            color: var(--primary);
             margin-left: 10px;
         }
-        
+
         .section-subtitle {
             color: var(--gray);
             font-size: 1.05rem;
@@ -842,7 +842,7 @@
             gap: 28px;
             margin-top: 10px;
         }
-        
+
         .teacher-card, .offer-card, .developer-card {
             background: #ffffff;
             border-radius: var(--radius-md);
@@ -855,7 +855,7 @@
             position: relative;
             overflow: hidden;
         }
-        
+
         .teacher-card::before, .offer-card::before, .developer-card::before {
             content: '';
             position: absolute;
@@ -867,17 +867,17 @@
             opacity: 0;
             transition: var(--transition);
         }
-        
-        .teacher-card:hover::before, .offer-card:hover::before, .developer-card:hover::before { 
-            opacity: 1; 
+
+        .teacher-card:hover::before, .offer-card:hover::before, .developer-card:hover::before {
+            opacity: 1;
         }
-        
+
         .teacher-card:hover, .offer-card:hover, .developer-card:hover {
             transform: translateY(-8px);
             box-shadow: var(--shadow-lg);
             border-color: var(--primary-light);
         }
-        
+
         .teacher-image, .developer-image {
             width: 96px;
             height: 96px;
@@ -888,25 +888,25 @@
             box-shadow: 0 4px 16px rgba(0,0,0,0.08);
             transition: var(--transition);
         }
-        
+
         .teacher-card:hover .teacher-image,
         .developer-card:hover .developer-image {
             transform: scale(1.05);
             border-color: var(--primary-light);
         }
-        
-        .teacher-card h3, .developer-card h3 { 
-            font-size: 1.1rem; 
+
+        .teacher-card h3, .developer-card h3 {
+            font-size: 1.1rem;
             color: var(--dark);
             margin-bottom: 2px;
         }
-        
+
         .teacher-card .specialization, .developer-card .role {
-            color: var(--gray); 
+            color: var(--gray);
             font-size: 0.85rem;
             margin: 4px 0;
         }
-        
+
         .developer-role {
             display: inline-block;
             background: var(--primary-light);
@@ -917,12 +917,12 @@
             font-weight: 700;
             margin-top: 6px;
         }
-        
+
         .developer-role.backend { background: #dbeafe; color: #1d4ed8; }
         .developer-role.frontend { background: #fce4ec; color: #c62828; }
         .developer-role.marketing { background: #e0f2fe; color: #0369a1; }
         .developer-role.database { background: #dcfce7; color: #15803d; }
-        
+
         .view-profile-btn {
             background: var(--primary);
             color: white;
@@ -940,7 +940,7 @@
             justify-content: center;
             gap: 8px;
         }
-        
+
         .view-profile-btn:hover {
             background: var(--primary-dark);
             transform: translateY(-2px);
@@ -955,7 +955,7 @@
             margin-bottom: 14px;
             text-align: right;
         }
-        
+
         .offer-card .offer-teacher img {
             width: 50px;
             height: 50px;
@@ -964,36 +964,36 @@
             border: 2px solid white;
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
         }
-        
+
         .offer-card .offer-teacher h3 {
             font-size: 0.95rem;
             color: var(--primary);
             margin-bottom: 2px;
         }
-        
+
         .offer-card .offer-teacher p {
             font-size: 0.75rem;
             color: var(--gray);
         }
-        
+
         .offer-card .offer-subject {
             font-weight: 700;
             font-size: 1.05rem;
             color: var(--dark);
             margin: 8px 0;
         }
-        
+
         .offer-card .offer-details {
             font-size: 0.85rem;
             color: var(--gray);
             margin: 4px 0;
         }
-        
-        .offer-card .offer-details i { 
-            color: var(--primary); 
+
+        .offer-card .offer-details i {
+            color: var(--primary);
             width: 20px;
         }
-        
+
         .price-tag {
             background: var(--gradient-secondary);
             color: white;
@@ -1004,7 +1004,7 @@
             font-weight: 700;
             font-size: 0.85rem;
         }
-        
+
         .free-tag {
             background: var(--gold);
             color: white;
@@ -1015,7 +1015,7 @@
             font-weight: 700;
             font-size: 0.85rem;
         }
-        
+
         .live-badge {
             background: var(--danger);
             color: white;
@@ -1026,7 +1026,7 @@
             display: inline-block;
             font-weight: 700;
         }
-        
+
         @keyframes pulse {
             0%, 100% { opacity: 0.7; transform: scale(1); }
             50% { opacity: 1; transform: scale(1.05); }
@@ -1038,7 +1038,7 @@
             margin: 50px auto;
             padding: 0 20px;
         }
-        
+
         .form-tabs {
             display: flex;
             gap: 10px;
@@ -1046,7 +1046,7 @@
             margin-bottom: 30px;
             flex-wrap: wrap;
         }
-        
+
         .tab-btn {
             padding: 12px 28px;
             background: #f8fafc;
@@ -1059,19 +1059,19 @@
             color: var(--gray);
             border: 2px solid transparent;
         }
-        
+
         .tab-btn.active {
             background: var(--primary);
             color: white;
             box-shadow: 0 4px 16px rgba(15, 92, 191, 0.25);
             border-color: var(--primary);
         }
-        
+
         .tab-btn:hover:not(.active) {
             background: #e2e8f0;
             border-color: #e2e8f0;
         }
-        
+
         .form-container {
             background: #ffffff;
             padding: 35px;
@@ -1079,21 +1079,21 @@
             box-shadow: var(--shadow-sm);
             border: 1px solid rgba(0,0,0,0.04);
         }
-        
+
         .form-container h3 {
             text-align: center;
             margin-bottom: 24px;
             color: var(--dark);
             font-size: 1.3rem;
         }
-        
-        .form-container h3 i { 
-            color: var(--primary); 
+
+        .form-container h3 i {
+            color: var(--primary);
             margin-left: 8px;
         }
-        
-        .form-container input, 
-        .form-container select, 
+
+        .form-container input,
+        .form-container select,
         .form-container textarea {
             width: 100%;
             padding: 14px 18px;
@@ -1105,21 +1105,21 @@
             transition: var(--transition);
             background: #fafbfc;
         }
-        
-        .form-container input:focus, 
-        .form-container select:focus, 
+
+        .form-container input:focus,
+        .form-container select:focus,
         .form-container textarea:focus {
             border-color: var(--primary);
             outline: none;
             background: #ffffff;
             box-shadow: 0 0 0 4px rgba(15, 92, 191, 0.06);
         }
-        
+
         .form-container input[type="file"] {
             padding: 10px 14px;
             background: #ffffff;
         }
-        
+
         .form-container label {
             display: block;
             margin-bottom: 6px;
@@ -1127,9 +1127,9 @@
             color: var(--dark-light);
             font-size: 0.9rem;
         }
-        
-        .form-container label i { 
-            color: var(--primary); 
+
+        .form-container label i {
+            color: var(--primary);
             margin-left: 6px;
         }
 
@@ -1140,12 +1140,12 @@
             margin: 16px 0;
             min-height: 78px;
         }
-        
+
         .recaptcha-wrapper .g-recaptcha {
             transform: scale(0.9);
             transform-origin: center;
         }
-        
+
         .recaptcha-error {
             color: var(--danger);
             font-size: 0.85rem;
@@ -1154,7 +1154,7 @@
             margin-bottom: 14px;
             display: none;
         }
-        
+
         .recaptcha-error.show { display: block; }
 
         /* ===== NAME VALIDATION ===== */
@@ -1179,31 +1179,31 @@
             box-shadow: var(--shadow-sm);
             border: 1px solid rgba(0,0,0,0.04);
         }
-        
+
         .support-card h3 {
             color: var(--dark);
             margin-bottom: 24px;
             text-align: center;
             font-size: 1.4rem;
         }
-        
-        .support-card h3 i { 
-            color: var(--primary); 
+
+        .support-card h3 i {
+            color: var(--primary);
             margin-left: 8px;
         }
-        
-        .support-card .form-group { 
-            margin-bottom: 18px; 
+
+        .support-card .form-group {
+            margin-bottom: 18px;
         }
-        
+
         .support-card label {
             display: block;
             margin-bottom: 6px;
             font-weight: 600;
             color: var(--dark-light);
         }
-        
-        .support-card input, 
+
+        .support-card input,
         .support-card textarea {
             width: 100%;
             padding: 14px 18px;
@@ -1214,15 +1214,15 @@
             transition: var(--transition);
             background: #fafbfc;
         }
-        
-        .support-card input:focus, 
+
+        .support-card input:focus,
         .support-card textarea:focus {
             border-color: var(--primary);
             outline: none;
             background: #ffffff;
             box-shadow: 0 0 0 4px rgba(15, 92, 191, 0.06);
         }
-        
+
         .support-card textarea {
             resize: vertical;
             min-height: 140px;
@@ -1234,7 +1234,7 @@
             margin: 50px auto;
             padding: 0 20px;
         }
-        
+
         .download-card {
             background: #ffffff;
             border-radius: var(--radius-lg);
@@ -1245,7 +1245,7 @@
             position: relative;
             overflow: hidden;
         }
-        
+
         .download-card::before {
             content: '';
             position: absolute;
@@ -1257,7 +1257,7 @@
             border-radius: 50%;
             pointer-events: none;
         }
-        
+
         .download-card .app-icon {
             font-size: 4rem;
             background: var(--gradient-main);
@@ -1268,7 +1268,7 @@
             position: relative;
             z-index: 1;
         }
-        
+
         .download-card h2 {
             font-size: 1.8rem;
             color: var(--dark);
@@ -1276,11 +1276,11 @@
             position: relative;
             z-index: 1;
         }
-        
-        .download-card h2 i { 
-            color: var(--primary); 
+
+        .download-card h2 i {
+            color: var(--primary);
         }
-        
+
         .download-card .subtitle {
             color: var(--gray);
             font-size: 1.05rem;
@@ -1289,7 +1289,7 @@
             z-index: 1;
             font-weight: 600;
         }
-        
+
         .download-card .features {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -1299,7 +1299,7 @@
             position: relative;
             z-index: 1;
         }
-        
+
         .download-card .features .feature {
             background: #f8fafc;
             padding: 14px 18px;
@@ -1310,24 +1310,24 @@
             border: 1px solid rgba(0,0,0,0.04);
             transition: var(--transition);
         }
-        
+
         .download-card .features .feature:hover {
             transform: translateY(-2px);
             box-shadow: var(--shadow-sm);
         }
-        
+
         .download-card .features .feature i {
             color: var(--secondary);
             font-size: 1.2rem;
             width: 24px;
         }
-        
+
         .download-card .features .feature span {
             font-size: 0.9rem;
             color: var(--dark-light);
             font-weight: 600;
         }
-        
+
         .download-btn-android {
             background: #3ddc84;
             color: #1a1a1a;
@@ -1346,16 +1346,16 @@
             position: relative;
             z-index: 1;
         }
-        
+
         .download-btn-android:hover {
             transform: translateY(-4px) scale(1.02);
             box-shadow: 0 8px 36px rgba(61, 220, 132, 0.45);
         }
-        
-        .download-btn-android i { 
-            font-size: 1.6rem; 
+
+        .download-btn-android i {
+            font-size: 1.6rem;
         }
-        
+
         .download-card .qr-code {
             margin: 25px 0;
             padding: 16px;
@@ -1366,13 +1366,13 @@
             position: relative;
             z-index: 1;
         }
-        
+
         .download-card .qr-code img {
             width: 140px;
             height: 140px;
             border-radius: 10px;
         }
-        
+
         .download-card .version-info {
             color: #94a3b8;
             font-size: 0.8rem;
@@ -1380,7 +1380,7 @@
             position: relative;
             z-index: 1;
         }
-        
+
         .download-card .install-instructions {
             background: var(--primary-light);
             border-radius: var(--radius-sm);
@@ -1390,20 +1390,20 @@
             position: relative;
             z-index: 1;
         }
-        
+
         .download-card .install-instructions h4 {
             color: var(--primary);
             margin-bottom: 10px;
         }
-        
+
         .download-card .install-instructions ol {
             padding-right: 20px;
             color: var(--dark-light);
             font-size: 0.9rem;
         }
-        
-        .download-card .install-instructions ol li { 
-            margin-bottom: 4px; 
+
+        .download-card .install-instructions ol li {
+            margin-bottom: 4px;
         }
 
         /* ===== PROFILE SECTION - محدث ===== */
@@ -1412,7 +1412,7 @@
             margin: 40px auto 60px;
             padding: 0 30px;
         }
-        
+
         .profile-card {
             background: #ffffff;
             border-radius: var(--radius-lg);
@@ -1422,7 +1422,7 @@
             position: relative;
             overflow: hidden;
         }
-        
+
         .profile-card::before {
             content: '';
             position: absolute;
@@ -1432,7 +1432,7 @@
             height: 5px;
             background: var(--gradient-main);
         }
-        
+
         .profile-header {
             display: flex;
             align-items: center;
@@ -1442,7 +1442,7 @@
             padding-bottom: 30px;
             border-bottom: 2px solid var(--gray-light);
         }
-        
+
         .profile-header .profile-image {
             width: 140px;
             height: 140px;
@@ -1451,35 +1451,35 @@
             border: 5px solid white;
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         }
-        
+
         .profile-header .profile-info h2 {
             font-size: 2rem;
             color: var(--dark);
             margin-bottom: 6px;
         }
-        
+
         .profile-header .profile-info .specialization {
             color: var(--primary);
             font-size: 1.1rem;
             font-weight: 600;
             margin-bottom: 4px;
         }
-        
+
         .profile-header .profile-info .experience {
             color: var(--gray);
             font-size: 0.95rem;
         }
-        
+
         .profile-header .profile-info .experience i {
             color: var(--gold);
         }
-        
+
         .profile-body {
             display: grid;
             grid-template-columns: 2fr 1fr;
             gap: 30px;
         }
-        
+
         .profile-body .bio-section h3 {
             color: var(--dark);
             font-size: 1.2rem;
@@ -1488,24 +1488,24 @@
             align-items: center;
             gap: 10px;
         }
-        
+
         .profile-body .bio-section h3 i {
             color: var(--primary);
         }
-        
+
         .profile-body .bio-section p {
             color: var(--gray);
             line-height: 1.9;
             font-size: 1rem;
         }
-        
+
         /* ===== SOCIAL LINKS - جديد ===== */
         .profile-body .social-section {
             margin-top: 24px;
             padding-top: 24px;
             border-top: 2px solid var(--gray-light);
         }
-        
+
         .profile-body .social-section h3 {
             color: var(--dark);
             font-size: 1.2rem;
@@ -1514,17 +1514,17 @@
             align-items: center;
             gap: 10px;
         }
-        
+
         .profile-body .social-section h3 i {
             color: var(--primary);
         }
-        
+
         .social-links-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px;
         }
-        
+
         .social-link-item {
             display: flex;
             align-items: center;
@@ -1537,43 +1537,43 @@
             color: var(--dark);
             border: 1px solid rgba(0,0,0,0.04);
         }
-        
+
         .social-link-item:hover {
             transform: translateY(-3px);
             box-shadow: var(--shadow-sm);
             border-color: var(--primary-light);
         }
-        
+
         .social-link-item i {
             font-size: 1.3rem;
             width: 28px;
             text-align: center;
         }
-        
+
         .social-link-item .social-name {
             font-size: 0.9rem;
             font-weight: 600;
             color: var(--dark-light);
         }
-        
+
         .social-link-item .social-name small {
             font-weight: 400;
             color: var(--gray);
             font-size: 0.7rem;
         }
-        
+
         /* ===== Info Section - مخفي ===== */
         .profile-body .info-section {
             display: none;
         }
-        
+
         /* ===== Offers Section ===== */
         .profile-offers-section {
             margin-top: 30px;
             padding-top: 30px;
             border-top: 2px solid var(--gray-light);
         }
-        
+
         .profile-offers-section h3 {
             color: var(--dark);
             font-size: 1.2rem;
@@ -1582,17 +1582,17 @@
             align-items: center;
             gap: 10px;
         }
-        
+
         .profile-offers-section h3 i {
             color: var(--primary);
         }
-        
+
         .profile-offers-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
             gap: 16px;
         }
-        
+
         .profile-offer-item {
             background: #f8fafc;
             border-radius: var(--radius-sm);
@@ -1600,30 +1600,30 @@
             border: 1px solid rgba(0,0,0,0.04);
             transition: var(--transition);
         }
-        
+
         .profile-offer-item:hover {
             transform: translateY(-2px);
             box-shadow: var(--shadow-sm);
             border-color: var(--primary-light);
         }
-        
+
         .profile-offer-item .subject {
             font-weight: 700;
             color: var(--dark);
             font-size: 1rem;
         }
-        
+
         .profile-offer-item .details {
             color: var(--gray);
             font-size: 0.85rem;
             margin-top: 4px;
         }
-        
+
         .profile-offer-item .details i {
             color: var(--primary);
             width: 18px;
         }
-        
+
         .profile-offer-item .price-tag-small {
             display: inline-block;
             background: var(--gradient-secondary);
@@ -1634,7 +1634,7 @@
             font-size: 0.75rem;
             margin-top: 6px;
         }
-        
+
         .profile-offer-item .free-tag-small {
             display: inline-block;
             background: var(--gold);
@@ -1645,19 +1645,19 @@
             font-size: 0.75rem;
             margin-top: 6px;
         }
-        
+
         .no-offers-message {
             text-align: center;
             padding: 30px;
             color: var(--gray);
         }
-        
+
         .profile-courses-section {
             margin-top: 30px;
             padding-top: 30px;
             border-top: 2px solid var(--gray-light);
         }
-        
+
         .profile-courses-section h3 {
             color: var(--dark);
             font-size: 1.2rem;
@@ -1666,17 +1666,17 @@
             align-items: center;
             gap: 10px;
         }
-        
+
         .profile-courses-section h3 i {
             color: var(--accent);
         }
-        
+
         .profile-courses-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
             gap: 16px;
         }
-        
+
         .profile-course-item {
             background: #f8fafc;
             border-radius: var(--radius-sm);
@@ -1684,20 +1684,20 @@
             border: 1px solid rgba(0,0,0,0.04);
             transition: var(--transition);
         }
-        
+
         .profile-course-item:hover {
             transform: translateY(-2px);
             box-shadow: var(--shadow-sm);
             border-color: var(--primary-light);
         }
-        
+
         .profile-course-item .course-title {
             font-weight: 700;
             color: var(--dark);
             font-size: 1rem;
             margin-bottom: 6px;
         }
-        
+
         .profile-course-item .course-level {
             display: inline-block;
             background: var(--accent-light);
@@ -1708,13 +1708,13 @@
             font-size: 0.75rem;
             margin-bottom: 6px;
         }
-        
+
         .profile-course-item .course-price {
             font-weight: 700;
             color: var(--secondary-dark);
             font-size: 0.9rem;
         }
-        
+
         .profile-course-item .course-link {
             display: inline-flex;
             align-items: center;
@@ -1725,11 +1725,11 @@
             font-weight: 700;
             font-size: 0.85rem;
         }
-        
+
         .profile-course-item .course-link:hover {
             color: var(--primary-dark);
         }
-        
+
         .no-courses-message {
             text-align: center;
             padding: 30px;
@@ -1739,7 +1739,7 @@
             color: var(--gray);
             font-size: 1rem;
         }
-        
+
         .no-social-message {
             text-align: center;
             padding: 20px;
@@ -1762,7 +1762,7 @@
             gap: 8px;
             margin-bottom: 20px;
         }
-        
+
         .profile-back-btn:hover {
             background: var(--primary);
             color: white;
@@ -1780,7 +1780,7 @@
                 grid-template-columns: 1fr 1fr;
             }
         }
-        
+
         @media (max-width: 768px) {
             .profile-header {
                 flex-direction: column;
@@ -1835,62 +1835,62 @@
                 --radius-md: 10px;
                 --radius-lg: 16px;
             }
-            
+
             body {
                 font-size: 13px;
                 padding-top: 60px;
             }
-            
+
             .container {
                 padding: 0 10px;
             }
-            
+
             .header {
                 padding: 10px 15px;
                 height: 60px;
             }
-            
+
             .header-logo {
                 font-size: 1.1rem;
             }
-            
+
             .hero {
                 padding: 40px 15px;
                 min-height: auto;
             }
-            
+
             .hero h1 {
                 font-size: 1.5rem;
                 line-height: 1.4;
             }
-            
+
             .btn {
                 padding: 10px 20px;
                 font-size: 0.85rem;
             }
-            
+
             .section-title {
                 font-size: 1.3rem;
             }
-            
+
             .developer-card {
                 padding: 15px;
             }
-            
+
             .developer-card h3 {
                 font-size: 1rem;
             }
-            
+
             .developer-role {
                 font-size: 0.65rem;
                 padding: 3px 8px;
             }
-            
+
             .stats-grid {
                 grid-template-columns: 1fr;
                 gap: 10px;
             }
-            
+
             .footer {
                 padding: 20px 15px;
                 font-size: 0.8rem;
@@ -1904,56 +1904,56 @@
                 --radius-md: 12px;
                 --radius-lg: 18px;
             }
-            
+
             body {
                 font-size: 14px;
                 padding-top: 65px;
             }
-            
+
             .header {
                 padding: 12px 15px;
                 height: 65px;
             }
-            
+
             .header-logo {
                 font-size: 1.2rem;
             }
-            
+
             .hero {
                 padding: 50px 20px;
                 min-height: auto;
             }
-            
+
             .hero h1 {
                 font-size: 1.8rem;
             }
-            
+
             .btn {
                 padding: 12px 24px;
                 font-size: 0.9rem;
             }
-            
+
             .section-container {
                 padding: 40px 15px;
             }
-            
+
             .section-title {
                 font-size: 1.4rem;
             }
-            
+
             .developer-card {
                 padding: 18px;
             }
-            
+
             .developer-card h3 {
                 font-size: 1.05rem;
             }
-            
+
             .stats-grid {
                 grid-template-columns: repeat(2, 1fr);
                 gap: 12px;
             }
-            
+
             .footer {
                 padding: 25px 15px;
                 font-size: 0.85rem;
@@ -1965,32 +1965,32 @@
             body {
                 font-size: 15px;
             }
-            
+
             .header {
                 padding: 15px 20px;
             }
-            
+
             .hero {
                 padding: 60px 25px;
             }
-            
+
             .hero h1 {
                 font-size: 2rem;
             }
-            
+
             .section-container {
                 padding: 50px 20px;
             }
-            
+
             .stats-grid {
                 grid-template-columns: repeat(2, 1fr);
                 gap: 15px;
             }
-            
+
             .developer-card {
                 padding: 20px;
             }
-            
+
             .footer {
                 padding: 30px 20px;
             }
@@ -2001,11 +2001,11 @@
             .stats-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
-            
+
             .section-container {
                 padding: 60px 30px;
             }
-            
+
             .developer-card {
                 padding: 22px;
             }
@@ -2023,7 +2023,7 @@
             .container {
                 max-width: 1400px;
             }
-            
+
             body {
                 font-size: 17px;
             }
@@ -2037,49 +2037,49 @@
                 min-width: 44px;
                 touch-action: manipulation;
             }
-            
+
             /* تحسين النماذج لللمس */
             input, select, textarea {
                 min-height: 44px;
                 font-size: 16px !important;
             }
-            
+
             /* تحسين الجداول */
             .table-container {
                 overflow-x: auto;
                 -webkit-overflow-scrolling: touch;
             }
-            
+
             table {
                 font-size: 0.85rem;
             }
-            
+
             /* تحسين البطاقات */
             .card, .developer-card, .stat-card, .offer-card {
                 box-shadow: 0 2px 8px rgba(0,0,0,0.08);
                 margin-bottom: 12px;
             }
-            
+
             /* إخفاء الهوامش الكبيرة */
             .section-container {
                 padding-top: 30px;
                 padding-bottom: 30px;
             }
-            
+
             /* تحسين الفلاتر */
             .filters-bar {
                 padding: 15px;
             }
-            
+
             .filter-group {
                 flex: 1 1 100%;
                 margin-bottom: 10px;
             }
-            
+
             footer {
                 padding-bottom: 80px;
             }
-            
+
             footer .footer-dev {
                 flex-wrap: wrap;
                 justify-content: center;
@@ -2092,11 +2092,11 @@
             .hero {
                 padding: 20px 30px;
             }
-            
+
             .hero h1 {
                 font-size: 1.3rem;
             }
-            
+
             .header {
                 height: 50px;
                 padding: 8px 15px;
@@ -2177,7 +2177,7 @@
                 </div>
                 <h1>تعلم مع أفضل الأساتذة <span class="highlight">في الجزائر</span></h1>
                 <p>دروس خصوصية عبر الفيديو مع نخبة من الأساتذة المعتمدين. ادفع عبر البطاقة الذهبية بسهولة وأمان</p>
-                
+
                 <div class="stats-container">
                     <div class="stat-card">
                         <span class="icon"><i class="fas fa-chalkboard-user"></i></span>
@@ -2200,7 +2200,7 @@
                         <div class="label">طالب مسجل</div>
                     </div>
                 </div>
-                
+
                 <div class="hero-buttons">
                     <button class="btn-primary" onclick="showTeachers()"><i class="fas fa-users"></i> تعرف على أساتذتنا</button>
                     <button class="btn-outline" onclick="showOffers()"><i class="fas fa-calendar-alt"></i> استعرض العروض</button>
@@ -2236,24 +2236,24 @@
                     <div class="about-text">
                         <h2><i class="fas fa-info-circle"></i> عن منصة ZoomDz</h2>
                         <p>
-                            <span class="highlight-text">ZoomDz</span> هي منصة تعليمية جزائرية مبتكرة تهدف إلى 
-                            <span class="highlight-text">ربط الطلاب مع أفضل الأساتذة</span> في مختلف التخصصات 
+                            <span class="highlight-text">ZoomDz</span> هي منصة تعليمية جزائرية مبتكرة تهدف إلى
+                            <span class="highlight-text">ربط الطلاب مع أفضل الأساتذة</span> في مختلف التخصصات
                             عبر دروس خصوصية مباشرة عن بعد.
                         </p>
                         <p>
-                            <i class="fas fa-check-circle" style="color:var(--primary);"></i> 
-                            <strong>رؤيتنا:</strong> تمكين كل طالب في الجزائر من الوصول إلى تعليم نوعي بأسعار معقولة، 
+                            <i class="fas fa-check-circle" style="color:var(--primary);"></i>
+                            <strong>رؤيتنا:</strong> تمكين كل طالب في الجزائر من الوصول إلى تعليم نوعي بأسعار معقولة،
                             دون قيود جغرافية أو زمانية.
                         </p>
                         <p>
-                            <i class="fas fa-bullseye" style="color:var(--secondary);"></i> 
-                            <strong>هدفنا:</strong> بناء مجتمع تعليمي رقمي متكامل يجمع بين 
-                            <span class="highlight-text">الجودة، السهولة، والأمان</span>، 
+                            <i class="fas fa-bullseye" style="color:var(--secondary);"></i>
+                            <strong>هدفنا:</strong> بناء مجتمع تعليمي رقمي متكامل يجمع بين
+                            <span class="highlight-text">الجودة، السهولة، والأمان</span>،
                             حيث يمكن للطلاب التعلم بمرونة والأساتذة مشاركة خبراتهم بكفاءة.
                         </p>
                         <p style="font-size:0.95rem; color:var(--gray); background:var(--gray-light); padding:14px; border-radius:var(--radius-sm); border-right:4px solid var(--primary);">
-                            <i class="fas fa-quote-right" style="color:var(--primary);"></i> 
-                            نؤمن بأن التعليم الجيد هو حق لكل جزائري، ومنصتنا هي الجسر الذي يوصلك إلى 
+                            <i class="fas fa-quote-right" style="color:var(--primary);"></i>
+                            نؤمن بأن التعليم الجيد هو حق لكل جزائري، ومنصتنا هي الجسر الذي يوصلك إلى
                             أفضل الكفاءات في وطننا.
                         </p>
                     </div>
@@ -2280,7 +2280,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="about-steps">
                     <div class="about-step">
                         <span class="step-number">1</span>
@@ -2339,10 +2339,10 @@
                 <h2 class="section-title">فريق المطورين <i class="fas fa-rocket"></i></h2>
                 <p class="section-subtitle">هذا المشروع من إبداع نخبة من المطورين الجزائريين الطموحين</p>
             </div>
-            
+
             <div id="developersList" class="developers-grid">
                 <div class="developer-card">
-                    <img src="/images/othmaniya.jpg" class="developer-image" 
+                    <img src="/images/othmaniya.jpg" class="developer-image"
                          onerror="this.src='https://ui-avatars.com/api/?name=عثمانية+محمد+الصالح&background=0f5cbf&color=fff&size=96'"
                          alt="عثمانية محمد الصالح">
                     <h3>عثمانية محمد الصالح</h3>
@@ -2387,20 +2387,20 @@
                 <h3><i class="fas fa-sign-in-alt"></i> تسجيل الدخول</h3>
                 <input type="email" id="loginEmail" placeholder="البريد الإلكتروني">
                 <input type="password" id="loginPassword" placeholder="كلمة المرور">
-                
+
                 <select id="loginRole">
                     <option value="student">طالب</option>
                     <option value="teacher">أستاذ</option>
                     <option value="admin">مدير</option>
                 </select>
-                
+
                 <div class="recaptcha-wrapper">
                     <div id="loginRecaptcha" class="g-recaptcha"></div>
                 </div>
                 <div id="loginRecaptchaError" class="recaptcha-error">
                     <i class="fas fa-exclamation-circle"></i> يرجى تأكيد أنك لست روبوتاً
                 </div>
-                
+
                 <button class="btn-primary" onclick="login()" style="width:100%; justify-content:center;">دخول</button>
                 <a href="#" class="forgot-link" onclick="showForgotPassword()"><i class="fas fa-key"></i> نسيت كلمة المرور؟</a>
                 <div style="margin-top: 14px; display: flex; align-items: center; gap: 10px;">
@@ -2430,25 +2430,25 @@
 
             <div id="studentRegisterTab" class="form-container" style="display: none;">
                 <h3><i class="fas fa-user-plus"></i> تسجيل طالب جديد</h3>
-                
-                <input type="text" id="studentName" placeholder="الاسم الكامل (بالحروف اللاتينية فقط)" 
+
+                <input type="text" id="studentName" placeholder="الاسم الكامل (بالحروف اللاتينية فقط)"
                        oninput="validateLatinName('student')" onblur="validateLatinName('student')">
                 <div id="studentNameError" class="name-error">
-                    <i class="fas fa-exclamation-circle"></i> 
+                    <i class="fas fa-exclamation-circle"></i>
                     الاسم يجب أن يحتوي على أحرف لاتينية فقط (A-Z, a-z)
                 </div>
-                
+
                 <input type="email" id="studentEmail" placeholder="البريد الإلكتروني">
                 <input type="password" id="studentPassword" placeholder="كلمة المرور">
                 <input type="tel" id="studentPhone" placeholder="رقم الهاتف">
-                
+
                 <div class="recaptcha-wrapper">
                     <div id="studentRecaptcha" class="g-recaptcha"></div>
                 </div>
                 <div id="studentRecaptchaError" class="recaptcha-error">
                     <i class="fas fa-exclamation-circle"></i> يرجى تأكيد أنك لست روبوتاً
                 </div>
-                
+
                 <button class="btn-primary" onclick="registerStudent()" style="width:100%; justify-content:center;">تسجيل</button>
 
                 <div style="margin-top: 14px; display: flex; align-items: center; gap: 10px;">
@@ -2464,14 +2464,14 @@
 
             <div id="teacherRegisterTab" class="form-container" style="display: none;">
                 <h3><i class="fas fa-chalkboard-user"></i> تقديم طلب أستاذ</h3>
-                
+
                 <input type="text" id="teacherName" placeholder="الاسم الكامل (بالحروف اللاتينية فقط)" required
                        oninput="validateLatinName('teacher')" onblur="validateLatinName('teacher')">
                 <div id="teacherNameError" class="name-error">
-                    <i class="fas fa-exclamation-circle"></i> 
+                    <i class="fas fa-exclamation-circle"></i>
                     الاسم يجب أن يحتوي على أحرف لاتينية فقط (A-Z, a-z)
                 </div>
-                
+
                 <input type="email" id="teacherEmail" placeholder="البريد الإلكتروني" required>
                 <input type="password" id="teacherPassword" placeholder="كلمة المرور" required>
                 <input type="tel" id="teacherPhone" placeholder="رقم الهاتف" required>
@@ -2484,14 +2484,14 @@
                 <input type="file" id="diplomaImage" accept="image/*">
                 <label><i class="fas fa-id-card"></i> صورة بطاقة الهوية</label>
                 <input type="file" id="idImage" accept="image/*">
-                
+
                 <div class="recaptcha-wrapper">
                     <div id="teacherRecaptcha" class="g-recaptcha"></div>
                 </div>
                 <div id="teacherRecaptchaError" class="recaptcha-error">
                     <i class="fas fa-exclamation-circle"></i> يرجى تأكيد أنك لست روبوتاً
                 </div>
-                
+
                 <button class="btn-primary" onclick="registerTeacher()" style="width:100%; justify-content:center;">تقديم الطلب</button>
 
                 <div style="margin-top: 14px; display: flex; align-items: center; gap: 10px;">
@@ -2598,7 +2598,7 @@
                 <div class="app-icon"><i class="fas fa-graduation-cap"></i></div>
                 <h2>📱 تحميل تطبيق <span style="color:var(--primary);">ZoomDz</span></h2>
                 <p class="subtitle">🎓 تعلم مع أفضل الأساتذة في الجزائر</p>
-                
+
                 <div class="features">
                     <div class="feature">
                         <i class="fas fa-video"></i>
@@ -2682,8 +2682,8 @@
         <p><i class="fas fa-credit-card"></i> الدفع عبر شارجيلي | EDAHABIA | CCP</p>
         <p style="font-size: 0.85rem;">© 2024 ZoomDz - منصة التعليم الجزائرية - جميع الحقوق محفوظة</p>
         <div class="footer-dev">
-            <i class="fas fa-code"></i> طور بواسطة: 
-            <span>عثمانية محمد الصالح</span> · 
+            <i class="fas fa-code"></i> طور بواسطة:
+            <span>عثمانية محمد الصالح</span> ·
             <span>مليك صالح</span>
         </div>
     </footer>
@@ -2708,12 +2708,12 @@
                 input = document.getElementById('teacherName');
                 errorEl = document.getElementById('teacherNameError');
             }
-            
+
             var value = input.value;
             var latinPattern = /^[A-Za-z\s\.\-']+$/;
             var hasNumbers = /\d/.test(value);
             var hasSpecialChars = /[^A-Za-z\s\.\-']/.test(value);
-            
+
             if (value.length > 0 && (hasNumbers || hasSpecialChars || !latinPattern.test(value))) {
                 errorEl.classList.add('show');
                 input.style.borderColor = '#dc2626';
@@ -2790,7 +2790,7 @@
         // ============================================================
         // دوال التبويبات
         // ============================================================
-        
+
         function showHome() {
             document.getElementById('homeSection').style.display = 'flex';
             document.getElementById('aboutSection').style.display = 'block';
@@ -3082,12 +3082,12 @@
             var email = document.getElementById('loginEmail').value;
             var password = document.getElementById('loginPassword').value;
             var role = document.getElementById('loginRole').value;
-            
-            if (!email || !password) { 
-                showNotification('يرجى إدخال البريد الإلكتروني وكلمة المرور', 'error'); 
-                return; 
+
+            if (!email || !password) {
+                showNotification('يرجى إدخال البريد الإلكتروني وكلمة المرور', 'error');
+                return;
             }
-            
+
             var recaptchaToken = recaptchaWidgets.login !== null ? grecaptcha.getResponse(recaptchaWidgets.login) : grecaptcha.getResponse();
             if (!recaptchaToken) {
                 document.getElementById('loginRecaptchaError').classList.add('show');
@@ -3135,17 +3135,17 @@
                 document.getElementById('studentName').style.borderColor = '#dc2626';
                 return;
             }
-            
+
             var full_name = document.getElementById('studentName').value.trim();
             var email = document.getElementById('studentEmail').value;
             var password = document.getElementById('studentPassword').value;
             var phone = document.getElementById('studentPhone').value;
-            
+
             if (!full_name || !email || !password || !phone) {
                 showNotification('يرجى ملء جميع الحقول', 'error');
                 return;
             }
-            
+
             var recaptchaToken = recaptchaWidgets.student !== null ? grecaptcha.getResponse(recaptchaWidgets.student) : grecaptcha.getResponse();
             if (!recaptchaToken) {
                 document.getElementById('studentRecaptchaError').classList.add('show');
@@ -3198,7 +3198,7 @@
                 document.getElementById('teacherName').style.borderColor = '#dc2626';
                 return;
             }
-            
+
             var formData = new FormData();
             formData.append('full_name', document.getElementById('teacherName').value.trim());
             formData.append('email', document.getElementById('teacherEmail').value);
@@ -3207,11 +3207,11 @@
             formData.append('specialization', document.getElementById('teacherSpecialization').value);
             formData.append('bio', document.getElementById('teacherBio').value);
             formData.append('experience', document.getElementById('teacherExperience').value);
-            
+
             var profileImage = document.getElementById('profileImage');
             var diplomaImage = document.getElementById('diplomaImage');
             var idImage = document.getElementById('idImage');
-            
+
             if (profileImage && profileImage.files[0]) {
                 formData.append('profile_image', profileImage.files[0]);
             }
@@ -3221,12 +3221,12 @@
             if (idImage && idImage.files[0]) {
                 formData.append('id_image', idImage.files[0]);
             }
-            
+
             var refCode = localStorage.getItem('pendingReferral') || referralCode;
             if (refCode) {
                 formData.append('ref', refCode);
             }
-            
+
             var recaptchaToken = recaptchaWidgets.teacher !== null ? grecaptcha.getResponse(recaptchaWidgets.teacher) : grecaptcha.getResponse();
             if (!recaptchaToken) {
                 document.getElementById('teacherRecaptchaError').classList.add('show');
@@ -3391,17 +3391,17 @@
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('downloadAppSection').style.display = 'none';
             document.getElementById('supportSection').style.display = 'none';
-            
+
             // إظهار قسم البروفايل
             var profileSection = document.getElementById('profileSection');
             profileSection.style.display = 'block';
-            
+
             var container = document.getElementById('profileContent');
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري تحميل الملف...</div>';
-            
+
             try {
                 var res = await fetch('/api/public/teacher/' + teacherId);
-                
+
                 if (!res.ok) {
                     var errorText = '';
                     try {
@@ -3410,7 +3410,7 @@
                     } catch(e) {
                         errorText = 'خطأ في الاتصال بالخادم (الرمز: ' + res.status + ')';
                     }
-                    
+
                     container.innerHTML = `
                         <div style="text-align:center; padding:40px; background: #ffffff; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid rgba(0,0,0,0.04);">
                             <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: var(--danger); margin-bottom: 16px;"></i>
@@ -3423,9 +3423,9 @@
                     `;
                     return;
                 }
-                
+
                 var teacher = await res.json();
-                
+
                 if (!teacher || !teacher.id) {
                     container.innerHTML = `
                         <div style="text-align:center; padding:40px; background: #ffffff; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid rgba(0,0,0,0.04);">
@@ -3439,9 +3439,9 @@
                     `;
                     return;
                 }
-                
+
                 var imageUrl = teacher.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(teacher.full_name) + '&background=0f5cbf&color=fff&size=140';
-                
+
                 // ===== بناء روابط التواصل الاجتماعي =====
                 var socialLinks = [];
                 var socialIcons = {
@@ -3453,7 +3453,7 @@
                     whatsapp_url: { icon: 'fab fa-whatsapp', name: 'واتساب', color: '#25d366' },
                     website_url: { icon: 'fas fa-globe', name: 'موقع شخصي', color: '#1e40af' }
                 };
-                
+
                 for (var key in socialIcons) {
                     if (teacher[key] && teacher[key].trim() !== '') {
                         socialLinks.push({
@@ -3464,7 +3464,7 @@
                         });
                     }
                 }
-                
+
                 // ===== بناء العروض =====
                 var offersHtml = '';
                 if (teacher.offers && teacher.offers.length > 0) {
@@ -3529,7 +3529,7 @@
                         </div>
                     `;
                 }
-                
+
                 // ===== بناء روابط التواصل =====
                 var socialHtml = '';
                 if (socialLinks.length > 0) {
@@ -3549,7 +3549,7 @@
                         </div>
                     `;
                 }
-                
+
                 // ===== تجميع الصفحة الكاملة =====
                 var html = `
                     <button class="profile-back-btn" onclick="showTeachers()">
@@ -3557,7 +3557,7 @@
                     </button>
                     <div class="profile-card">
                         <div class="profile-header">
-                            <img src="${imageUrl}" class="profile-image" 
+                            <img src="${imageUrl}" class="profile-image"
                                  onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.full_name)}&background=0f5cbf&color=fff&size=140'"
                                  alt="${escapeHtml(teacher.full_name)}">
                             <div class="profile-info">
@@ -3590,11 +3590,11 @@
                         </div>
                     </div>
                 `;
-                
+
                 container.innerHTML = html;
                 document.title = `${teacher.full_name} | ZoomDz`;
                 window.scrollTo({ top: 0, behavior: 'smooth' });
-                
+
             } catch(e) {
                 console.error('❌ خطأ في جلب بيانات الأستاذ:', e);
                 container.innerHTML = `
@@ -3627,16 +3627,16 @@
             var phone = document.getElementById('supportPhone').value;
             var subject = document.getElementById('supportSubject').value;
             var message = document.getElementById('supportMessage').value;
-            
+
             if (!name || !email || !subject || !message) {
                 showNotification('الرجاء ملء جميع الحقول المطلوبة', 'error');
                 return;
             }
-            
+
             var btn = e.target.querySelector('button');
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإرسال...';
-            
+
             try {
                 var res = await fetch('/api/support/send', {
                     method: 'POST',
@@ -3809,10 +3809,10 @@
             readReferralFromURL();
             showHome();
             loadStats();
-            
+
             setInterval(loadLiveStreams, 30000);
             setInterval(loadStats, 60000);
-            
+
             console.log('✅ تم تحميل المنصة بنجاح');
             console.log('🔐 reCAPTCHA v2 مفعل لحماية النماذج');
             console.log('👨‍💻 المطورين: عثمانية محمد الصالح، مليك صالح');
