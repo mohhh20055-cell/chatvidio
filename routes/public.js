@@ -275,7 +275,7 @@ router.get('/public/teacher/:teacherId', [
         // ============================================================
         // استخدام Promise.all لتنفيذ الطلبات بشكل متزامن
         // ============================================================
-        const [postsResult, totalOffersResult, studentsResult, pendingResult] = await Promise.all([
+        const [postsResult, totalOffersResult, studentsResult, pendingResult, coursesResult] = await Promise.all([
             supabase
                 .from('posts')
                 .select('*')
@@ -319,7 +319,14 @@ router.get('/public/teacher/:teacherId', [
                         .eq('payment_status', 'pending_stream');
                 }
                 return { data: [], error: null };
-            })()
+            })(),
+
+            supabase
+                .from('courses')
+                .select('*')
+                .eq('teacher_id', teacherId)
+                .eq('status', 'published')
+                .order('created_at', { ascending: false })
         ]);
 
         // معالجة نتائج المنشورات
@@ -356,6 +363,7 @@ router.get('/public/teacher/:teacherId', [
             offers: formattedOffers,
             live_stream: liveStreamInfo,
             posts: posts || [],
+            courses: coursesResult.data || [],
             stats: {
                 total_offers: totalOffers || 0,
                 total_students: totalStudents,

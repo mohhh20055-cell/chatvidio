@@ -698,11 +698,13 @@ router.post('/google', [
             const { data } = await axios.get('https://oauth2.googleapis.com/tokeninfo', { params: { id_token } });
             tokenInfo = data;
         } catch (err) {
-            return res.status(401).json({ success: false, error: 'رمز Google غير صالح أو منتهي' });
+            logger.warn('خطأ في تحقق Google token', { error: err.message });
+            return res.status(401).json({ success: false, error: 'رمز Google غير صالح. تأكد من أن الحساب مفعّل في Google.' });
         }
 
         if (tokenInfo.aud !== googleClientId) {
-            return res.status(401).json({ success: false, error: 'العميل غير مطابق' });
+            logger.warn('Google client mismatch', { aud: tokenInfo.aud, expected: googleClientId });
+            return res.status(401).json({ success: false, error: 'إعدادات Google غير مطابقة. تأكد من صحة الـ Client ID في إعدادات المنصة.' });
         }
 
         const googleId = tokenInfo.sub;

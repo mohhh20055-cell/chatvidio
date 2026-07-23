@@ -1650,6 +1650,93 @@
             text-align: center;
             padding: 30px;
             color: var(--gray);
+        }
+        
+        .profile-courses-section {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px solid var(--gray-light);
+        }
+        
+        .profile-courses-section h3 {
+            color: var(--dark);
+            font-size: 1.2rem;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .profile-courses-section h3 i {
+            color: var(--accent);
+        }
+        
+        .profile-courses-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 16px;
+        }
+        
+        .profile-course-item {
+            background: #f8fafc;
+            border-radius: var(--radius-sm);
+            padding: 16px 20px;
+            border: 1px solid rgba(0,0,0,0.04);
+            transition: var(--transition);
+        }
+        
+        .profile-course-item:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-sm);
+            border-color: var(--primary-light);
+        }
+        
+        .profile-course-item .course-title {
+            font-weight: 700;
+            color: var(--dark);
+            font-size: 1rem;
+            margin-bottom: 6px;
+        }
+        
+        .profile-course-item .course-level {
+            display: inline-block;
+            background: var(--accent-light);
+            color: var(--accent);
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.75rem;
+            margin-bottom: 6px;
+        }
+        
+        .profile-course-item .course-price {
+            font-weight: 700;
+            color: var(--secondary-dark);
+            font-size: 0.9rem;
+        }
+        
+        .profile-course-item .course-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 8px;
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+        
+        .profile-course-item .course-link:hover {
+            color: var(--primary-dark);
+        }
+        
+        .no-courses-message {
+            text-align: center;
+            padding: 30px;
+            color: var(--gray);
+        }
+            padding: 30px;
+            color: var(--gray);
             font-size: 1rem;
         }
         
@@ -3400,6 +3487,48 @@
                         </div>
                     `;
                 }
+
+                // ===== بناء الدورات =====
+                var coursesHtml = '';
+                var levelMap = {
+                    '5eme_pri': 'خامسة ابتدائي',
+                    '1ere_am': 'أولى متوسط',
+                    '2eme_am': 'ثانية متوسط',
+                    '3eme_am': 'ثالثة متوسط',
+                    '4eme_am': 'رابعة متوسط',
+                    '5eme_am': 'خامسة متوسط',
+                    '1ere_as': 'أولى ثانوي',
+                    '2eme_as': 'ثانية ثانوي',
+                    'bac': 'بكالوريا',
+                    '1ere_uni': 'أولى جامعي',
+                    '2ere_uni': 'ثانية جامعي',
+                    '3ere_uni': 'ثالثة جامعي',
+                    'master': 'ماستر',
+                    'doctorat': 'دكتوراه',
+                    'other': 'آخر'
+                };
+                if (teacher.courses && teacher.courses.length > 0) {
+                    coursesHtml = `
+                        <div class="profile-courses-section">
+                            <h3><i class="fas fa-play-circle"></i> الدورات</h3>
+                            <div class="profile-courses-grid">
+                                ${teacher.courses.map(function(c) {
+                                    var levelName = levelMap[c.education_level] || c.education_level || 'غير محدد';
+                                    return `
+                                        <div class="profile-course-item">
+                                            <div class="course-title">${escapeHtml(c.title)}</div>
+                                            <span class="course-level"><i class="fas fa-graduation-cap"></i> ${escapeHtml(levelName)}</span>
+                                            <div class="course-price">${c.is_free ? 'مجاني' : c.price + ' دج'}</div>
+                                            <a class="course-link" href="${escapeHtml(c.course_url)}" target="_blank" rel="noopener">
+                                                <i class="fas fa-external-link-alt"></i> فتح الدورة
+                                            </a>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
                 
                 // ===== بناء روابط التواصل =====
                 var socialHtml = '';
@@ -3442,6 +3571,7 @@
                                 <h3><i class="fas fa-align-right"></i> نبذة عن الأستاذ</h3>
                                 <p>${teacher.bio ? escapeHtml(teacher.bio) : 'لا توجد نبذة متاحة حالياً.'}</p>
                                 ${offersHtml}
+                                ${coursesHtml}
                             </div>
                             <div>
                                 ${socialHtml}
