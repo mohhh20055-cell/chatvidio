@@ -2534,7 +2534,12 @@
                 body: JSON.stringify({ user_id: teacherId, role: 'teacher' })
             });
             const createData = await createRes.json();
-            if (createData.success) document.getElementById('referralCodeText').textContent = createData.referral_code || 'غير متوفر';
+            if (createData.success) {
+                var referralCode = createData.referral_code || 'غير متوفر';
+                var referralLink = createData.referral_link || window.location.origin + '?ref=' + referralCode;
+                document.getElementById('referralCodeText').textContent = referralCode;
+                document.getElementById('referralCodeText').dataset.link = referralLink;
+            }
 
             const infoRes = await fetchWithAuth(`/api/referral/info/${teacherId}/teacher`);
             const infoData = await infoRes.json();
@@ -2563,21 +2568,24 @@
     }
 
     function copyReferralCode() {
-        const code = document.getElementById('referralCodeText').textContent;
-        if (code && code !== 'جاري التحميل...') {
-            navigator.clipboard.writeText(code).then(() => showToast('✅ تم نسخ رمز الإحالة!', 'success'))
-                .catch(() => { const ta = document.createElement('textarea'); ta.value = code; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast('✅ تم نسخ رمز الإحالة!', 'success'); });
+        const codeEl = document.getElementById('referralCodeText');
+        const link = codeEl.dataset.link || window.location.origin + '?ref=' + codeEl.textContent;
+        if (codeEl.textContent && codeEl.textContent !== 'جاري التحميل...') {
+            navigator.clipboard.writeText(link).then(() => showToast('✅ تم نسخ رابط الإحالة!', 'success'))
+                .catch(() => { const ta = document.createElement('textarea'); ta.value = link; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast('✅ تم نسخ رابط الإحالة!', 'success'); });
         }
     }
 
     function shareReferral() {
-        const code = document.getElementById('referralCodeText').textContent;
-        const link = `${window.location.origin}?ref=${code}`;
-        if (navigator.share) {
-            navigator.share({ title: 'انضم إلى ZoomDz', text: `استخدم رمز الإحالة الخاص بي: ${code} واحصل على مكافآت!`, url: link }).catch(() => {});
-        } else {
-            navigator.clipboard.writeText(link).then(() => showToast('✅ تم نسخ رابط الإحالة! شاركه مع طلابك', 'success'))
-                .catch(() => { const ta = document.createElement('textarea'); ta.value = link; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast('✅ تم نسخ رابط الإحالة!', 'success'); });
+        const codeEl = document.getElementById('referralCodeText');
+        const link = codeEl.dataset.link || window.location.origin + '?ref=' + codeEl.textContent;
+        if (codeEl.textContent && codeEl.textContent !== 'جاري التحميل...') {
+            if (navigator.share) {
+                navigator.share({ title: 'انضم إلى ZoomDz', text: 'استخدم رابط الإحالة الخاص بي للانضمام إلى منصة ZoomDz واحصل على مكافآت!', url: link }).catch(() => {});
+            } else {
+                navigator.clipboard.writeText(link).then(() => showToast('✅ تم نسخ رابط الإحالة! شاركه مع طلابك', 'success'))
+                    .catch(() => { const ta = document.createElement('textarea'); ta.value = link; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast('✅ تم نسخ رابط الإحالة!', 'success'); });
+            }
         }
     }
 

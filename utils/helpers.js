@@ -35,9 +35,10 @@ function generateVerificationToken() {
 }
 
 function generateReferralCode(name, id) {
-    const prefix = name.substring(0, 3).toUpperCase();
-    const suffix = id.toString(36).toUpperCase();
-    return `${prefix}${suffix}`;
+    const numericId = typeof id === 'string' ? parseInt(id, 10) : id;
+    const base = numericId || 1000;
+    const suffix = (base + 5371).toString().slice(-6);
+    return suffix;
 }
 
 async function getOne(table, column, value) {

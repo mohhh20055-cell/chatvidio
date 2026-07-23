@@ -4312,6 +4312,15 @@
                     return;
                 }
 
+                var userData = JSON.parse(localStorage.getItem('userData') || '{}');
+                var userId = userData.id;
+                var userRole = userData.role;
+
+                if (!userId || !userRole) {
+                    document.getElementById('referralCodeText').textContent = 'يرجى تسجيل الدخول';
+                    return;
+                }
+
                 var headers = {
                     'Authorization': 'Bearer ' + token,
                     'Content-Type': 'application/json'
@@ -4320,11 +4329,14 @@
                 var createRes = await fetch('/api/referral/create', {
                     method: 'POST',
                     headers: headers,
-                    body: JSON.stringify({ user_id: 1, role: 'student' })
+                    body: JSON.stringify({ user_id: userId, role: userRole })
                 });
                 var createData = await createRes.json();
                 if (createData.success) {
-                    document.getElementById('referralCodeText').textContent = createData.referral_code || 'غير متوفر';
+                    var referralCode = createData.referral_code || 'غير متوفر';
+                    var referralLink = createData.referral_link || window.location.origin + '?ref=' + referralCode;
+                    document.getElementById('referralCodeText').textContent = referralCode;
+                    document.getElementById('referralCodeText').dataset.link = referralLink;
                 }
             } catch(e) {
                 console.error('خطأ في تحميل بيانات الإحالة:', e);
@@ -4333,36 +4345,11 @@
         }
 
         function copyReferralCode() {
-            var code = document.getElementById('referralCodeText').textContent;
-            if (code && code !== 'جاري التحميل...' && code !== 'يرجى تسجيل الدخول' && code !== 'حدث خطأ') {
-                navigator.clipboard.writeText(code).then(function() {
-                    showNotification('✅ تم نسخ رمز الإحالة!', 'success');
-                }).catch(function() {
-                    var textArea = document.createElement('textarea');
-                    textArea.value = code;
-                    document.body.appendChild(textArea);
-                    textArea.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(textArea);
-                    showNotification('✅ تم نسخ رمز الإحالة!', 'success');
-                });
-            } else {
-                showNotification('⚠️ يرجى تسجيل الدخول للحصول على رمز الإحالة', 'warning');
-            }
-        }
-
-        function shareReferral() {
-            var code = document.getElementById('referralCodeText').textContent;
-            var link = window.location.origin + '?ref=' + code;
-            if (navigator.share) {
-                navigator.share({
-                    title: 'انضم إلى ZoomDz',
-                    text: 'استخدم رمز الإحالة الخاص بي: ' + code + ' واحصل على مكافآت!',
-                    url: link
-                }).catch(function() {});
-            } else {
+            var codeEl = document.getElementById('referralCodeText');
+            var link = codeEl.dataset.link || window.location.origin + '?ref=' + codeEl.textContent;
+            if (codeEl.textContent && codeEl.textContent !== 'جاري التحميل...' && codeEl.textContent !== 'يرجى تسجيل الدخول' && codeEl.textContent !== 'حدث خطأ') {
                 navigator.clipboard.writeText(link).then(function() {
-                    showNotification('✅ تم نسخ رابط الإحالة! شاركه مع أصدقائك', 'success');
+                    showNotification('✅ تم نسخ رابط الإحالة!', 'success');
                 }).catch(function() {
                     var textArea = document.createElement('textarea');
                     textArea.value = link;
@@ -4372,6 +4359,36 @@
                     document.body.removeChild(textArea);
                     showNotification('✅ تم نسخ رابط الإحالة!', 'success');
                 });
+            } else {
+                showNotification('⚠️ يرجى تسجيل الدخول للحصول على رابط الإحالة', 'warning');
+            }
+        }
+
+        function shareReferral() {
+            var codeEl = document.getElementById('referralCodeText');
+            var link = codeEl.dataset.link || window.location.origin + '?ref=' + codeEl.textContent;
+            if (codeEl.textContent && codeEl.textContent !== 'جاري التحميل...' && codeEl.textContent !== 'يرجى تسجيل الدخول' && codeEl.textContent !== 'حدث خطأ') {
+                if (navigator.share) {
+                    navigator.share({
+                        title: 'انضم إلى ZoomDz',
+                        text: 'استخدم رابط الإحالة الخاص بي للانضمام إلى منصة ZoomDz واحصل على مكافآت!',
+                        url: link
+                    }).catch(function() {});
+                } else {
+                    navigator.clipboard.writeText(link).then(function() {
+                        showNotification('✅ تم نسخ رابط الإحالة! شاركه مع أصدقائك', 'success');
+                    }).catch(function() {
+                        var textArea = document.createElement('textarea');
+                        textArea.value = link;
+                        document.body.appendChild(textArea);
+                        textArea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textArea);
+                        showNotification('✅ تم نسق رابط الإحالة! شاركه مع أصدقائك', 'success');
+                    });
+                }
+            } else {
+                showNotification('⚠️ يرجى تسجيل الدخول للحصول على رابط الإحالة', 'warning');
             }
         }
 

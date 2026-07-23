@@ -2770,7 +2770,10 @@
             });
             const createData = await createRes.json();
             if (createData.success) {
-                document.getElementById('referralCodeText').textContent = createData.referral_code || 'غير متوفر';
+                var referralCode = createData.referral_code || 'غير متوفر';
+                var referralLink = createData.referral_link || window.location.origin + '?ref=' + referralCode;
+                document.getElementById('referralCodeText').textContent = referralCode;
+                document.getElementById('referralCodeText').dataset.link = referralLink;
             }
 
             const infoRes = await fetchWithAuth(`/api/referral/info/${studentId}/student`);
@@ -2862,36 +2865,11 @@
     }
 
     function copyReferralCode() {
-        const code = document.getElementById('referralCodeText').textContent;
-        if (code && code !== 'جاري التحميل...' && code !== 'غير متوفر') {
-            navigator.clipboard.writeText(code).then(() => {
-                showToast('✅ تم نسخ رمز الإحالة!', 'success');
-            }).catch(() => {
-                const textArea = document.createElement('textarea');
-                textArea.value = code;
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
-                showToast('✅ تم نسخ رمز الإحالة!', 'success');
-            });
-        } else {
-            showToast('⚠️ يرجى تسجيل الدخول للحصول على رمز الإحالة', 'warning');
-        }
-    }
-
-    function shareReferral() {
-        const code = document.getElementById('referralCodeText').textContent;
-        const link = `${window.location.origin}?ref=${code}`;
-        if (navigator.share) {
-            navigator.share({
-                title: 'انضم إلى ZoomDz',
-                text: `استخدم رمز الإحالة الخاص بي: ${code}`,
-                url: link
-            }).catch(() => {});
-        } else {
+        const codeEl = document.getElementById('referralCodeText');
+        const link = codeEl.dataset.link || `${window.location.origin}?ref=${codeEl.textContent}`;
+        if (codeEl.textContent && codeEl.textContent !== 'جاري التحميل...' && codeEl.textContent !== 'غير متوفر') {
             navigator.clipboard.writeText(link).then(() => {
-                showToast('✅ تم نسخ رابط الإحالة! شاركه مع أصدقائك', 'success');
+                showToast('✅ تم نسخ رابط الإحالة!', 'success');
             }).catch(() => {
                 const textArea = document.createElement('textarea');
                 textArea.value = link;
@@ -2899,8 +2877,36 @@
                 textArea.select();
                 document.execCommand('copy');
                 document.body.removeChild(textArea);
-                showToast('✅ تم نسخ رابط الإحالة!', 'success');
+                showToast('✅ تم نسق رابط الإحالة!', 'success');
             });
+        } else {
+            showToast('⚠️ يرجى تسجيل الدخول للحصول على رابط الإحالة', 'warning');
+        }
+    }
+
+    function shareReferral() {
+        const codeEl = document.getElementById('referralCodeText');
+        const link = codeEl.dataset.link || `${window.location.origin}?ref=${codeEl.textContent}`;
+        if (codeEl.textContent && codeEl.textContent !== 'جاري التحميل...') {
+            if (navigator.share) {
+                navigator.share({
+                    title: 'انضم إلى ZoomDz',
+                    text: 'استخدم رابط الإحالة الخاص بي للانضمام إلى منصة ZoomDz واحصل على مكافآت!',
+                    url: link
+                }).catch(() => {});
+            } else {
+                navigator.clipboard.writeText(link).then(() => {
+                    showToast('✅ تم نسخ رابط الإحالة! شاركه مع أصدقائك', 'success');
+                }).catch(() => {
+                    const textArea = document.createElement('textarea');
+                    textArea.value = link;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    showToast('✅ تم نسخ رابط الإحالة!', 'success');
+                });
+            }
         }
     }
 
