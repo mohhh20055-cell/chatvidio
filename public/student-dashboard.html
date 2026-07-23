@@ -156,7 +156,7 @@
             display: flex;
             align-items: center;
             gap: 30px;
-            animation: scroll 15s linear infinite;
+            animation: scroll 60s linear infinite;
             white-space: nowrap;
         }
         
@@ -2103,52 +2103,37 @@
 
     async function loadUserData() {
         try {
-            await new Promise(resolve => setTimeout(resolve, 100));
-            
             const storedData = localStorage.getItem('userData');
             const token = localStorage.getItem('token');
-            
-            console.log('🔍 التحقق من التوكن:', token ? 'موجود ✅' : 'غير موجود ❌');
-            if (token) {
-                console.log('🔍 طول التوكن:', token.length, 'حرف');
-            }
-            console.log('🔍 التحقق من userData:', storedData ? 'موجود ✅' : 'غير موجود ❌');
-            
+
             if (!token || !storedData) {
-                console.log('⚠️ لا يوجد توكن أو بيانات مستخدم');
                 localStorage.removeItem('token');
                 localStorage.removeItem('userData');
                 window.location.href = '/';
                 return;
             }
-            
+
             authToken = token;
-            console.log('✅ authToken تم تعيينها:', authToken ? 'نعم' : 'لا');
-            console.log('✅ authToken length:', authToken?.length);
-            
+
             try {
                 userData = JSON.parse(storedData);
                 if (userData && userData.id) {
                     studentId = userData.id;
-                    console.log('✅ studentId:', studentId);
-                    console.log('✅ userData.role:', userData.role);
+                    updateUI();
                 } else {
-                    console.error('❌ userData لا يحتوي على id');
-                    localStorage.removeItem('userData');
                     localStorage.removeItem('token');
+                    localStorage.removeItem('userData');
                     window.location.href = '/';
                     return;
                 }
             } catch (parseError) {
-                console.error('❌ خطأ في تحليل userData:', parseError);
-                localStorage.removeItem('userData');
                 localStorage.removeItem('token');
+                localStorage.removeItem('userData');
                 window.location.href = '/';
                 return;
             }
-            
-            if (!authToken || !studentId) {
-                console.log('⚠️ لا يوجد توكن أو معرف طالب، جاري التوجيه للصفحة الرئيسية');
+
+            if (!studentId || !authToken) {
                 localStorage.removeItem('token');
                 localStorage.removeItem('userData');
                 window.location.href = '/';
@@ -2157,52 +2142,39 @@
 
             await getCsrfToken();
 
-            console.log('📥 جلب بيانات الطالب من الخادم...');
-            console.log('📥 authToken قبل الطلب:', authToken ? 'موجود' : 'فارغ');
-            const res = await fetchWithAuth('/api/student/me');
-            console.log('📥 حالة الاستجابة:', res.status);
-            
-            if (!res.ok) {
-                console.error('❌ فشل جلب بيانات الطالب:', res.status);
-                const errorText = await res.text();
-                console.error('❌ نص الخطأ:', errorText);
-                
-                if (res.status === 401 || res.status === 403) {
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('userData');
-                    showToast('انتهت صلاحية الجلسة، جاري إعادة التوجيه...', 'error');
-                    setTimeout(() => { window.location.href = '/'; }, 1500);
-                } else {
-                    showToast('حدث خطأ في جلب البيانات (كود: ' + res.status + ')', 'error');
-                }
-                return;
-            }
-            
-            const data = await res.json();
-            console.log('📥 بيانات الطالب من الخادم:', data);
-            
-            if (!data.error && data.id) {
-                userData = data;
-                studentId = data.id;
-                localStorage.setItem('userData', JSON.stringify(data));
-                updateUI();
-                loadWallet();
-                loadNotifications();
-                loadReferralData();
-                loadOffers();
-            } else {
-                console.error('❌ خطأ في بيانات الطالب:', data.error || 'بيانات غير صالحة');
-                if (data.error && data.error.includes('غير موجود')) {
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('userData');
-                    window.location.href = '/';
+            try {
+                const res = await fetchWithAuth('/api/student/me');
+                if (!res.ok) {
+                    if (res.status === 401 || res.status === 403) {
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('userData');
+                        window.location.href = '/';
+                        return;
+                    }
                     return;
                 }
-                showToast(data.error || 'حدث خطأ في تحميل البيانات', 'error');
+
+                const data = await res.json();
+                const studentData = data.student || data;
+
+                if (!data.error && studentData.id) {
+                    userData = studentData;
+                    studentId = studentData.id;
+                    localStorage.setItem('userData', JSON.stringify(studentData));
+                    updateUI();
+                }
+            } catch (e) {
+                if (e.message === 'انتهت صلاحية الجلسة') window.location.href = '/';
             }
+
+            Promise.all([
+                loadWallet(),
+                loadNotifications(),
+                loadReferralData(),
+                loadOffers()
+            ]).catch(() => {});
         } catch(e) {
-            console.error('❌ خطأ في تحميل بيانات المستخدم:', e);
-            showToast('حدث خطأ في تحميل البيانات', 'error');
+            if (e.message === 'انتهت صلاحية الجلسة') window.location.href = '/';
         }
     }
 
