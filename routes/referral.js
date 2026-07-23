@@ -5,11 +5,10 @@
 const express = require('express');
 const router = express.Router();
 const { body, param, validationResult } = require('express-validator');
-const crypto = require('crypto');
 
 const { supabase } = require('../config/database');
 const { authenticate, checkBanned } = require('../middleware/auth');
-const { getOne, insert, update, generateReferralCode } = require('../utils/helpers');
+const { getOne, insert, update } = require('../utils/helpers');
 const { processReferralReward, processStudentReferralRewardOnBooking } = require('../utils/referral');
 
 // ✅ تعريف authorize محلياً
@@ -70,7 +69,7 @@ router.post('/create', authenticate, [
             if (!existing) {
                 isUnique = true;
             } else {
-                referralCode = generateReferralCode(user.full_name, user_id) + crypto.randomBytes(2).toString('hex').toUpperCase();
+                referralCode = (parseInt(referralCode, 10) || user_id) + attempts + 1;
                 attempts++;
             }
         }
