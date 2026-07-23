@@ -2404,67 +2404,68 @@
 
     async function showTeacherProfile(teacherId) {
         try {
-            const res = await fetchWithAuth(`/api/teacher/${teacherId}`);
+            const res = await fetchWithAuth(`/api/public/teacher/${teacherId}`);
             const teacher = await res.json();
-            const teacherImage = teacher.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(teacher.full_name || '') + '&background=0f5cbf&color=fff&size=100';
-            
-            let socialHtml = '';
-            const socialLinks = [
-                { url: teacher.facebook_url, icon: 'fab fa-facebook', color: '#1877f2' },
-                { url: teacher.instagram_url, icon: 'fab fa-instagram', color: '#e4405f' },
-                { url: teacher.linkedin_url, icon: 'fab fa-linkedin-in', color: '#0a66c2' },
-                { url: teacher.youtube_url, icon: 'fab fa-youtube', color: '#ff0000' },
-                { url: teacher.twitter_url, icon: 'fab fa-x-twitter', color: '#1da1f2' },
-                { url: teacher.website_url, icon: 'fas fa-globe', color: 'var(--secondary)' },
-            ];
-            
-            for (const link of socialLinks) {
-                if (link.url) {
-                    socialHtml += `<a href="${link.url}" target="_blank" style="color: ${link.color}; font-size: 1.4rem; margin: 0 8px;"><i class="${link.icon}"></i></a>`;
+
+            if (teacher && teacher.full_name) {
+                const teacherImage = teacher.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(teacher.full_name || '') + '&background=0f5cbf&color=fff&size=100';
+                
+                let socialHtml = '';
+                const socialLinks = [
+                    { url: teacher.facebook_url, icon: 'fab fa-facebook', color: '#1877f2' },
+                    { url: teacher.instagram_url, icon: 'fab fa-instagram', color: '#e4405f' },
+                    { url: teacher.linkedin_url, icon: 'fab fa-linkedin-in', color: '#0a66c2' },
+                    { url: teacher.youtube_url, icon: 'fab fa-youtube', color: '#ff0000' },
+                    { url: teacher.twitter_url, icon: 'fab fa-x-twitter', color: '#1da1f2' },
+                    { url: teacher.website_url, icon: 'fas fa-globe', color: 'var(--secondary)' },
+                ];
+                
+                for (const link of socialLinks) {
+                    if (link.url) {
+                        socialHtml += `<a href="${link.url}" target="_blank" style="color: ${link.color}; font-size: 1.4rem; margin: 0 8px;"><i class="${link.icon}"></i></a>`;
+                    }
                 }
-            }
-            
-            let teachingLevelDisplay = '';
-            if (teacher.teaching_level) {
-                const levelName = levelMap[teacher.teaching_level] || teacher.teaching_level;
-                teachingLevelDisplay = `<p style="margin:8px 0; font-size: 0.9rem; color:var(--gray-700);"><strong><i class="fas fa-graduation-cap" style="color:var(--primary); margin-left: 6px; width: 18px;"></i> يدرس المستوى:</strong> ${levelName}</p>`;
-            }
-            
-            document.getElementById('teacherModalName').textContent = teacher.full_name || 'أستاذ';
-            document.getElementById('teacherModalBody').innerHTML = `
-                <div style="text-align: center;">
-                    <img src="${teacherImage}" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 16px; border: 3px solid white; box-shadow:var(--shadow-md);" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${escapeHtml(teacher.full_name || '')}')+'&background=0f5cbf&color=fff&size=100'">
-                    <div style="text-align: right; margin-top: 10px;">
-                        <p style="margin:8px 0; font-size: 0.9rem; color:var(--gray-700);"><strong><i class="fas fa-graduation-cap" style="color:var(--primary); margin-left: 6px; width: 18px;"></i> التخصص:</strong> ${teacher.specialization || 'غير محدد'}</p>
-                        <p style="margin:8px 0; font-size: 0.9rem; color:var(--gray-700);"><strong><i class="fas fa-briefcase" style="color:var(--primary); margin-left: 6px; width: 18px;"></i> الخبرة:</strong> ${teacher.experience || '0'} سنة</p>
-                        ${teachingLevelDisplay}
-                        <p style="margin:8px 0; font-size: 0.9rem; color:var(--gray-700);"><strong><i class="fas fa-envelope" style="color:var(--primary); margin-left: 6px; width: 18px;"></i> البريد الإلكتروني:</strong> ${teacher.email || 'غير محدد'}</p>
-                        <p style="margin:12px 0 6px 0; font-size: 0.9rem; color:var(--gray-700);"><strong><i class="fas fa-align-left" style="color:var(--primary); margin-left: 6px; width: 18px;"></i> نبذة:</strong></p>
-                        <p style="font-size: 0.85rem; color: var(--gray-600); line-height: 1.6; background: var(--gray-50); padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--gray-200);">${teacher.bio || 'لا توجد نبذة'}</p>
-                    </div>
-                    ${socialHtml ? `
-                        <div style="margin-top: 16px; padding: 14px; background: var(--gray-50); border-radius: var(--radius-sm); border: 1px solid var(--gray-200);">
-                            <div style="font-weight: 800; color: var(--gray-800); margin-bottom: 8px; font-size:0.85rem;"><i class="fas fa-share-alt" style="color:var(--primary); margin-left: 6px;"></i> روابط التواصل الاجتماعي</div>
-                            <div style="display: flex; justify-content: center; gap: 4px; flex-wrap: wrap;">${socialHtml}</div>
+                
+                let teachingLevelDisplay = '';
+                if (teacher.teaching_level) {
+                    const levelName = levelMap[teacher.teaching_level] || teacher.teaching_level;
+                    teachingLevelDisplay = `<p style="margin:8px 0; font-size: 0.9rem; color:var(--gray-700);"><strong><i class="fas fa-graduation-cap" style="color:var(--primary); margin-left: 6px; width: 18px;"></i> يدرس المستوى:</strong> ${levelName}</p>`;
+                }
+                
+                document.getElementById('teacherModalName').textContent = teacher.full_name || 'أستاذ';
+                document.getElementById('teacherModalBody').innerHTML = `
+                    <div style="text-align: center;">
+                        <img src="${teacherImage}" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 16px; border: 3px solid white; box-shadow:var(--shadow-md);" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent('${escapeHtml(teacher.full_name || '')}')+'&background=0f5cbf&color=fff&size=100'">
+                        <div style="text-align: right; margin-top: 10px;">
+                            <p style="margin:8px 0; font-size: 0.9rem; color:var(--gray-700);"><strong><i class="fas fa-graduation-cap" style="color:var(--primary); margin-left: 6px; width: 18px;"></i> التخصص:</strong> ${teacher.specialization || 'غير محدد'}</p>
+                            <p style="margin:8px 0; font-size: 0.9rem; color:var(--gray-700);"><strong><i class="fas fa-briefcase" style="color:var(--primary); margin-left: 6px; width: 18px;"></i> الخبرة:</strong> ${teacher.experience || '0'} سنة</p>
+                            ${teachingLevelDisplay}
+                            <p style="margin:8px 0; font-size: 0.9rem; color:var(--gray-700);"><strong><i class="fas fa-envelope" style="color:var(--primary); margin-left: 6px; width: 18px;"></i> البريد الإلكتروني:</strong> ${teacher.email || 'غير محدد'}</p>
+                            <p style="margin:12px 0 6px 0; font-size: 0.9rem; color:var(--gray-700);"><strong><i class="fas fa-align-left" style="color:var(--primary); margin-left: 6px;"></i> نبذة:</strong></p>
+                            <p style="font-size: 0.85rem; color: var(--gray-600); line-height: 1.6; background: var(--gray-50); padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--gray-200);">${teacher.bio || 'لا توجد نبذة'}</p>
                         </div>
-                    ` : ''}
-                    <div style="margin-top: 16px; padding: 10px; background: var(--gold-light); border-radius: var(--radius-sm); border-right: 4px solid var(--gold); text-align: right;">
-                        <p style="font-size: 0.8rem; color: var(--gold-dark); font-weight: 700;"><i class="fas fa-info-circle" style="margin-left: 6px;"></i> يمكنك التواصل مع الأستاذ عبر قسم الرسائل في المنصة</p>
+                        ${socialHtml ? `
+                            <div style="margin-top: 16px; padding: 14px; background: var(--gray-50); border-radius: var(--radius-sm); border: 1px solid var(--gray-200);">
+                                <div style="font-weight: 800; color: var(--gray-800); margin-bottom: 8px; font-size:0.85rem;"><i class="fas fa-share-alt" style="color:var(--primary); margin-left: 6px;"></i> روابط التواصل الاجتماعي</div>
+                                <div style="display: flex; justify-content: center; gap: 4px; flex-wrap: wrap;">${socialHtml}</div>
+                            </div>
+                        ` : ''}
+                        <div style="margin-top: 16px; padding: 10px; background: var(--gold-light); border-radius: var(--radius-sm); border-right: 4px solid var(--gold); text-align: right;">
+                            <p style="font-size: 0.8rem; color: var(--gold-dark); font-weight: 700;"><i class="fas fa-info-circle" style="margin-left: 6px;"></i> يمكنك التواصل مع الأستاذ عبر قسم الرسائل في المنصة</p>
+                        </div>
                     </div>
-                </div>
-            `;
-            document.getElementById('modalOverlay').style.display = 'block';
-            document.getElementById('teacherProfileModal').style.display = 'block';
-        } catch(e) { 
+                `;
+                document.getElementById('modalOverlay').style.display = 'block';
+                document.getElementById('teacherProfileModal').style.display = 'block';
+            } else {
+                showToast('حدث خطأ: الأستاذ غير موجود', 'error');
+            }
+        } catch(e) {
             if (e.message !== 'انتهت صلاحية الجلسة') {
                 showToast('حدث خطأ', 'error');
             }
         }
     }
-
-    // ================================================================
-    // ✅ COURSES - قائمة الدورات
-    // ================================================================
 
     async function loadStudentCourses() {
         const container = document.getElementById('coursesList');
