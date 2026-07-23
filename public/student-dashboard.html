@@ -1421,6 +1421,10 @@
                 <i class="fas fa-link" style="color:var(--gold);"></i>
                 <span class="tab-label">الإحالة</span>
             </button>
+            <button class="nav-tab" onclick="showDepositModal()" style="color:var(--secondary);">
+                <i class="fas fa-plus-circle"></i>
+                <span class="tab-label">شحن</span>
+            </button>
             <button class="nav-notifications-btn" onclick="toggleNotifications()" id="notifBtn" style="margin-right: auto;">
                 <i class="fas fa-bell"></i>
                 <span class="notif-badge hidden" id="notifBadge">0</span>
@@ -1536,6 +1540,9 @@
         <!-- COURSES SECTION -->
         <div id="coursesSection" style="display: none;">
             <div class="section-title"><i class="fas fa-play-circle"></i> الدورات المتوفرة</div>
+            <div style="background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 12px; padding: 14px 18px; margin-bottom: 18px; font-size: 0.85rem; color: #0c4a6e;">
+                <i class="fas fa-filter"></i> يتم عرض الدورات المناسبة لمستواك الدراسي: <strong id="studentCourseLevelLabel">غير محدد</strong>
+            </div>
             <div id="coursesList" class="courses-grid"></div>
         </div>
 
@@ -2494,7 +2501,16 @@
             const res = await fetch(`${API_BASE_URL}/api/course/public`);
             if (!res.ok) throw new Error('HTTP error!');
             const data = await res.json();
-            renderStudentCourses(data.courses || []);
+            let courses = data.courses || [];
+            const studentLevel = userData && userData.education_level;
+            const levelLabel = document.getElementById('studentCourseLevelLabel');
+            if (levelLabel) {
+                levelLabel.textContent = studentLevel ? (levelMap[studentLevel] || studentLevel) : 'غير محدد';
+            }
+            if (studentLevel) {
+                courses = courses.filter(c => c.education_level === studentLevel);
+            }
+            renderStudentCourses(courses);
         } catch(e) {
             console.error('خطأ في تحميل الدورات:', e);
             showToast('حدث خطأ في تحميل الدورات', 'error');
