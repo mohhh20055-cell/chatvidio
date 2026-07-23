@@ -72,12 +72,10 @@
     <!-- ===== CONFIG + reCAPTCHA v2 (تحميل غير متزامن) ===== -->
     <script>
         window.RECAPTCHA_SITE_KEY = '6Lcv8kctAAAAAHcoWBv_e87vrjP7I6IzQJSV6THf';
-        window.GOOGLE_CLIENT_ID = window.GOOGLE_CLIENT_ID || '506544859482-5863e7v5ob4nea7iu6m6s61uiohjlr3m.apps.googleusercontent.com';
         console.log('🔑');
     </script>
     <script src="/js/recaptcha.js" async defer></script>
     <script src="https://www.google.com/recaptcha/api.js?hl=ar&onload=onRecaptchaLoaded&render=explicit" async defer></script>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
 
     <style>
         /* ============================================================
@@ -2786,11 +2784,15 @@
                         <span class="step-number">3</span>
                         <span class="step-text">ادفع بأمان عبر شارجيلي</span>
                     </div>
-                    <div class="about-step">
-                        <span class="step-number">4</span>
-                        <span class="step-text">استخدم التطبيق من هاتفك مباشرة</span>
+                        <div class="about-step">
+                            <span class="step-number">4</span>
+                            <span class="step-text">استخدم التطبيق من هاتفك مباشرة</span>
+                        </div>
+                        <div class="about-step">
+                            <span class="step-number">5</span>
+                            <span class="step-text">أو تصفّح الدورات التعليمية حسب مستواك</span>
+                        </div>
                     </div>
-                </div>
             </div>
         </section>
 
@@ -2902,8 +2904,7 @@
 
                 <!-- صالح مليك - مسؤول التسويق والمبيعات -->
                 <div class="developer-card">
-                    <img src="/images/salah.png" class="developer-image"
-                         onerror="this.src='https://ui-avatars.com/api/?name=صالح+مليك&background=0369a1&color=fff&size=120'"
+                    <img src="https://ui-avatars.com/api/?name=صالح+مليك&background=0369a1&color=fff&size=120" class="developer-image"
                          alt="صالح مليك - مسؤول التسويق ونمو المنصة"
                          onclick="showFullImage(this.src)" loading="lazy">
                     <h3>صالح مليك</h3>
@@ -2913,9 +2914,18 @@
                         <span class="developer-role" style="background:#dcfce7; color:#15803d;"><i class="fas fa-chart-line" aria-hidden="true"></i> المبيعات</span>
                     </div>
                     <p style="font-size: 0.85rem; color: var(--gray); margin-top: 10px; line-height: 1.6;">
-                        <i class="fas fa-chart-line" style="color: #0369a1;" aria-hidden="true"></i> مسؤول عن التسويق الرقمي، استراتيجيات التسويق، ونمو المنصة
+                        <i class="fas fa-chart-line" style="color: #0369a1;" aria-hidden="true"></i> مسؤول عن التسويق الرقمي، استراتيجيات النمو، وتوسيع نطاق المنصة
                     </p>
+                </div>
 
+                <!-- نبذة عن المنصة -->
+                <div class="developer-card" style="grid-column: 1 / -1; border: 2px solid var(--primary-light);">
+                    <h3 style="color: var(--primary); margin-bottom: 12px;"><i class="fas fa-info-circle"></i> نبذة عن المنصة</h3>
+                    <p style="font-size: 0.95rem; color: var(--gray); line-height: 1.8;">
+                        <strong>ZoomDz</strong> هي منصة تعليمية رقمية جزائرية تهدف إلى democratize التعليم الخصوصي وربط الطلاب بنخبة من الأساتذة المعتمدين في مختلف التخصصات والمستويات التعليمية.
+                        تقدم المنصة تجربة تعلم مرنة وآمنة تشمل حجز الدروس، الدفع الإلكتروني، والبث المباشر للدروس، بالإضافة إلى نظام <strong>الدورات التعليمية</strong> الذي يتيح للأساتذة إنشاء دورات مسجلة يرفعونها عبر منصة Terabox، مما يتيح للطلاب الوصول إلى المحتوى educativo في أي وقت ومن أي مكان.
+                        نؤمن بأن التعليم الجيد هو حق لكل جزائري، ونعمل على توفير بيئة تعليمية متكاملة تجمع بين الجودة، السهولة، والأمان.
+                    </p>
                 </div>
             </div>
         </section>
@@ -3069,15 +3079,7 @@
                 <a href="#" class="forgot-link" onclick="showForgotPassword()" style="display:block; text-align:center; margin-top:12px; color:var(--primary); font-weight:600; text-decoration:none;">
                     <i class="fas fa-key" aria-hidden="true"></i> نسيت كلمة المرور؟
                 </a>
-                <div style="margin-top: 14px; display: flex; align-items: center; gap: 10px;">
-                    <div style="flex:1; height:1px; background:#e2e8f0;"></div>
-                    <span style="color: var(--gray); font-size: 0.8rem;">أو</span>
-                    <div style="flex:1; height:1px; background:#e2e8f0;"></div>
-                </div>
-                <button id="googleSignInBtn" onclick="signInWithGoogle()" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px 16px; border:1px solid #dadce0; border-radius:8px; background:#ffffff; cursor:pointer; font-family:var(--font-family); font-size:0.95rem; color:#3c4043; margin-top:8px;">
-                    <svg width="18" height="18" viewBox="0 0 48 48" style="flex-shrink:0;"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.2l6.8-6.8C35.9 2.7 30.4 0 24 0 14.6 0 6.5 5.4 2.6 13.3l8.1 6.3C12.3 13.1 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.2-.4-4.7H24v9.4h12.7c-.5 2.5-2 4.6-4.2 6l6.9 5.3c4-3.7 6.3-9.1 6.3-15.9z"/><path fill="#FBBC05" d="M10.7 28.6c-1.1-3.3-1.1-6.8 0-10.1L2.6 13.3C.5 19.3.5 25.7 2.6 31.7l8.1-3.1z"/><path fill="#34A853" d="M24 48c6.5 0 12-2.1 16-5.7l-8-6.3c-2.5 1.7-5.7 2.7-9 2.7-6.2 0-11.7-3.4-14.3-8.3l-8.1 3.1C6.5 42.6 14.6 48 24 48z"/></svg>
-                    تسجيل الدخول بحساب Google
-                </button>
+
             </div>
 
             <!-- ===== FORGOT PASSWORD TAB ===== -->
@@ -3144,15 +3146,7 @@
 
                 <button class="btn-primary" onclick="registerStudent()" style="width:100%; justify-content:center;">تسجيل</button>
 
-                <div style="margin-top: 14px; display: flex; align-items: center; gap: 10px;">
-                    <div style="flex:1; height:1px; background:#e2e8f0;"></div>
-                    <span style="color: var(--gray); font-size: 0.8rem;">أو</span>
-                    <div style="flex:1; height:1px; background:#e2e8f0;"></div>
-                </div>
-                <button id="googleSignInBtnStudentRegister" onclick="signInWithGoogle('student')" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px 16px; border:1px solid #dadce0; border-radius:8px; background:#ffffff; cursor:pointer; font-family:var(--font-family); font-size:0.95rem; color:#3c4043; margin-top:8px;">
-                    <svg width="18" height="18" viewBox="0 0 48 48" style="flex-shrink:0;"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.2l6.8-6.8C35.9 2.7 30.4 0 24 0 14.6 0 6.5 5.4 2.6 13.3l8.1 6.3C12.3 13.1 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.2-.4-4.7H24v9.4h12.7c-.5 2.5-2 4.6-4.2 6l6.9 5.3c4-3.7 6.3-9.1 6.3-15.9z"/><path fill="#FBBC05" d="M10.7 28.6c-1.1-3.3-1.1-6.8 0-10.1L2.6 13.3C.5 19.3.5 25.7 2.6 31.7l8.1-3.1z"/><path fill="#34A853" d="M24 48c6.5 0 12-2.1 16-5.7l-8-6.3c-2.5 1.7-5.7 2.7-9 2.7-6.2 0-11.7-3.4-14.3-8.3l-8.1 3.1C6.5 42.6 14.6 48 24 48z"/></svg>
-                    تسجيل الدخول بحساب Google
-                </button>
+
             </div>
 
             <!-- ===== TEACHER REGISTER TAB ===== -->
@@ -3212,103 +3206,11 @@
 
                 <button class="btn-primary" onclick="registerTeacher()" style="width:100%; justify-content:center;">تقديم الطلب</button>
 
-                <div style="margin-top: 14px; display: flex; align-items: center; gap: 10px;">
-                    <div style="flex:1; height:1px; background:#e2e8f0;"></div>
-                    <span style="color: var(--gray); font-size: 0.8rem;">أو</span>
-                    <div style="flex:1; height:1px; background:#e2e8f0;"></div>
-                </div>
-                <button id="googleSignInBtnTeacherRegister" onclick="signInWithGoogle('teacher')" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px 16px; border:1px solid #dadce0; border-radius:8px; background:#ffffff; cursor:pointer; font-family:var(--font-family); font-size:0.95rem; color:#3c4043; margin-top:8px;">
-                    <svg width="18" height="18" viewBox="0 0 48 48" style="flex-shrink:0;"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.2l6.8-6.8C35.9 2.7 30.4 0 24 0 14.6 0 6.5 5.4 2.6 13.3l8.1 6.3C12.3 13.1 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.2-.4-4.7H24v9.4h12.7c-.5 2.5-2 4.6-4.2 6l6.9 5.3c4-3.7 6.3-9.1 6.3-15.9z"/><path fill="#FBBC05" d="M10.7 28.6c-1.1-3.3-1.1-6.8 0-10.1L2.6 13.3C.5 19.3.5 25.7 2.6 31.7l8.1-3.1z"/><path fill="#34A853" d="M24 48c6.5 0 12-2.1 16-5.7l-8-6.3c-2.5 1.7-5.7 2.7-9 2.7-6.2 0-11.7-3.4-14.3-8.3l-8.1 3.1C6.5 42.6 14.6 48 24 48z"/></svg>
-                    تسجيل الدخول بحساب Google
-                </button>
+
             </div>
         </section>
 
-        <!-- ===== GOOGLE PROFILE COMPLETION ===== -->
-        <section id="googleCompletionSection" class="form-section" style="display: none;" aria-label="إكمال الملف الشخصي">
-            <div class="form-container">
-                <h3><i class="fas fa-user-plus" aria-hidden="true"></i> إكمال الملف الشخصي</h3>
-                <p style="color: var(--gray); margin-bottom: 18px;">الرجاء إدخال باقي البيانات المطلوبة لإتمام التسجيل</p>
 
-                <input type="hidden" id="googleRole">
-                <input type="hidden" id="googleAccessToken">
-
-                <input type="text" id="googleFullName" placeholder="الاسم الكامل" aria-label="الاسم الكامل">
-
-                <div id="googleTeacherFields" style="display: none;">
-                    <input type="text" id="googleSpecialization" placeholder="التخصص" aria-label="التخصص">
-                    <input type="text" id="googleBio" placeholder="نبذة عنك" aria-label="نبذة">
-                    <input type="text" id="googleExperience" placeholder="سنوات الخبرة" aria-label="سنوات الخبرة">
-                    <div class="education-level-group">
-                        <label><i class="fas fa-graduation-cap"></i> المستوى التعليمي</label>
-                        <select id="googleTeachingLevel">
-                            <option value="">-- اختر المستوى --</option>
-                            <option value="5eme_pri">خامسة ابتدائي</option>
-                            <option value="1ere_am">أولى متوسط</option>
-                            <option value="2eme_am">ثانية متوسط</option>
-                            <option value="3eme_am">ثالثة متوسط</option>
-                            <option value="4eme_am">رابعة متوسط</option>
-                            <option value="5eme_am">خامسة متوسط</option>
-                            <option value="1ere_as">أولى ثانوي</option>
-                            <option value="2eme_as">ثانية ثانوي</option>
-                            <option value="bac">بكالوريا</option>
-                            <option value="1ere_uni">أولى جامعي</option>
-                            <option value="2eme_uni">ثانية جامعي</option>
-                            <option value="3eme_uni">ثالثة جامعي</option>
-                            <option value="master">ماستر</option>
-                            <option value="doctorat">دكتوراه</option>
-                            <option value="other">آخر</option>
-                        </select>
-                    </div>
-
-                    <div style="margin-top: 10px;">
-                        <label style="display: block; margin-bottom: 4px; font-weight: 600; font-size: 0.85rem;">صورة شخصية</label>
-                        <input type="file" id="googleProfileImage" accept="image/*">
-                    </div>
-                    <div style="margin-top: 10px;">
-                        <label style="display: block; margin-bottom: 4px; font-weight: 600; font-size: 0.85rem;">بطاقة الهوية</label>
-                        <input type="file" id="googleIdImage" accept="image/*">
-                    </div>
-                    <div style="margin-top: 10px;">
-                        <label style="display: block; margin-bottom: 4px; font-weight: 600; font-size: 0.85rem;">الشهادة/الدبلوم</label>
-                        <input type="file" id="googleDiplomaImage" accept="image/*">
-                    </div>
-                </div>
-
-                <div id="googleStudentFields" style="display: none;">
-                    <input type="tel" id="googlePhone" placeholder="رقم الهاتف" aria-label="رقم الهاتف">
-                    <div class="education-level-group">
-                        <label><i class="fas fa-graduation-cap"></i> المستوى الدراسي</label>
-                        <select id="googleEducationLevel">
-                            <option value="">-- اختر المستوى --</option>
-                            <option value="5eme_pri">خامسة ابتدائي</option>
-                            <option value="1ere_am">أولى متوسط</option>
-                            <option value="2eme_am">ثانية متوسط</option>
-                            <option value="3eme_am">ثالثة متوسط</option>
-                            <option value="4eme_am">رابعة متوسط</option>
-                            <option value="5eme_am">خامسة متوسط</option>
-                            <option value="1ere_as">أولى ثانوي</option>
-                            <option value="2eme_as">ثانية ثانوي</option>
-                            <option value="bac">بكالوريا</option>
-                            <option value="1ere_uni">أولى جامعي</option>
-                            <option value="2eme_uni">ثانية جامعي</option>
-                            <option value="3eme_uni">ثالثة جامعي</option>
-                            <option value="master">ماستر</option>
-                            <option value="doctorat">دكتوراه</option>
-                        </select>
-                    </div>
-                    <div style="margin-top: 10px;">
-                        <label style="display: block; margin-bottom: 4px; font-weight: 600; font-size: 0.85rem;">صورة شخصية</label>
-                        <input type="file" id="googleStudentProfileImage" accept="image/*">
-                    </div>
-                </div>
-
-                <div style="margin-top: 14px;">
-                    <button class="btn-primary" onclick="submitGoogleCompletion()" style="width:100%; justify-content:center;">إكمال التسجيل</button>
-                    <button class="cancel-btn" onclick="cancelGoogleCompletion()" style="width:100%; justify-content:center; margin-top: 8px;">إلغاء</button>
-                </div>
-            </div>
-        </section>
 
         <!-- ===== DOWNLOAD APP SECTION ===== -->
         <section id="downloadAppSection" class="download-app-section" style="display: none;" aria-label="تحميل التطبيق">
@@ -4514,149 +4416,7 @@
             }
         });
 
-        // ============================================================
-        // GOOGLE AUTH
-        // ============================================================
-        var googleAccessToken = null;
-        var googleNeedsCompletion = false;
 
-        function signInWithGoogle(role) {
-            if (!window.GOOGLE_CLIENT_ID) {
-                showNotification('Google Client ID غير مضبوط', 'error');
-                return;
-            }
-            if (!role) {
-                role = document.getElementById('loginRole').value;
-            }
-            document.getElementById('googleRole').value = role;
-            google.accounts.id.initialize({
-                client_id: window.GOOGLE_CLIENT_ID,
-                callback: handleGoogleCredential
-            });
-            google.accounts.id.prompt((notification) => {
-                if (notification.isNotDisplayed()) {
-                    showNotification('لا يمكن عرض نافذة Google حالياً، حاول مرة أخرى', 'error');
-                }
-            });
-        }
-
-        function handleGoogleCredential(response) {
-            const idToken = response.credential;
-            const role = document.getElementById('loginRole').value;
-            document.getElementById('googleRole').value = role;
-
-            fetch('/api/auth/google', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id_token: idToken, role })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    if (data.needs_completion) {
-                        googleNeedsCompletion = true;
-                        document.getElementById('googleAccessToken').value = data.token;
-                        document.getElementById('googleFullName').value = data.user.name || '';
-                        document.getElementById('loginSection').style.display = 'none';
-                        document.getElementById('googleCompletionSection').style.display = 'block';
-                        document.getElementById('homeSection').style.display = 'none';
-                        if (role === 'teacher') {
-                            document.getElementById('googleTeacherFields').style.display = 'block';
-                            document.getElementById('googleStudentFields').style.display = 'none';
-                        } else {
-                            document.getElementById('googleTeacherFields').style.display = 'none';
-                            document.getElementById('googleStudentFields').style.display = 'block';
-                        }
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                    } else {
-                        localStorage.setItem('token', data.token);
-                        localStorage.setItem('userData', JSON.stringify(data.user));
-                        showNotification('✅ تم تسجيل الدخول بحساب Google', 'success');
-                        setTimeout(() => { window.location.href = data.redirectTo; }, 800);
-                    }
-                } else {
-                    showNotification(data.error || '❌ فشل تسجيل الدخول بحساب Google', 'error');
-                }
-            })
-            .catch(() => showNotification('❌ حدث خطأ في الاتصال', 'error'));
-        }
-
-        async function submitGoogleCompletion() {
-            const role = document.getElementById('googleRole').value;
-            const token = document.getElementById('googleAccessToken').value;
-            const fullName = document.getElementById('googleFullName').value.trim();
-
-            if (!fullName) { showNotification('يرجى إدخال الاسم الكامل', 'error'); return; }
-
-            const formData = new FormData();
-            formData.append('role', role);
-            formData.append('full_name', fullName);
-
-            if (role === 'teacher') {
-                const specialization = document.getElementById('googleSpecialization').value.trim();
-                const bio = document.getElementById('googleBio').value.trim();
-                const experience = document.getElementById('googleExperience').value.trim();
-                const teachingLevel = document.getElementById('googleTeachingLevel').value;
-
-                if (!specialization || !teachingLevel) {
-                    showNotification('يرجى إدخال التخصص والمستوى التعليمي', 'error');
-                    return;
-                }
-
-                formData.append('specialization', specialization);
-                formData.append('bio', bio);
-                formData.append('experience', experience);
-                formData.append('teaching_level', teachingLevel);
-
-                const profileImage = document.getElementById('googleProfileImage').files[0];
-                const idImage = document.getElementById('googleIdImage').files[0];
-                const diplomaImage = document.getElementById('googleDiplomaImage').files[0];
-
-                if (profileImage) formData.append('profile_image', profileImage);
-                if (idImage) formData.append('id_image', idImage);
-                if (diplomaImage) formData.append('diploma_image', diplomaImage);
-            } else {
-                const phone = document.getElementById('googlePhone').value.trim();
-                const educationLevel = document.getElementById('googleEducationLevel').value;
-
-                if (!phone || !educationLevel) {
-                    showNotification('يرجى إدخال رقم الهاتف والمستوى الدراسي', 'error');
-                    return;
-                }
-
-                formData.append('phone', phone);
-                formData.append('education_level', educationLevel);
-
-                const profileImage = document.getElementById('googleStudentProfileImage').files[0];
-                if (profileImage) formData.append('profile_image', profileImage);
-            }
-
-            try {
-                const res = await fetch('/api/auth/google/complete', {
-                    method: 'POST',
-                    headers: { 'Authorization': 'Bearer ' + token },
-                    body: formData
-                });
-                const data = await res.json();
-                if (data.success) {
-                    localStorage.setItem('token', token);
-                    localStorage.setItem('userData', JSON.stringify(data.user));
-                    showNotification('✅ تم إكمال التسجيل بنجاح', 'success');
-                    setTimeout(() => { window.location.href = data.redirectTo; }, 800);
-                } else {
-                    showNotification(data.error || '❌ حدث خطأ', 'error');
-                }
-            } catch(e) {
-                showNotification('❌ حدث خطأ في الاتصال', 'error');
-            }
-        }
-
-        function cancelGoogleCompletion() {
-            document.getElementById('googleCompletionSection').style.display = 'none';
-            document.getElementById('loginSection').style.display = 'block';
-            showLogin();
-            googleNeedsCompletion = false;
-        }
 
         // ============================================================
         // UTILITY
@@ -4727,9 +4487,7 @@
         window.sendResetLink = sendResetLink;
         window.validateLatinName = validateLatinName;
         window.showNotification = showNotification;
-        window.handleGoogleCredential = handleGoogleCredential;
-        window.submitGoogleCompletion = submitGoogleCompletion;
-        window.cancelGoogleCompletion = cancelGoogleCompletion;
+
     </script>
 </body>
 </html>
