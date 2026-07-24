@@ -339,6 +339,60 @@
         }
         .teaching-level-banner .banner-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4); }
 
+        /* ===== APPROVAL BANNERS ===== */
+        .approval-banner-container {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            border: 2px solid #3b82f6;
+            border-radius: var(--radius-sm);
+            padding: 16px 20px;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.15);
+        }
+        .approval-banner-container .approval-banner {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            min-width: 200px;
+        }
+        .approval-banner-container .approval-banner i { font-size: 1.8rem; color: #2563eb; flex-shrink: 0; }
+        .approval-banner-container .approval-banner span { color: #1e40af; font-size: 0.9rem; font-weight: 500; }
+        .approval-banner-container .approval-banner .btn-primary {
+            background: var(--gradient-main);
+            color: white;
+            border: none;
+            padding: 8px 24px;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 4px 12px rgba(15, 92, 191, 0.3);
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .approval-banner-container .approval-banner .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(15, 92, 191, 0.4); }
+        .approval-banner-container .approval-banner .btn-secondary {
+            background: white;
+            color: #1e40af;
+            border: 2px solid #3b82f6;
+            padding: 8px 24px;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+        .approval-banner-container .approval-banner .btn-secondary:hover { background: #eff6ff; }
+
         /* ===== NAVBAR ===== */
         .navbar {
             position: fixed;
@@ -1686,6 +1740,10 @@
         <!-- PROFILE SECTION -->
         <div id="profileSection">
             <div class="section-title"><i class="fas fa-user"></i> ملفي الشخصي</div>
+            <!-- ✅ شريط إشعار انتظار الموافقة -->
+            <div id="pendingApprovalBanner" class="approval-banner-container" style="display: none;"></div>
+            <!-- ✅ شريط إشعار إكمال الملف الشخصي -->
+            <div id="profileCompletionBanner" class="approval-banner-container" style="display: none;"></div>
             <div id="profileInfo"></div>
         </div>
 
@@ -2254,6 +2312,12 @@
     // ================================================================
 
     function showSection(section) {
+        // ✅ التحقق من حالة الحساب قبل السماح بالوصول لأقسام العروض والدورات
+        if ((section === 'offers' || section === 'courses') && userData && userData.status !== 'approved') {
+            showToast('⏳ حسابك قيد المراجعة من قبل الإدارة. سيتم إعلامك عبر البريد الإلكتروني خلال 24 ساعة عند قبول حسابك.', 'warning');
+            return;
+        }
+
         document.getElementById('profileSection').style.display = 'none';
         document.getElementById('offersSection').style.display = 'none';
         document.getElementById('coursesSection').style.display = 'none';
@@ -2351,6 +2415,9 @@
                 if (e.message === 'انتهت صلاحية الجلسة') window.location.href = '/';
             }
 
+            // ✅ التحقق من حالة إكمال الملف الشخصي
+            checkProfileCompletion();
+
             Promise.all([
                 loadBalance(),
                 loadReferralData(),
@@ -2363,9 +2430,112 @@
             if (e.message === 'انتهت صلاحية الجلسة') window.location.href = '/';
         }
     }
+
+    // ✅ التحقق من حالة إكمال الملف الشخصي وإظهار الشريط المناسب
+    async function checkProfileCompletion() {
+        try {
+            const res = await fetchWithAuth('/api/teacher/profile-completion-status');
+            if (!res.ok) return;
+            const data = await res.json();
+
+            if (data.success) {
+                // ✅ تحديث userData مع حالة إكمال الملف الشخصي
+                userData.requires_profile_completion = data.requires_profile_completion;
+                userData.profile_completion = data.profile_completion;
+
+                if (data.requires_profile_completion) {
+                    // ✅ إظهار شريط إكمال الملف الشخصي
+                    showProfileCompletionBanner();
+                } else if (userData.status !== 'approved') {
+                    // ✅ إظهار شريط انتظار الموافقة
+                    showPendingApprovalBanner();
+                } else {
+                    // ✅ إخفاء كل الأشرطة - الحساب معتمد ومكتمل
+                    hideAllBanners();
+                }
+            }
+        } catch (e) {
+            console.error('خطأ في التحقق من إكمال الملف الشخصي:', e.message);
+        }
+    }
+
+    function showProfileCompletionBanner() {
+        hideAllBanners();
+        const banner = document.getElementById('profileCompletionBanner');
+        if (banner) {
+            banner.style.display = 'flex';
+            banner.innerHTML = `
+                <div class="approval-banner">
+                    <i class="fas fa-user-edit" aria-hidden="true"></i>
+                    <span>أكمل ملفك الشخصي للتمكن من استخدام المنصة. بعد إكمال الملف، سيتم إرسال طلب الموافقة إلى الإدارة.</span>
+                    <button class="btn-primary" onclick="showSection('profile')" style="padding: 6px 16px; font-size: 0.8rem;">إكمال الملف الشخصي</button>
+                    <button class="btn-secondary" onclick="this.parentElement.style.display='none'" style="padding: 6px 16px; font-size: 0.8rem;">إغلاق</button>
+                </div>
+            `;
+        }
+        // ✅ تحديث واجهة الملف الشخصي
+        updateProfileForPending();
+    }
+
+    function showPendingApprovalBanner() {
+        hideAllBanners();
+        const banner = document.getElementById('pendingApprovalBanner');
+        if (banner) {
+            banner.style.display = 'flex';
+            banner.innerHTML = `
+                <div class="approval-banner">
+                    <i class="fas fa-clock" aria-hidden="true"></i>
+                    <span>⏳ حسابك قيد المراجعة من قبل الإدارة. سيتم إرسال بريد إلكتروني إليك خلال 24 ساعة عند قبول حسابك من قبل منصة ZoomDz.</span>
+                </div>
+            `;
+        }
+        updateUI();
+    }
+
+    function hideAllBanners() {
+        const profileBanner = document.getElementById('profileCompletionBanner');
+        const pendingBanner = document.getElementById('pendingApprovalBanner');
+        if (profileBanner) profileBanner.style.display = 'none';
+        if (pendingBanner) pendingBanner.style.display = 'none';
+    }
+
+    function updateProfileForPending() {
+        if (!userData || !userData.id) return;
+        const userName = userData.full_name || 'أستاذ';
+        const userImage = userData.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(userName) + '&background=0f5cbf&color=fff&size=120';
+        document.getElementById('navProfileName').textContent = userName.split(' ')[0];
+        document.getElementById('navProfileImg').src = userImage;
+
+        document.getElementById('profileInfo').innerHTML = `
+            <div class="profile-display">
+                <img src="${userImage}" alt="صورة الملف الشخصي" class="profile-avatar" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=0f5cbf&color=fff&size=120'">
+                <div class="profile-name">${escapeHtml(userData.full_name)}</div>
+                <div class="profile-specialty"><i class="fas fa-book" style="color:var(--primary);"></i> ${escapeHtml(userData.specialization || 'تخصص غير محدد')}</div>
+                <div class="profile-bio">${escapeHtml(userData.bio || 'لا توجد نبذة تعريفية')}</div>
+                <div class="profile-info-grid">
+                    <div class="profile-info-item"><div class="label">📧 البريد الإلكتروني</div><div class="value">${userData.email || 'غير محدد'}</div></div>
+                    <div class="profile-info-item"><div class="label">📞 الهاتف</div><div class="value">${userData.phone || 'غير محدد'}</div></div>
+                    <div class="profile-info-item"><div class="label">💼 الخبرة</div><div class="value">${userData.experience || '0'} سنة</div></div>
+                    <div class="profile-info-item"><div class="label">📊 الحالة</div><div class="value" style="color: var(--gold);">⏳ قيد المراجعة</div></div>
+                    <div class="profile-info-item" style="border-color: var(--gold);"><div class="label">🎓 المستوى الدراسي</div><div class="value" style="color: var(--gold-dark); font-weight: 800;">${userData.teaching_level ? userData.teaching_level : '<span style="font-size: 0.7rem; color: var(--danger); display: block;">⚠️ مطلوب لإضافة عروض</span>'}</div></div>
+                </div>
+                <div class="social-links-section"><div class="social-title"><i class="fas fa-share-alt"></i>روابط التواصل الاجتماعي</div>${renderSocialLinks(userData)}</div>
+                <button onclick="showEditProfileModal()" style="background: var(--gradient-main); color: white; border: none; padding: 10px 30px; border-radius: 30px; cursor: pointer; font-weight: 700; font-size: 0.9rem; transition: all 0.3s ease; box-shadow: 0 4px 16px rgba(15,92,191,0.25); display: inline-flex; align-items: center; gap: 10px; margin-top: 8px;">
+                    <i class="fas fa-edit"></i> تعديل الملف الشخصي وإضافة الروابط
+                </button>
+                <p style="color: var(--gray-400); margin-top: 16px; font-size: 0.7rem;"><i class="fas fa-lock"></i> لا يمكن تعديل المعلومات الشخصية (الاسم، التخصص، الخبرة، المستوى الدراسي) إلا عبر الإدارة</p>
+            </div>
+        `;
+    }
     function checkTeachingLevel() {
         const banner = document.getElementById('teachingLevelBanner');
         const createOfferBtn = document.querySelector('.btn-primary');
+        // ✅ إذا كان الحساب غير معتمد، إظهار البانر وتعطيل الأزرار
+        if (userData && userData.status !== 'approved') {
+            if (banner) banner.style.display = 'flex';
+            if (createOfferBtn) createOfferBtn.disabled = true;
+            return;
+        }
         if (userData && userData.teaching_level) {
             banner.style.display = 'none';
             if (createOfferBtn) createOfferBtn.disabled = false;
@@ -2396,7 +2566,7 @@
         return `<div class="social-links-grid">${html}</div>`;
     }
 
-    function updateUI() {
+function updateUI() {
         if (!userData) return;
         const userName = userData.full_name || 'أستاذ';
         const userImage = userData.profile_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(userName) + '&background=0f5cbf&color=fff&size=120';
@@ -2405,6 +2575,9 @@
 
         const levelMap = { '5eme_pri': 'خامسة ابتدائي', '1ere_am': 'أولى متوسط', '2eme_am': 'ثانية متوسط', '3eme_am': 'ثالثة متوسط', '4eme_am': 'رابعة متوسط', '5eme_am': 'خامسة متوسط', '1ere_as': 'أولى ثانوي', '2eme_as': 'ثانية ثانوي', 'bac': 'بكالوريا', '1ere_uni': 'أولى جامعي', '2eme_uni': 'ثانية جامعي', '3eme_uni': 'ثالثة جامعي', 'master': 'ماستر', 'doctorat': 'دكتوراه' };
         const teachingLevelDisplay = userData.teaching_level ? levelMap[userData.teaching_level] || userData.teaching_level : 'لم يحدد بعد';
+
+        const statusText = userData.status === 'approved' ? '✅ معتمد' : '⏳ قيد المراجعة';
+        const statusColor = userData.status === 'approved' ? 'var(--secondary)' : 'var(--gold)';
 
         document.getElementById('profileInfo').innerHTML = `
             <div class="profile-display">
@@ -2416,16 +2589,27 @@
                     <div class="profile-info-item"><div class="label">📧 البريد الإلكتروني</div><div class="value">${userData.email || 'غير محدد'}</div></div>
                     <div class="profile-info-item"><div class="label">📞 الهاتف</div><div class="value">${userData.phone || 'غير محدد'}</div></div>
                     <div class="profile-info-item"><div class="label">💼 الخبرة</div><div class="value">${userData.experience || '0'} سنة</div></div>
-                    <div class="profile-info-item"><div class="label">📊 الحالة</div><div class="value" style="color:${userData.status === 'approved' ? 'var(--secondary)' : 'var(--gold)'}">${userData.status === 'approved' ? '✅ معتمد' : '⏳ قيد المراجعة'}</div></div>
+                    <div class="profile-info-item"><div class="label">📊 الحالة</div><div class="value" style="color:${statusColor}">${statusText}</div></div>
                     <div class="profile-info-item" style="border-color: var(--gold);"><div class="label">🎓 المستوى الدراسي</div><div class="value" style="color: var(--gold-dark); font-weight: 800;">${teachingLevelDisplay}${!userData.teaching_level ? '<span style="font-size: 0.7rem; color: var(--danger); display: block;">⚠️ مطلوب لإضافة عروض</span>' : ''}</div></div>
                 </div>
                 <div class="social-links-section"><div class="social-title"><i class="fas fa-share-alt"></i>روابط التواصل الاجتماعي</div>${renderSocialLinks(userData)}</div>
-                <button onclick="showEditProfileModal()" style="background: var(--gradient-main); color: white; border: none; padding: 10px 30px; border-radius: 30px; cursor: pointer; font-weight: 700; font-size: 0.9rem; transition: all 0.3s ease; box-shadow: 0 4px 16px rgba(15,92,191,0.25); display: inline-flex; align-items: center; gap: 10px; margin-top: 8px;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 28px rgba(15,92,191,0.35)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 16px rgba(15,92,191,0.25)';">
+                <button onclick="showEditProfileModal()" style="background: var(--gradient-main); color: white; border: none; padding: 10px 30px; border-radius: 30px; cursor: pointer; font-weight: 700; font-size: 0.9rem; transition: all 0.3s ease; box-shadow: 0 4px 16px rgba(15,92,191,0.25); display: inline-flex; align-items: center; gap: 10px; margin-top: 8px;">
                     <i class="fas fa-edit"></i> تعديل الملف الشخصي وإضافة الروابط
                 </button>
                 <p style="color: var(--gray-400); margin-top: 16px; font-size: 0.7rem;"><i class="fas fa-lock"></i> لا يمكن تعديل المعلومات الشخصية (الاسم، التخصص، الخبرة، المستوى الدراسي) إلا عبر الإدارة</p>
             </div>
         `;
+
+        // ✅ إظهار/إخفاء أشرطة الحالة حسب حالة الحساب
+        if (userData.status !== 'approved') {
+            if (userData.requires_profile_completion) {
+                showProfileCompletionBanner();
+            } else {
+                showPendingApprovalBanner();
+            }
+        } else {
+            hideAllBanners();
+        }
     }
 
     // ================================================================
@@ -2719,6 +2903,11 @@
     // ================================================================
 
     async function loadOffers() {
+        // ✅ التحقق من حالة الحساب
+        if (userData && userData.status !== 'approved') {
+            document.getElementById('offersList').innerHTML = '<p style="text-align:center; padding:25px; color:var(--gold-dark);"><i class="fas fa-clock"></i> حسابك قيد المراجعة. سيتم تفعيل قسم العروض بعد قبول حسابك من قبل الإدارة.</p>';
+            return;
+        }
         const container = document.getElementById('offersList');
         container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
         try {
@@ -3748,30 +3937,178 @@
     // ================================================================
 
     function showEditProfileModal() {
-        if (userData) {
-            document.getElementById('facebookUrl').value = userData.facebook_url || '';
-            document.getElementById('instagramUrl').value = userData.instagram_url || '';
-            document.getElementById('linkedinUrl').value = userData.linkedin_url || '';
-            document.getElementById('youtubeUrl').value = userData.youtube_url || '';
-            document.getElementById('twitterUrl').value = userData.twitter_url || '';
-            document.getElementById('websiteUrl').value = userData.website_url || '';
-            document.getElementById('whatsappUrl').value = userData.whatsapp_url || '';
-            
-            const levelMap = {
-                '5eme_pri': 'خامسة ابتدائي', '1ere_am': 'أولى متوسط', '2eme_am': 'ثانية متوسط',
-                '3eme_am': 'ثالثة متوسط', '4eme_am': 'رابعة متوسط', '5eme_am': 'خامسة متوسط',
-                '1ere_as': 'أولى ثانوي', '2eme_as': 'ثانية ثانوي',
-                'bac': 'بكالوريا', '1ere_uni': 'أولى جامعي', '2eme_uni': 'ثانية جامعي',
-                '3eme_uni': 'ثالثة جامعي', 'master': 'ماستر', 'doctorat': 'دكتوراه'
-            };
-            const currentLevel = userData.teaching_level ? levelMap[userData.teaching_level] || userData.teaching_level : 'لم يحدد بعد';
-            document.getElementById('currentTeachingLevelDisplay').textContent = currentLevel;
+        if (!userData) return;
+
+        // ✅ إذا كان الملف الشخصي غير مكتمل، إظهار نموذج إكمال الملف
+        if (userData.requires_profile_completion || !userData.profile_completion) {
+            showProfileCompletionModal();
+            return;
         }
+
+        // ✅ إذا كان الملف الشخصي مكتملاً، إظهار نموذج تعديل الروابط الاجتماعية فقط
+        document.getElementById('facebookUrl').value = userData.facebook_url || '';
+        document.getElementById('instagramUrl').value = userData.instagram_url || '';
+        document.getElementById('linkedinUrl').value = userData.linkedin_url || '';
+        document.getElementById('youtubeUrl').value = userData.youtube_url || '';
+        document.getElementById('twitterUrl').value = userData.twitter_url || '';
+        document.getElementById('websiteUrl').value = userData.website_url || '';
+        document.getElementById('whatsappUrl').value = userData.whatsapp_url || '';
+
+        const levelMap = {
+            '5eme_pri': 'خامسة ابتدائي', '1ere_am': 'أولى متوسط', '2eme_am': 'ثانية متوسط',
+            '3eme_am': 'ثالثة متوسط', '4eme_am': 'رابعة متوسط', '5eme_am': 'خامسة متوسط',
+            '1ere_as': 'أولى ثانوي', '2eme_as': 'ثانية ثانوي',
+            'bac': 'بكالوريا', '1ere_uni': 'أولى جامعي', '2eme_uni': 'ثانية جامعي',
+            '3eme_uni': 'ثالثة جامعي', 'master': 'ماستر', 'doctorat': 'دكتوراه'
+        };
+        const currentLevel = userData.teaching_level ? levelMap[userData.teaching_level] || userData.teaching_level : 'لم يحدد بعد';
+        document.getElementById('currentTeachingLevelDisplay').textContent = currentLevel;
+
         document.getElementById('modalOverlay').style.display = 'block';
         document.getElementById('editProfileModal').style.display = 'block';
     }
 
+    function showProfileCompletionModal() {
+        const levelMap = {
+            '5eme_pri': 'خامسة ابتدائي', '1ere_am': 'أولى متوسط', '2eme_am': 'ثانية متوسط',
+            '3eme_am': 'ثالثة متوسط', '4eme_am': 'رابعة متوسط', '5eme_am': 'خامسة متوسط',
+            '1ere_as': 'أولى ثانوي', '2eme_as': 'ثانية ثانوي',
+            'bac': 'بكالوريا', '1ere_uni': 'أولى جامعي', '2eme_uni': 'ثانية جامعي',
+            '3eme_uni': 'ثالثة جامعي', 'master': 'ماستر', 'doctorat': 'دكتوراه'
+        };
+
+        const currentLevel = userData.teaching_level ? levelMap[userData.teaching_level] || userData.teaching_level : '';
+
+        document.getElementById('editProfileModal').querySelector('.modal-content').innerHTML = `
+            <div class="modal-header">
+                <h3><i class="fas fa-user-edit"></i> إكمال الملف الشخصي</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="text-align: center; margin-bottom: 16px; color: var(--gray-600); font-size: 0.9rem;">
+                    أكمل المعلومات التالية لتمكين الإدارة من مراجعة حسابك. بعد الإرسال، سيتم إعلامك عبر البريد الإلكتروني خلال 24 ساعة عند قبول حسابك.
+                </p>
+                <div class="form-group">
+                    <label for="profilePhone"><i class="fas fa-phone"></i> رقم الهاتف <span style="color: var(--danger);">*</span></label>
+                    <input type="tel" id="profilePhone" placeholder="رقم الهاتف" required value="${escapeHtml(userData.phone || '')}">
+                </div>
+                <div class="form-group">
+                    <label for="profileSpecialization"><i class="fas fa-book"></i> التخصص <span style="color: var(--danger);">*</span></label>
+                    <input type="text" id="profileSpecialization" placeholder="التخصص" required value="${escapeHtml(userData.specialization || '')}" maxlength="100">
+                </div>
+                <div class="form-group">
+                    <label for="profileBio"><i class="fas fa-align-left"></i> نبذة عنك <span style="color: var(--danger);">*</span></label>
+                    <textarea id="profileBio" placeholder="نبذة عنك" required maxlength="500">${escapeHtml(userData.bio || '')}</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="profileExperience"><i class="fas fa-clock"></i> سنوات الخبرة <span style="color: var(--danger);">*</span></label>
+                    <input type="text" id="profileExperience" placeholder="سنوات الخبرة" required value="${escapeHtml(userData.experience || '')}">
+                </div>
+                <div class="form-group">
+                    <label for="profileTeachingLevel"><i class="fas fa-graduation-cap"></i> المستوى الدراسي <span style="color: var(--danger);">*</span></label>
+                    <select id="profileTeachingLevel" required>
+                        <option value="">-- اختر المستوى --</option>
+                        <option value="5eme_pri" ${currentLevel === 'خامسة ابتدائي' ? 'selected' : ''}>خامسة ابتدائي</option>
+                        <option value="1ere_am" ${currentLevel === 'أولى متوسط' ? 'selected' : ''}>أولى متوسط</option>
+                        <option value="2eme_am" ${currentLevel === 'ثانية متوسط' ? 'selected' : ''}>ثانية متوسط</option>
+                        <option value="3eme_am" ${currentLevel === 'ثالثة متوسط' ? 'selected' : ''}>ثالثة متوسط</option>
+                        <option value="4eme_am" ${currentLevel === 'رابعة متوسط' ? 'selected' : ''}>رابعة متوسط</option>
+                        <option value="5eme_am" ${currentLevel === 'خامسة متوسط' ? 'selected' : ''}>خامسة متوسط</option>
+                        <option value="1ere_as" ${currentLevel === 'أولى ثانوي' ? 'selected' : ''}>أولى ثانوي</option>
+                        <option value="2eme_as" ${currentLevel === 'ثانية ثانوي' ? 'selected' : ''}>ثانية ثانوي</option>
+                        <option value="bac" ${currentLevel === 'بكالوريا' ? 'selected' : ''}>بكالوريا</option>
+                        <option value="1ere_uni" ${currentLevel === 'أولى جامعي' ? 'selected' : ''}>أولى جامعي</option>
+                        <option value="2eme_uni" ${currentLevel === 'ثانية جامعي' ? 'selected' : ''}>ثانية جامعي</option>
+                        <option value="3eme_uni" ${currentLevel === 'ثالثة جامعي' ? 'selected' : ''}>ثالثة جامعي</option>
+                        <option value="master" ${currentLevel === 'ماستر' ? 'selected' : ''}>ماستر</option>
+                        <option value="doctorat" ${currentLevel === 'دكتوراه' ? 'selected' : ''}>دكتوراه</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-user"></i> الصورة الشخصية</label>
+                    <input type="file" id="profileImage" accept="image/*">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-graduation-cap"></i> صورة الدبلوم</label>
+                    <input type="file" id="diplomaImage" accept="image/*">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-id-card"></i> صورة بطاقة الهوية</label>
+                    <input type="file" id="idImage" accept="image/*">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary" onclick="completeProfile()" style="width:100%; justify-content:center;">
+                    <i class="fas fa-check"></i> إرسال طلب الموافقة
+                </button>
+            </div>
+        `;
+
+        document.getElementById('modalOverlay').style.display = 'block';
+        document.getElementById('editProfileModal').style.display = 'block';
+    }
+
+    async function completeProfile() {
+        const phone = document.getElementById('profilePhone').value.trim();
+        const specialization = document.getElementById('profileSpecialization').value.trim();
+        const bio = document.getElementById('profileBio').value.trim();
+        const experience = document.getElementById('profileExperience').value.trim();
+        const teachingLevel = document.getElementById('profileTeachingLevel').value;
+
+        if (!phone) { showToast('رقم الهاتف مطلوب', 'error'); return; }
+        if (!specialization) { showToast('التخصص مطلوب', 'error'); return; }
+        if (!bio) { showToast('نبذة عنك مطلوبة', 'error'); return; }
+        if (!experience) { showToast('سنوات الخبرة مطلوبة', 'error'); return; }
+        if (!teachingLevel) { showToast('المستوى الدراسي مطلوب', 'error'); return; }
+
+        const formData = new FormData();
+        formData.append('teacher_id', teacherId);
+        formData.append('phone', phone);
+        formData.append('specialization', specialization);
+        formData.append('bio', bio);
+        formData.append('experience', experience);
+        formData.append('teaching_level', teachingLevel);
+
+        const profileImage = document.getElementById('profileImage').files[0];
+        const diplomaImage = document.getElementById('diplomaImage').files[0];
+        const idImage = document.getElementById('idImage').files[0];
+
+        if (profileImage) formData.append('profile_image', profileImage);
+        if (diplomaImage) formData.append('diploma_image', diplomaImage);
+        if (idImage) formData.append('id_image', idImage);
+
+        try {
+            const res = await fetchWithAuth('/api/teacher/complete-profile', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.message || 'تم إرسال طلب الموافقة بنجاح', 'success');
+                closeModal();
+                // ✅ تحديث userData
+                userData.profile_completion = true;
+                userData.requires_profile_completion = false;
+                localStorage.setItem('userData', JSON.stringify(userData));
+                // ✅ إعادة تحميل البيانات
+                loadUserData();
+            } else {
+                showToast(data.error || 'حدث خطأ', 'error');
+            }
+        } catch(e) {
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                showToast('حدث خطأ في الاتصال', 'error');
+            }
+        }
+    }
+
     async function updateProfile() {
+        // ✅ إذا كان الملف الشخصي غير مكتمل، إظهار نموذج الإكمال
+        if (userData && (userData.requires_profile_completion || !userData.profile_completion)) {
+            showProfileCompletionModal();
+            return;
+        }
+
         const formData = new FormData();
         formData.append('teacher_id', teacherId);
 
@@ -3872,6 +4209,11 @@
     // ================================================================
 
     async function loadCourses() {
+        // ✅ التحقق من حالة الحساب
+        if (userData && userData.status !== 'approved') {
+            document.getElementById('coursesList').innerHTML = '<p style="text-align:center; padding:25px; color:var(--gold-dark);"><i class="fas fa-clock"></i> حسابك قيد المراجعة. سيتم تفعيل قسم الدورات بعد قبول حسابك من قبل الإدارة.</p>';
+            return;
+        }
         const container = document.getElementById('coursesList');
         container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
         try {

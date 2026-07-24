@@ -89,15 +89,12 @@ async function authenticate(req, res, next) {
 
     // ✅ التحقق من حالة الأستاذ فقط (الطلاب ليس لديهم status)
     if (decoded.role === 'teacher' && user.status && user.status !== 'approved') {
-        logger.warn('محاولة وصول حساب غير مفعل', {
+        // ✅ السماح للمعلمين المعلقين بالوصول لإكمال الملف الشخصي والداشبورد
+        // سيتم تقييد الوصول لأقسام العروض والدورات من قبل الواجهة الأمامية
+        logger.warn('محاولة وصول حساب أستاذ غير معتمد', {
             userId: decoded.userId,
             status: user.status,
             ip: req.ip
-        });
-        return res.status(403).json({
-            success: false,
-            error: `⏳ حسابك غير مفعل. الحالة: ${user.status === 'pending' ? 'قيد المراجعة' : 'غير معتمد'}`,
-            status: user.status
         });
     }
 

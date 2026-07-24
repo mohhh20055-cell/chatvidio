@@ -1,0 +1,1 @@
+ALTER TABLE teachers ADD COLUMN IF NOT EXISTS profile_completion boolean NOT NULL DEFAULT false;

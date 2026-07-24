@@ -952,4 +952,130 @@ router.get('/students/:teacher_id', authenticate, authorize(['teacher']), [
     }
 });
 
+// ============================================================
+// ✅ إكمال الملف الشخصي للأستاذ (الخطوة الثانية بعد التسجيل)
+// ============================================================
+router.post('/complete-profile', authenticate, authorize(['teacher']), upload.fields([
+    { name: 'profile_image', maxCount: 1 },
+    { name: 'diploma_image', maxCount: 1 },
+    { name: 'id_image', maxCount: 1 }
+]), validateUploadedFiles, [
+    body('teacher_id').isInt().withMessage('معرف الأستاذ مطلوب'),
+    body('phone').notEmpty().withMessage('رقم الهاتف مطلوب'),
+    body('specialization').notEmpty().withMessage('التخصص مطلوب').isLength({ max: 100 }),
+    body('bio').notEmpty().withMessage('نبذة عنك مطلوبة').isLength({ max: 500 }),
+    body('experience').notEmpty().withMessage('سنوات الخبرة مطلوبة'),
+    body('teaching_level').notEmpty().withMessage('المستوى الدراسي مطلوب')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { teacher_id, phone, specialization, bio, experience, teaching_level } = req.body;
+
+        if (req.user.userId !== parseInt(teacher_id)) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك بتحديث هذا الحساب' });
+        }
+
+        const teacher = await getOne('teachers', 'id', teacher_id);
+        if (!teacher) {
+            return res.status(404).json({ success: false, error: 'الأستاذ غير موجود' });
+        }
+
+        if (teacher.status !== 'pending') {
+            return res.status(400).json({ success: false, error: 'حسابك ليس في حالة انتظار إكمال الملف الشخصي' });
+        }
+
+        // ✅ رفع الملفات
+        let profile_image = teacher.profile_image;
+        let profile_url = teacher.profile_url;
+        let diploma_image = teacher.diploma_image;
+        let id_image = teacher.id_image;
+
+        if (req.files && req.files['profile_image'] && req.files['profile_image'][0]) {
+            const uploaded = await uploadToSupabase(req.files['profile_image'][0], 'teachers', teacher.profile_image);
+            if (uploaded) {
+                profile_image = uploaded.filename;
+                profile_url = uploaded.url;
+            }
+        }
+
+        if (req.files && req.files['diploma_image'] && req.files['diploma_image'][0]) {
+            const uploaded = await uploadToSupabase(req.files['diploma_image'][0], 'diplomas', teacher.diploma_image);
+            if (uploaded) diploma_image = uploaded.filename;
+        }
+
+        if (req.files && req.files['id_image'] && req.files['id_image'][0]) {
+            const uploaded = await uploadToSupabase(req.files['id_image'][0], 'ids', teacher.id_image);
+            if (uploaded) id_image = uploaded.filename;
+        }
+
+        // ✅ تحديث الملف الشخصي الكامل
+        const updateData = {
+            phone: phone.trim(),
+            specialization: specialization.trim(),
+            bio: bio.trim(),
+            experience: experience.trim(),
+            teaching_level: teaching_level.trim(),
+            profile_image,
+            profile_url,
+            diploma_image,
+            id_image,
+            profile_completion: true,
+            updated_at: new Date().toISOString()
+        };
+
+        await update('teachers', teacher_id, updateData);
+
+        // ✅ إرسال إشعار للمدير بوجود طلب جديد مكتمل
+        try {
+            await insert('notifications', {
+                user_id: 1,
+                user_type: 'admin',
+                title: '📝 أستاذ جديد - ملف شخصي مكتمل',
+                message: `الأستاذ ${teacher.full_name} أكمل ملفه الشخصي. يرجى مراجعة الطلب والموافقة.`,
+                is_read: false,
+                created_at: new Date().toISOString()
+            });
+        } catch (notifError) {
+            console.error('⚠️ خطأ في إرسال إشعار للمدير:', notifError.message);
+        }
+
+        res.json({
+            success: true,
+            message: '✅ تم إكمال ملفك الشخصي بنجاح! تم إرسال طلب الموافقة إلى الإدارة. سيتم إعلامك عبر البريد الإلكتروني خلال 24 ساعة عند قبول حسابك.',
+            teacher_id: teacher_id,
+            profile_completion: true
+        });
+
+    } catch (error) {
+        console.error('خطأ في إكمال الملف الشخصي:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// ✅ جلب حالة إكمال الملف الشخصي للأستاذ
+// ============================================================
+router.get('/profile-completion-status', authenticate, authorize(['teacher']), async (req, res) => {
+    try {
+        const teacher = await getOne('teachers', 'id', req.user.userId);
+        if (!teacher) {
+            return res.status(404).json({ success: false, error: 'الأستاذ غير موجود' });
+        }
+
+        res.json({
+            success: true,
+            profile_completion: teacher.profile_completion || false,
+            status: teacher.status,
+            requires_profile_completion: !teacher.profile_completion
+        });
+    } catch (error) {
+        console.error('خطأ في جلب حالة إكمال الملف الشخصي:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
 module.exports = router;

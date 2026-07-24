@@ -158,22 +158,13 @@ async function markPasswordResetUsed(token) {
 }
 
 // ============================================================
-// ✅ تسجيل أستاذ جديد (مع المستوى التعليمي)
+// ✅ تسجيل أستاذ جديد - الخطوة الأولى (البريد وكلمة المرور فقط)
 // ============================================================
-router.post('/teacher/register', checkBanned, upload.fields([
-    { name: 'profile_image', maxCount: 1 },
-    { name: 'diploma_image', maxCount: 1 },
-    { name: 'id_image', maxCount: 1 }
-]), validateUploadedFiles, [
+router.post('/teacher/register', checkBanned, [
     body('full_name').notEmpty().withMessage('الاسم الكامل مطلوب').isLength({ max: 100 }),
     body('email').isEmail().withMessage('بريد إلكتروني غير صالح').trim().normalizeEmail(),
     body('password').isLength({ min: 8 }).withMessage('كلمة المرور يجب أن تكون 8 أحرف على الأقل')
         .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('كلمة المرور يجب أن تحتوي على حرف كبير وحرف صغير ورقم'),
-    body('phone').notEmpty().withMessage('رقم الهاتف مطلوب'),
-    body('specialization').notEmpty().withMessage('التخصص مطلوب').isLength({ max: 100 }),
-    body('bio').notEmpty().withMessage('نبذة عنك مطلوبة').isLength({ max: 500 }),
-    body('experience').notEmpty().withMessage('سنوات الخبرة مطلوبة'),
-    body('teaching_level').notEmpty().withMessage('المستوى الدراسي مطلوب'),
     body('recaptcha_token').notEmpty().withMessage('رمز reCAPTCHA مطلوب')
 ], async (req, res) => {
     try {
@@ -188,9 +179,9 @@ router.post('/teacher/register', checkBanned, upload.fields([
             });
         }
 
-        const { full_name, email, password, phone, specialization, bio, experience, teaching_level, recaptcha_token, ref } = req.body;
+        const { full_name, email, password, recaptcha_token, ref } = req.body;
 
-        console.log(`📥 تسجيل أستاذ جديد: ${full_name}, المستوى: ${teaching_level}`);
+        console.log(`📥 بدء تسجيل أستاذ جديد: ${full_name}`);
 
         // ✅ 2. التحقق من reCAPTCHA
         const recaptchaResult = await verifyRecaptcha(recaptcha_token);
@@ -210,7 +201,7 @@ router.post('/teacher/register', checkBanned, upload.fields([
             });
         }
 
-        // ✅ 4. التحقق من وجود البريد في جدول الطلاب أيضاً (لا يمكن استخدام نفس البريد)
+        // ✅ 4. التحقق من وجود البريد في جدول الطلاب أيضاً
         const existingStudent = await getOne('students', 'email', email);
         if (existingStudent) {
             return res.status(400).json({
@@ -222,46 +213,22 @@ router.post('/teacher/register', checkBanned, upload.fields([
         // ✅ 5. تشفير كلمة المرور
         const hashedPassword = bcrypt.hashSync(password, SALT_ROUNDS);
 
-        // ✅ 6. رفع الملفات
-        let profile_image = null;
-        let profile_url = null;
-        let diploma_image = null;
-        let id_image = null;
-
-        if (req.files && req.files['profile_image'] && req.files['profile_image'][0]) {
-            const uploaded = await uploadToSupabase(req.files['profile_image'][0], 'teachers');
-            if (uploaded) {
-                profile_image = uploaded.filename;
-                profile_url = uploaded.url;
-            }
-        }
-
-        if (req.files && req.files['diploma_image'] && req.files['diploma_image'][0]) {
-            const uploaded = await uploadToSupabase(req.files['diploma_image'][0], 'diplomas');
-            if (uploaded) diploma_image = uploaded.filename;
-        }
-
-        if (req.files && req.files['id_image'] && req.files['id_image'][0]) {
-            const uploaded = await uploadToSupabase(req.files['id_image'][0], 'ids');
-            if (uploaded) id_image = uploaded.filename;
-        }
-
-        // ✅ 7. إنشاء الأستاذ في قاعدة البيانات (حالة pending)
+        // ✅ 6. إنشاء الأستاذ في قاعدة البيانات (حالة pending - الخطوة الأولى فقط)
         const newTeacher = await insert('teachers', {
             full_name: full_name.trim(),
             email: email.trim().toLowerCase(),
             password: hashedPassword,
-            phone: phone.trim(),
-            specialization: specialization.trim(),
-            bio: bio.trim(),
-            experience: experience.trim(),
-            teaching_level: teaching_level.trim(),
-            profile_image,
-            profile_url,
-            diploma_image,
-            id_image,
-            status: 'pending', // ✅ في انتظار المراجعة
-            email_verified: false,
+            phone: null,
+            specialization: null,
+            bio: null,
+            experience: null,
+            teaching_level: null,
+            profile_image: null,
+            profile_url: null,
+            diploma_image: null,
+            id_image: null,
+            status: 'pending',
+            email_verified: true, // ✅ لا حاجة لتأكيد البريد للأستاذ
             balance: 0,
             referral_balance: 0,
             total_earned: 0,
@@ -270,26 +237,27 @@ router.post('/teacher/register', checkBanned, upload.fields([
             referral_code: null,
             is_banned: false,
             ban_reason: null,
+            profile_completion: false, // ✅ لم يكتمل الملف الشخصي بعد
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
         });
 
-        // ✅ 8. إنشاء رمز الإحالة
+        // ✅ 7. إنشاء رمز الإحالة
         const referralCode = generateReferralCode(full_name, newTeacher.id);
         await supabase
             .from('teachers')
             .update({ referral_code: referralCode })
             .eq('id', newTeacher.id);
 
-        // ✅ 9. معالجة الإحالة إذا وجدت
+        // ✅ 8. معالجة الإحالة إذا وجدت
         if (ref && ref.length > 3) {
             await processReferralOnRegister(ref, newTeacher.id, 'teacher');
         }
 
-        // ✅ 10. إرسال إشعار للمدير
+        // ✅ 9. إرسال إشعار للمدير
         try {
             await insert('notifications', {
-                user_id: 1, // Admin ID
+                user_id: 1,
                 user_type: 'admin',
                 title: '📝 طلب تسجيل أستاذ جديد',
                 message: `قام الأستاذ ${full_name} بتقديم طلب تسجيل. يرجى مراجعة الطلب.`,
@@ -300,16 +268,16 @@ router.post('/teacher/register', checkBanned, upload.fields([
             console.error('⚠️ خطأ في إرسال إشعار للمدير:', notifError.message);
         }
 
-        // ✅ 11. الرد بنجاح - لا يتم إرسال بريد تحقق للأستاذ
+        // ✅ 10. الرد بنجاح - لا يتم إرسال بريد تأكيد
         res.json({
             success: true,
-            message: '✅ تم تسجيل حسابك بنجاح! سيتم مراجعة طلبك من قبل الإدارة. سيتم إعلامك عبر البريد الإلكتروني عند قبول حسابك.',
+            message: '✅ تم إنشاء حسابك بنجاح! يمكنك الآن تسجيل الدخول. بعد تسجيل الدخول، سيتم إكمال ملفك الشخصي.',
             teacher_id: newTeacher.id,
             email: email,
             role: 'teacher',
-            teaching_level: teaching_level,
-            referral_code: referralCode,
-            status: 'pending'
+            status: 'pending',
+            profile_completion: false,
+            requires_profile_completion: true
         });
 
     } catch (error) {
@@ -559,13 +527,6 @@ router.post('/login', checkBanned, authLimiter, [
 
         // ✅ التحقق من حالة الأستاذ (pending / approved / rejected)
         if (userRole === 'teacher') {
-            if (user.status === 'pending') {
-                return res.status(403).json({
-                    success: false,
-                    error: '⏳ حسابك قيد المراجعة من قبل الإدارة. سيتم إعلامك عند قبول حسابك.',
-                    pending_approval: true
-                });
-            }
             if (user.status === 'rejected') {
                 return res.status(403).json({
                     success: false,
@@ -574,10 +535,53 @@ router.post('/login', checkBanned, authLimiter, [
                 });
             }
             if (user.status !== 'approved') {
-                return res.status(403).json({
-                    success: false,
-                    error: '❌ حسابك غير مفعل. يرجى التواصل مع الإدارة.',
-                    status: user.status
+                // ✅ السماح بتسجيل الدخول لحساب pending - سيظهر له رسالة في الداشبورد
+                const profileCompletion = user.profile_completion || false;
+                if (!profileCompletion) {
+                    return res.json({
+                        success: true,
+                        token: generateToken(user.id, userRole, email),
+                        redirectTo: '/teacher-dashboard.html',
+                        user: {
+                            id: user.id,
+                            name: user.full_name,
+                            role: userRole,
+                            profile_image: user.profile_image,
+                            profile_url: user.profile_url,
+                            balance: user.balance || 0,
+                            email_verified: user.email_verified,
+                            referral_code: user.referral_code,
+                            education_level: user.education_level || null,
+                            teaching_level: user.teaching_level || null,
+                            status: user.status || null,
+                            requires_profile_completion: true,
+                            profile_completion: false
+                        },
+                        requires_profile_completion: true
+                    });
+                }
+                // الحساب مكتمل لكنه لم يوافق عليه بعد
+                return res.json({
+                    success: true,
+                    token: generateToken(user.id, userRole, email),
+                    redirectTo: '/teacher-dashboard.html',
+                    user: {
+                        id: user.id,
+                        name: user.full_name,
+                        role: userRole,
+                        profile_image: user.profile_image,
+                        profile_url: user.profile_url,
+                        balance: user.balance || 0,
+                        email_verified: user.email_verified,
+                        referral_code: user.referral_code,
+                        education_level: user.education_level || null,
+                        teaching_level: user.teaching_level || null,
+                        status: user.status || null,
+                        requires_profile_completion: false,
+                        profile_completion: true
+                    },
+                    pending_approval: true,
+                    message: '⏳ حسابك قيد المراجعة من قبل الإدارة. سيتم إعلامك عبر البريد الإلكتروني خلال 24 ساعة عند قبول حسابك.'
                 });
             }
         }
@@ -704,7 +708,8 @@ router.post('/resend-verification', authLimiter, [
         if (role === 'student') {
             user = await getOne('students', 'email', email);
         } else if (role === 'teacher') {
-            user = await getOne('teachers', 'email', email);
+            // ✅ الأستاذ لا يحتاج لتأكيد البريد الإلكتروني
+            return res.status(400).json({ success: false, error: 'حساب الأستاذ لا يحتاج لتأكيد البريد الإلكتروني' });
         }
 
         if (!user) {
@@ -761,7 +766,7 @@ router.get('/verify-email', async (req, res) => {
             return res.status(400).send('❌ رابط التحقق غير صالح');
         }
 
-        if (!['student', 'teacher'].includes(role)) {
+        if (!['student'].includes(role)) {
             return res.status(400).send('❌ دور غير صالح');
         }
 

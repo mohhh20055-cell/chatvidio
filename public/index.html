@@ -3153,66 +3153,96 @@
             <div id="teacherRegisterTab" class="form-container" style="display: none;" role="tabpanel">
                 <h3><i class="fas fa-chalkboard-user" aria-hidden="true"></i> تقديم طلب أستاذ</h3>
 
-                <input type="text" id="teacherName" placeholder="الاسم الكامل (بالحروف اللاتينية فقط)" required
-                       oninput="validateLatinName('teacher')" onblur="validateLatinName('teacher')" aria-label="الاسم الكامل">
-                <div id="teacherNameError" class="name-error">
-                    <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
-                    الاسم يجب أن يحتوي على أحرف لاتينية فقط (A-Z, a-z)
+                <!-- ✅ الخطوة 1: البريد الإلكتروني وكلمة المرور -->
+                <!-- ✅ خطوات التسجيل -->
+                <div style="display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 20px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div id="step1Indicator" style="width: 32px; height: 32px; border-radius: 50%; background: var(--gradient-main); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;">1</div>
+                        <span style="font-size: 0.8rem; color: var(--primary); font-weight: 600;">الحساب</span>
+                    </div>
+                    <div style="width: 60px; height: 3px; background: var(--gray-300); margin: 0 8px;" id="stepConnector1"></div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div id="step2Indicator" style="width: 32px; height: 32px; border-radius: 50%; background: var(--gray-300); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;">2</div>
+                        <span id="step2Label" style="font-size: 0.8rem; color: var(--gray-400); font-weight: 600;">الملف الشخصي</span>
+                    </div>
+                </div>
+                <div id="teacherStep1">
+                    <p style="text-align: center; color: var(--gray-600); margin-bottom: 16px; font-size: 0.9rem;">
+                        <i class="fas fa-info-circle" aria-hidden="true"></i> أدخل بريدك الإلكتروني وكلمة المرور لتسجيل الدخول وإكمال ملفك الشخصي
+                    </p>
+
+                    <input type="text" id="teacherName" placeholder="الاسم الكامل (بالحروف اللاتينية فقط)" required
+                           oninput="validateLatinName('teacher')" onblur="validateLatinName('teacher')" aria-label="الاسم الكامل">
+                    <div id="teacherNameError" class="name-error">
+                        <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
+                        الاسم يجب أن يحتوي على أحرف لاتينية فقط (A-Z, a-z)
+                    </div>
+
+                    <input type="email" id="teacherEmail" placeholder="البريد الإلكتروني" required aria-label="البريد الإلكتروني">
+                    <input type="password" id="teacherPassword" placeholder="كلمة المرور" required aria-label="كلمة المرور">
+
+                    <div class="recaptcha-wrapper">
+                        <div id="teacherRecaptcha" class="g-recaptcha"></div>
+                    </div>
+                    <div id="teacherRecaptchaError" class="recaptcha-error">
+                        <i class="fas fa-exclamation-circle" aria-hidden="true"></i> يرجى تأكيد أنك لست روبوتاً
+                    </div>
+
+                    <button class="btn-primary" onclick="registerTeacher()" style="width:100%; justify-content:center;">
+                        <i class="fas fa-arrow-right"></i> التالي: إكمال الملف الشخصي
+                    </button>
                 </div>
 
-                <input type="email" id="teacherEmail" placeholder="البريد الإلكتروني" required aria-label="البريد الإلكتروني">
-                <input type="password" id="teacherPassword" placeholder="كلمة المرور" required aria-label="كلمة المرور">
-                <input type="tel" id="teacherPhone" placeholder="رقم الهاتف" required aria-label="رقم الهاتف">
-                <input type="text" id="teacherSpecialization" placeholder="التخصص" required aria-label="التخصص">
-                <textarea id="teacherBio" placeholder="نبذة عنك" required aria-label="نبذة عنك"></textarea>
-                <input type="text" id="teacherExperience" placeholder="سنوات الخبرة" required aria-label="سنوات الخبرة">
+                <!-- ✅ الخطوة 2: إكمال الملف الشخصي (يظهر بعد التسجيل الأولي) -->
+                <div id="teacherStep2" style="display: none;">
+                    <p style="text-align: center; color: var(--gray-600); margin-bottom: 16px; font-size: 0.9rem;">
+                        <i class="fas fa-user-edit" aria-hidden="true"></i> أكمل معلومات ملفك الشخصي
+                    </p>
 
-                <div style="margin-bottom: 14px;">
-                    <label style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--dark-light); font-size: 0.9rem;">
-                        <i class="fas fa-graduation-cap" style="color: var(--primary); margin-left: 6px;" aria-hidden="true"></i>
-                        المستوى الدراسي الذي ستدرسه <span style="color: var(--danger);">*</span>
-                    </label>
-                    <select id="teacherTeachingLevel" required aria-label="المستوى الدراسي" style="width: 100%; padding: 14px 18px; border: 2px solid #f1f5f9; border-radius: var(--radius-sm); font-family: var(--font-family); font-size: 0.95rem; transition: var(--transition); background: #fafbfc;">
-                        <option value="">-- اختر المستوى --</option>
-                        <option value="5eme_pri">خامسة ابتدائي</option>
-                        <option value="1ere_am">أولى متوسط</option>
-                        <option value="2eme_am">ثانية متوسط</option>
-                        <option value="3eme_am">ثالثة متوسط</option>
-                        <option value="4eme_am">رابعة متوسط</option>
-                        <option value="1ere_as">أولى ثانوي</option>
-                        <option value="2eme_as">ثانية ثانوي</option>
-                        <option value="bac">بكالوريا</option>
-                        <option value="1ere_uni">أولى جامعي</option>
-                        <option value="2ere_uni">ثانية جامعي</option>
-                        <option value="3ere_uni">ثالثة جامعي</option>
-                        <option value="master">ماستر</option>
-                        <option value="doctorat">دكتوراه</option>
-                    </select>
+                    <input type="tel" id="teacherPhone" placeholder="رقم الهاتف" required aria-label="رقم الهاتف">
+                    <input type="text" id="teacherSpecialization" placeholder="التخصص" required aria-label="التخصص">
+                    <textarea id="teacherBio" placeholder="نبذة عنك" required aria-label="نبذة عنك"></textarea>
+                    <input type="text" id="teacherExperience" placeholder="سنوات الخبرة" required aria-label="سنوات الخبرة">
+
+                    <div style="margin-bottom: 14px;">
+                        <label style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--dark-light); font-size: 0.9rem;">
+                            <i class="fas fa-graduation-cap" style="color: var(--primary); margin-left: 6px;" aria-hidden="true"></i>
+                            المستوى الدراسي الذي ستدرسه <span style="color: var(--danger);">*</span>
+                        </label>
+                        <select id="teacherTeachingLevel" required aria-label="المستوى الدراسي" style="width: 100%; padding: 14px 18px; border: 2px solid #f1f5f9; border-radius: var(--radius-sm); font-family: var(--font-family); font-size: 0.95rem; transition: var(--transition); background: #fafbfc;">
+                            <option value="">-- اختر المستوى --</option>
+                            <option value="5eme_pri">خامسة ابتدائي</option>
+                            <option value="1ere_am">أولى متوسط</option>
+                            <option value="2eme_am">ثانية متوسط</option>
+                            <option value="3eme_am">ثالثة متوسط</option>
+                            <option value="4eme_am">رابعة متوسط</option>
+                            <option value="1ere_as">أولى ثانوي</option>
+                            <option value="2eme_as">ثانية ثانوي</option>
+                            <option value="bac">بكالوريا</option>
+                            <option value="1ere_uni">أولى جامعي</option>
+                            <option value="2ere_uni">ثانية جامعي</option>
+                            <option value="3ere_uni">ثالثة جامعي</option>
+                            <option value="master">ماستر</option>
+                            <option value="doctorat">دكتوراه</option>
+                        </select>
+                    </div>
+
+                    <label><i class="fas fa-user" aria-hidden="true"></i> الصورة الشخصية</label>
+                    <input type="file" id="profileImage" accept="image/*" aria-label="الصورة الشخصية">
+                    <label><i class="fas fa-graduation-cap" aria-hidden="true"></i> صورة الدبلوم</label>
+                    <input type="file" id="diplomaImage" accept="image/*" aria-label="صورة الدبلوم">
+                    <label><i class="fas fa-id-card" aria-hidden="true"></i> صورة بطاقة الهوية</label>
+                    <input type="file" id="idImage" accept="image/*" aria-label="صورة بطاقة الهوية">
+
+                    <button class="btn-primary" onclick="completeTeacherRegistration()" style="width:100%; justify-content:center;">
+                        <i class="fas fa-check"></i> إرسال الطلب
+                    </button>
+                    <button class="btn-outline" onclick="showTeacherStep1()" style="width:100%; justify-content:center; margin-top: 8px;">
+                        <i class="fas fa-arrow-right"></i> العودة للخطوة الأولى
+                    </button>
                 </div>
 
-                <label><i class="fas fa-user" aria-hidden="true"></i> الصورة الشخصية</label>
-                <input type="file" id="profileImage" accept="image/*" aria-label="الصورة الشخصية">
-                <label><i class="fas fa-graduation-cap" aria-hidden="true"></i> صورة الدبلوم</label>
-                <input type="file" id="diplomaImage" accept="image/*" aria-label="صورة الدبلوم">
-                <label><i class="fas fa-id-card" aria-hidden="true"></i> صورة بطاقة الهوية</label>
-                <input type="file" id="idImage" accept="image/*" aria-label="صورة بطاقة الهوية">
-
-                <div class="recaptcha-wrapper">
-                    <div id="teacherRecaptcha" class="g-recaptcha"></div>
-                </div>
-                <div id="teacherRecaptchaError" class="recaptcha-error">
-                    <i class="fas fa-exclamation-circle" aria-hidden="true"></i> يرجى تأكيد أنك لست روبوتاً
-                </div>
-
-                <button class="btn-primary" onclick="registerTeacher()" style="width:100%; justify-content:center;">تقديم الطلب</button>
-
-
-            </div>
-        </section>
-
-
-
-        <!-- ===== DOWNLOAD APP SECTION ===== -->
+            </div><!-- ===== DOWNLOAD APP SECTION ===== -->
         <section id="downloadAppSection" class="download-app-section" style="display: none;" aria-label="تحميل التطبيق">
             <div class="download-card">
                 <div class="app-icon" aria-hidden="true"><i class="fas fa-graduation-cap"></i></div>
@@ -3812,83 +3842,178 @@
         // REGISTER TEACHER
         // ============================================================
         async function registerTeacher() {
-            if (!isNameValid('teacher')) {
-                showNotification('⚠️ الاسم يجب أن يحتوي على أحرف لاتينية فقط (A-Z, a-z)', 'error');
-                document.getElementById('teacherNameError').classList.add('show');
-                document.getElementById('teacherName').style.borderColor = '#dc2626';
+            // ✅ التحقق من الخطوة الحالية
+            const step1Visible = document.getElementById('teacherStep1').style.display !== 'none';
+            const step2Visible = document.getElementById('teacherStep2').style.display !== 'none';
+
+            if (step1Visible) {
+                // ✅ الخطوة 1: التحقق من الاسم والبريد وكلمة المرور
+                if (!isNameValid('teacher')) {
+                    showNotification('⚠️ الاسم يجب أن يحتوي على أحرف لاتينية فقط (A-Z, a-z)', 'error');
+                    document.getElementById('teacherNameError').classList.add('show');
+                    document.getElementById('teacherName').style.borderColor = '#dc2626';
+                    return;
+                }
+
+                var email = document.getElementById('teacherEmail').value;
+                var password = document.getElementById('teacherPassword').value;
+
+                if (!email || !password) {
+                    showNotification('⚠️ الرجاء إدخال البريد الإلكتروني وكلمة المرور', 'error');
+                    return;
+                }
+
+                var recaptchaToken = recaptchaWidgets.teacher !== null ? grecaptcha.getResponse(recaptchaWidgets.teacher) : grecaptcha.getResponse();
+                if (!recaptchaToken) {
+                    document.getElementById('teacherRecaptchaError').classList.add('show');
+                    showNotification('يرجى تأكيد أنك لست روبوتاً', 'error');
+                    return;
+                }
+                document.getElementById('teacherRecaptchaError').classList.remove('show');
+
+                var formData = new FormData();
+                formData.append('full_name', document.getElementById('teacherName').value.trim());
+                formData.append('email', email);
+                formData.append('password', password);
+                formData.append('recaptcha_token', recaptchaToken);
+
+                var refCode = localStorage.getItem('pendingReferral') || referralCode;
+                if (refCode) {
+                    formData.append('ref', refCode);
+                }
+
+                try {
+                    var res = await fetch('/api/teacher/register', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    var data = await res.json();
+                    if (data.success) {
+                        showNotification('✅ تم إنشاء حسابك بنجاح! تم تسجيل الدخول تلقائياً.', 'success');
+                        // ✅ تخزين معلومات المستخدم وتسجيل الدخول التلقائي
+                        if (data.teacher_id) {
+                            localStorage.setItem('pendingTeacherId', data.teacher_id);
+                        }
+                        // ✅ تسجيل دخول تلقائي بعد التسجيل
+                        if (data.token) {
+                            localStorage.setItem('token', data.token);
+                            localStorage.setItem('userData', JSON.stringify(data.user));
+                        }
+                        // ✅ الانتقال للخطوة 2
+                        showTeacherStep2();
+                        if (recaptchaWidgets.teacher !== null) grecaptcha.reset(recaptchaWidgets.teacher);
+                    } else {
+                        showNotification(data.error, 'error');
+                        if (recaptchaWidgets.teacher !== null) grecaptcha.reset(recaptchaWidgets.teacher);
+                    }
+                } catch(e) {
+                    showNotification('خطأ في الاتصال بالخادم', 'error');
+                }
                 return;
             }
 
+            if (step2Visible) {
+                // ✅ الخطوة 2: إكمال الملف الشخصي
+                completeTeacherRegistration();
+                return;
+            }
+        }
+
+        function showTeacherStep1() {
+            document.getElementById('teacherStep1').style.display = 'block';
+            document.getElementById('teacherStep2').style.display = 'none';
+            // ✅ إعادة مؤشر الخطوات
+            document.getElementById('step1Indicator').style.background = 'var(--gradient-main)';
+            document.getElementById('step1Indicator').textContent = '1';
+            document.getElementById('stepConnector1').style.background = 'var(--gray-300)';
+            document.getElementById('step2Indicator').style.background = 'var(--gray-300)';
+            document.getElementById('step2Indicator').textContent = '2';
+            document.getElementById('step2Label').style.color = 'var(--gray-400)';
+        }
+
+        function showTeacherStep2() {
+            document.getElementById('teacherStep1').style.display = 'none';
+            document.getElementById('teacherStep2').style.display = 'block';
+            // ✅ تحديث مؤشر الخطوات
+            document.getElementById('step1Indicator').style.background = 'var(--gray-300)';
+            document.getElementById('step1Indicator').textContent = '✓';
+            document.getElementById('stepConnector1').style.background = 'var(--primary)';
+            document.getElementById('step2Indicator').style.background = 'var(--gradient-main)';
+            document.getElementById('step2Indicator').textContent = '2';
+            document.getElementById('step2Label').style.color = 'var(--primary)';
+        }
+
+        async function completeTeacherRegistration() {
+            var phone = document.getElementById('teacherPhone').value.trim();
+            var specialization = document.getElementById('teacherSpecialization').value.trim();
+            var bio = document.getElementById('teacherBio').value.trim();
+            var experience = document.getElementById('teacherExperience').value.trim();
             var teachingLevel = document.getElementById('teacherTeachingLevel').value;
+
+            if (!phone) {
+                showNotification('⚠️ رقم الهاتف مطلوب', 'error');
+                return;
+            }
+            if (!specialization) {
+                showNotification('⚠️ التخصص مطلوب', 'error');
+                return;
+            }
+            if (!bio) {
+                showNotification('⚠️ نبذة عنك مطلوبة', 'error');
+                return;
+            }
+            if (!experience) {
+                showNotification('⚠️ سنوات الخبرة مطلوبة', 'error');
+                return;
+            }
             if (!teachingLevel) {
-                showNotification('⚠️ الرجاء اختيار المستوى الدراسي الذي ستدرسه', 'error');
-                document.getElementById('teacherTeachingLevel').style.borderColor = '#dc2626';
+                showNotification('⚠️ الرجاء اختيار المستوى الدراسي', 'error');
+                return;
+            }
+
+            var teacherId = localStorage.getItem('pendingTeacherId');
+            if (!teacherId) {
+                showNotification('⚠️ خطأ في الجلسة، يرجى إعادة المحاولة', 'error');
                 return;
             }
 
             var formData = new FormData();
-            formData.append('full_name', document.getElementById('teacherName').value.trim());
-            formData.append('email', document.getElementById('teacherEmail').value);
-            formData.append('password', document.getElementById('teacherPassword').value);
-            formData.append('phone', document.getElementById('teacherPhone').value);
-            formData.append('specialization', document.getElementById('teacherSpecialization').value);
-            formData.append('bio', document.getElementById('teacherBio').value);
-            formData.append('experience', document.getElementById('teacherExperience').value);
+            formData.append('teacher_id', teacherId);
+            formData.append('phone', phone);
+            formData.append('specialization', specialization);
+            formData.append('bio', bio);
+            formData.append('experience', experience);
             formData.append('teaching_level', teachingLevel);
 
-            var profileImage = document.getElementById('profileImage');
-            var diplomaImage = document.getElementById('diplomaImage');
-            var idImage = document.getElementById('idImage');
+            var profileImage = document.getElementById('profileImage').files[0];
+            var diplomaImage = document.getElementById('diplomaImage').files[0];
+            var idImage = document.getElementById('idImage').files[0];
 
-            if (profileImage && profileImage.files[0]) {
-                formData.append('profile_image', profileImage.files[0]);
-            }
-            if (diplomaImage && diplomaImage.files[0]) {
-                formData.append('diploma_image', diplomaImage.files[0]);
-            }
-            if (idImage && idImage.files[0]) {
-                formData.append('id_image', idImage.files[0]);
-            }
-
-            var refCode = localStorage.getItem('pendingReferral') || referralCode;
-            if (refCode) {
-                formData.append('ref', refCode);
-            }
-
-            var recaptchaToken = recaptchaWidgets.teacher !== null ? grecaptcha.getResponse(recaptchaWidgets.teacher) : grecaptcha.getResponse();
-            if (!recaptchaToken) {
-                document.getElementById('teacherRecaptchaError').classList.add('show');
-                showNotification('يرجى تأكيد أنك لست روبوتاً', 'error');
-                return;
-            }
-            document.getElementById('teacherRecaptchaError').classList.remove('show');
-            formData.append('recaptcha_token', recaptchaToken);
+            if (profileImage) formData.append('profile_image', profileImage);
+            if (diplomaImage) formData.append('diploma_image', diplomaImage);
+            if (idImage) formData.append('id_image', idImage);
 
             try {
-                var res = await fetch('/api/teacher/register', {
+                var res = await fetch('/api/teacher/complete-profile', {
                     method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
                     body: formData
                 });
                 var data = await res.json();
                 if (data.success) {
-                    var msg = 'تم إرسال طلبك بنجاح! سيتم مراجعته';
-                    if (refCode) {
-                        msg += ' 🎉 تم تطبيق رمز الإحالة الخاص بك!';
-                        localStorage.removeItem('pendingReferral');
-                    }
-                    showNotification(msg, 'success');
+                    showNotification('✅ تم إكمال ملفك الشخصي! تم إرسال طلب الموافقة إلى الإدارة. سيتم إعلامك عبر البريد الإلكتروني خلال 24 ساعة عند قبول حسابك.', 'success');
+                    localStorage.removeItem('pendingTeacherId');
                     switchTab('login');
                     if (recaptchaWidgets.teacher !== null) grecaptcha.reset(recaptchaWidgets.teacher);
                 } else {
-                    showNotification(data.error, 'error');
-                    if (recaptchaWidgets.teacher !== null) grecaptcha.reset(recaptchaWidgets.teacher);
+                    showNotification(data.error || 'حدث خطأ أثناء إكمال الملف الشخصي', 'error');
                 }
             } catch(e) {
                 showNotification('خطأ في الاتصال بالخادم', 'error');
             }
         }
 
-        // ============================================================
+// ============================================================
         // TEACHERS
         // ============================================================
         async function loadPublicTeachers() {
