@@ -31,11 +31,22 @@ const SOFIZPAY_ACCOUNT = process.env.SOFIZPAY_ACCOUNT;
 const SOFIZPAY_SECRET_KEY = process.env.SOFIZPAY_SECRET_KEY;
 const SOFIZPAY_TRANSACTION_CHECK_URL = process.env.SOFIZPAY_TRANSACTION_CHECK_URL || 'https://sofizpay.com/sep24/transaction/check/';
 
+if (!SOFIZPAY_ACCOUNT) {
+    console.warn('⚠️ SOFIZPAY_ACCOUNT غير مضبوط. تأكد من إعداد متغيرات البيئة الخاصة بـ SofizPay.');
+}
+
 // ============================================================
 // إنشاء طلب دفع عبر SofizPay
 // ============================================================
 async function createSofizPayTransaction(amount, fullName, phone, email, description, returnUrl, internalTxId) {
     try {
+        if (!SOFIZPAY_ACCOUNT) {
+            return {
+                success: false,
+                error: 'SOFIZPAY_ACCOUNT غير مضبوط في متغيرات البيئة'
+            };
+        }
+
         let finalAmount = Math.max(Number(amount), 100);
         finalAmount = Math.min(finalAmount, 1000000);
         finalAmount = Math.round(finalAmount);
@@ -65,8 +76,23 @@ async function createSofizPayTransaction(amount, fullName, phone, email, descrip
         const response = await axios.get(`${SOFIZPAY_API_URL}/make-cib-transaction/?${params.toString()}`, {
             headers,
             timeout: 30000,
-            httpsAgent: new https.Agent({ keepAlive: true })
+            httpsAgent: new https.Agent({ keepAlive: true }),
+            maxRedirects: 0,
+            validateStatus: (status) => status >= 200 && status < 400
         });
+
+        if (response?.status === 302 && response?.headers?.location) {
+            const paymentUrl = response.headers.location;
+            const cibId = paymentUrl.includes('mdOrder=') ? paymentUrl.split('mdOrder=')[1] : null;
+            return {
+                success: true,
+                payment_url: paymentUrl,
+                sofizpay_transaction_id: cibId,
+                cib_transaction_id: cibId,
+                amount: finalAmount,
+                status: 'pending'
+            };
+        }
 
         if (response?.data?.payment_url) {
             return {
@@ -79,7 +105,9 @@ async function createSofizPayTransaction(amount, fullName, phone, email, descrip
             };
         }
 
-        throw new Error(response?.data?.message || 'استجابة غير صالحة من SofizPay');
+        const rawBody = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+        console.error('❌ استجابة SofizPay غير متوقعة:', response.status, rawBody);
+        throw new Error('استجابة غير صالحة من SofizPay');
     } catch (error) {
         console.error('❌ خطأ SofizPay:', error.response?.data || error.message);
         return {
@@ -156,8 +184,8 @@ router.post('/deposit', authenticate, authorize(['student']), [
 
         if (checkout.success && checkout.payment_url) {
             await update('wallet_transactions', transaction.id, {
-                sofizpay_transaction_id: checkout.sofizpay_transaction_id,
-                cib_transaction_id: checkout.cib_transaction_id
+                sofizpay_transaction_id: checkout.sofizpay_transaction_id || null,
+                cib_transaction_id: checkout.cib_transaction_id || null
             });
 
             return res.json({
