@@ -1866,17 +1866,26 @@
 <!-- WITHDRAW MODAL -->
 <div id="withdrawModal" class="modal">
     <div class="modal-header">
-        <h3><i class="fas fa-hand-holding-usd"></i> سحب الأرباح</h3>
+        <h3><i class="fas fa-hand-holding-usd"></i> سحب الأرباح عبر SofizPay</h3>
         <button class="close-modal" onclick="closeWithdrawModal()">&times;</button>
     </div>
     <div class="modal-body">
         <p style="font-size: 0.9rem;"><strong>الرصيد المتاح: <span id="withdrawBalance">0</span> دج</strong></p>
         <input type="number" id="withdrawAmount" placeholder="المبلغ المراد سحبه" min="100">
-        <input type="text" id="ccpAccount" placeholder="رقم حساب CCP (20 رقم)">
+        <div id="sofizpayKeyContainer">
+            <label style="display:block; margin-bottom:6px; font-weight:700; color:var(--gray-800);">
+                <i class="fas fa-key" style="color:var(--primary); margin-left:6px;"></i> المفتاح العام لـ SofizPay
+            </label>
+            <input type="text" id="sofizpayPublicKey" placeholder="أدخل مفتاح SofizPay العام">
+            <p style="font-size: 0.7rem; color:var(--gray-500); margin-top: 4px;">
+                📱 لاستخراج المفتاح: افتح تطبيق SofizPay ← اضغط على "استلام" ← انسخ المفتاح العام (يبدأ بـ G...)
+            </p>
+            <button class="btn-primary" onclick="saveSofizPayKey()" style="font-size:0.75rem; padding:6px 16px; margin-top:8px;">حفظ المفتاح</button>
+        </div>
     </div>
     <div class="modal-footer">
         <button class="cancel-btn" onclick="closeWithdrawModal()">إلغاء</button>
-        <button class="save-btn" onclick="submitWithdrawRequest()">تقديم طلب</button>
+        <button class="save-btn" onclick="submitWithdrawRequest()">تقديم طلب سحب</button>
     </div>
 </div>
 
@@ -2485,7 +2494,7 @@
                 else if (req.status === 'completed') { statusClass = 'status-completed'; statusText = '✅ تم الدفع'; }
                 else { statusClass = 'status-rejected'; statusText = '❌ مرفوض'; }
                 html += `<div class="request-item">
-                    <div><strong style="color:var(--gray-800);">${req.amount} دج</strong><br><small style="font-size:0.65rem; color:var(--gray-400);">CCP: ${req.ccp_account}</small></div>
+                    <div><strong style="color:var(--gray-800);">${req.amount} دج</strong><br><small style="font-size:0.65rem; color:var(--gray-400);">SofizPay: ${req.ccp_account || req.sofizpay_public_key || 'غير متوفر'}</small></div>
                     <span class="request-status ${statusClass}">${statusText}</span>
                 </div>`;
             }
@@ -3679,33 +3688,49 @@
     // WITHDRAW
     // ================================================================
 
+    async function saveSofizPayKey() {
+        const key = document.getElementById('sofizpayPublicKey').value.trim();
+        if (!key || key.length < 30) {
+            showToast('يرجى إدخال مفتاح SofizPay العام صحيح', 'error');
+            return;
+        }
+        try {
+            const res = await fetchWithAuth('/api/teacher/sofizpay-key', {
+                method: 'POST',
+                body: JSON.stringify({ teacher_id: teacherId, sofizpay_public_key: key })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast('تم حفظ مفتاح SofizPay بنجاح', 'success');
+            } else {
+                showToast(data.error, 'error');
+            }
+        } catch(e) {
+            if (e.message !== 'انتهت صلاحية الجلسة') showToast('حدث خطأ', 'error');
+        }
+    }
+
     function showWithdrawModal() {
         document.getElementById('modalOverlay').style.display = 'block';
         document.getElementById('withdrawModal').style.display = 'block';
         document.getElementById('withdrawAmount').value = '';
-        document.getElementById('ccpAccount').value = '';
         loadBalance();
     }
 
     async function submitWithdrawRequest() {
         const amount = document.getElementById('withdrawAmount').value;
-        const ccpAccount = document.getElementById('ccpAccount').value;
         if (!amount || amount < 100) {
             showToast('المبلغ يجب أن لا يقل عن 100 دج', 'error');
-            return;
-        }
-        if (!ccpAccount || ccpAccount.length < 10) {
-            showToast('الرجاء إدخال رقم حساب CCP صحيح', 'error');
             return;
         }
         try {
             const res = await fetchWithAuth('/api/teacher/withdraw-request', {
                 method: 'POST',
-                body: JSON.stringify({ teacher_id: teacherId, amount: amount, ccp_account: ccpAccount })
+                body: JSON.stringify({ teacher_id: teacherId, amount: amount })
             });
             const data = await res.json();
             if (data.success) {
-                showToast('تم تقديم طلب السحب بنجاح', 'success');
+                showToast('تم تقديم طلب السحب بنجاح، سيتم تحويل المبلغ تلقائياً', 'success');
                 closeWithdrawModal();
                 loadBalance();
             } else {

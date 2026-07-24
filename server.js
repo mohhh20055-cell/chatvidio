@@ -511,6 +511,7 @@ const csrfExcludedPaths = [
     '/api/wallet',
     '/api/wallet/sofizpay-callback',
     '/api/wallet/deposit',
+    '/api/teacher/sofizpay-key',
     '/api/start-jitsi-stream',
     '/api/join-jitsi',
     '/api/stream/pause',

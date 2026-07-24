@@ -1087,7 +1087,7 @@ router.post('/withdraw-requests/:id/approve', [
             user_id: request.teacher_id,
             user_type: 'teacher',
             title: '💰 تمت معالجة طلب السحب',
-            message: `تم تحويل مبلغ ${request.amount} دج إلى حسابك ${request.ccp_account}`,
+            message: `تم تحويل مبلغ ${request.amount} دج إلى محفظة SofizPay الخاصة بك`,
             is_read: false,
             created_at: new Date().toISOString()
         });

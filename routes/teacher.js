@@ -46,34 +46,50 @@ router.get('/me', authenticate, authorize(['teacher']), async (req, res) => {
 
         delete teacher.password;
 
-        // جلب البث النشط يدوياً (فقط الأعمدة الموجودة في قاعدة البيانات)
-        const { data: activeOffer, error: activeError } = await supabase
-            .from('offers')
-            .select('id, subject_name, status, stream_url, room_password, booked_count, duration')
-            .eq('teacher_id', req.user.userId)
-            .in('status', ['live', 'teacher_ready', 'paused'])
-            .single();
-
-        let activeStream = null;
-        if (activeOffer && !activeError) {
-            activeStream = {
-                id: activeOffer.id,
-                subject_name: activeOffer.subject_name,
-                status: activeOffer.status,
-                stream_url: activeOffer.stream_url,
-                room_password: activeOffer.room_password,
-                duration: activeOffer.duration || 0,
-                booked_count: activeOffer.booked_count || 0
-            };
-        }
-
         res.json({
             success: true,
-            teacher: teacher,
-            activeStream: activeStream
+            teacher: teacher
         });
     } catch (error) {
         console.error('خطأ في جلب بيانات الأستاذ:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// حفظ مفتاح SofizPay العام للأستاذ
+// ============================================================
+router.post('/sofizpay-key', authenticate, authorize(['teacher']), [
+    body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح'),
+    body('sofizpay_public_key').isLength({ min: 30, max: 80 }).withMessage('مفتاح SofizPay العام غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { teacher_id, sofizpay_public_key } = req.body;
+
+        if (req.user.userId !== parseInt(teacher_id)) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك بتحديث هذا الحساب' });
+        }
+
+        const teacher = await getOne('teachers', 'id', teacher_id);
+        if (!teacher) {
+            return res.status(404).json({ success: false, error: 'الأستاذ غير موجود' });
+        }
+
+        await update('teachers', teacher_id, {
+            sofizpay_public_key: sofizpay_public_key.trim()
+        });
+
+        res.json({
+            success: true,
+            message: 'تم حفظ مفتاح SofizPay بنجاح'
+        });
+    } catch (error) {
+        console.error('خطأ في حفظ مفتاح SofizPay:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
@@ -457,12 +473,11 @@ router.get('/balance/:teacher_id', authenticate, authorize(['teacher']), [
 });
 
 // ============================================================
-// طلب سحب
+// طلب سحب تلقائي عبر SofizPay
 // ============================================================
 router.post('/withdraw-request', authenticate, authorize(['teacher']), [
     body('teacher_id').isInt().withMessage('معرف الأستاذ غير صالح'),
-    body('amount').isFloat({ min: 100, max: 1000000 }).withMessage('المبلغ غير صالح (الحد الأدنى 100 دج)'),
-    body('ccp_account').isLength({ min: 10, max: 20 }).withMessage('رقم حساب CCP غير صالح')
+    body('amount').isFloat({ min: 100, max: 1000000 }).withMessage('المبلغ غير صالح (الحد الأدنى 100 دج)')
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -470,15 +485,23 @@ router.post('/withdraw-request', authenticate, authorize(['teacher']), [
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        const { teacher_id, amount, ccp_account } = req.body;
+        const { teacher_id, amount } = req.body;
 
-        if (req.user.userId !== teacher_id) {
+        if (req.user.userId !== parseInt(teacher_id)) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك بطلب السحب' });
         }
 
         const teacher = await getOne('teachers', 'id', teacher_id);
         if (!teacher) {
             return res.status(404).json({ success: false, error: 'أستاذ غير موجود' });
+        }
+
+        if (!teacher.sofizpay_public_key) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'يرجى إدخال مفتاح SofizPay العام في إعدادات الحساب قبل طلب السحب',
+                needs_sofizpay_key: true
+            });
         }
 
         if ((teacher.balance || 0) < amount) {
@@ -505,7 +528,8 @@ router.post('/withdraw-request', authenticate, authorize(['teacher']), [
         const withdrawRequest = await insert('withdraw_requests', {
             teacher_id: parseInt(teacher_id),
             amount: parseFloat(amount),
-            ccp_account: ccp_account.trim(),
+            sofizpay_public_key: teacher.sofizpay_public_key,
+            ccp_account: teacher.sofizpay_public_key,
             status: 'pending',
             created_at: new Date().toISOString()
         });
@@ -519,14 +543,14 @@ router.post('/withdraw-request', authenticate, authorize(['teacher']), [
             user_id: teacher_id,
             user_type: 'teacher',
             title: '💰 طلب سحب جديد',
-            message: `تم تقديم طلب سحب بمبلغ ${amount} دج إلى حساب CCP: ${ccp_account}`,
+            message: `تم تقديم طلب سحب بمبلغ ${amount} دج عبر SofizPay`,
             is_read: false,
             created_at: new Date().toISOString()
         });
 
         res.json({ 
             success: true, 
-            message: 'تم تقديم طلب السحب بنجاح، سيتم معالجته في أقرب وقت',
+            message: 'تم تقديم طلب السحب بنجاح، سيتم تحويل المبلغ تلقائياً',
             request: withdrawRequest 
         });
     } catch (error) {
