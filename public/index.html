@@ -2184,28 +2184,52 @@
         }
 
         /* ============================================================
-           SUPPORT SECTION
+           SUPPORT SECTION - في آخر الصفحة الرئيسية
            ============================================================ */
+        .support-section {
+            max-width: 800px;
+            margin: 40px auto 60px;
+            padding: 0 30px;
+        }
+
         .support-card {
             background: #ffffff;
-            border-radius: var(--radius-md);
-            padding: 35px;
-            margin: 30px auto;
-            max-width: 800px;
+            border-radius: var(--radius-lg);
+            padding: 45px 40px;
             box-shadow: var(--shadow-sm);
             border: 1px solid rgba(0,0,0,0.04);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .support-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: var(--primary-gradient);
         }
 
         .support-card h3 {
             color: var(--dark);
-            margin-bottom: 24px;
+            margin-bottom: 10px;
             text-align: center;
-            font-size: 1.4rem;
+            font-size: 1.8rem;
+            font-weight: 900;
         }
 
         .support-card h3 i {
             color: var(--primary);
             margin-left: 8px;
+        }
+
+        .support-card .support-subtitle {
+            text-align: center;
+            color: var(--gray);
+            font-size: 1rem;
+            margin-bottom: 30px;
         }
 
         .support-card .form-group {
@@ -2217,6 +2241,11 @@
             margin-bottom: 6px;
             font-weight: 600;
             color: var(--dark-light);
+        }
+
+        .support-card label i {
+            color: var(--primary);
+            margin-left: 6px;
         }
 
         .support-card input,
@@ -2494,7 +2523,9 @@
             .profile-offers-grid { grid-template-columns: 1fr; }
             .social-links-grid { grid-template-columns: 1fr; }
 
-            .support-card { padding: 20px; margin: 20px auto; }
+            .support-section { padding: 0 16px; margin: 30px auto; }
+            .support-card { padding: 24px 18px; }
+            .support-card h3 { font-size: 1.4rem; }
 
             .download-app-section { padding: 0 16px; margin: 30px auto; }
             .download-card { padding: 24px 18px; }
@@ -2540,6 +2571,8 @@
             .social-links-grid { grid-template-columns: 1fr; }
             .search-box { padding: 0 12px; }
             .search-box input { font-size: 0.85rem; padding: 10px 10px; }
+            .support-card { padding: 18px 14px; }
+            .support-card h3 { font-size: 1.2rem; }
         }
 
         @media (max-width: 359px) {
@@ -2634,11 +2667,6 @@
                     <i class="fas fa-code nav-icon" aria-hidden="true"></i>
                     <span class="nav-label">المطورون</span>
                 </a>
-                <!-- تم إصلاح تبويب الدعم -->
-                <a onclick="showSupport()" id="helpTab" role="tab" aria-selected="false">
-                    <i class="fas fa-headset nav-icon" aria-hidden="true"></i>
-                    <span class="nav-label">الدعم</span>
-                </a>
                 <a onclick="showLogin()" id="loginTabNav" role="tab" aria-selected="false">
                     <i class="fas fa-user nav-icon" aria-hidden="true"></i>
                     <span class="nav-label">تسجيل الدخول</span>
@@ -2675,15 +2703,12 @@
             <div class="hero-content">
                 <div class="hero-badge">
                     <i class="fas fa-star" aria-hidden="true"></i>
-
                 </div>
                 <h1>
                     تعلم مع أفضل الأساتذة
                     <span class="highlight">في الجزائر</span>
                 </h1>
                 <p>دروس خصوصية عبر الفيديو مع نخبة من الأساتذة المعتمدين. ادفع عبر البطاقة الذهبية بسهولة وأمان</p>
-
-
 
                 <div class="hero-buttons">
                     <button class="btn-primary" onclick="showTeachers()">
@@ -2718,6 +2743,32 @@
                             <div style="font-size:0.7rem; color:var(--gray);">معتمدون</div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== STATS ===== -->
+        <section class="section-container" style="margin-top: -20px;">
+            <div class="stats-container">
+                <div class="stat-card">
+                    <span class="icon" aria-hidden="true"><i class="fas fa-chalkboard-teacher"></i></span>
+                    <div class="number" id="teacherCount">0</div>
+                    <div class="label">أستاذ معتمد</div>
+                </div>
+                <div class="stat-card">
+                    <span class="icon" aria-hidden="true"><i class="fas fa-user-graduate"></i></span>
+                    <div class="number" id="studentCount">0</div>
+                    <div class="label">طالب مسجل</div>
+                </div>
+                <div class="stat-card">
+                    <span class="icon" aria-hidden="true"><i class="fas fa-video"></i></span>
+                    <div class="number">+500</div>
+                    <div class="label">درس منشور</div>
+                </div>
+                <div class="stat-card">
+                    <span class="icon" aria-hidden="true"><i class="fas fa-star"></i></span>
+                    <div class="number">4.8</div>
+                    <div class="label">تقييم المستخدمين</div>
                 </div>
             </div>
         </section>
@@ -2784,15 +2835,48 @@
                         <span class="step-number">3</span>
                         <span class="step-text">ادفع بأمان عبر البطاقة الذهبية</span>
                     </div>
-                        <div class="about-step">
-                            <span class="step-number">4</span>
-                            <span class="step-text">استخدم التطبيق من هاتفك مباشرة</span>
-                        </div>
-                        <div class="about-step">
-                            <span class="step-number">5</span>
-                            <span class="step-text">أو تصفّح الدورات التعليمية حسب مستواك</span>
-                        </div>
+                    <div class="about-step">
+                        <span class="step-number">4</span>
+                        <span class="step-text">استخدم التطبيق من هاتفك مباشرة</span>
                     </div>
+                    <div class="about-step">
+                        <span class="step-number">5</span>
+                        <span class="step-text">أو تصفّح الدورات التعليمية حسب مستواك</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== SUPPORT SECTION - في آخر الصفحة الرئيسية ===== -->
+        <section class="support-section" id="supportSection" aria-label="الدعم الفني">
+            <div class="support-card">
+                <h3><i class="fas fa-headset" aria-hidden="true"></i> تواصل مع الدعم الفني</h3>
+                <p class="support-subtitle">لديك سؤال أو استفسار؟ فريق الدعم جاهز لمساعدتك على مدار الساعة</p>
+                <form id="supportForm">
+                    <div class="form-group">
+                        <label for="supportName"><i class="fas fa-user" aria-hidden="true"></i> الاسم الكامل</label>
+                        <input type="text" id="supportName" placeholder="أدخل اسمك" required aria-label="الاسم الكامل">
+                    </div>
+                    <div class="form-group">
+                        <label for="supportEmail"><i class="fas fa-envelope" aria-hidden="true"></i> البريد الإلكتروني</label>
+                        <input type="email" id="supportEmail" placeholder="بريدك الإلكتروني" required aria-label="البريد الإلكتروني">
+                    </div>
+                    <div class="form-group">
+                        <label for="supportPhone"><i class="fas fa-phone" aria-hidden="true"></i> رقم الهاتف (اختياري)</label>
+                        <input type="tel" id="supportPhone" placeholder="رقم الهاتف" aria-label="رقم الهاتف">
+                    </div>
+                    <div class="form-group">
+                        <label for="supportSubject"><i class="fas fa-tag" aria-hidden="true"></i> الموضوع</label>
+                        <input type="text" id="supportSubject" placeholder="موضوع الرسالة" required aria-label="الموضوع">
+                    </div>
+                    <div class="form-group">
+                        <label for="supportMessage"><i class="fas fa-comment" aria-hidden="true"></i> الرسالة</label>
+                        <textarea id="supportMessage" placeholder="اكتب رسالتك هنا..." required aria-label="الرسالة"></textarea>
+                    </div>
+                    <button type="submit" class="btn-primary" style="width: 100%; justify-content:center;">
+                        <i class="fas fa-paper-plane" aria-hidden="true"></i> إرسال الرسالة
+                    </button>
+                </form>
             </div>
         </section>
 
@@ -3292,38 +3376,6 @@
                 </div>
             </div>
         </section>
-
-        <!-- ===== SUPPORT SECTION ===== -->
-        <section id="supportSection" class="section-container" style="display: none;" aria-label="الدعم الفني">
-            <div class="support-card">
-                <h3><i class="fas fa-headset" aria-hidden="true"></i> تواصل مع الدعم الفني</h3>
-                <form id="supportForm">
-                    <div class="form-group">
-                        <label for="supportName">الاسم الكامل</label>
-                        <input type="text" id="supportName" placeholder="أدخل اسمك" required aria-label="الاسم الكامل">
-                    </div>
-                    <div class="form-group">
-                        <label for="supportEmail">البريد الإلكتروني</label>
-                        <input type="email" id="supportEmail" placeholder="بريدك الإلكتروني" required aria-label="البريد الإلكتروني">
-                    </div>
-                    <div class="form-group">
-                        <label for="supportPhone">رقم الهاتف (اختياري)</label>
-                        <input type="tel" id="supportPhone" placeholder="رقم الهاتف" aria-label="رقم الهاتف">
-                    </div>
-                    <div class="form-group">
-                        <label for="supportSubject">الموضوع</label>
-                        <input type="text" id="supportSubject" placeholder="موضوع الرسالة" required aria-label="الموضوع">
-                    </div>
-                    <div class="form-group">
-                        <label for="supportMessage">الرسالة</label>
-                        <textarea id="supportMessage" placeholder="اكتب رسالتك هنا..." required aria-label="الرسالة"></textarea>
-                    </div>
-                    <button type="submit" class="btn-primary" style="width: 100%; justify-content:center;">
-                        <i class="fas fa-paper-plane" aria-hidden="true"></i> إرسال الرسالة
-                    </button>
-                </form>
-            </div>
-        </section>
     </main>
 
     <!-- ===== FOOTER ===== -->
@@ -3471,6 +3523,7 @@
         function showHome() {
             document.getElementById('homeSection').style.display = 'flex';
             document.getElementById('aboutSection').style.display = 'block';
+            document.getElementById('supportSection').style.display = 'block';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('coursesSection').style.display = 'none';
             document.getElementById('referralSection').style.display = 'none';
@@ -3478,7 +3531,6 @@
             document.getElementById('profileSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('downloadAppSection').style.display = 'none';
-            document.getElementById('supportSection').style.display = 'none';
             setActiveTab('homeTab');
             loadStats();
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -3487,6 +3539,7 @@
         function showTeachers() {
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
+            document.getElementById('supportSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'block';
             document.getElementById('coursesSection').style.display = 'none';
             document.getElementById('referralSection').style.display = 'none';
@@ -3494,7 +3547,6 @@
             document.getElementById('profileSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('downloadAppSection').style.display = 'none';
-            document.getElementById('supportSection').style.display = 'none';
             setActiveTab('teachersTab');
             loadPublicTeachers();
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -3503,6 +3555,7 @@
         function showReferral() {
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
+            document.getElementById('supportSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('coursesSection').style.display = 'none';
             document.getElementById('referralSection').style.display = 'block';
@@ -3510,7 +3563,6 @@
             document.getElementById('profileSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('downloadAppSection').style.display = 'none';
-            document.getElementById('supportSection').style.display = 'none';
             setActiveTab('referralTab');
             loadReferralData();
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -3519,6 +3571,7 @@
         function showDevelopers() {
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
+            document.getElementById('supportSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('coursesSection').style.display = 'none';
             document.getElementById('referralSection').style.display = 'none';
@@ -3526,7 +3579,6 @@
             document.getElementById('profileSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('downloadAppSection').style.display = 'none';
-            document.getElementById('supportSection').style.display = 'none';
             setActiveTab('developersTab');
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
@@ -3534,6 +3586,7 @@
         function showLogin() {
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
+            document.getElementById('supportSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('coursesSection').style.display = 'none';
             document.getElementById('referralSection').style.display = 'none';
@@ -3541,7 +3594,6 @@
             document.getElementById('profileSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'block';
             document.getElementById('downloadAppSection').style.display = 'none';
-            document.getElementById('supportSection').style.display = 'none';
             setActiveTab('loginTabNav');
             switchTab('login');
             resetRecaptchaState();
@@ -3551,6 +3603,7 @@
         function showRegister(tab) {
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
+            document.getElementById('supportSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('coursesSection').style.display = 'none';
             document.getElementById('referralSection').style.display = 'none';
@@ -3558,7 +3611,6 @@
             document.getElementById('profileSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'block';
             document.getElementById('downloadAppSection').style.display = 'none';
-            document.getElementById('supportSection').style.display = 'none';
             setActiveTab('loginTabNav');
             switchTab(tab);
             document.getElementById('createAccountMenuNav').classList.remove('show');
@@ -3570,28 +3622,10 @@
             document.getElementById('createAccountMenuNav').classList.toggle('show');
         }
 
-        function showSupport() {
-            document.getElementById('homeSection').style.display = 'none';
-            document.getElementById('aboutSection').style.display = 'none';
-            document.getElementById('teachersSection').style.display = 'none';
-            document.getElementById('coursesSection').style.display = 'none';
-            document.getElementById('referralSection').style.display = 'none';
-            document.getElementById('developersSection').style.display = 'none';
-            document.getElementById('profileSection').style.display = 'none';
-            document.getElementById('loginSection').style.display = 'none';
-            document.getElementById('downloadAppSection').style.display = 'none';
-            document.getElementById('supportSection').style.display = 'block';
-            setActiveTab('helpTab');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            if (typeof showNotification === 'function') {
-                showNotification('تم فتح نموذج الدعم', 'info');
-            }
-        }
-
-        // ===== وظيفة جديدة لعرض قسم تحميل التطبيق =====
         function showDownloadApp() {
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
+            document.getElementById('supportSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('coursesSection').style.display = 'none';
             document.getElementById('referralSection').style.display = 'none';
@@ -3599,7 +3633,6 @@
             document.getElementById('profileSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('downloadAppSection').style.display = 'block';
-            document.getElementById('supportSection').style.display = 'none';
             setActiveTab('');
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
@@ -3615,7 +3648,7 @@
         }
 
         function setActiveTab(tabId) {
-            var tabs = ['homeTab', 'teachersTab', 'coursesTab', 'referralTab', 'developersTab', 'helpTab', 'loginTabNav'];
+            var tabs = ['homeTab', 'teachersTab', 'coursesTab', 'referralTab', 'developersTab', 'loginTabNav'];
             tabs.forEach(function(id) {
                 var el = document.getElementById(id);
                 if (el) el.classList.remove('active');
@@ -4112,6 +4145,7 @@
         function showCourses() {
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
+            document.getElementById('supportSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('coursesSection').style.display = 'block';
             document.getElementById('referralSection').style.display = 'none';
@@ -4119,7 +4153,6 @@
             document.getElementById('profileSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('downloadAppSection').style.display = 'none';
-            document.getElementById('supportSection').style.display = 'none';
             loadPublicCourses();
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
@@ -4212,13 +4245,13 @@
         async function viewTeacherProfile(teacherId) {
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('aboutSection').style.display = 'none';
+            document.getElementById('supportSection').style.display = 'none';
             document.getElementById('teachersSection').style.display = 'none';
             document.getElementById('coursesSection').style.display = 'none';
             document.getElementById('referralSection').style.display = 'none';
             document.getElementById('developersSection').style.display = 'none';
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('downloadAppSection').style.display = 'none';
-            document.getElementById('supportSection').style.display = 'none';
 
             var profileSection = document.getElementById('profileSection');
             profileSection.style.display = 'block';
@@ -4561,8 +4594,6 @@
             }
         });
 
-
-
         // ============================================================
         // UTILITY
         // ============================================================
@@ -4610,7 +4641,6 @@
         window.showTeachers = showTeachers;
         window.showReferral = showReferral;
         window.showDevelopers = showDevelopers;
-        window.showSupport = showSupport;
         window.showLogin = showLogin;
         window.showRegister = showRegister;
         window.showDownloadApp = showDownloadApp;
