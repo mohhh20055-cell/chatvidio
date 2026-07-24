@@ -3583,6 +3583,9 @@
             document.getElementById('supportSection').style.display = 'block';
             setActiveTab('helpTab');
             window.scrollTo({ top: 0, behavior: 'smooth' });
+            if (typeof showNotification === 'function') {
+                showNotification('تم فتح نموذج الدعم', 'info');
+            }
         }
 
         // ===== وظيفة جديدة لعرض قسم تحميل التطبيق =====
