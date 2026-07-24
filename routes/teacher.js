@@ -548,9 +548,58 @@ router.post('/withdraw-request', authenticate, authorize(['teacher']), [
             created_at: new Date().toISOString()
         });
 
+        setTimeout(async () => {
+            try {
+                const { default: SofizPay } = require('sofizpay-sdk-js');
+                const sofiz = new SofizPay();
+                
+                const result = await sofiz.submit({
+                    secretkey: process.env.SOFIZPAY_SECRET_KEY,
+                    destinationPublicKey: teacher.sofizpay_public_key,
+                    amount: parseFloat(amount),
+                    memo: `payout - teacher ${teacher_id} - withdraw ${withdrawRequest.id}`
+                });
+                
+                if (result.success) {
+                    await update('withdraw_requests', withdrawRequest.id, {
+                        status: 'completed',
+                        sofizpay_transaction_id: result.transactionId || result.data?.transactionId,
+                        sofizpay_status: 'success',
+                        processed_at: new Date().toISOString()
+                    });
+                    
+                    await update('teachers', teacher_id, {
+                        total_withdrawn: (teacher.total_withdrawn || 0) + parseFloat(amount),
+                        pending_withdraw: (teacher.pending_withdraw || 0) - parseFloat(amount)
+                    });
+                    
+                    await insert('notifications', {
+                        user_id: teacher_id,
+                        user_type: 'teacher',
+                        title: '✅ تم التحويل بنجاح',
+                        message: `تم تحويل مبلغ ${amount} دج إلى محفظتك SofizPay`,
+                        is_read: false,
+                        created_at: new Date().toISOString()
+                    });
+                    
+                    console.log(`✅ تم التحويل التلقائي لـ ${amount} دج للأستاذ ${teacher_id}`);
+                }
+            } catch (error) {
+                console.error('خطأ في التحويل التلقائي عبر SofizPay:', error.message);
+                await update('withdraw_requests', withdrawRequest.id, {
+                    sofizpay_status: 'failed',
+                    description: `فشل التحويل التلقائي: ${error.message}`
+                });
+                await update('teachers', teacher_id, {
+                    balance: (teacher.balance || 0) + parseFloat(amount),
+                    pending_withdraw: (teacher.pending_withdraw || 0) - parseFloat(amount)
+                });
+            }
+        }, 2000);
+
         res.json({ 
             success: true, 
-            message: 'تم تقديم طلب السحب بنجاح، سيتم تحويل المبلغ تلقائياً',
+            message: 'تم تقديم طلب السحب بنجاح، سيتم معالجته تلقائياً خلال لحظات',
             request: withdrawRequest 
         });
     } catch (error) {
