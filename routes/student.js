@@ -515,7 +515,7 @@ router.get('/session/:session_id', authenticate, authorize(['student']), [
 // ============================================================
 router.post('/create-session', authenticate, authorize(['student']), [
     body('offer_id').isInt().withMessage('معرف العرض غير صالح'),
-    body('payment_method').isIn(['chargily', 'edahabia', 'ccp']).withMessage('طريقة الدفع غير صالحة')
+    body('payment_method').isIn(['sofizpay', 'edahabia', 'ccp']).withMessage('طريقة الدفع غير صالحة')
 ], async (req, res) => {
     try {
         const errors = validationResult(req);

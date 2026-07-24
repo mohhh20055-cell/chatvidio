@@ -51,7 +51,6 @@
     "csrf",
     "webhook",
     "supabase",
-    "chargily",
     "payment",
     "referral",
     "live-streaming",

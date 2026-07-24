@@ -349,7 +349,7 @@ app.use(helmet({
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
             imgSrc: ["'self'", "data:", "https://ui-avatars.com", "https://api.qrserver.com", "https://*.supabase.co", "https://www.google.com", "https://www.gstatic.com"],
-            connectSrc: ["'self'", "https://*.supabase.co", "https://pay.chargily.net", "https://*.vercel.app", "https://www.google.com", "https://www.gstatic.com"],
+            connectSrc: ["'self'", "https://*.supabase.co", "https://sofizpay.com", "https://*.vercel.app", "https://www.google.com", "https://www.gstatic.com"],
             frameSrc: ["'self'", "https://meet.jit.si", "https://www.google.com", "https://www.gstatic.com"]
         }
     },
@@ -418,8 +418,8 @@ app.options('*', cors(corsOptions));
 // Cookie Parser
 app.use(cookieParser());
 
-// Webhook Chargily (يجب استقباله كـ raw body قبل JSON parser)
-app.use('/api/wallet/chargily-webhook', express.raw({ type: 'application/json' }));
+// Webhook SofizPay
+app.use('/api/wallet/sofizpay-callback', express.raw({ type: 'application/json' }));
 
 // JSON و URL-encoded
 app.use(express.json({ limit: '10mb' }));
@@ -509,9 +509,8 @@ const csrfExcludedPaths = [
     '/api/referral/info',
     '/api/referral/open-gift-box',
     '/api/wallet',
-    '/api/wallet/chargily-webhook',
+    '/api/wallet/sofizpay-callback',
     '/api/wallet/deposit',
-    '/api/chargily-webhook',
     '/api/start-jitsi-stream',
     '/api/join-jitsi',
     '/api/stream/pause',
