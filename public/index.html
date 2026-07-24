@@ -2653,12 +2653,25 @@
                 </a>
                 <a onclick="showSupport()" id="helpTab" role="tab" aria-selected="false">
                     <i class="fas fa-headset nav-icon" aria-hidden="true"></i>
-                    <span class="nav-label">مساعدة</span>
+                    <span class="nav-label" data-translate="help">مساعدة</span>
                 </a>
                 <a onclick="showLogin()" id="loginTabNav" role="tab" aria-selected="false">
                     <i class="fas fa-user nav-icon" aria-hidden="true"></i>
-                    <span class="nav-label">تسجيل الدخول</span>
+                    <span class="nav-label" data-translate="login">تسجيل الدخول</span>
                 </a>
+
+                <div class="nav-dropdown-wrap" id="languageMenuWrap">
+                    <a class="nav-dropdown-trigger" onclick="toggleLanguageNav(event)" role="button" tabindex="0">
+                        <i class="fas fa-globe nav-icon" aria-hidden="true"></i>
+                        <span class="nav-label" id="currentLangLabel">عربي</span>
+                        <i class="fas fa-chevron-down nav-caret" aria-hidden="true"></i>
+                    </a>
+                    <div class="nav-dropdown-menu" id="languageMenu" role="menu">
+                        <a onclick="setLanguage('ar')" id="langAr" class="lang-active" role="menuitem">عربي</a>
+                        <a onclick="setLanguage('fr')" id="langFr" role="menuitem">Français</a>
+                        <a onclick="setLanguage('en')" id="langEn" role="menuitem">English</a>
+                    </div>
+                </div>
 
                 <div class="nav-dropdown-wrap" id="createAccountWrap">
                     <a class="nav-dropdown-trigger" onclick="toggleCreateAccountNav(event)" role="button" tabindex="0">
