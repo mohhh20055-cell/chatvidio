@@ -3581,7 +3581,7 @@
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('downloadAppSection').style.display = 'none';
             document.getElementById('supportSection').style.display = 'block';
-            setActiveTab('');
+            setActiveTab('helpTab');
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
@@ -3612,7 +3612,7 @@
         }
 
         function setActiveTab(tabId) {
-            var tabs = ['homeTab', 'teachersTab', 'coursesTab', 'referralTab', 'developersTab', 'loginTabNav'];
+            var tabs = ['homeTab', 'teachersTab', 'coursesTab', 'referralTab', 'developersTab', 'helpTab', 'loginTabNav'];
             tabs.forEach(function(id) {
                 var el = document.getElementById(id);
                 if (el) el.classList.remove('active');
