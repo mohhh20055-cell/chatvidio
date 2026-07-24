@@ -2583,6 +2583,23 @@
             html { scroll-behavior: auto; }
             * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
         }
+
+        /* ===== LANGUAGE SWITCHER ===== */
+        .nav-dropdown-wrap #languageMenu {
+            min-width: 160px;
+        }
+        .nav-dropdown-wrap #languageMenu a {
+            padding: 10px 16px;
+            font-size: 0.9rem;
+        }
+        .nav-dropdown-wrap #languageMenu a:hover {
+            background: var(--gray-100);
+        }
+        .lang-active {
+            background: var(--primary) !important;
+            color: white !important;
+        }
+
     </style>
 </head>
 <body>
@@ -2616,23 +2633,23 @@
             <div class="nav-links">
                 <a onclick="showHome()" id="homeTab" class="active" role="tab" aria-selected="true">
                     <i class="fas fa-home nav-icon" aria-hidden="true"></i>
-                    <span class="nav-label">الرئيسية</span>
+                    <span class="nav-label" data-translate="home">الرئيسية</span>
                 </a>
                 <a onclick="showTeachers()" id="teachersTab" role="tab" aria-selected="false">
                     <i class="fas fa-chalkboard-user nav-icon" aria-hidden="true"></i>
-                    <span class="nav-label">الأساتذة</span>
+                    <span class="nav-label" data-translate="teachers">الأساتذة</span>
                 </a>
                 <a onclick="showCourses()" id="coursesTab" role="tab" aria-selected="false">
                     <i class="fas fa-play-circle nav-icon" aria-hidden="true"></i>
-                    <span class="nav-label">الدورات</span>
+                    <span class="nav-label" data-translate="courses">الدورات</span>
                 </a>
                 <a onclick="showReferral()" id="referralTab" role="tab" aria-selected="false">
                     <i class="fas fa-gift nav-icon" style="color:var(--gold);" aria-hidden="true"></i>
-                    <span class="nav-label">الإحالة</span>
+                    <span class="nav-label" data-translate="referral">الإحالة</span>
                 </a>
                 <a onclick="showDevelopers()" id="developersTab" role="tab" aria-selected="false">
                     <i class="fas fa-code nav-icon" aria-hidden="true"></i>
-                    <span class="nav-label">المطورون</span>
+                    <span class="nav-label" data-translate="developers">المطورون</span>
                 </a>
                 <a onclick="showSupport()" id="helpTab" role="tab" aria-selected="false">
                     <i class="fas fa-headset nav-icon" aria-hidden="true"></i>
@@ -3581,7 +3598,7 @@
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('downloadAppSection').style.display = 'none';
             document.getElementById('supportSection').style.display = 'block';
-            setActiveTab('');
+            setActiveTab('helpTab');
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
@@ -3612,13 +3629,134 @@
         }
 
         function setActiveTab(tabId) {
-            var tabs = ['homeTab', 'teachersTab', 'coursesTab', 'referralTab', 'developersTab', 'loginTabNav'];
+            var tabs = ['homeTab', 'teachersTab', 'coursesTab', 'referralTab', 'developersTab', 'helpTab', 'loginTabNav'];
             tabs.forEach(function(id) {
                 var el = document.getElementById(id);
                 if (el) el.classList.remove('active');
             });
             var activeEl = document.getElementById(tabId);
             if (activeEl) activeEl.classList.add('active');
+        }
+
+        // ============================================================
+        // LANGUAGE SWITCHER
+        // ============================================================
+        var translations_en = {
+            'home': 'Home',
+            'teachers': 'Teachers',
+            'courses': 'Courses',
+            'referral': 'Referral',
+            'developers': 'Developers',
+            'help': 'Help',
+            'login': 'Login',
+            'createAccount': 'Create Account',
+            'studentRegister': 'Student Register',
+            'teacherRegister': 'Teacher Register',
+            'welcome': 'Welcome to ZoomDz',
+            'subtitle': 'The Algerian Education Platform',
+            'getStarted': 'Get Started',
+            'learnMore': 'Learn More',
+            'features': 'Features',
+            'liveClasses': 'Live Classes',
+            'liveClassesDesc': 'Interactive video sessions with expert teachers',
+            'recordedLessons': 'Recorded Lessons',
+            'recordedLessonsDesc': 'Access lesson recordings anytime',
+            'certificates': 'Certificates',
+            'certificatesDesc': 'Get certified upon course completion',
+            'pricing': 'Pricing',
+            'free': 'Free',
+            'premium': 'Premium',
+            'contactUs': 'Contact Us',
+            'aboutUs': 'About Us',
+            'privacyPolicy': 'Privacy Policy',
+            'terms': 'Terms of Service',
+            'rightsReserved': 'All rights reserved'
+        };
+
+        var translations_fr = {
+            'home': 'Accueil',
+            'teachers': 'Professeurs',
+            'courses': 'Cours',
+            'referral': 'Parrainage',
+            'developers': 'Développeurs',
+            'help': 'Aide',
+            'login': 'Connexion',
+            'createAccount': 'Créer un compte',
+            'studentRegister': 'Inscription étudiant',
+            'teacherRegister': 'Inscription professeur',
+            'welcome': 'Bienvenue sur ZoomDz',
+            'subtitle': "La plateforme éducative algérienne",
+            'getStarted': 'Commencer',
+            'learnMore': 'En savoir plus',
+            'features': 'Fonctionnalités',
+            'liveClasses': 'Cours en direct',
+            'liveClassesDesc': 'Sessions vidéo interactives avec des enseignants experts',
+            'recordedLessons': 'Leçons enregistrées',
+            'recordedLessonsDesc': 'Accédez aux enregistrements des leçons à tout moment',
+            'certificates': 'Certificats',
+            'certificatesDesc': 'Obtenez un certificat à l'achèvement du cours',
+            'pricing': 'Tarifs',
+            'free': 'Gratuit',
+            'premium': 'Premium',
+            'contactUs': 'Contactez-nous',
+            'aboutUs': 'À propos',
+            'privacyPolicy': 'Politique de confidentialité',
+            'terms': 'Conditions d'utilisation',
+            'rightsReserved': 'Tous droits réservés'
+        };
+
+        function toggleLanguageNav(e) {
+            e.stopPropagation();
+            document.getElementById('languageMenu').classList.toggle('show');
+        }
+
+        function setLanguage(lang) {
+            localStorage.setItem('preferredLanguage', lang);
+            applyLanguage(lang);
+            // Close dropdown
+            document.getElementById('languageMenu').classList.remove('show');
+        }
+
+        function applyLanguage(lang) {
+            var t = lang === 'en' ? translations_en : (lang === 'fr' ? translations_fr : null);
+            
+            // Set HTML lang and dir
+            document.documentElement.lang = lang === 'ar' ? 'ar' : (lang === 'fr' ? 'fr' : 'en');
+            document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+            
+            // Update current language label
+            var langLabels = { 'ar': 'عربي', 'fr': 'Français', 'en': 'English' };
+            var currentLangLabel = document.getElementById('currentLangLabel');
+            if (currentLangLabel) {
+                currentLangLabel.textContent = langLabels[lang] || 'عربي';
+            }
+            
+            // Update active state in language menu
+            document.querySelectorAll('#languageMenu a').forEach(function(el) {
+                el.classList.remove('lang-active');
+            });
+            var activeLang = document.getElementById('lang' + lang.charAt(0).toUpperCase() + lang.slice(1));
+            if (activeLang) activeLang.classList.add('lang-active');
+            
+            // Apply translations to data-translate attributes
+            if (t) {
+                document.querySelectorAll('[data-translate]').forEach(function(el) {
+                    var key = el.getAttribute('data-translate');
+                    if (t[key]) {
+                        el.textContent = t[key];
+                    }
+                });
+            }
+            
+            // Update support form placeholder/label hints for non-Arabic
+            if (lang !== 'ar') {
+                // The existing Arabic text will be replaced by data-translate
+            }
+        }
+
+        function initLanguage() {
+            var savedLang = localStorage.getItem('preferredLanguage') || 'ar';
+            applyLanguage(savedLang);
         }
 
         // ============================================================
@@ -4576,6 +4714,7 @@
         function init() {
             console.log('🚀');
 
+            initLanguage();
             readReferralFromURL();
             showHome();
             loadStats();
