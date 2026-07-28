@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from '@/lib/router';
 import { api, type PlatformStats, type Teacher } from '@/lib/api';
 import { TeacherCard, Spinner, StatCard } from '@/components/ui';
-import { GraduationCap, Users, Video, PlayCircle, ArrowLeft, ShieldCheck, Clock, Wallet, Sparkles } from 'lucide-react';
+import { GraduationCap, Users, Video, PlayCircle, ArrowLeft, ShieldCheck, Clock, Wallet, Sparkles, Star, CreditCard, Trophy, Smartphone, Send, Headset, Gift } from 'lucide-react';
 
 export function LandingPage() {
   const [stats, setStats] = useState<PlatformStats | null>(null);
@@ -26,29 +26,29 @@ export function LandingPage() {
           <div className="grid items-center gap-10 md:grid-cols-2">
             <div className="animate-fade-up">
               <span className="badge bg-[rgb(var(--brand)/0.1)] text-[rgb(var(--brand))]">
-                <Sparkles className="h-3.5 w-3.5" /> منصة تعليمية متكاملة
+                <Star className="h-3.5 w-3.5" /> منصة تعليمية جزائرية
               </span>
               <h1 className="mt-4 text-4xl font-black leading-tight text-balance text-[rgb(var(--ink))] md:text-5xl">
-                تعلّم من أفضل الأساتذة
+                تعلم مع أفضل الأساتذة
                 <br />
-                <span className="gradient-text">وانضم للبث المباشر</span>
+                <span className="gradient-text">في الجزائر</span>
               </h1>
               <p className="mt-5 max-w-md text-lg text-pretty text-[rgb(var(--muted))]">
-                احجز دروسك مع نخبة الأساتذة، وتابع الحصص المباشرة مجاناً عبر Jitsi Meet — في أي وقت ومن أي مكان.
+                دروس خصوصية عبر الفيديو مع نخبة من الأساتذة المعتمدين. ادفع عبر البطاقة الذهبية بسهولة وأمان
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
-                <Link to="/register" className="btn-primary">
-                  ابدأ الآن مجاناً
-                  <ArrowLeft className="h-4 w-4" />
+                <Link to="/teachers" className="btn-primary">
+                  <Users className="h-4 w-4" />
+                  تعرف على أساتذتنا
                 </Link>
-                <Link to="/teachers" className="btn-outline">
-                  تصفح الأساتذة
+                <Link to="/register" className="btn-accent">
+                  <GraduationCap className="h-4 w-4" />
+                  انضم كأستاذ
                 </Link>
-              </div>
-              <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-[rgb(var(--muted))]">
-                <span className="flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-emerald-500" /> آمن وموثوق</span>
-                <span className="flex items-center gap-1.5"><Video className="h-4 w-4 text-blue-500" /> بث مباشر مجاني</span>
-                <span className="flex items-center gap-1.5"><Wallet className="h-4 w-4 text-amber-500" /> محفظة ذكية</span>
+                <a href="https://t.me/zoomdz1" target="_blank" rel="noopener noreferrer" className="btn-outline">
+                  <Send className="h-4 w-4" />
+                  قناتنا
+                </a>
               </div>
             </div>
 
@@ -56,30 +56,29 @@ export function LandingPage() {
               <div className="animate-float rounded-3xl border border-[rgb(var(--line))] bg-white p-6 shadow-2xl shadow-[rgb(var(--brand)/0.12)]">
                 <div className="flex items-center gap-3 border-b border-[rgb(var(--line))] pb-4">
                   <div className="grid h-11 w-11 place-items-center rounded-xl gradient-brand text-white">
-                    <PlayCircle className="h-6 w-6" />
+                    <Smartphone className="h-6 w-6" />
                   </div>
                   <div>
-                    <div className="text-sm font-bold text-[rgb(var(--ink))]">حصة مباشرة الآن</div>
-                    <div className="text-xs text-[rgb(var(--muted))]">الرياضيات — الثالثة ثانوي</div>
+                    <div className="text-sm font-bold text-[rgb(var(--ink))]">تطبيق موبايل</div>
+                    <div className="text-xs text-[rgb(var(--muted))]">تجربة سلسة</div>
                   </div>
-                  <span className="badge bg-red-100 text-red-700 mr-auto animate-pulse">مباشر</span>
                 </div>
                 <div className="mt-4 space-y-3">
-                  {['الفيزياء — الثانية ثانوي', 'العلوم الطبيعية — الأولى ثانوي', 'اللغة العربية — متوسط'].map((s, i) => (
+                  {[
+                    { icon: <Star className="h-5 w-5" />, title: 'أفضل الأساتذة', sub: 'معتمدون' },
+                    { icon: <CreditCard className="h-5 w-5" />, title: 'دفع آمن', sub: 'البطاقة الذهبية' },
+                    { icon: <Video className="h-5 w-5" />, title: 'بث مباشر', sub: 'مجاني 100%' },
+                  ].map((s, i) => (
                     <div key={i} className="flex items-center gap-3 rounded-xl bg-[rgb(var(--bg))] p-3">
                       <div className="grid h-9 w-9 place-items-center rounded-lg bg-[rgb(var(--brand)/0.1)] text-[rgb(var(--brand))]">
-                        <GraduationCap className="h-5 w-5" />
+                        {s.icon}
                       </div>
-                      <span className="text-sm font-semibold text-[rgb(var(--ink))]">{s}</span>
-                      <Clock className="mr-auto h-4 w-4 text-[rgb(var(--muted))]" />
+                      <div>
+                        <div className="text-sm font-semibold text-[rgb(var(--ink))]">{s.title}</div>
+                        <div className="text-xs text-[rgb(var(--muted))]">{s.sub}</div>
+                      </div>
                     </div>
                   ))}
-                </div>
-              </div>
-              <div className="absolute -bottom-4 -left-4 rounded-2xl border border-[rgb(var(--line))] bg-white p-4 shadow-lg">
-                <div className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-emerald-500" />
-                  <span className="text-sm font-bold text-[rgb(var(--ink))]">+1000 طالب</span>
                 </div>
               </div>
             </div>
@@ -99,8 +98,70 @@ export function LandingPage() {
         </section>
       )}
 
-      {/* Features */}
+      {/* About */}
       <section className="container-app py-16">
+        <div className="card p-8 md:p-10">
+          <div className="grid gap-8 md:grid-cols-2">
+            <div>
+              <h2 className="text-2xl font-black text-[rgb(var(--ink))]">
+                <GraduationCap className="ml-2 inline h-7 w-7 text-[rgb(var(--brand))]" />
+                عن منصة ZoomDz
+              </h2>
+              <p className="mt-4 text-[rgb(var(--muted))]">
+                <span className="font-bold text-[rgb(var(--ink))]">ZoomDz</span>
+                {' '}هي منصة تعليمية جزائرية مبتكرة تهدف إلى ربط الطلاب مع أفضل الأساتذة في مختلف التخصصات عبر دروس خصوصية مباشرة عن بعد.
+              </p>
+              <p className="mt-3 text-[rgb(var(--muted))]">
+                <ShieldCheck className="ml-1 inline h-4 w-4 text-[rgb(var(--brand))]" />
+                <strong className="text-[rgb(var(--ink))]"> رؤيتنا:</strong>
+                {' '}تمكين كل طالب في الجزائر من الوصول إلى تعليم نوعي بأسعار معقولة، دون قيود جغرافية أو زمانية.
+              </p>
+              <p className="mt-3 text-[rgb(var(--muted))]">
+                <Trophy className="ml-1 inline h-4 w-4 text-emerald-500" />
+                <strong className="text-[rgb(var(--ink))]"> هدفنا:</strong>
+                {' '}بناء مجتمع تعليمي رقمي متكامل يجمع بين الجودة، السهولة، والأمان، حيث يمكن للطلاب التعلم بمرونة والأساتذة مشاركة خبراتهم بكفاءة.
+              </p>
+              <p className="mt-4 rounded-lg border-r-4 border-[rgb(var(--brand))] bg-[rgb(var(--bg))] p-4 text-sm text-[rgb(var(--muted))]">
+                نؤمن بأن التعليم الجيد هو حق لكل جزائري، ومنصتنا هي الجسر الذي يوصلك إلى أفضل الكفاءات في وطننا.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                { icon: <Smartphone className="h-6 w-6" />, title: 'تطبيق موبايل', desc: 'منصة حديثة وسريعة تعمل بسلاسة على الهاتف', color: 'bg-blue-50 text-blue-500' },
+                { icon: <CreditCard className="h-6 w-6" />, title: 'دفع آمن', desc: 'عبر EDAHABIA و CCP', color: 'bg-emerald-50 text-emerald-500' },
+                { icon: <Trophy className="h-6 w-6" />, title: 'أساتذة معتمدون', desc: 'نخبة من أفضل الأساتذة في الجزائر', color: 'bg-amber-50 text-amber-500' },
+                { icon: <Smartphone className="h-6 w-6" />, title: 'سهولة الاستخدام', desc: 'تصميم عصري يتكيف مع جميع الأجهزة', color: 'bg-slate-50 text-slate-500' },
+              ].map((f, i) => (
+                <div key={i} className="rounded-2xl border border-[rgb(var(--line))] bg-white p-5">
+                  <div className={`grid h-12 w-12 place-items-center rounded-xl ${f.color}`}>{f.icon}</div>
+                  <h4 className="mt-3 font-bold text-[rgb(var(--ink))]">{f.title}</h4>
+                  <p className="mt-1 text-sm text-[rgb(var(--muted))]">{f.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Steps */}
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+            {[
+              'اختر الأستاذ المناسب',
+              'احجز الدرس المناسب',
+              'ادفع بأمان عبر البطاقة الذهبية',
+              'استخدم التطبيق من هاتفك مباشرة',
+              'أو تصفّح الدورات التعليمية حسب مستواك',
+            ].map((step, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <span className="grid h-9 w-9 place-items-center rounded-full gradient-brand text-sm font-black text-white">{i + 1}</span>
+                <span className="text-sm font-semibold text-[rgb(var(--ink))]">{step}</span>
+                {i < 4 && <ArrowLeft className="h-4 w-4 text-[rgb(var(--muted))]" />}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section className="container-app pb-16">
         <div className="text-center">
           <h2 className="text-3xl font-black text-[rgb(var(--ink))]">لماذا ZoomDz؟</h2>
           <p className="mt-2 text-[rgb(var(--muted))]">كل ما تحتاجه للتعلم في مكان واحد</p>
@@ -138,6 +199,49 @@ export function LandingPage() {
             {teachers.map((t) => <TeacherCard key={t.id} teacher={t} />)}
           </div>
         )}
+      </section>
+
+      {/* Referral teaser */}
+      <section className="container-app pb-16">
+        <div className="card-hover overflow-hidden p-8 md:p-10">
+          <div className="flex flex-col items-center gap-6 md:flex-row">
+            <div className="grid h-16 w-16 place-items-center rounded-2xl bg-amber-50 text-amber-500">
+              <Gift className="h-8 w-8" />
+            </div>
+            <div className="flex-1 text-center md:text-right">
+              <h2 className="text-2xl font-black text-[rgb(var(--ink))]">نظام الإحالة والمكافآت</h2>
+              <p className="mt-2 text-[rgb(var(--muted))]">ادعُ أصدقاءك واحصل على مكافآت مجزية — 100 دج لكل أستاذ تحيله، وصندوق هدايا لكل طالب!</p>
+            </div>
+            <Link to="/register" className="btn-primary shrink-0">
+              ابدأ واربح <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Support */}
+      <section className="container-app pb-16">
+        <div className="card p-8 md:p-10">
+          <div className="text-center">
+            <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-blue-50 text-blue-500">
+              <Headset className="h-7 w-7" />
+            </div>
+            <h2 className="mt-4 text-2xl font-black text-[rgb(var(--ink))]">تواصل مع الدعم الفني</h2>
+            <p className="mt-2 text-[rgb(var(--muted))]">لديك سؤال أو استفسار؟ فريق الدعم جاهز لمساعدتك على مدار الساعة</p>
+          </div>
+          <form className="mx-auto mt-8 max-w-lg space-y-4" onSubmit={(e) => { e.preventDefault(); }}>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <input className="input" placeholder="الاسم الكامل" required />
+              <input type="email" className="input" placeholder="البريد الإلكتروني" required />
+            </div>
+            <input className="input" placeholder="رقم الهاتف (اختياري)" />
+            <input className="input" placeholder="الموضوع" required />
+            <textarea className="input min-h-[100px]" placeholder="اكتب رسالتك هنا..." required />
+            <button type="submit" className="btn-primary w-full">
+              <Send className="h-4 w-4" /> إرسال الرسالة
+            </button>
+          </form>
+        </div>
       </section>
 
       {/* CTA */}
