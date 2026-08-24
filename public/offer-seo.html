@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <!-- SEO Meta Tags (Dynamically replaced by Server) -->
+    <title>{{COURSE_TITLE}} - درس خصوصي مباشر على منصة ZoomDz التعليمية</title>
+    <meta name="description" content="{{COURSE_DESCRIPTION}}">
+    <meta name="keywords" content="{{COURSE_TITLE}}, دروس خصوصية, مراجعة بكالوريا BAC, تحضير شهادة BEM, دروس زوم مباشر, تمارين محلولة, أستاذ خصوصي, ZoomDz, الجزائر, {{TEACHER_NAME}}, {{TEACHER_SPECIALIZATION}}">
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+    <link rel="canonical" href="{{COURSE_URL}}">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="video.other">
+    <meta property="og:title" content="{{COURSE_TITLE}} - دروس خصوصية مباشر على منصة ZoomDz">
+    <meta property="og:description" content="{{COURSE_DESCRIPTION}}">
+    <meta property="og:url" content="{{COURSE_URL}}">
+    <meta property="og:image" content="{{COURSE_IMAGE}}">
+    <meta property="og:site_name" content="ZoomDz">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{COURSE_TITLE}} - دروس خصوصية زوم">
+    <meta name="twitter:description" content="{{COURSE_DESCRIPTION}}">
+    <meta name="twitter:image" content="{{COURSE_IMAGE}}">
+
+    <!-- JSON-LD Structured Data for Online Lesson / Course -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Course",
+        "name": "{{COURSE_TITLE}}",
+        "description": "{{COURSE_DESCRIPTION_RAW}}",
+        "provider": {
+            "@type": "EducationalOrganization",
+            "name": "ZoomDz",
+            "sameAs": "https://zoomdz.com"
+        },
+        "hasCourseInstance": {
+            "@type": "CourseInstance",
+            "courseMode": "online",
+            "instructor": {
+                "@type": "Person",
+                "name": "{{TEACHER_NAME}}"
+            }
+        },
+        "offers": {
+            "@type": "Offer",
+            "price": "{{COURSE_PRICE}}",
+            "priceCurrency": "DZD",
+            "availability": "https://schema.org/InStock"
+        }
+    }
+    </script>
+
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Favicon -->
+        <!-- ===== FAVICON & BRANDING - GOOGLE SEARCH OPTIMIZED ===== -->
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/images/zoomdz.png">
+        
+    <style>
+        :root {
+            --primary: #1e40af;
+            --primary-dark: #1e3a8a;
+            --primary-light: #eff6ff;
+            --secondary: #047857;
+            --dark: #1e293b;
+            --gray: #64748b;
+            --font-family: 'Cairo', sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font-family);
+            background: #f8fafc;
+            color: var(--dark);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            padding: 15px 30px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: var(--primary);
+            font-weight: 800;
+            font-size: 1.4rem;
+        }
+
+        .logo img { height: 35px; width: auto; }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            padding: 10px 22px;
+            border-radius: 30px;
+            font-weight: 700;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 0 20px;
+            width: 100%;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+        }
+
+        .card-cover {
+            width: 100%;
+            height: 280px;
+            object-fit: cover;
+            background: #1e293b;
+        }
+
+        .card-body {
+            padding: 30px;
+        }
+
+        .badge-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            background: var(--primary-light);
+            color: var(--primary);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        .title {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+
+        .teacher-box {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: #f8fafc;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+
+        .teacher-avatar {
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .action-box {
+            margin-top: 30px;
+            text-align: center;
+            padding: 20px;
+            background: #eff6ff;
+            border-radius: 16px;
+        }
+
+        .action-btn {
+            background: var(--primary);
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 800;
+            padding: 14px 32px;
+            border-radius: 30px;
+            text-decoration: none;
+            display: inline-block;
+            box-shadow: 0 4px 14px rgba(30,64,175,0.3);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="logo">
+            <img src="/images/zoomdz.png" alt="ZoomDz">
+            <span>ZoomDz</span>
+        </a>
+        <a href="/" class="btn-primary">دخول المنصة</a>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <div style="width: 100%; max-height: 480px; min-height: 200px; background: #0f172a; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid #e2e8f0;">
+                <img src="{{COURSE_IMAGE}}" alt="{{COURSE_TITLE}}" style="width: 100%; max-height: 480px; object-fit: contain; display: block;" onerror="this.onerror=null; this.src='{{TEACHER_IMAGE}}';">
+            </div>
+            <div class="card-body">
+                <div class="badge-bar">
+                    <span class="badge"><i class="fas fa-graduation-cap"></i> {{COURSE_LEVEL}}</span>
+                    <span class="badge" style="background: #ecfdf5; color: #047857;"><i class="fas fa-tag"></i> {{COURSE_PRICE_TEXT}}</span>
+                    <span class="badge" style="background: #fef3c7; color: #b45309;"><i class="fas fa-calendar-alt"></i> {{COURSE_DATE}}</span>
+                    <span class="badge" style="background: #e0f2fe; color: #0369a1;"><i class="fas fa-clock"></i> وقت البدء: {{LESSON_EXACT_TIME}}</span>
+                    <span class="badge" style="background: #f1f5f9; color: #475569;"><i class="fas fa-eye"></i> {{LESSON_VIEWS}} مشاهدة</span>
+                </div>
+
+                <h1 class="title">{{COURSE_TITLE}}</h1>
+                <p style="color: #475569; font-size: 1.05rem; line-height: 1.7;">{{COURSE_DESCRIPTION_HTML}}</p>
+
+                <div class="teacher-box">
+                    <img src="{{TEACHER_IMAGE}}" alt="{{TEACHER_NAME}}" class="teacher-avatar">
+                    <div>
+                        <h4 style="margin:0; font-size:1.1rem; color:#0f172a;">الأستاذ(ة): {{TEACHER_NAME}}</h4>
+                        <p style="margin:2px 0 0 0; font-size:0.85rem; color:#64748b;">{{TEACHER_SPECIALIZATION}}</p>
+                    </div>
+                </div>
+
+                <div class="action-box">
+                    <h3 style="margin-bottom:10px; color:#1e3a8a;">هل ترغب في الانضمام للدرس؟</h3>
+                    <p style="color:#475569; font-size:0.9rem; margin-bottom:18px;">انقر للفتح والمشاركة في الحصة مباشرة عبر منصة ZoomDz</p>
+                    <a href="#" id="joinLessonBtn" class="action-btn"><i class="fas fa-play-circle"></i> انضمام إلى الدرس الآن</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const offerId = '{{OFFER_ID}}';
+        if (offerId && offerId !== '{{' + 'OFFER_ID' + '}}') {
+            fetch('/api/offers/' + offerId + '/view', { method: 'POST' }).catch(() => {});
+            
+            // Auto-redirect real users (not basic crawlers) into the platform
+            var isCrawler = /bot|google|baidu|bing|msn|duckduckbot|teoma|slurp|yandex|facebookexternalhit|whatsapp|twitterbot|linkedinbot/i.test(navigator.userAgent);
+            if (!isCrawler) {
+                window.location.replace('/?offer=' + offerId);
+            }
+        }
+
+        document.getElementById('joinLessonBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            const token = localStorage.getItem('zoomdz_token') || sessionStorage.getItem('zoomdz_token');
+            if (!token) {
+                window.location.href = `/?login=true&role=student&redirect=${encodeURIComponent('/student-dashboard.html?lesson_id=' + offerId)}`;
+            } else {
+                window.location.href = `/student-dashboard.html?lesson_id=${offerId}`;
+            }
+        });
+    </script>
+</body>
+</html>
