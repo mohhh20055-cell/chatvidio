@@ -448,7 +448,48 @@ router.get('/my-packages', authenticate, authorize(['teacher', 'admin']), async 
 });
 
 // ============================================================
-// 🔍 6. جلب تفاصيل باقة واحدة
+// 🛠️ 6. جلب جميع الباقات للإدارة مع بيانات الجداول التابعة
+// ============================================================
+router.get('/admin/all', authenticate, authorize(['admin']), async (req, res) => {
+    try {
+        const { data: packages, error } = await supabase
+            .from('packages')
+            .select(`
+                id, teacher_id, teacher_name, title, description, education_level,
+                term_price, annual_price, has_term, has_annual, thumbnail_url,
+                subjects_data, total_subjects, total_lessons, status, is_active,
+                created_at, updated_at,
+                teachers:teacher_id(full_name, specialization, profile_image, profile_url),
+                package_subjects(id, subject_name, order_index)
+            `)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        const result = await Promise.all((packages || []).map(async (pkg) => {
+            const { count } = await supabase
+                .from('package_subscriptions')
+                .select('id', { count: 'exact', head: true })
+                .eq('package_id', pkg.id)
+                .eq('status', 'active');
+            return {
+                ...pkg,
+                subjects: pkg.package_subjects || [],
+                subscribers_count: count || 0,
+                teacher: pkg.teachers || null,
+                is_active: pkg.is_active !== false && pkg.status === 'active'
+            };
+        }));
+
+        res.json({ success: true, packages: result });
+    } catch (error) {
+        logger.error('❌ خطأ في جلب باقات الإدارة:', error.message);
+        res.status(500).json({ success: false, error: 'تعذر جلب الباقات التعليمية' });
+    }
+});
+
+// ============================================================
+// 🔍 7. جلب تفاصيل باقة واحدة
 // ============================================================
 router.get('/:id', async (req, res) => {
     try {
