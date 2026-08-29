@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <!-- SEO Meta Tags (Dynamically replaced by Server) -->
+    <title>{{POST_TITLE}} - منشور للأستاذ {{TEACHER_NAME}} على منصة ZoomDz</title>
+    <meta name="description" content="{{POST_DESCRIPTION}}">
+    <meta name="keywords" content="{{POST_TITLE}}, منشور تعليمي, ملفات دراسية, ZoomDz, منصة زوم ديزاد, ملخصات الدروس, أوراق عمل للتحميل, نصائح دراسية الجزائر, بكالوريا BAC 2026, شهادة التعليم المتوسط BEM 2026, مدونة التعليم الجزائرية, {{TEACHER_NAME}}">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="{{POST_URL}}">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="{{POST_TITLE}} - الأستاذ {{TEACHER_NAME}}">
+    <meta property="og:description" content="{{POST_DESCRIPTION}}">
+    <meta property="og:url" content="{{POST_URL}}">
+    <meta property="og:image" content="{{TEACHER_IMAGE}}">
+    <meta property="og:site_name" content="ZoomDz">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{POST_TITLE}}">
+    <meta name="twitter:description" content="{{POST_DESCRIPTION}}">
+    <meta name="twitter:image" content="{{TEACHER_IMAGE}}">
+
+    <!-- JSON-LD Structured Data for Article/Post -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SocialMediaPosting",
+        "headline": "{{POST_TITLE}}",
+        "description": "{{POST_DESCRIPTION_RAW}}",
+        "datePublished": "{{POST_DATE_ISO}}",
+        "author": {
+            "@type": "Person",
+            "name": "{{TEACHER_NAME}}"
+        },
+        "publisher": {
+            "@type": "Organization",
+            "name": "ZoomDz",
+            "logo": {
+                "@type": "ImageObject",
+                "url": "https://zoomdz.com/images/zoomdz.png"
+            }
+        },
+        "url": "{{POST_URL}}"
+    }
+    </script>
+
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Favicon -->
+        <!-- ===== FAVICON & BRANDING - GOOGLE SEARCH OPTIMIZED ===== -->
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/images/zoomdz.png">
+        
+    <style>
+        :root {
+            --primary: #1e40af;
+            --primary-dark: #1e3a8a;
+            --primary-light: #eff6ff;
+            --secondary: #047857;
+            --secondary-dark: #047857;
+            --secondary-soft: #d1fae5;
+            --accent: #6366f1;
+            --gold: #f59e0b;
+            --dark: #1e293b;
+            --gray: #64748b;
+            --gray-light: #f8fafc;
+            --white: #ffffff;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.02), 0 12px 28px rgba(0,0,0,0.06);
+            --font-family: 'Cairo', sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font-family);
+            background: #f8fafc;
+            color: var(--dark);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Navbar */
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            padding: 15px 30px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: var(--primary);
+            font-weight: 800;
+            font-size: 1.4rem;
+        }
+
+        .logo img {
+            height: 35px;
+            width: auto;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-weight: 700;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .btn-outline {
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            background: transparent;
+        }
+
+        .btn-outline:hover {
+            background: var(--primary-light);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 12px rgba(30, 64, 175, 0.2);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        /* Main Content Container */
+        .main-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+            width: 100%;
+            flex: 1;
+        }
+
+        /* Post Card */
+        .post-card {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            border: 1px solid rgba(0, 0, 0, 0.04);
+            padding: 35px;
+            margin-bottom: 30px;
+            text-align: right;
+        }
+
+        /* Author Info Block */
+        .author-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+        }
+
+        .author-img {
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--primary-light);
+            background: #e2e8f0;
+        }
+
+        .author-details {
+            flex: 1;
+        }
+
+        .author-name {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: var(--dark);
+        }
+
+        .author-spec {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .post-date {
+            font-size: 0.8rem;
+            color: var(--gray);
+            margin-top: 2px;
+        }
+
+        /* Post Content */
+        .post-title {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: var(--dark);
+            margin-bottom: 20px;
+            line-height: 1.4;
+        }
+
+        .post-content {
+            font-size: 1.1rem;
+            line-height: 1.75;
+            color: #334155;
+            margin-bottom: 30px;
+            white-space: pre-wrap;
+        }
+
+        /* Attachment Links */
+        .attachments-box {
+            background: var(--primary-light);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            margin-bottom: 35px;
+            border: 1px solid var(--primary-soft);
+        }
+
+        .attachments-title {
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .attachment-link {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--dark);
+            font-weight: 700;
+            font-size: 0.92rem;
+            border: 1px solid rgba(0, 0, 0, 0.04);
+            transition: all 0.2s ease;
+            margin-bottom: 8px;
+        }
+
+        .attachment-link:last-child {
+            margin-bottom: 0;
+        }
+
+        .attachment-link:hover {
+            border-color: var(--primary);
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .attachment-link i {
+            color: var(--primary);
+            font-size: 1.1rem;
+        }
+
+        /* Call To Action Box */
+        .cta-box {
+            background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+            color: white;
+            border-radius: var(--radius-lg);
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(4, 120, 87, 0.2);
+        }
+
+        .cta-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin-bottom: 12px;
+        }
+
+        .cta-desc {
+            font-size: 1rem;
+            color: #d1fae5;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .btn-cta {
+            background: var(--gold);
+            color: white;
+            padding: 15px 40px;
+            border-radius: 40px;
+            font-size: 1.1rem;
+            font-weight: 800;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .btn-cta:hover {
+            background: #d97706;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
+        }
+
+        /* Footer */
+        footer {
+            background: #0f172a;
+            color: #94a3b8;
+            padding: 30px;
+            text-align: center;
+            font-size: 0.9rem;
+            margin-top: auto;
+            border-top: 1px solid #1e293b;
+        }
+
+        footer strong {
+            color: white;
+        }
+
+        @media (max-width: 600px) {
+            .navbar {
+                padding: 15px 20px;
+            }
+            .post-card {
+                padding: 24px;
+            }
+            .post-title {
+                font-size: 1.35rem;
+            }
+            .cta-box {
+                padding: 30px 20px;
+            }
+            .cta-title {
+                font-size: 1.25rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <header class="navbar">
+        <a href="/" class="logo">
+            <img src="/images/zoomdz.png" alt="شعار منصة ZoomDz">
+            <span>ZoomDz</span>
+        </a>
+        <div class="nav-buttons">
+            <a href="/?login=true" class="btn btn-outline">دخول</a>
+            <a href="/?register=true" class="btn btn-primary">سجل مجاناً</a>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-container">
+        <!-- Post Card -->
+        <article class="post-card">
+            <!-- Author Block -->
+            <div class="author-section" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <img src="{{TEACHER_IMAGE}}" alt="الأستاذ {{TEACHER_NAME}}" class="author-img">
+                    <div class="author-details">
+                        <h2 class="author-name">الأستاذ {{TEACHER_NAME}}</h2>
+                        <p class="author-spec">{{TEACHER_SPECIALIZATION}}</p>
+                        <p class="post-date">تاريخ النشر: {{POST_DATE}}</p>
+                    </div>
+                </div>
+                <div style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; font-size: 0.88rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px;" title="عدد المشاهدات لكل IP فريد كل 24 ساعة">
+                    <i class="far fa-eye" style="color: #0284c7;"></i>
+                    <span id="post-views-count">{{POST_VIEWS}}</span>
+                    <span style="font-size: 0.8rem;">مشاهدة</span>
+                </div>
+            </div>
+
+            <!-- Content -->
+            <h1 class="post-title">{{POST_TITLE}}</h1>
+            <div class="post-content">{{POST_CONTENT_HTML}}</div>
+
+            <!-- Attachments (If any, dynamically injected) -->
+            {{POST_ATTACHMENTS_HTML}}
+
+            <!-- Call to action inside card -->
+            <div class="cta-box">
+                <h2 class="cta-title">هل تبحث عن التفوق الدراسي؟</h2>
+                <p class="cta-desc">انضم إلى آلاف الطلاب المسجلين في منصة ZoomDz التعليمية الجزائرية الآن، وتابع جميع دروس ومنشورات الأستاذ {{TEACHER_NAME}} مباشرة.</p>
+                <a href="/?register=true" class="btn-cta">
+                    <i class="fas fa-user-plus"></i> إنشاء حساب مجاني الآن
+                </a>
+            </div>
+        </article>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <p>جميع الحقوق محفوظة © 2026 <strong>منصة ZoomDz التعليمية</strong></p>
+        <p style="font-size: 0.8rem; margin-top: 5px; color: #64748b;">تطوير نخبة من أفضل المطورين في الجزائر لحماية وتحسين أداء التعليم الرقمي.</p>
+    </footer>
+
+    <script>
+        (function() {
+            var match = window.location.pathname.match(/\/post\/(\d+)/);
+            if (match && match[1]) {
+                var postId = match[1];
+                
+                // Track view
+                fetch('/api/post/' + postId + '/view', { method: 'POST' })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success && data.views !== undefined) {
+                            var el = document.getElementById('post-views-count');
+                            if (el) el.textContent = data.views;
+                        }
+                    })
+                    .catch(err => console.error('Error counting view:', err));
+
+                // Auto-redirect real users (not basic crawlers) into the platform
+                var isCrawler = /bot|google|baidu|bing|msn|duckduckbot|teoma|slurp|yandex|facebookexternalhit|whatsapp|twitterbot|linkedinbot/i.test(navigator.userAgent);
+                if (!isCrawler) {
+                    window.location.replace('/?post=' + postId);
+                }
+            }
+        })();
+    </script>
+</body>
+</html>
