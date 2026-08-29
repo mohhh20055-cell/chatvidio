@@ -116,8 +116,7 @@ const targets = [
     { file: 'app/src/main/res/mipmap-xxhdpi/ic_launcher.png', size: 144 },
     { file: 'app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png', size: 144 },
     { file: 'app/src/main/res/mipmap-xxxhdpi/ic_launcher.png', size: 192 },
-    { file: 'app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png', size: 192 },
-    { file: 'app/src/main/res/drawable/ic_launcher_foreground_png.png', size: 108 }
+    { file: 'app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png', size: 192 }
 ];
 
 targets.forEach(target => {
