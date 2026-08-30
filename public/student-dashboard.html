@@ -5197,7 +5197,8 @@
             const sharedCourse = urlParams.get('course');
             const sharedGroup = urlParams.get('join_group') || urlParams.get('group');
             const sharedExercise = urlParams.get('exercise');
-            const hasShared = sharedPost || sharedOffer || sharedCourse || sharedGroup || sharedExercise;
+            const sharedPackage = urlParams.get('package') || urlParams.get('view_package');
+            const hasShared = sharedPost || sharedOffer || sharedCourse || sharedGroup || sharedExercise || sharedPackage;
 
             let storedData = localStorage.getItem('userData');
             let token = localStorage.getItem('token');
@@ -8483,7 +8484,8 @@
         const sharedCourse = urlParams.get('course');
         const sharedGroup = urlParams.get('join_group') || urlParams.get('group');
         const sharedExercise = urlParams.get('exercise');
-        const hasShared = sharedPost || sharedOffer || sharedCourse || sharedGroup || sharedExercise;
+            const sharedPackage = urlParams.get('package') || urlParams.get('view_package');
+        const hasShared = sharedPost || sharedOffer || sharedCourse || sharedGroup || sharedExercise || sharedPackage;
 
         const requestedSection = urlParams.get('section');
         if (sharedGroup) {
@@ -8492,6 +8494,18 @@
             hidePreloader(true);
         } else if (sharedExercise) {
             showSection('exercises');
+            hidePreloader(true);
+                } else if (sharedPackage) {
+            showSection('packages');
+            if (typeof loadStudentPackages === 'function') {
+                loadStudentPackages().then(() => {
+                    if (typeof openPackageDetailsModal === 'function') {
+                        openPackageDetailsModal(sharedPackage);
+                    }
+                });
+            } else {
+                if (typeof openPackageDetailsModal === 'function') openPackageDetailsModal(sharedPackage);
+            }
             hidePreloader(true);
         } else if (sharedPost) {
             showSection('posts');

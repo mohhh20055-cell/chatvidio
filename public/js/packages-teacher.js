@@ -866,7 +866,7 @@ async function viewPackageSubscribers(pkgId) {
 // 10. نسخ الرابط
 // ============================================================
 function copyPackageLink(packageId) {
-    const url = window.location.origin + '/package-details.html?id=' + packageId;
+    const url = window.location.origin + '/student-dashboard.html?package=' + packageId;
     navigator.clipboard.writeText(url).then(() => {
         if (typeof showToast === 'function') {
             showToast('✅ تم نسخ رابط الباقة بنجاح', 'success');

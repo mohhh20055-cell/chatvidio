@@ -1175,7 +1175,7 @@
                             </div>
 
                             <div class="card-actions" style="grid-template-columns: 3fr 3fr 1fr;">
-                                <a href="/package-details.html?id=${pkg.id}" class="btn-preview">
+                                <a href="/student-dashboard.html?package=${pkg.id}" class="btn-preview">
                                     <i class="fas fa-list-ul"></i> المنهاج والدروس
                                 </a>
                                 <button onclick="openSubscribeModal('${pkg.id}')" class="btn-subscribe">
@@ -1229,7 +1229,7 @@
         }
 
         function copyPackageLink(packageId) {
-            const url = window.location.origin + '/package-details.html?id=' + packageId;
+            const url = window.location.origin + '/student-dashboard.html?package=' + packageId;
             navigator.clipboard.writeText(url).then(() => {
                 if (typeof showToast === 'function') {
                     showToast('✅ تم نسخ رابط الباقة بنجاح', 'success');
