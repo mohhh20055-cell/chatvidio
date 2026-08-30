@@ -916,9 +916,12 @@
             <button class="nav-tab" onclick="showTab('settings')">
                 <i class="fas fa-cog"></i> الإعدادات
             </button>
-            <button class="nav-tab" onclick="showTab('revenue')">
-                <i class="fas fa-hand-holding-dollar"></i> إعدادات العوائد
-            </button>
+  <button class="nav-tab" onclick="showTab('revenue')">
+  <i class="fas fa-hand-holding-dollar"></i> إعدادات العوائد
+  </button>
+  <button class="nav-tab" onclick="showTab('promotion-applications')">
+  <i class="fas fa-bullhorn"></i> طلبات الترويج
+  </button>
             <button class="nav-tab" onclick="showTab('doc-reminders')"><i class="fas fa-id-card"></i> أساتذة بدون وثائق <span id="noDocsCount" class="badge-count" style="display:none"></span></button>
             <button class="nav-tab" onclick="showTab('email-reminders')"><i class="fas fa-envelope-open-text"></i> تذكير الطلبة</button>
             <button class="nav-tab" onclick="showTab('developers')">
@@ -1146,7 +1149,7 @@
             <div style="background: #ffffff; border-radius: 16px; padding: 20px; margin-top: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04);">
                 <h4 style="margin-bottom: 15px; color: #1e3c72;"><i class="fas fa-bullhorn"></i> إرسال إشعار للجميع</h4>
                 <input type="text" id="notificationTitle" placeholder="عنوان الإشعار" style="width:100%; padding:12px; border:1px solid #e4e6eb; border-radius:8px; margin-bottom:10px;">
-                <textarea id="notificationMessage" placeholder="محت��ى الإشعار" style="width:100%; padding:12px; border:1px solid #e4e6eb; border-radius:8px; min-height:100px; margin-bottom:10px; font-family:'Cairo',sans-serif;"></textarea>
+                <textarea id="notificationMessage" placeholder="محت����ى الإشعار" style="width:100%; padding:12px; border:1px solid #e4e6eb; border-radius:8px; min-height:100px; margin-bottom:10px; font-family:'Cairo',sans-serif;"></textarea>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                     <button class="btn-save" onclick="sendNotificationToAllStudents()" style="padding: 12px 30px;">
                         <i class="fas fa-paper-plane"></i> إرسال الإشعار للجميع
@@ -1409,7 +1412,7 @@
                         </label>
                         <input type="text" id="appApkUrlInput" style="width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: 'Cairo'; font-size: 0.9rem;" placeholder="https://your-supabase-project.supabase.co/storage/v1/object/public/apps/zoomdz.apk أو أي رابط تحميل مباشر">
                         <p style="font-size: 0.8rem; color: #64748b; margin-top: 4px; margin-bottom: 0;">
-                            ضع هنا رابط التخزين السحابي لملف الـ APK (سواء من Supabase Storage أو Google Drive أو أي خادم تخزين سحابي مباشر). عند ضغط أي مستخدم على زر "تحميل التطبيق"، سيتم توجيهه وتحميله مباشرة من هذا الرابط.
+                            ضع هنا رابط التخزين السحابي لملف الـ APK (سواء من Supabase Storage أو Google Drive أو أي خادم تخزين سحابي مباشر). عند ضغط أي مستخدم على زر "تحميل التطبيق"، سيتم توجيهه وتحميله مباشرة ��ن هذا الرابط.
                         </p>
                     </div>
 
@@ -1627,6 +1630,14 @@
                             <label style="font-size: 0.88rem; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">رسوم إنشاء غرفة بث مباشر للأستاذ (دج):</label>
                             <input type="number" id="liveRoomCreationFee" style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: 'Cairo';" placeholder="مثال: 0 (مجاني)" min="0">
                         </div>
+                        <div>
+                            <label style="font-size: 0.88rem; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">نسبة المنصة من مبيعات الباقات (%):</label>
+                            <input type="number" id="packagePlatformCommission" min="0" max="100" step="0.1" style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: 'Cairo';" placeholder="مثال: 10">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.88rem; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">خصم ثابت على سعر الباقة (دج):</label>
+                            <input type="number" id="packageFixedDiscount" min="0" step="1" style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: 'Cairo';" placeholder="مثال: 0">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1635,6 +1646,14 @@
                 <button onclick="saveRevenueSettings()" class="btn-save" style="width: 100%; padding: 14px; font-size: 1.1rem; font-weight: 700; border-radius: 12px; background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);">
                     <i class="fas fa-save"></i> حفظ وتطبيق جميع إعدادات العوائد ومداخيل المنصة
                 </button>
+            </div>
+        </div>
+
+        <div id="promotion-applicationsTab" style="display:none; margin-top:20px;">
+            <div style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:22px;">
+                <h2 style="margin:0 0 8px;color:#1e293b;"><i class="fas fa-bullhorn" style="color:#10b981;"></i> طلبات الترويج</h2>
+                <p style="color:#64748b;">راجع الفيديو والمشاهدات، ثم اعتمد أو ارفض أو علّم الطلب بأنه مدفوع.</p>
+                <div id="promotionApplicationsList" style="display:grid;gap:12px;"></div>
             </div>
         </div>
 
@@ -2670,6 +2689,7 @@
             document.getElementById('notificationsTab').style.display = tab === 'notifications' ? 'block' : 'none';
             document.getElementById('settingsTab').style.display = tab === 'settings' ? 'block' : 'none';
             document.getElementById('revenueTab').style.display = tab === 'revenue' ? 'block' : 'none';
+  if (document.getElementById('promotion-applicationsTab')) document.getElementById('promotion-applicationsTab').style.display = tab === 'promotion-applications' ? 'block' : 'none';
             document.getElementById('doc-remindersTab').style.display = tab === 'doc-reminders' ? 'block' : 'none';
             document.getElementById('emailRemindersTab').style.display = tab === 'email-reminders' ? 'block' : 'none';
             if (document.getElementById('developersTab')) document.getElementById('developersTab').style.display = tab === 'developers' ? 'block' : 'none';
@@ -2702,6 +2722,7 @@
             else if (tab === 'notifications') loadSentNotifications();
             else if (tab === 'settings') loadSettings();
             else if (tab === 'revenue') loadRevenueSettings();
+  else if (tab === 'promotion-applications') loadPromotionApplications();
             else if (tab === 'developers') loadDevelopersAdmin();
             else if (tab === 'reports') loadReportsAdmin();
             else if (tab === 'logs') loadAdminLogs();
@@ -4000,6 +4021,22 @@
         // ============================================================
         // REVENUE SETTINGS
         // ============================================================
+        async function loadPromotionApplications() {
+            const box = document.getElementById('promotionApplicationsList');
+            if (!box) return;
+            try {
+                const res = await fetch('/api/admin/promotion-applications', { headers: { Authorization: 'Bearer ' + localStorage.getItem('token') } });
+                const data = await res.json();
+                if (!res.ok || !data.success) throw new Error(data.error || 'تعذر جلب الطلبات');
+                box.innerHTML = (data.applications || []).map(app => `<article style="border:1px solid #e2e8f0;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px"><strong>${escapeHtml(app.applicant_name)} — ${escapeHtml(app.platform)}</strong><span>${escapeHtml(app.email)} | ${app.subscriber_count} مشترك | ${app.expected_views} مشاهدة متوقعة | ${app.video_duration_minutes} دقيقة</span><span><a href="${escapeHtml(app.video_url)}" target="_blank" rel="noopener">الفيديو</a> · <a href="${escapeHtml(app.channel_url)}" target="_blank" rel="noopener">القناة</a> · CCP: ${escapeHtml(app.ccp_account)}</span><span>الحالة: <b>${escapeHtml(app.status)}</b></span><div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="updatePromotionApplication(${app.id}, 'approved')">اعتماد</button><button onclick="updatePromotionApplication(${app.id}, 'paid')">تم الدفع</button><button onclick="updatePromotionApplication(${app.id}, 'rejected')">رفض</button></div></article>`).join('') || '<p>لا توجد طلبات حالياً.</p>';
+            } catch (error) { box.textContent = error.message; }
+        }
+        async function updatePromotionApplication(id, status) {
+            const note = status === 'rejected' ? prompt('سبب الرفض (اختياري):') || '' : '';
+            const res = await fetch('/api/admin/promotion-applications/' + id, { method:'PATCH', headers:{'Content-Type':'application/json', Authorization:'Bearer ' + localStorage.getItem('token')}, body:JSON.stringify({status, admin_note:note}) });
+            if (res.ok) loadPromotionApplications(); else showNotification('تعذر تحديث الطلب', 'error');
+        }
+
         async function loadRevenueSettings() {
             try {
                 const token = localStorage.getItem('token');
@@ -4028,6 +4065,8 @@
                     if (document.getElementById('liveStreamPlatformCommission')) document.getElementById('liveStreamPlatformCommission').value = data.live_stream_platform_commission !== undefined ? data.live_stream_platform_commission : 10;
                     if (document.getElementById('studentBookingFee')) document.getElementById('studentBookingFee').value = data.student_booking_fee !== undefined ? data.student_booking_fee : (data.student_commission !== undefined ? data.student_commission : 100);
                     if (document.getElementById('liveRoomCreationFee')) document.getElementById('liveRoomCreationFee').value = data.live_room_creation_fee !== undefined ? data.live_room_creation_fee : 0;
+                    if (document.getElementById('packagePlatformCommission')) document.getElementById('packagePlatformCommission').value = data.package_platform_commission !== undefined ? data.package_platform_commission : 10;
+                    if (document.getElementById('packageFixedDiscount')) document.getElementById('packageFixedDiscount').value = data.package_fixed_discount !== undefined ? data.package_fixed_discount : 0;
                 }
             } catch (error) {
                 console.error('Error loading revenue settings:', error);
@@ -4055,7 +4094,9 @@
                     live_stream_platform_commission: parseFloat(document.getElementById('liveStreamPlatformCommission')?.value) || 0,
                     student_booking_fee: parseFloat(document.getElementById('studentBookingFee')?.value) || 0,
                     student_commission: parseFloat(document.getElementById('studentBookingFee')?.value) || 0,
-                    live_room_creation_fee: parseFloat(document.getElementById('liveRoomCreationFee')?.value) || 0
+                    live_room_creation_fee: parseFloat(document.getElementById('liveRoomCreationFee')?.value) || 0,
+                    package_platform_commission: parseFloat(document.getElementById('packagePlatformCommission')?.value) || 0,
+                    package_fixed_discount: parseFloat(document.getElementById('packageFixedDiscount')?.value) || 0
                 };
                 
                 const token = localStorage.getItem('token');

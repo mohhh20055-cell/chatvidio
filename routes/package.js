@@ -627,6 +627,16 @@ router.post('/subscribe', authenticate, authorize(['student']), [
             daysToAdd = 365;
         }
 
+        // تطبيق إعدادات العوائد المحفوظة: الخصم أولاً ثم نسبة المنصة على السعر الصافي
+        const { data: revenueRow } = await supabase.from('platform_settings').select('value').eq('key', 'revenue_settings').maybeSingle();
+        const revenueSettings = revenueRow?.value || {};
+        const grossPrice = price;
+        const fixedDiscount = Math.min(grossPrice, Math.max(0, Number(revenueSettings.package_fixed_discount) || 0));
+        price = Math.max(0, grossPrice - fixedDiscount);
+        const platformCommissionPercent = Math.min(100, Math.max(0, Number(revenueSettings.package_platform_commission) || 10));
+        const platformFee = Math.round(price * platformCommissionPercent / 100 * 100) / 100;
+        const teacherShare = Math.max(0, price - platformFee);
+
         // التحقق من وجود اشتراك ساري بالفعل
         const { data: existingSub } = await supabase
             .from('package_subscriptions')
@@ -681,8 +691,7 @@ router.post('/subscribe', authenticate, authorize(['student']), [
         if (price > 0 && pkg.teacher_id) {
             const teacher = await getOne('teachers', 'id', pkg.teacher_id);
             if (teacher) {
-                // نسبة المنصة مثلاً 10% والباقي للأستاذ
-                const teacherShare = Math.round(price * 0.90);
+                // النسبة المحفوظة في إعدادات الإدارة، والباقي يذهب للأستاذ
                 await update('teachers', pkg.teacher_id, {
                     wallet_balance: (teacher.wallet_balance || 0) + teacherShare,
                     updated_at: new Date().toISOString()
@@ -693,7 +702,7 @@ router.post('/subscribe', authenticate, authorize(['student']), [
                     amount: teacherShare,
                     type: 'deposit',
                     status: 'completed',
-                    description: `أرباح اشتراك طالب جديد في باقة "${pkg.title}" (${typeLabel})`,
+                    description: `أرباح اشتراك طالب ��ديد في باقة "${pkg.title}" (${typeLabel})`,
                     created_at: new Date().toISOString()
                 });
             }
@@ -711,6 +720,9 @@ router.post('/subscribe', authenticate, authorize(['student']), [
             teacher_id: pkg.teacher_id,
             subscription_type: subscription_type,
             price_paid: price,
+            gross_price: grossPrice,
+            platform_fee: platformFee,
+            teacher_net_amount: teacherShare,
             start_date: startDate.toISOString(),
             end_date: endDate.toISOString(),
             status: 'active',

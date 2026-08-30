@@ -1836,7 +1836,7 @@ function escapeHtml(text) {
 }
 
 // ============================================================
-// ✅ بدء البث باستخدام Jitsi Meet
+// ✅ ��دء البث باستخدام Jitsi Meet
 // ============================================================
 
 // ============================================================
@@ -3254,7 +3254,7 @@ const handleStudentZoomView = async (req, res) => {
                     <div style="max-width:500px;margin:0 auto;background:white;padding:30px;border-radius:15px;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);">
                         <div style="font-size:60px;margin-bottom:20px;">🚫</div>
                         <h1 style="color:#ef4444;margin-bottom:15px;">يجب حجز الحصة أولاً</h1>
-                        <p style="color:#64748b;margin-bottom:25px;">لم نجد حجزاً نشطاً لك في هذه الحصة. يرجى التأكد من الدفع والحجز عبر لوحة التحكم.</p>
+                        <p style="color:#64748b;margin-bottom:25px;">لم ��جد حجزاً نشطاً لك في هذه الحصة. يرجى التأكد من الدفع والحجز عبر لوحة التحكم.</p>
                         <a href="/student-dashboard.html" style="display:inline-block;padding:12px 25px;background:#0f5cbf;color:white;text-decoration:none;border-radius:8px;font-weight:700;">العودة للوحة التحكم</a>
                     </div>
                 </body></html>
@@ -4338,7 +4338,7 @@ app.post('/api/ai/chat', authenticate, requireRegisteredUser, async (req, res) =
 1. اذكر المعطيات بوضوح.
 2. حدد المنهجية المتبعة.
 3. اكتب الحل خطوة بخطوة مع شرح كل خطوة.
-4. اكتب القوانين والمعادلات الرياضية أو الفيزيائية بشكل كامل وصحيح باستخدام صيغة LaTeX ووضعها بين علامتي دولار مزدوجة $$ للمعادلات الكبيرة المنفصلة (مثال: $$ROI = \\left( \\frac{0.80}{1.00} \\right) \\times 100\\%$$) أو علامة دولار مفردة $ للمعادلات المدمجة داخل السطر.
+4. اكتب القواني�� والمعادلات الرياضية أو الفيزيائية بشكل كامل وصحيح باستخدام صيغة LaTeX ووضعها بين علامتي دولار مزدوجة $$ للمعادلات الكبيرة المنفصلة (مثال: $$ROI = \\left( \\frac{0.80}{1.00} \\right) \\times 100\\%$$) أو علامة دولار مفردة $ للمعادلات المدمجة داخل السطر.
 5. تحقق من صحة الحل بشكل مختصر في النهاية.
 
 إذا أرسل الطالب صورة، فحلل محتواها بدقة واشرح تفاصيلها تبعا لأسئلته. وإذا لم تكن الصورة تعليمية أو واضحة، فاطلب منه بلطف رفع صورة أوضح لمساعدته.`;
@@ -4568,7 +4568,7 @@ app.post('/api/ai/platform-assistant', authenticate, requireRegisteredUser, asyn
         });
     } catch (err) {
         console.error('Platform Assistant Error:', err);
-        return res.status(500).json({ success: false, error: 'حدث خطأ أثناء معالجة الطلب' });
+        return res.status(500).json({ success: false, error: 'حدث خطأ أث��اء معالجة الطلب' });
     }
 });
 
@@ -5068,7 +5068,7 @@ app.get('/api/student/balance/:studentId', authenticate, authorize(['student']),
         const studentId = parseInt(req.params.studentId);
         
         if (req.user.userId !== studentId) {
-            return res.status(403).json({ success: false, error: 'غير مصرح به' });
+            return res.status(403).json({ success: false, error: 'غير ��صرح به' });
         }
         
         const { data: student, error } = await supabase
@@ -5604,6 +5604,40 @@ app.get('/download-app', async (req, res) => {
     `);
 });
 
+// ============================================================
+// Promotion applications
+// ============================================================
+app.post('/api/promotion/apply', authenticate, async (req, res) => {
+    try {
+        const { applicant_name, email, platform, channel_url, video_url, subscriber_count, expected_views, video_duration_minutes, ccp_account } = req.body || {};
+        const allowedPlatforms = ['youtube', 'facebook', 'instagram', 'tiktok'];
+        const duration = Number(video_duration_minutes);
+        if (!applicant_name || !email || !allowedPlatforms.includes(platform) || !channel_url || !video_url || !ccp_account || !Number.isFinite(duration) || duration < 5) {
+            return res.status(400).json({ success: false, error: 'أكمل البيانات وتأكد أن مدة الفيديو لا تقل عن 5 دقائق' });
+        }
+        const { data, error } = await supabase.from('promotion_applications').insert({
+            applicant_id: req.user.role === 'student' ? req.user.userId : null,
+            applicant_name: String(applicant_name).trim().slice(0, 120), email: String(email).trim().slice(0, 180), platform,
+            channel_url: String(channel_url).trim(), video_url: String(video_url).trim(), ccp_account: String(ccp_account).trim().slice(0, 80),
+            subscriber_count: Math.max(0, Math.floor(Number(subscriber_count) || 0)), expected_views: Math.max(0, Math.floor(Number(expected_views) || 0)), video_duration_minutes: duration
+        }).select('id, status, created_at').single();
+        if (error) throw error;
+        res.status(201).json({ success: true, application: data, message: 'تم إرسال طلبك للمراجعة' });
+    } catch (error) { logger.error('Promotion apply error:', error.message); res.status(500).json({ success: false, error: 'تعذر إرسال الطلب حالياً' }); }
+});
+app.get('/api/admin/promotion-applications', authenticate, authorize(['admin']), async (req, res) => {
+    const { data, error } = await supabase.from('promotion_applications').select('id,applicant_name,email,platform,channel_url,video_url,subscriber_count,expected_views,video_duration_minutes,ccp_account,status,admin_note,created_at,reviewed_at').order('created_at', { ascending: false });
+    if (error) return res.status(500).json({ success: false, error: 'تعذر جلب الطلبات' });
+    res.json({ success: true, applications: data || [] });
+});
+app.patch('/api/admin/promotion-applications/:id', authenticate, authorize(['admin']), async (req, res) => {
+    const status = ['approved', 'rejected', 'paid'].includes(req.body?.status) ? req.body.status : null;
+    if (!status) return res.status(400).json({ success: false, error: 'حالة غير صالحة' });
+    const { data, error } = await supabase.from('promotion_applications').update({ status, admin_note: String(req.body.admin_note || '').slice(0, 1000), reviewed_at: new Date().toISOString() }).eq('id', req.params.id).select('id,status').single();
+    if (error) return res.status(500).json({ success: false, error: 'تعذر تحديث الطلب' });
+    res.json({ success: true, application: data });
+});
+
 // جلب حالة الخادم
 app.get('/api/health', (req, res) => {
     const memoryUsage = process.memoryUsage();
@@ -5660,7 +5694,11 @@ let inMemoryRevenueSettings = {
     live_stream_platform_commission: 10,
     student_booking_fee: 100,
     student_commission: 100,
-    live_room_creation_fee: 0
+    live_room_creation_fee: 0,
+    package_platform_commission: 10,
+    package_fixed_discount: 0,
+    promotion_per_1000_views: 500,
+    promotion_min_video_minutes: 5
 };
 
 async function getRevenueSettings() {
@@ -5889,7 +5927,11 @@ app.post('/api/admin/settings/revenue_settings', authenticate, authorize(['admin
             live_stream_platform_commission,
             student_booking_fee,
             student_commission,
-            live_room_creation_fee
+            live_room_creation_fee,
+            package_platform_commission,
+            package_fixed_discount,
+            promotion_per_1000_views,
+            promotion_min_video_minutes
         } = req.body;
 
         const bookingFee = parseFloat(student_booking_fee !== undefined ? student_booking_fee : student_commission) >= 0 
@@ -5915,7 +5957,11 @@ app.post('/api/admin/settings/revenue_settings', authenticate, authorize(['admin
             live_stream_platform_commission: parseFloat(live_stream_platform_commission) >= 0 ? parseFloat(live_stream_platform_commission) : 10,
             student_booking_fee: bookingFee,
             student_commission: bookingFee,
-            live_room_creation_fee: parseFloat(live_room_creation_fee) >= 0 ? parseFloat(live_room_creation_fee) : 0
+            live_room_creation_fee: parseFloat(live_room_creation_fee) >= 0 ? parseFloat(live_room_creation_fee) : 0,
+            package_platform_commission: Math.min(100, Math.max(0, Number.isFinite(parseFloat(package_platform_commission)) ? parseFloat(package_platform_commission) : 10)),
+            package_fixed_discount: Math.max(0, Number.isFinite(parseFloat(package_fixed_discount)) ? parseFloat(package_fixed_discount) : 0),
+            promotion_per_1000_views: Math.max(0, Number.isFinite(parseFloat(promotion_per_1000_views)) ? parseFloat(promotion_per_1000_views) : 500),
+            promotion_min_video_minutes: Math.max(5, Number.isFinite(parseFloat(promotion_min_video_minutes)) ? parseFloat(promotion_min_video_minutes) : 5)
         };
         
         inMemoryRevenueSettings = newValue;
