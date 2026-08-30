@@ -54,7 +54,7 @@ class MainActivity : ComponentActivity() {
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
 
     companion object {
-        const val PLATFORM_URL = "https://zoomdz.com"
+        const val PLATFORM_URL = "https://zoomdz.com/"
         const val BACKUP_URL = "https://zooooooom-mown.vercel.app"
     }
 
@@ -375,7 +375,12 @@ class MainActivity : ComponentActivity() {
                     loadUrl(freshUrl)
                 }
             },
-            update = { view -> webView = view }
+            update = { view ->
+                webView = view
+                if (view.url.isNullOrBlank() || view.url == "about:blank") {
+                    view.loadUrl(PLATFORM_URL)
+                }
+            }
         )
     }
 
