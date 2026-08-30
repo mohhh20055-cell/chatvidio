@@ -519,9 +519,14 @@
                     أو 6,000 دج للسنة كاملة
                 </div>
 
-                <button class="btn-main-enroll" onclick="startEnrollment()">
-                    <i class="fas fa-bolt"></i> اشترك في الباقة الآن
-                </button>
+                <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+                    <button class="btn-main-enroll" style="flex: 1; margin-bottom: 0;" onclick="startEnrollment()">
+                        <i class="fas fa-bolt"></i> اشترك في الباقة الآن
+                    </button>
+                    <button onclick="copyCurrentPackageLink()" style="background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; padding:12px; border-radius:12px; font-size:1.2rem; font-weight:800; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 6px 16px rgba(21,128,61,0.15); transition:all 0.2s;" title="نسخ رابط الباقة لمشاركته">
+                        <i class="fas fa-share-nodes"></i>
+                    </button>
+                </div>
 
                 <ul class="sidebar-features">
                     <li><i class="fas fa-check-circle"></i> وصول فوري لكافة الدروس والفيديوهات</li>
@@ -762,6 +767,20 @@ window.addEventListener("offline", function() {
         }, 3000);
     }
 });
+</script>
+<script>
+function copyCurrentPackageLink() {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url).then(() => {
+        if (typeof showToast === "function") {
+            showToast("✅ تم نسخ رابط الباقة بنجاح لمشاركته!", "success");
+        } else {
+            alert("تم نسخ الرابط: " + url);
+        }
+    }).catch(err => {
+        console.error("Failed to copy: ", err);
+    });
+}
 </script>
 </body>
 </html>
