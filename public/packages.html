@@ -1,0 +1,1385 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
+    <title>الباقات التعليمية الشاملة | ZoomDz - تفوقك الدراسي يبدأ هنا</title>
+    <meta name="description" content="تصفح واشترك في أفضل الباقات التعليمية لجميع الأطوار والمواد في الجزائر مع نخبة من أفضل الأساتذة. دروس فيديو، ملخصات PDF، وتمارين نموذجية.">
+    <link rel="canonical" href="https://zoomdz.com/packages">
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --primary-light: #eff6ff;
+            --emerald: #059669;
+            --emerald-dark: #047857;
+            --emerald-light: #ecfdf5;
+            --amber: #d97706;
+            --dark: #0f172a;
+            --slate: #475569;
+            --gray-light: #f8fafc;
+            --border: #e2e8f0;
+            --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
+            --card-hover-shadow: 0 20px 30px -10px rgba(37, 99, 235, 0.12), 0 10px 15px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: var(--gray-light);
+            color: var(--dark);
+            line-height: 1.7;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Navbar */
+        .navbar {
+            background: #ffffff;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+        }
+
+        .nav-container {
+            max-width: 1240px;
+            margin: 0 auto;
+            padding: 14px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .logo-img {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            object-fit: cover;
+        }
+
+        .logo-text {
+            font-size: 1.4rem;
+            font-weight: 900;
+            color: var(--dark);
+        }
+
+        .logo-text span {
+            color: var(--primary);
+        }
+
+        .nav-menu {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            list-style: none;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            color: var(--slate);
+            font-weight: 700;
+            font-size: 0.92rem;
+            padding: 8px 16px;
+            border-radius: 9999px;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .nav-btn {
+            background: var(--primary);
+            color: #ffffff !important;
+            padding: 8px 20px;
+            border-radius: 9999px;
+            font-weight: 800;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+        }
+
+        .nav-btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        /* Hero Banner */
+        .packages-hero {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #ffffff;
+            padding: 60px 20px 80px 20px;
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+        }
+
+        .packages-hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(37, 99, 235, 0.25) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .packages-hero::after {
+            content: '';
+            position: absolute;
+            bottom: -30%;
+            left: -10%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(5, 150, 105, 0.2) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .hero-inner {
+            max-width: 900px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 6px 18px;
+            border-radius: 9999px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #93c5fd;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            margin-bottom: 20px;
+        }
+
+        .hero-title {
+            font-size: clamp(2rem, 4vw, 3rem);
+            font-weight: 900;
+            line-height: 1.3;
+            margin-bottom: 16px;
+        }
+
+        .hero-title span {
+            background: linear-gradient(135deg, #60a5fa, #34d399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-desc {
+            font-size: 1.1rem;
+            color: #cbd5e1;
+            max-width: 700px;
+            margin: 0 auto 30px auto;
+        }
+
+        /* Search & Filter Bar */
+        .search-filter-card {
+            max-width: 1000px;
+            margin: -40px auto 40px auto;
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+            border: 1px solid var(--border);
+            position: relative;
+            z-index: 10;
+        }
+
+        .search-input-group {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .search-input-group i {
+            position: absolute;
+            right: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 1.1rem;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 14px 48px 14px 18px;
+            border: 2px solid #e2e8f0;
+            border-radius: 14px;
+            font-family: inherit;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--dark);
+            outline: none;
+            transition: all 0.2s;
+            background: #f8fafc;
+        }
+
+        .search-input:focus {
+            border-color: var(--primary);
+            background: #ffffff;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+        }
+
+        .filter-tags {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-pill {
+            background: #f1f5f9;
+            color: #475569;
+            padding: 8px 18px;
+            border-radius: 9999px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .filter-pill:hover {
+            background: #e2e8f0;
+            color: var(--dark);
+        }
+
+        .filter-pill.active {
+            background: var(--primary);
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+        }
+
+        /* Container & Grid */
+        .main-container {
+            max-width: 1240px;
+            margin: 0 auto;
+            padding: 0 20px 80px 20px;
+            width: 100%;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .section-header h2 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .count-badge {
+            background: #eff6ff;
+            color: var(--primary);
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 800;
+        }
+
+        .packages-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 28px;
+        }
+
+        /* Package Card */
+        .package-card {
+            background: #ffffff;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: var(--card-shadow);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .package-card:hover {
+            transform: translateY(-6px);
+            box-shadow: var(--card-hover-shadow);
+            border-color: #bfdbfe;
+        }
+
+        .card-cover {
+            height: 190px;
+            position: relative;
+            background: linear-gradient(135deg, #1e293b, #334155);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card-cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.4s ease;
+        }
+
+        .package-card:hover .card-cover img {
+            transform: scale(1.05);
+        }
+
+        .card-level-badge {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(8px);
+            color: #ffffff;
+            padding: 5px 14px;
+            border-radius: 9999px;
+            font-size: 0.8rem;
+            font-weight: 800;
+            border: 1px solid rgba(255,255,255,0.15);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .card-discount-badge {
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            background: #ef4444;
+            color: #ffffff;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 900;
+            box-shadow: 0 4px 10px rgba(239, 68, 68, 0.35);
+        }
+
+        .card-body {
+            padding: 22px;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        .teacher-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .teacher-avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #e2e8f0;
+        }
+
+        .teacher-name {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #334155;
+        }
+
+        .card-title {
+            font-size: 1.22rem;
+            font-weight: 800;
+            color: var(--dark);
+            line-height: 1.4;
+            margin-bottom: 10px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .card-desc {
+            font-size: 0.88rem;
+            color: var(--slate);
+            line-height: 1.6;
+            margin-bottom: 16px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .package-stats {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 12px 14px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin-bottom: 18px;
+            border: 1px solid #f1f5f9;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            font-size: 0.8rem;
+            color: #64748b;
+            font-weight: 700;
+        }
+
+        .stat-item strong {
+            font-size: 1rem;
+            color: var(--dark);
+            font-weight: 900;
+        }
+
+        .price-box {
+            margin-top: auto;
+            padding-top: 14px;
+            border-top: 1px dashed var(--border);
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .price-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .price-label {
+            font-size: 0.75rem;
+            color: #64748b;
+            font-weight: 700;
+        }
+
+        .price-val {
+            font-size: 1.35rem;
+            font-weight: 900;
+            color: var(--emerald-dark);
+        }
+
+        .price-val span {
+            font-size: 0.85rem;
+            color: #64748b;
+            font-weight: 700;
+        }
+
+        .annual-sub-text {
+            font-size: 0.78rem;
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .card-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .btn-preview {
+            background: #eff6ff;
+            color: var(--primary);
+            border: 1px solid #bfdbfe;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 0.9rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn-preview:hover {
+            background: #dbeafe;
+            color: var(--primary-dark);
+        }
+
+        .btn-subscribe {
+            background: linear-gradient(135deg, var(--emerald), var(--emerald-dark));
+            color: #ffffff;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 0.9rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
+        }
+
+        .btn-subscribe:hover {
+            opacity: 0.95;
+            transform: translateY(-1px);
+        }
+
+        /* Skeleton Loading */
+        .skeleton {
+            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 8px;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Why Packages Section */
+        .features-section {
+            background: #ffffff;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            padding: 70px 20px;
+            margin-top: 40px;
+        }
+
+        .features-grid {
+            max-width: 1240px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 30px;
+        }
+
+        .feature-box {
+            text-align: center;
+            padding: 30px 20px;
+            border-radius: 18px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s;
+        }
+
+        .feature-box:hover {
+            transform: translateY(-4px);
+            border-color: #cbd5e1;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.03);
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 16px;
+            background: var(--primary-light);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            margin: 0 auto 18px auto;
+        }
+
+        .feature-title {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--dark);
+            margin-bottom: 10px;
+        }
+
+        .feature-desc {
+            font-size: 0.9rem;
+            color: var(--slate);
+            line-height: 1.6;
+        }
+
+        /* FAQ Section */
+        .faq-section {
+            max-width: 900px;
+            margin: 70px auto;
+            padding: 0 20px;
+        }
+
+        .faq-item {
+            background: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            margin-bottom: 14px;
+            overflow: hidden;
+        }
+
+        .faq-question {
+            padding: 18px 22px;
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: var(--dark);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+        }
+
+        .faq-question:hover {
+            background: #f8fafc;
+        }
+
+        .faq-answer {
+            padding: 0 22px 20px 22px;
+            color: var(--slate);
+            font-size: 0.95rem;
+            line-height: 1.7;
+            display: none;
+        }
+
+        .faq-item.open .faq-answer {
+            display: block;
+        }
+
+        .faq-item.open .faq-question i {
+            transform: rotate(180deg);
+            color: var(--primary);
+        }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(6px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.25s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            background: #ffffff;
+            width: 100%;
+            max-width: 650px;
+            max-height: 90vh;
+            border-radius: 24px;
+            overflow-y: auto;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            position: relative;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+            padding: 28px;
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-close-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: #f1f5f9;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            font-size: 1.1rem;
+            transition: all 0.2s;
+        }
+
+        .modal-close-btn:hover {
+            background: #e2e8f0;
+            color: var(--dark);
+        }
+
+        /* Footer */
+        footer {
+            background: #0f172a;
+            color: #94a3b8;
+            padding: 60px 20px 30px 20px;
+            margin-top: auto;
+        }
+
+        .footer-inner {
+            max-width: 1240px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .footer-col h4 {
+            color: #ffffff;
+            font-size: 1.1rem;
+            font-weight: 800;
+            margin-bottom: 18px;
+        }
+
+        .footer-col ul {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .footer-col a {
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        .footer-col a:hover {
+            color: #ffffff;
+        }
+
+        .footer-bottom {
+            max-width: 1240px;
+            margin: 0 auto;
+            padding-top: 25px;
+            border-top: 1px solid #1e293b;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            font-size: 0.85rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-menu { display: none; }
+            .packages-grid { grid-template-columns: 1fr; }
+            .card-actions { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header / Navbar -->
+    <header class="navbar">
+        <div class="nav-container">
+            <a href="/" class="logo-area">
+                <img src="/images/zoomdz.png" alt="ZoomDz" class="logo-img" onerror="this.src='/favicon-96x96.png'">
+                <div class="logo-text">Zoom<span>Dz</span></div>
+            </a>
+
+            <nav>
+                <ul class="nav-menu">
+                    <li><a href="/" class="nav-link"><i class="fas fa-home"></i> الرئيسية</a></li>
+                    <li><a href="/packages" class="nav-link active"><i class="fas fa-cubes"></i> الباقات التعليمية</a></li>
+                    <li><a href="/ai-tutor" class="nav-link" style="color: #7c3aed;"><i class="fas fa-robot"></i> المعلم الذكي</a></li>
+                    <li><a href="/blog" class="nav-link"><i class="fas fa-newspaper"></i> المدونة</a></li>
+                    <li><a href="/download-app" class="nav-link"><i class="fas fa-mobile-alt"></i> تحميل التطبيق</a></li>
+                </ul>
+            </nav>
+
+            <div id="authNavArea">
+                <a href="/?tab=login" class="nav-btn" id="loginHeaderBtn"><i class="fas fa-user"></i> تسجيل الدخول</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="packages-hero">
+        <div class="hero-inner">
+            <div class="hero-pill">
+                <i class="fas fa-graduation-cap"></i> منظومة تعليمية متكاملة لجميع الأطوار
+            </div>
+            <h1 class="hero-title">
+                الباقات التعليمية <span>الشاملة</span>
+            </h1>
+            <p class="hero-desc">
+                اشترك في باقات كاملة تضم جميع الدروس، التمارين النموذجية، والملخصات بجودة عالية وسعر اقتصادي يوفر عليك حتى 40%.
+            </p>
+        </div>
+    </section>
+
+    <!-- Search & Filters Container -->
+    <div class="main-container">
+        <div class="search-filter-card">
+            <div class="search-input-group">
+                <i class="fas fa-search"></i>
+                <input type="text" id="packageSearchInput" class="search-input" placeholder="ابحث باسم الباقة، المادة، أو الأستاذ...">
+            </div>
+
+            <div class="filter-tags" id="levelFilterPills">
+                <button class="filter-pill active" data-level="all"><i class="fas fa-th-large"></i> جميع الأطوار</button>
+                <button class="filter-pill" data-level="primary"><i class="fas fa-shapes"></i> الطور الابتدائي</button>
+                <button class="filter-pill" data-level="middle"><i class="fas fa-book-open"></i> الطور المتوسط (BEM)</button>
+                <button class="filter-pill" data-level="secondary"><i class="fas fa-user-graduate"></i> الطور الثانوي</button>
+                <button class="filter-pill" data-level="bac"><i class="fas fa-award"></i> شهادة البكالوريا (BAC)</button>
+                <button class="filter-pill" data-level="skills"><i class="fas fa-language"></i> اللغات والمهارات</button>
+            </div>
+        </div>
+
+        <!-- Section List Header -->
+        <div class="section-header">
+            <h2>
+                <i class="fas fa-cubes text-blue-600"></i>
+                الباقات المتاحة حالياً
+                <span class="count-badge" id="packagesCountBadge">0 باقة</span>
+            </h2>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <label style="font-size: 0.88rem; font-weight: 700; color: #64748b;">ترتيب حسب:</label>
+                <select id="sortSelect" style="padding: 6px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-family: inherit; font-size: 0.88rem; font-weight: 700; background: #fff;">
+                    <option value="popular">الأكثر اشتراكاً ⭐</option>
+                    <option value="newest">الأحدث إضافة 🆕</option>
+                    <option value="price_asc">الأقل سعراً</option>
+                    <option value="price_desc">الأعلى سعراً</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Grid Cards -->
+        <div class="packages-grid" id="packagesGrid">
+            <!-- Skeletons while loading -->
+            <div class="package-card skeleton" style="height: 440px;"></div>
+            <div class="package-card skeleton" style="height: 440px;"></div>
+            <div class="package-card skeleton" style="height: 440px;"></div>
+        </div>
+
+        <div id="emptyState" style="display: none; text-align: center; padding: 60px 20px; background: #ffffff; border-radius: 20px; border: 1px dashed var(--border); margin-top: 20px;">
+            <i class="fas fa-folder-open" style="font-size: 3.5rem; color: #cbd5e1; margin-bottom: 16px;"></i>
+            <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--dark); margin-bottom: 8px;">لم نجد باقات تطابق معايير البحث</h3>
+            <p style="color: var(--slate); font-size: 0.95rem; max-width: 450px; margin: 0 auto 20px auto;">جرّب تعديل كلمات البحث أو تصفح الأطوار والمراحل التعليمية الأخرى.</p>
+            <button onclick="resetFilters()" style="background: var(--primary); color: #fff; border: none; padding: 10px 22px; border-radius: 10px; font-weight: 800; cursor: pointer;">إعادة تعيين الفلاتر</button>
+        </div>
+    </div>
+
+    <!-- Why Choose Us Feature Strip -->
+    <section class="features-section">
+        <div style="max-width: 1240px; margin: 0 auto; text-align: center; margin-bottom: 45px;">
+            <h2 style="font-size: 1.8rem; font-weight: 900; color: var(--dark); margin-bottom: 10px;">لماذا تشترك في الباقات التعليمية؟</h2>
+            <p style="color: var(--slate); font-size: 1rem;">تجربة تعليمية متكاملة تضمن لك التفوق في الامتحانات الرسمية</p>
+        </div>
+        <div class="features-grid">
+            <div class="feature-box">
+                <div class="feature-icon"><i class="fas fa-video"></i></div>
+                <h3 class="feature-title">بث سريع وسلس Bunny.net</h3>
+                <p class="feature-desc">فيديوهات فائقة الجودة تعمل بدون تقطيع مع سرعة تشغيل قابلة للتخصيص ومتابعة نسبة تقدمك.</p>
+            </div>
+            <div class="feature-box">
+                <div class="feature-icon" style="background: #ecfdf5; color: var(--emerald);"><i class="fas fa-file-pdf"></i></div>
+                <h3 class="feature-title">ملخصات وتمارين نموذجية PDF</h3>
+                <p class="feature-desc">تحميل مباشر للملخصات الحصرية، سلاسل التمارين، وسلالم التنقيط الرسمية مع حلول تفصيلية.</p>
+            </div>
+            <div class="feature-box">
+                <div class="feature-icon" style="background: #fffbeb; color: var(--amber);"><i class="fas fa-wallet"></i></div>
+                <h3 class="feature-title">توفير مالي كبير وطرق دفع سهلة</h3>
+                <p class="feature-desc">وفر أكثر من 40% مقارنة بشراء كل مادة على حدة، مع دعم الدفع عبر بريدي موب BaridiMob و CCP والرصيد الداخلي.</p>
+            </div>
+            <div class="feature-box">
+                <div class="feature-icon" style="background: #fdf4ff; color: #a855f7;"><i class="fas fa-infinity"></i></div>
+                <h3 class="feature-title">وصول غير محدود 24/7</h3>
+                <p class="feature-desc">شاهد الدروس في أي وقت ومن أي جهاز (هاتف، حاسوب، لوح إلكتروني) طوال فترة اشتراكك.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Accordion -->
+    <section class="faq-section">
+        <h2 style="text-align: center; font-size: 1.7rem; font-weight: 900; color: var(--dark); margin-bottom: 30px;">الأسئلة الشائعة حول الباقات</h2>
+        
+        <div class="faq-item open">
+            <div class="faq-question" onclick="toggleFaq(this)">
+                <span>كيف يتم تفعيل اشتراكي في الباقة؟</span>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="faq-answer">
+                إذا قمت بالدفع عبر رصيدك في المنصة يتم التفعيل فوراً وتلقائياً. أما في حال الدفع عبر BaridiMob أو CCP، يتم إرفاق صورة الوصل وخلال وقت وجيز يتم تدقيق الوصل وتفعيل الباقة لك.
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+                <span>هل يمكنني مشاهدة الدروس عدة مرات؟</span>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="faq-answer">
+                نعم، المشاهدة غير محدودة طوال فترة اشتراكك (فصل دراسي أو سنة كاملة). يمكنك إعادة مشاهدة أي فيديو وتحميل الملفات المرفقة في أي وقت.
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+                <span>هل الباقات تشمل حصص البث المباشر أيضاً؟</span>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="faq-answer">
+                الباقات المسجلة تحتوي على فيديوهات عالية الدقة وشروحات وملفات. كما يقدم بعض الأساتذة لقاءات مباشرة دورية مخصصة للمشتركين للإجابة على أسئلتهم.
+            </div>
+        </div>
+    </section>
+
+    <!-- Modal: Quick Curriculum Preview -->
+    <div class="modal-overlay" id="curriculumModal">
+        <div class="modal-content" style="max-width: 750px;">
+            <button class="modal-close-btn" onclick="closeModal('curriculumModal')"><i class="fas fa-times"></i></button>
+            <div id="curriculumModalBody">
+                <!-- Loaded Dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Subscribe Flow -->
+    <div class="modal-overlay" id="subscribeModal">
+        <div class="modal-content" style="max-width: 550px;">
+            <button class="modal-close-btn" onclick="closeModal('subscribeModal')"><i class="fas fa-times"></i></button>
+            <div id="subscribeModalBody">
+                <!-- Loaded Dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-inner">
+            <div class="footer-col">
+                <div class="logo-text" style="color: #fff; margin-bottom: 12px;">Zoom<span style="color: #38bdf8;">Dz</span></div>
+                <p style="font-size: 0.9rem; line-height: 1.7; color: #94a3b8;">المنصة التعليمية الجزائرية الأولى للتدريس المرئي التفاعلي والدروس المسجلة والباقات الشاملة.</p>
+            </div>
+            <div class="footer-col">
+                <h4>روابط هامة</h4>
+                <ul>
+                    <li><a href="/packages">الباقات التعليمية</a></li>
+                    <li><a href="/ai-tutor">المعلم الذكي AI</a></li>
+                    <li><a href="/blog">المدونة التعليمية</a></li>
+                    <li><a href="/download-app">تطبيق الهاتف</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>الأطوار الدراسية</h4>
+                <ul>
+                    <li><a href="/packages?level=bac">شهادة البكالوريا BAC</a></li>
+                    <li><a href="/packages?level=middle">شهادة التعليم المتوسط BEM</a></li>
+                    <li><a href="/packages?level=secondary">الطور الثانوي</a></li>
+                    <li><a href="/packages?level=primary">الطور الابتدائي</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>الدعم والمساعدة</h4>
+                <ul>
+                    <li><a href="/#supportSection">مركز الدعم الفني</a></li>
+                    <li><a href="/terms">شروط الاستخدام</a></li>
+                    <li><a href="/privacy-policy">سياسة الخصوصية</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <div>جميع الحقوق محفوظة &copy; ZoomDz 2026</div>
+            <div>صُنع بكل ❤️ لدعم التعليم في الجزائر</div>
+        </div>
+    </footer>
+
+    <!-- Logic Script -->
+    <script>
+        let allPackages = [];
+        let currentFilter = 'all';
+        let currentSearch = '';
+        let currentSort = 'popular';
+        let currentUser = null;
+
+        // Check if user is logged in
+        function checkAuth() {
+            try {
+                const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+                const userJson = localStorage.getItem('user');
+                if (token && userJson) {
+                    currentUser = JSON.parse(userJson);
+                    const authArea = document.getElementById('authNavArea');
+                    const dashboardUrl = currentUser.role === 'teacher' ? '/teacher-dashboard.html' : (currentUser.role === 'admin' ? '/admin.html' : '/student-dashboard.html');
+                    authArea.innerHTML = `
+                        <a href="${dashboardUrl}" class="nav-btn" style="background: #059669;">
+                            <i class="fas fa-tachometer-alt"></i> لوحة التحكم
+                        </a>
+                    `;
+                }
+            } catch(e) {}
+        }
+
+        // Fetch Packages from backend
+        async function loadPackages() {
+            try {
+                const res = await fetch('/api/packages');
+                const data = await res.json();
+                if (data.success && Array.isArray(data.packages)) {
+                    allPackages = data.packages;
+                } else if (Array.isArray(data)) {
+                    allPackages = data;
+                } else {
+                    allPackages = [];
+                }
+                renderPackages();
+            } catch (err) {
+                console.error('Error fetching packages:', err);
+                // Demo fallback if backend is offline
+                renderEmpty();
+            }
+        }
+
+        function renderPackages() {
+            const grid = document.getElementById('packagesGrid');
+            const emptyState = document.getElementById('emptyState');
+            const countBadge = document.getElementById('packagesCountBadge');
+
+            let filtered = allPackages.filter(pkg => {
+                // Level filter
+                if (currentFilter !== 'all') {
+                    const stage = (pkg.stage || pkg.level || '').toLowerCase();
+                    if (currentFilter === 'bac' && !stage.includes('bac') && !stage.includes('بكالوريا')) return false;
+                    if (currentFilter === 'secondary' && !stage.includes('ثانوي') && !stage.includes('secondary')) return false;
+                    if (currentFilter === 'middle' && !stage.includes('متوسط') && !stage.includes('bem') && !stage.includes('middle')) return false;
+                    if (currentFilter === 'primary' && !stage.includes('ابتدائي') && !stage.includes('primary')) return false;
+                    if (currentFilter === 'skills' && !stage.includes('لغات') && !stage.includes('مهارات') && !stage.includes('عام')) return false;
+                }
+
+                // Search filter
+                if (currentSearch.trim()) {
+                    const q = currentSearch.toLowerCase();
+                    const title = (pkg.title || '').toLowerCase();
+                    const desc = (pkg.description || '').toLowerCase();
+                    const teacher = (pkg.teacher_name || (pkg.teacher && pkg.teacher.full_name) || '').toLowerCase();
+                    const subject = (pkg.subject || '').toLowerCase();
+                    if (!title.includes(q) && !desc.includes(q) && !teacher.includes(q) && !subject.includes(q)) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+
+            // Sorting
+            filtered.sort((a, b) => {
+                if (currentSort === 'price_asc') return (a.term_price || a.price || 0) - (b.term_price || b.price || 0);
+                if (currentSort === 'price_desc') return (b.term_price || b.price || 0) - (a.term_price || a.price || 0);
+                if (currentSort === 'newest') return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+                return (b.subscribers_count || 0) - (a.subscribers_count || 0);
+            });
+
+            countBadge.innerText = `${filtered.length} باقة`;
+
+            if (filtered.length === 0) {
+                grid.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            grid.innerHTML = filtered.map(pkg => {
+                const cover = pkg.cover_image || pkg.thumbnail_url || '/images/default-course.jpg';
+                const teacherName = pkg.teacher_name || (pkg.teacher ? pkg.teacher.full_name : 'أستاذ متميز');
+                const teacherAvatar = pkg.teacher_avatar || (pkg.teacher ? pkg.teacher.avatar_url : '/images/default-avatar.png');
+                const subjectsCount = pkg.subjects_count || (pkg.subjects ? pkg.subjects.length : 1);
+                const lessonsCount = pkg.lessons_count || 12;
+                const pdfsCount = pkg.materials_count || pkg.pdfs_count || 8;
+                const termPrice = pkg.term_price || pkg.price || 2500;
+                const annualPrice = pkg.annual_price || (termPrice * 2.4);
+                const discount = pkg.discount_percentage || Math.round((1 - (annualPrice / (termPrice * 3))) * 100) || 30;
+
+                return `
+                    <div class="package-card">
+                        <div class="card-cover">
+                            <img src="${cover}" alt="${pkg.title}" onerror="this.src='/images/zoomdz.png'">
+                            <span class="card-level-badge"><i class="fas fa-layer-group"></i> ${pkg.stage || pkg.level || 'طور تعليمي'}</span>
+                            ${discount > 0 ? `<span class="card-discount-badge">خصم ${discount}%</span>` : ''}
+                        </div>
+                        <div class="card-body">
+                            <div class="teacher-row">
+                                <img src="${teacherAvatar}" class="teacher-avatar" alt="${teacherName}" onerror="this.src='/images/zoomdz.png'">
+                                <span class="teacher-name"><i class="fas fa-check-circle text-blue-500"></i> ${teacherName}</span>
+                            </div>
+                            <h3 class="card-title">${pkg.title}</h3>
+                            <p class="card-desc">${pkg.description || 'باقة تعليمية شاملة تغطي جميع محاور المنهج الدراسي بأسلوب مبسط وتمارين نموذجية.'}</p>
+                            
+                            <div class="package-stats">
+                                <div class="stat-item">
+                                    <strong>${subjectsCount}</strong>
+                                    <span><i class="fas fa-book text-blue-500"></i> مواد</span>
+                                </div>
+                                <div class="stat-item">
+                                    <strong>${lessonsCount}</strong>
+                                    <span><i class="fas fa-play-circle text-emerald-500"></i> درس فيديو</span>
+                                </div>
+                                <div class="stat-item">
+                                    <strong>${pdfsCount}</strong>
+                                    <span><i class="fas fa-file-pdf text-red-500"></i> ملخصات PDF</span>
+                                </div>
+                            </div>
+
+                            <div class="price-box">
+                                <div class="price-details">
+                                    <span class="price-label">سعر الاشتراك الفصلي</span>
+                                    <div class="price-val">${termPrice.toLocaleString()} <span>دج</span></div>
+                                </div>
+                                <div style="text-align: left;">
+                                    <span class="annual-sub-text"><i class="fas fa-star text-amber-500"></i> أو ${annualPrice.toLocaleString()} دج / سنة</span>
+                                </div>
+                            </div>
+
+                            <div class="card-actions" style="grid-template-columns: 3fr 3fr 1fr;">
+                                <a href="/package-details.html?id=${pkg.id}" class="btn-preview">
+                                    <i class="fas fa-list-ul"></i> المنهاج والدروس
+                                </a>
+                                <button onclick="openSubscribeModal('${pkg.id}')" class="btn-subscribe">
+                                    <i class="fas fa-bolt"></i> اشترك الآن
+                                </button>
+                                <button onclick="copyPackageLink('${pkg.id}')" style="background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; padding:10px; border-radius:12px; font-weight:800; display:flex; align-items:center; justify-content:center; cursor:pointer;" title="نسخ رابط الباقة">
+                                    <i class="fas fa-link"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function resetFilters() {
+            currentFilter = 'all';
+            currentSearch = '';
+            document.getElementById('packageSearchInput').value = '';
+            document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+            document.querySelector('.filter-pill[data-level="all"]').classList.add('active');
+            renderPackages();
+        }
+
+        // Event Listeners
+        document.getElementById('packageSearchInput').addEventListener('input', (e) => {
+            currentSearch = e.target.value;
+            renderPackages();
+        });
+
+        document.getElementById('sortSelect').addEventListener('change', (e) => {
+            currentSort = e.target.value;
+            renderPackages();
+        });
+
+        document.querySelectorAll('.filter-pill').forEach(pill => {
+            pill.addEventListener('click', () => {
+                document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+                pill.classList.add('active');
+                currentFilter = pill.getAttribute('data-level');
+                renderPackages();
+            });
+        });
+
+        function toggleFaq(btn) {
+            btn.parentElement.classList.toggle('open');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        function copyPackageLink(packageId) {
+            const url = window.location.origin + '/package-details.html?id=' + packageId;
+            navigator.clipboard.writeText(url).then(() => {
+                if (typeof showToast === 'function') {
+                    showToast('✅ تم نسخ رابط الباقة بنجاح', 'success');
+                } else {
+                    alert('تم نسخ الرابط: ' + url);
+                }
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+            });
+        }
+
+        // Open Subscribe Modal
+        function openSubscribeModal(pkgId) {
+            const pkg = allPackages.find(p => String(p.id) === String(pkgId));
+            if (!pkg) return;
+
+            if (!currentUser) {
+                // Redirect to login or open student dashboard
+                window.location.href = `/?tab=login&redirect=${encodeURIComponent('/package-details.html?id=' + pkgId)}`;
+                return;
+            }
+
+            if (currentUser.role === 'teacher') {
+                alert('أنت مسجل بحساب أستاذ. يرجى تسجيل الدخول بحساب طالب للاشتراك.');
+                return;
+            }
+
+            const termPrice = pkg.term_price || pkg.price || 2500;
+            const annualPrice = pkg.annual_price || (termPrice * 2.4);
+
+            const modalBody = document.getElementById('subscribeModalBody');
+            modalBody.innerHTML = `
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <div style="width: 50px; height: 50px; background: #ecfdf5; color: #059669; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin: 0 auto 10px auto;">
+                        <i class="fas fa-shopping-cart"></i>
+                    </div>
+                    <h3 style="font-size: 1.3rem; font-weight: 800; color: #0f172a;">الاشتراك في: ${pkg.title}</h3>
+                    <p style="font-size: 0.9rem; color: #64748b;">اختر خطة الاشتراك المناسبة لك</p>
+                </div>
+
+                <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+                    <label style="flex: 1; border: 2px solid #2563eb; background: #eff6ff; padding: 14px; border-radius: 14px; cursor: pointer; text-align: center;">
+                        <input type="radio" name="subPlan" value="term" checked style="margin-left: 6px;">
+                        <strong>فصل دراسي</strong>
+                        <div style="font-size: 1.1rem; font-weight: 900; color: #1e3a8a; margin-top: 4px;">${termPrice.toLocaleString()} دج</div>
+                    </label>
+                    <label style="flex: 1; border: 2px solid #e2e8f0; background: #fff; padding: 14px; border-radius: 14px; cursor: pointer; text-align: center;">
+                        <input type="radio" name="subPlan" value="annual" style="margin-left: 6px;">
+                        <strong>سنة كاملة (وفر 30%)</strong>
+                        <div style="font-size: 1.1rem; font-weight: 900; color: #059669; margin-top: 4px;">${annualPrice.toLocaleString()} دج</div>
+                    </label>
+                </div>
+
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px; margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.92rem; font-weight: 700; margin-bottom: 8px;">
+                        <span>طريقة الدفع المتاحة:</span>
+                        <span style="color: #059669;"><i class="fas fa-wallet"></i> رصيد المحفظة / BaridiMob</span>
+                    </div>
+                    <p style="font-size: 0.85rem; color: #64748b; line-height: 1.5;">سيتم خصم المبلغ من رصيدك في المنصة وتفعيل الباقة فوراً.</p>
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="confirmSubscription('${pkg.id}')" id="confirmSubBtn" style="flex: 1; background: #059669; color: #fff; border: none; padding: 12px; border-radius: 12px; font-weight: 800; font-size: 1rem; cursor: pointer;">
+                        <i class="fas fa-check-circle"></i> تأكيد الاشتراك الفوري
+                    </button>
+                    <button onclick="closeModal('subscribeModal')" style="background: #f1f5f9; color: #475569; border: none; padding: 12px 20px; border-radius: 12px; font-weight: 700; cursor: pointer;">إلغاء</button>
+                </div>
+            `;
+
+            document.getElementById('subscribeModal').classList.add('active');
+        }
+
+        async function confirmSubscription(pkgId) {
+            const btn = document.getElementById('confirmSubBtn');
+            const plan = document.querySelector('input[name="subPlan"]:checked')?.value || 'term';
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التفعيل...';
+
+            try {
+                const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+                const res = await fetch(`/api/packages/${pkgId}/subscribe`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ plan })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('🎉 مبروك! تم تفعيل اشتراكك في الباقة بنجاح. يمكنك الآن تصفح جميع الدروس وتحميل الملخصات.');
+                    window.location.href = '/student-dashboard.html';
+                } else {
+                    alert('⚠️ ' + (data.error || 'فشلت عملية الاشتراك. يرجى التأكد من توفر رصيد كافٍ في محفظتك.'));
+                }
+            } catch(e) {
+                alert('حدث خطأ في الاتصال بالخادم.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check-circle"></i> تأكيد الاشتراك الفوري';
+            }
+        }
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', () => {
+            checkAuth();
+            // Check URL param for level
+            const params = new URLSearchParams(window.location.search);
+            const lvl = params.get('level');
+            if (lvl) {
+                currentFilter = lvl;
+                document.querySelectorAll('.filter-pill').forEach(p => {
+                    if (p.getAttribute('data-level') === lvl) p.classList.add('active');
+                    else p.classList.remove('active');
+                });
+            }
+            loadPackages();
+        });
+    </script>
+<script>
+// الشبكة - حالة الاتصال بالانترنت
+window.addEventListener("online", function() {
+    if (typeof showToast === "function") {
+        showToast("✅ تم الاتصال بالإنترنت", "success");
+        setTimeout(() => window.location.reload(), 1500);
+    } else {
+        const msg = document.createElement("div");
+        msg.innerHTML = "✅ تم الاتصال بالإنترنت";
+        msg.style.cssText = "position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#10b981; color:white; padding:12px 24px; border-radius:8px; font-weight:bold; z-index:999999; box-shadow:0 4px 12px rgba(0,0,0,0.2); font-family:Cairo,sans-serif;";
+        document.body.appendChild(msg);
+        setTimeout(() => window.location.reload(), 1500);
+    }
+});
+
+window.addEventListener("offline", function() {
+    if (typeof showToast === "function") {
+        showToast("❌ فقد الاتصال بالإنترنت", "error");
+    } else {
+        const msg = document.createElement("div");
+        msg.id = "offline-toast-msg";
+        msg.innerHTML = "❌ فقد الاتصال بالإنترنت";
+        msg.style.cssText = "position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#ef4444; color:white; padding:12px 24px; border-radius:8px; font-weight:bold; z-index:999999; box-shadow:0 4px 12px rgba(0,0,0,0.2); font-family:Cairo,sans-serif;";
+        document.body.appendChild(msg);
+        setTimeout(() => {
+            if (document.getElementById("offline-toast-msg")) {
+                document.getElementById("offline-toast-msg").remove();
+            }
+        }, 3000);
+    }
+});
+</script>
+</body>
+</html>

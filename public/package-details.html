@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
+    <title>تفاصيل الباقة التعليمية | ZoomDz</title>
+    <meta name="description" content="تصفح محتويات ومنهاج الباقة التعليمية والدروس المسجلة وملفات PDF">
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --primary-light: #eff6ff;
+            --emerald: #059669;
+            --emerald-dark: #047857;
+            --dark: #0f172a;
+            --slate: #475569;
+            --gray-light: #f8fafc;
+            --border: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: var(--gray-light);
+            color: var(--dark);
+            line-height: 1.7;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Navbar */
+        .navbar {
+            background: #ffffff;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-container {
+            max-width: 1240px;
+            margin: 0 auto;
+            padding: 14px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .logo-img { width: 40px; height: 40px; border-radius: 10px; }
+        .logo-text { font-size: 1.35rem; font-weight: 900; color: var(--dark); }
+        .logo-text span { color: var(--primary); }
+
+        .nav-link {
+            text-decoration: none;
+            color: var(--slate);
+            font-weight: 700;
+            font-size: 0.92rem;
+            padding: 8px 16px;
+            border-radius: 9999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Breadcrumb & Hero Header */
+        .package-header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #ffffff;
+            padding: 40px 20px 60px 20px;
+        }
+
+        .header-container {
+            max-width: 1240px;
+            margin: 0 auto;
+        }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: #94a3b8;
+            margin-bottom: 20px;
+        }
+
+        .breadcrumb a {
+            color: #93c5fd;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .header-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(37, 99, 235, 0.25);
+            border: 1px solid rgba(147, 197, 253, 0.3);
+            color: #93c5fd;
+            padding: 4px 14px;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 800;
+            margin-bottom: 16px;
+        }
+
+        .pkg-title {
+            font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+            font-weight: 900;
+            line-height: 1.3;
+            margin-bottom: 16px;
+        }
+
+        .pkg-lead {
+            font-size: 1.05rem;
+            color: #cbd5e1;
+            max-width: 750px;
+            line-height: 1.8;
+            margin-bottom: 24px;
+        }
+
+        .header-meta-row {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .teacher-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 6px 14px;
+            border-radius: 30px;
+        }
+
+        .teacher-badge img {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        /* Layout Grid */
+        .page-content {
+            max-width: 1240px;
+            margin: -30px auto 60px auto;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 30px;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Main Column */
+        .main-col {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .content-card {
+            background: #ffffff;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            padding: 28px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+        }
+
+        .card-heading {
+            font-size: 1.3rem;
+            font-weight: 900;
+            color: var(--dark);
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Syllabus Accordion */
+        .subject-block {
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+
+        .subject-header {
+            background: #f8fafc;
+            padding: 16px 20px;
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: var(--dark);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .chapter-block {
+            padding: 12px 20px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .chapter-title {
+            font-weight: 800;
+            color: #334155;
+            font-size: 0.95rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .lessons-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .lesson-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #ffffff;
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .lesson-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .free-badge {
+            background: #ecfdf5;
+            color: #059669;
+            font-size: 0.75rem;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 6px;
+        }
+
+        .btn-preview-lesson {
+            background: #eff6ff;
+            color: var(--primary);
+            border: 1px solid #bfdbfe;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* Sidebar Column */
+        .sidebar-col {
+            position: relative;
+        }
+
+        .sticky-card {
+            background: #ffffff;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            padding: 24px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+            position: sticky;
+            top: 90px;
+        }
+
+        .sidebar-cover {
+            width: 100%;
+            height: 200px;
+            border-radius: 14px;
+            overflow: hidden;
+            background: #1e293b;
+            margin-bottom: 20px;
+        }
+
+        .sidebar-cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .sidebar-price-row {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .sidebar-price-val {
+            font-size: 2rem;
+            font-weight: 900;
+            color: var(--emerald-dark);
+        }
+
+        .sidebar-features {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 20px 0;
+            font-size: 0.92rem;
+            font-weight: 600;
+            color: var(--slate);
+        }
+
+        .sidebar-features li {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-features li i {
+            color: var(--emerald);
+            font-size: 1rem;
+        }
+
+        .btn-main-enroll {
+            width: 100%;
+            background: linear-gradient(135deg, var(--emerald), var(--emerald-dark));
+            color: #ffffff;
+            border: none;
+            padding: 14px;
+            border-radius: 14px;
+            font-size: 1.1rem;
+            font-weight: 900;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 6px 18px rgba(5, 150, 105, 0.3);
+        }
+
+        .btn-main-enroll:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(5, 150, 105, 0.4);
+        }
+
+        /* Free Video Preview Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.25s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-box {
+            background: #ffffff;
+            width: 100%;
+            max-width: 800px;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        .video-container {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background: #000;
+        }
+
+        .video-container iframe, .video-container video {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        @media (max-width: 900px) {
+            .page-content { grid-template-columns: 1fr; }
+            .sticky-card { position: static; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <header class="navbar">
+        <div class="nav-container">
+            <a href="/" class="logo-area">
+                <img src="/images/zoomdz.png" alt="ZoomDz" class="logo-img" onerror="this.src='/favicon-96x96.png'">
+                <div class="logo-text">Zoom<span>Dz</span></div>
+            </a>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <a href="/packages" class="nav-link"><i class="fas fa-arrow-right"></i> تصفح كل الباقات</a>
+                <a href="/?tab=login" id="navAuthBtn" class="nav-link" style="background: var(--primary-light); color: var(--primary);">
+                    <i class="fas fa-user"></i> حسابي
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Header / Banner Area -->
+    <div class="package-header">
+        <div class="header-container">
+            <div class="breadcrumb">
+                <a href="/"><i class="fas fa-home"></i> الرئيسية</a>
+                <span>/</span>
+                <a href="/packages">الباقات التعليمية</a>
+                <span>/</span>
+                <span id="breadcrumbTitle">تفاصيل الباقة</span>
+            </div>
+
+            <div class="header-pill" id="pkgStagePill">
+                <i class="fas fa-graduation-cap"></i> <span id="pkgStageText">طور تعليمي</span>
+            </div>
+
+            <h1 class="pkg-title" id="pkgTitle">جاري تحميل الباقة...</h1>
+            <p class="pkg-lead" id="pkgDesc">...</p>
+
+            <div class="header-meta-row">
+                <div class="teacher-badge">
+                    <img id="teacherAvatar" src="/images/default-avatar.png" alt="Teacher" onerror="this.src='/images/zoomdz.png'">
+                    <span style="font-weight: 700;" id="teacherName">الأستاذ: ...</span>
+                </div>
+                <div style="display: flex; gap: 15px; font-size: 0.9rem; color: #94a3b8; font-weight: 700;">
+                    <span><i class="fas fa-book-open text-blue-400"></i> <span id="statsSubjects">0</span> مواد</span>
+                    <span><i class="fas fa-video text-emerald-400"></i> <span id="statsLessons">0</span> درس فيديو</span>
+                    <span><i class="fas fa-file-pdf text-red-400"></i> <span id="statsPdfs">0</span> ملفات PDF</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="page-content">
+        <!-- Left / Main Column -->
+        <div class="main-col">
+            <!-- Learning Outcomes & About -->
+            <div class="content-card">
+                <h2 class="card-heading"><i class="fas fa-info-circle text-blue-600"></i> عن هذه الباقة التعليمية</h2>
+                <div id="pkgFullDesc" style="color: var(--slate); font-size: 1rem; line-height: 1.8;">
+                    تتضمن هذه الباقة التعليمية المتكاملة شروحات تفصيلية للمنهاج الرسمي، مع التركيز على المنهجية المعتمدة في التصحيح الوزاري والتمارين ذات الأفكار العالية لضمان أعلى العلامات.
+                </div>
+            </div>
+
+            <!-- Curriculum Syllabus -->
+            <div class="content-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                    <h2 class="card-heading" style="margin-bottom: 0;"><i class="fas fa-list-ul text-emerald-600"></i> المنهاج ومحتوى الدروس</h2>
+                    <span style="font-size: 0.88rem; font-weight: 700; color: #64748b;" id="totalDurationText">دروس مسجلة بجودة HD</span>
+                </div>
+
+                <div id="syllabusContainer">
+                    <div style="text-align: center; padding: 30px; color: #94a3b8;">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i>
+                        <p style="margin-top: 10px;">جاري تحميل محتوى المنهاج...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Instructor Profile Card -->
+            <div class="content-card">
+                <h2 class="card-heading"><i class="fas fa-chalkboard-teacher text-indigo-600"></i> عن الأستاذ المؤطر</h2>
+                <div style="display: flex; gap: 18px; align-items: flex-start;" id="teacherBioCard">
+                    <img id="teacherCardAvatar" src="/images/default-avatar.png" style="width: 65px; height: 65px; border-radius: 18px; object-fit: cover;" alt="Teacher">
+                    <div>
+                        <h3 id="teacherCardName" style="font-size: 1.15rem; font-weight: 800; color: var(--dark); margin-bottom: 4px;">الأستاذ</h3>
+                        <p id="teacherCardBio" style="font-size: 0.92rem; color: var(--slate); line-height: 1.6;">أستاذ متميز ذو خبرة طويلة في التدريس والتحضير للامتحانات الرسمية والشهادات الوطنية.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right / Sticky Sidebar -->
+        <div class="sidebar-col">
+            <div class="sticky-card">
+                <div class="sidebar-cover" id="sidebarCoverBox">
+                    <img id="sidebarCoverImg" src="/images/zoomdz.png" alt="Cover">
+                </div>
+
+                <div class="sidebar-price-row">
+                    <div class="sidebar-price-val" id="sidebarPrice">2,500 <span style="font-size: 1rem; color: #64748b;">دج</span></div>
+                    <span style="font-size: 0.85rem; font-weight: 800; color: #64748b;">/ الفصل الدراسي</span>
+                </div>
+                <div id="sidebarAnnualPrice" style="font-size: 0.88rem; color: var(--primary); font-weight: 800; margin-bottom: 16px;">
+                    أو 6,000 دج للسنة كاملة
+                </div>
+
+                <button class="btn-main-enroll" onclick="startEnrollment()">
+                    <i class="fas fa-bolt"></i> اشترك في الباقة الآن
+                </button>
+
+                <ul class="sidebar-features">
+                    <li><i class="fas fa-check-circle"></i> وصول فوري لكافة الدروس والفيديوهات</li>
+                    <li><i class="fas fa-check-circle"></i> تحميل مباشر لجميع الملخصات وسلاسل PDF</li>
+                    <li><i class="fas fa-check-circle"></i> مشاهدة غير محدودة وبدون إعلانات</li>
+                    <li><i class="fas fa-check-circle"></i> متوافق مع الحواسيب والهواتف الذكية</li>
+                    <li><i class="fas fa-check-circle"></i> دعم واستفسارات مع الأستاذ المؤطر</li>
+                </ul>
+
+                <div style="text-align: center; border-top: 1px dashed #e2e8f0; padding-top: 16px;">
+                    <div style="font-size: 0.82rem; font-weight: 700; color: #64748b; margin-bottom: 8px;">طرق الدفع المدعومة:</div>
+                    <div style="display: flex; justify-content: center; gap: 10px; font-size: 0.85rem; font-weight: 800; color: #334155;">
+                        <span><i class="fas fa-wallet text-emerald-600"></i> رصيد المنصة</span>
+                        <span>•</span>
+                        <span><i class="fas fa-credit-card text-blue-600"></i> BaridiMob</span>
+                        <span>•</span>
+                        <span><i class="fas fa-money-check text-amber-600"></i> CCP</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Free Lesson Preview Modal -->
+    <div class="modal-overlay" id="videoPreviewModal">
+        <div class="modal-box">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: #0f172a; color: #fff;">
+                <h3 id="videoModalTitle" style="font-size: 1rem; font-weight: 800;">معاينة مجانية للدرس</h3>
+                <button onclick="closeVideoModal()" style="background: transparent; border: none; color: #fff; font-size: 1.2rem; cursor: pointer;"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="video-container" id="videoPlayerBox">
+                <!-- Video / Bunny.net Embed -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPackage = null;
+
+        function getQueryParam(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        async function loadPackageDetails() {
+            const pkgId = getQueryParam('id');
+            if (!pkgId) {
+                alert('لم يتم تحديد معرف الباقة.');
+                window.location.href = '/packages';
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/packages/${pkgId}`);
+                const data = await res.json();
+                if (!data.success || !data.package) {
+                    alert('تعذر العثور على الباقة المطلوبة.');
+                    window.location.href = '/packages';
+                    return;
+                }
+
+                currentPackage = data.package;
+                renderPackageData(currentPackage);
+            } catch (err) {
+                console.error('Error fetching package details:', err);
+                alert('حدث خطأ أثناء تحميل بيانات الباقة.');
+            }
+        }
+
+        function renderPackageData(pkg) {
+            document.title = `${pkg.title} | ZoomDz`;
+            document.getElementById('breadcrumbTitle').innerText = pkg.title;
+            document.getElementById('pkgTitle').innerText = pkg.title;
+            document.getElementById('pkgDesc').innerText = pkg.description || 'باقة تعليمية متكاملة تضمن لك التفوق في المنهاج الدراسي والامتحانات الرسمية.';
+            document.getElementById('pkgFullDesc').innerText = pkg.full_description || pkg.description || 'تتضمن هذه الباقة التعليمية شروحات مفصلة لجميع محاور المادة، بالإضافة إلى تمارين تطبيقية وحلول نموذجية توافق معايير الامتحانات الرسمية.';
+            
+            document.getElementById('pkgStageText').innerText = pkg.stage || pkg.level || 'طور تعليمي';
+            
+            const teacherName = pkg.teacher_name || (pkg.teacher ? pkg.teacher.full_name : 'أستاذ متميز');
+            const teacherAvatar = pkg.teacher_avatar || (pkg.teacher ? pkg.teacher.avatar_url : '/images/default-avatar.png');
+            
+            document.getElementById('teacherName').innerText = `الأستاذ: ${teacherName}`;
+            document.getElementById('teacherAvatar').src = teacherAvatar;
+            document.getElementById('teacherCardName').innerText = `الأستاذ ${teacherName}`;
+            document.getElementById('teacherCardAvatar').src = teacherAvatar;
+            if (pkg.teacher && pkg.teacher.bio) {
+                document.getElementById('teacherCardBio').innerText = pkg.teacher.bio;
+            }
+
+            const cover = pkg.cover_image || pkg.thumbnail_url || '/images/zoomdz.png';
+            document.getElementById('sidebarCoverImg').src = cover;
+
+            const termPrice = pkg.term_price || pkg.price || 2500;
+            const annualPrice = pkg.annual_price || (termPrice * 2.4);
+
+            document.getElementById('sidebarPrice').innerHTML = `${termPrice.toLocaleString()} <span style="font-size: 1rem; color: #64748b;">دج</span>`;
+            document.getElementById('sidebarAnnualPrice').innerText = `أو ${annualPrice.toLocaleString()} دج للاشتراك السنوي الشامل`;
+
+            // Syllabus Rendering
+            renderSyllabus(pkg.subjects || []);
+        }
+
+        function renderSyllabus(subjects) {
+            const container = document.getElementById('syllabusContainer');
+            if (!subjects || subjects.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 25px; color: #64748b; background: #f8fafc; border-radius: 12px;">
+                        <i class="fas fa-info-circle" style="font-size: 1.5rem; margin-bottom: 8px;"></i>
+                        <p>المنهاج التفصيلي قيد التحديث من قبل الأستاذ.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let totalLessons = 0;
+            let totalPdfs = 0;
+
+            let html = subjects.map((subj, sIdx) => {
+                const chapters = subj.chapters || [];
+                let chaptersHtml = chapters.map((chap, cIdx) => {
+                    const lessons = chap.lessons || [];
+                    totalLessons += lessons.length;
+
+                    let lessonsHtml = lessons.map(les => {
+                        if (les.summary_pdf_url || les.exercises_pdf_url) totalPdfs++;
+                        const isFree = les.is_free || les.is_preview;
+                        return `
+                            <li class="lesson-item">
+                                <div class="lesson-left">
+                                    <i class="fas ${isFree ? 'fa-play-circle text-emerald-500' : 'fa-lock text-slate-400'}"></i>
+                                    <span>${les.title}</span>
+                                    ${isFree ? '<span class="free-badge">معاينة مجانية</span>' : ''}
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    ${les.duration ? `<span style="font-size: 0.8rem; color: #64748b;">${les.duration} دقيقة</span>` : ''}
+                                    ${isFree && (les.video_url || les.bunny_video_id) ? `
+                                        <button class="btn-preview-lesson" onclick="openFreeLessonPreview('${les.title}', '${les.video_url || ''}', '${les.bunny_video_id || ''}')">
+                                            <i class="fas fa-play"></i> تشغيل
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </li>
+                        `;
+                    }).join('');
+
+                    return `
+                        <div class="chapter-block">
+                            <div class="chapter-title">
+                                <i class="fas fa-folder-open text-blue-500"></i> ${chap.title}
+                            </div>
+                            <ul class="lessons-list">
+                                ${lessonsHtml || '<li style="font-size: 0.85rem; color: #94a3b8;">لا توجد دروس مضافة في هذا الفصل بعد.</li>'}
+                            </ul>
+                        </div>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="subject-block">
+                        <div class="subject-header">
+                            <span><i class="fas fa-book text-blue-600"></i> ${subj.name || subj.title}</span>
+                            <span style="font-size: 0.85rem; font-weight: 700; color: #64748b;">${chapters.length} فصول</span>
+                        </div>
+                        <div>
+                            ${chaptersHtml || '<div style="padding: 15px; color: #94a3b8; font-size: 0.85rem;">لا توجد فصول بعد.</div>'}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = html;
+            document.getElementById('statsSubjects').innerText = subjects.length;
+            document.getElementById('statsLessons').innerText = totalLessons;
+            document.getElementById('statsPdfs').innerText = totalPdfs;
+        }
+
+        function openFreeLessonPreview(title, videoUrl, bunnyId) {
+            document.getElementById('videoModalTitle').innerText = title;
+            const box = document.getElementById('videoPlayerBox');
+            if (bunnyId) {
+                box.innerHTML = `<iframe src="https://iframe.mediadelivery.net/embed/${bunnyId}" loading="lazy" style="border:0;position:absolute;top:0;height:100%;width:100%;" allow="accelerometer;gyroscope;autoplay;encrypted-media;picture-in-picture;" allowfullscreen="true"></iframe>`;
+            } else if (videoUrl) {
+                box.innerHTML = `<video controls autoplay style="width: 100%; height: 100%;"><source src="${videoUrl}" type="video/mp4"></video>`;
+            } else {
+                box.innerHTML = `<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #fff;">رابط الفيديو غير متاح حالياً</div>`;
+            }
+            document.getElementById('videoPreviewModal').classList.add('active');
+        }
+
+        function closeVideoModal() {
+            document.getElementById('videoPlayerBox').innerHTML = '';
+            document.getElementById('videoPreviewModal').classList.remove('active');
+        }
+
+        function startEnrollment() {
+            if (!currentPackage) return;
+            const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+            if (!token) {
+                window.location.href = `/?tab=login&redirect=${encodeURIComponent(window.location.href)}`;
+                return;
+            }
+            // If logged in student, go to packages tab or trigger subscribe
+            window.location.href = `/packages?subscribe=${currentPackage.id}`;
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadPackageDetails();
+        });
+    </script>
+<script>
+// الشبكة - حالة الاتصال بالانترنت
+window.addEventListener("online", function() {
+    if (typeof showToast === "function") {
+        showToast("✅ تم الاتصال بالإنترنت", "success");
+        setTimeout(() => window.location.reload(), 1500);
+    } else {
+        const msg = document.createElement("div");
+        msg.innerHTML = "✅ تم الاتصال بالإنترنت";
+        msg.style.cssText = "position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#10b981; color:white; padding:12px 24px; border-radius:8px; font-weight:bold; z-index:999999; box-shadow:0 4px 12px rgba(0,0,0,0.2); font-family:Cairo,sans-serif;";
+        document.body.appendChild(msg);
+        setTimeout(() => window.location.reload(), 1500);
+    }
+});
+
+window.addEventListener("offline", function() {
+    if (typeof showToast === "function") {
+        showToast("❌ فقد الاتصال بالإنترنت", "error");
+    } else {
+        const msg = document.createElement("div");
+        msg.id = "offline-toast-msg";
+        msg.innerHTML = "❌ فقد الاتصال بالإنترنت";
+        msg.style.cssText = "position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#ef4444; color:white; padding:12px 24px; border-radius:8px; font-weight:bold; z-index:999999; box-shadow:0 4px 12px rgba(0,0,0,0.2); font-family:Cairo,sans-serif;";
+        document.body.appendChild(msg);
+        setTimeout(() => {
+            if (document.getElementById("offline-toast-msg")) {
+                document.getElementById("offline-toast-msg").remove();
+            }
+        }, 3000);
+    }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+# ZoomDz (https://zoomdz.com) - SEO Optimized Robots.txt
+User-agent: *
+Allow: /
+Allow: /docs.html
+Allow: /privacy-policy.html
+Allow: /terms.html
+Allow: /teacher-profile.html
+Allow: /teacher/
+Allow: /course/
+Allow: /offer/
+Allow: /post/
+
+# Disallow admin panels and private API routes
+Disallow: /admin.html
+Disallow: /api/admin/
+Disallow: /reset-password.html
+Disallow: /logs.html
+
+# Sitemap Location
+Sitemap: https://zoomdz.com/sitemap.xml
+
