@@ -260,6 +260,7 @@
         #supportSection,
         #developersSection,
         #referralSection,
+        #promotionSection,
         #loginSection {
             content-visibility: auto;
             contain-intrinsic-size: 1px 700px;
@@ -4993,7 +4994,7 @@
             <div class="section-header">
                 <span class="section-tag"><i class="fas fa-bullhorn" aria-hidden="true"></i> برنامج الترويج</span>
                 <h2 class="section-title">روّج للمنصة واربح من المشاهدات</h2>
-                <p class="section-subtitle">��نشئ فيديو شاملاً عن ZoomDz مدته 5 دقائق على الأقل</p>
+                <p class="section-subtitle">��أنشئ فيديو شاملاً عن ZoomDz مدته 5 دقائق على الأقل</p>
             </div>
             <div class="form-container" style="max-width: 850px; margin: 0 auto;">
                 <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:14px;padding:16px;margin-bottom:20px;">
@@ -6007,6 +6008,8 @@
             'blogSection',
             'developersSection',
             'profileSection',
+            'promotionSection',
+            'referralSection',
             'loginSection'
         ];
 
@@ -6302,7 +6305,7 @@
         }
 
         function setActiveTab(tabId) {
-            var tabs = ['homeTab', 'teachersTab', 'blogTab', 'developersTab', 'supportTabNav', 'registerTabNav', 'loginTabNav'];
+            var tabs = ['homeTab', 'teachersTab', 'blogTab', 'developersTab', 'supportTabNav', 'registerTabNav', 'loginTabNav', 'promotionTab', 'referralTab'];
             tabs.forEach(function(id) {
                 var el = document.getElementById(id);
                 if (el) el.classList.remove('active');
