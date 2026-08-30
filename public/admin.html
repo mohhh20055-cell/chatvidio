@@ -2783,7 +2783,7 @@
                         '<td style="padding: 14px 18px;">' + statusBadge + '</td>' +
                         '<td style="padding: 14px 18px; text-align: center;">' +
                             '<div style="display: flex; gap: 8px; justify-content: center;">' +
-                                '<a href="/package-details.html?id=' + pkg.id + '" target="_blank" style="background: #f1f5f9; color: #475569; padding: 6px 12px; border-radius: 8px; font-size: 0.82rem; font-weight: 700; text-decoration: none;" title="معاينة"><i class="fas fa-eye"></i></a>' +
+                                '<a href="/student-dashboard.html?package=' + pkg.id + '" target="_blank" style="background: #f1f5f9; color: #475569; padding: 6px 12px; border-radius: 8px; font-size: 0.82rem; font-weight: 700; text-decoration: none;" title="معاينة"><i class="fas fa-eye"></i></a>' +
                                 '<button onclick="togglePackageActiveStatus(\'' + pkg.id + '\', ' + isActive + ')" style="background: ' + (isActive ? '#fef3c7' : '#ecfdf5') + '; color: ' + (isActive ? '#b45309' : '#047857') + '; border: none; padding: 6px 12px; border-radius: 8px; font-size: 0.82rem; font-weight: 700; cursor: pointer;" title="' + (isActive ? 'تعطيل' : 'تفعيل') + '">' + (isActive ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>') + '</button>' +
                                 '<button onclick="deleteAdminPackage(\'' + pkg.id + '\')" style="background: #fef2f2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 8px; font-size: 0.82rem; font-weight: 700; cursor: pointer;" title="حذف"><i class="fas fa-trash"></i></button>' +
                             '</div>' +

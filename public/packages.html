@@ -1248,7 +1248,7 @@
 
             if (!currentUser) {
                 // Redirect to login or open student dashboard
-                window.location.href = `/?tab=login&redirect=${encodeURIComponent('/package-details.html?id=' + pkgId)}`;
+                window.location.href = `/?tab=login&redirect=${encodeURIComponent('/student-dashboard.html?package=' + pkgId)}`;
                 return;
             }
 

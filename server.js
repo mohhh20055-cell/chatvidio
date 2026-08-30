@@ -5147,6 +5147,11 @@ app.get(['/packages', '/packages.html'], (req, res) => {
 });
 
 app.get(['/package/:id', '/packages/:id', '/package-details.html'], (req, res) => {
+    const pkgId = req.params.id || req.query.id;
+    if (pkgId) {
+        return res.redirect(301, '/student-dashboard.html?package=' + pkgId);
+    }
+    // Fallback if no ID is provided
     res.setHeader('Cache-Control', 'public, max-age=1800, s-maxage=1800, stale-while-revalidate=600');
     res.sendFile(path.join(__dirname, 'public', 'package-details.html'));
 });
