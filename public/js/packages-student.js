@@ -43,7 +43,7 @@ async function loadStudentPackages() {
         listContainer.innerHTML = `
             <div style="grid-column: 1/-1; text-align:center; padding:30px; background:#fff1f2; border:1px solid #fecdd3; border-radius:12px; color:#be123c;">
                 <i class="fas fa-exclamation-triangle fa-2x"></i>
-                <p style="margin-top:8px; font-weight:700;">تعذر تحميل الباقات التعليمية</p>
+                <p style="margin-top:8px; font-weight:700;">${!navigator.onLine ? 'فقد الاتصال بالإنترنت' : 'تعذر تحميل الباقات التعليمية'}</p>
                 <button onclick="loadStudentPackages()" style="margin-top:10px; background:#e11d48; color:white; border:none; padding:6px 16px; border-radius:8px; cursor:pointer;">إعادة المحاولة</button>
             </div>
         `;
@@ -386,7 +386,7 @@ async function openPackageDetailsModal(packageId) {
                                                                 `).join('')}
                                                             </div>
                                                         ` : `
-                                                            <span style="font-size:0.75rem; color:#94a3b8;"><i class="fas fa-lock"></i> حل بكالوريات سابقة بالفيديو + ملخص شامل</span>
+                                                            <span style="font-size:0.75rem; color:#94a3b8;"><i class="fas fa-lock"></i> حل بكالوري��ت سابقة بالفيديو + ملخص شامل</span>
                                                         `}
                                                     </div>
                                                 ` : ''}

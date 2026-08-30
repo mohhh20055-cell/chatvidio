@@ -33,7 +33,7 @@ async function loadTeacherPackages() {
         listContainer.innerHTML = `
             <div style="grid-column: 1/-1; text-align:center; padding:30px; background:#fff1f2; border:1px solid #fecdd3; border-radius:12px; color:#be123c;">
                 <i class="fas fa-exclamation-triangle fa-2x"></i>
-                <p style="margin-top:8px; font-weight:700;">تعذر تحميل الباقات التعليمية</p>
+                <p style="margin-top:8px; font-weight:700;">${!navigator.onLine ? 'فقد الاتصال بالإنترنت' : 'تعذر تحميل الباقات التعليمية'}</p>
                 <button onclick="loadTeacherPackages()" style="margin-top:10px; background:#e11d48; color:white; border:none; padding:6px 16px; border-radius:8px; cursor:pointer;">إعادة المحاولة</button>
             </div>
         `;
@@ -215,7 +215,7 @@ function showCreatePackageModal(pkg = null) {
                                     <option value="بكالوريا آداب وفلسفة">بكالوريا آداب وفلسفة</option>
                                     <option value="بكالوريا لغات أجنبية">بكالوريا لغات أجنبية</option>
                                     <option value="أولى ثانوي علمي">أولى ثانوي علمي</option>
-                                    <option value="أولى ثانوي أدبي">أولى ثانوي أدبي</option>
+                                    <option value="أولى ثانو�� أدبي">أولى ثانوي أدبي</option>
                                     <option value="ثانية ثانوي علوم">ثانية ثانوي علوم</option>
                                     <option value="ثانية ثانوي تقني">ثانية ثانوي تقني</option>
                                     <option value="عام - جميع المستويات">عام - جميع المستويات</option>
