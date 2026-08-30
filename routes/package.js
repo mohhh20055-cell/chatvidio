@@ -491,7 +491,7 @@ router.get('/admin/all', authenticate, authorize(['admin']), async (req, res) =>
 // ============================================================
 // 🔍 7. جلب تفاصيل باقة واحدة
 // ============================================================
-router.get('/:id', async (req, res) => {
+router.get('/:id(\\d+)', async (req, res) => {
     try {
         const packageId = parseInt(req.params.id);
         if (isNaN(packageId)) {
@@ -757,7 +757,7 @@ router.post('/subscribe', authenticate, authorize(['student']), [
 });
 
 // ============================================================
-// 🎓 8. جلب الباقات المشترك فيها الطالب
+// 🎓 8. جلب الباقات المشترك ��يها الطالب
 // ============================================================
 router.get('/student/my-subscriptions', authenticate, authorize(['student']), async (req, res) => {
     try {

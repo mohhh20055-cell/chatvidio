@@ -17,6 +17,8 @@
             <style>
                 #zoomyFloatingWidget {
                     position: fixed;
+                    /* في الجوال يظهر المساعد من تبويب المزيد فقط، وليس كعنصر عائم */
+
                     bottom: 28px;
                     left: 28px;
                     z-index: 999990;
@@ -150,6 +152,13 @@
                     transform: scale(0) rotate(720deg) !important;
                     opacity: 0 !important;
                     transition: all 0.4s cubic-bezier(0.6, -0.28, 0.735, 0.045) !important;
+                }
+
+                @media (max-width: 768px) {
+                    #zoomyFloatingWidget,
+                    #aiTrashBinZone {
+                        display: none !important;
+                    }
                 }
             </style>
 
