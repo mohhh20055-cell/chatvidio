@@ -170,6 +170,9 @@ function renderStudentPackages() {
 
                     <!-- أزرار الإجراءات -->
                     <div style="display:flex; gap:10px;">
+                        <button onclick="copyPackageLink(${pkg.id})" style="background:#f0fdf4; color:#15803d; border:none; padding:10px; border-radius:10px; font-size:0.88rem; font-weight:800; cursor:pointer;" title="نسخ الرابط">
+                            <i class="fas fa-link"></i>
+                        </button>
                         <button onclick="openPackageDetailsModal(${pkg.id})" style="flex:1; background:#f1f5f9; color:#1e293b; border:1px solid #cbd5e1; padding:10px; border-radius:10px; font-size:0.88rem; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
                             <i class="fas fa-list-check" style="color:#2563eb;"></i> المحتوى والتفاصيل
                         </button>
@@ -635,3 +638,17 @@ window.openSubscribePackageModal = openSubscribePackageModal;
 window.selectSubOption = selectSubOption;
 window.confirmPackageSubscription = confirmPackageSubscription;
 window.playPackageLessonVideo = playPackageLessonVideo;
+
+function copyPackageLink(packageId) {
+    const url = window.location.origin + '/package-details.html?id=' + packageId;
+    navigator.clipboard.writeText(url).then(() => {
+        if (typeof showToast === 'function') {
+            showToast('✅ تم نسخ رابط الباقة بنجاح', 'success');
+        } else {
+            alert('تم نسخ الرابط: ' + url);
+        }
+    }).catch(err => {
+        console.error('Failed to copy: ', err);
+    });
+}
+window.copyPackageLink = copyPackageLink;

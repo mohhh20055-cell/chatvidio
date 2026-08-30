@@ -120,6 +120,9 @@ function renderTeacherPackages() {
 
                     <!-- أزرار الإجراءات -->
                     <div style="display:flex; gap:8px;">
+                        <button onclick="copyPackageLink(${pkg.id})" style="background:#f0fdf4; color:#15803d; border:none; padding:8px 12px; border-radius:8px; font-size:0.82rem; font-weight:700; cursor:pointer;" title="نسخ رابط الباقة">
+                            <i class="fas fa-link"></i>
+                        </button>
                         <button onclick="viewPackageSubscribers(${pkg.id})" style="flex:1; background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; padding:8px; border-radius:8px; font-size:0.82rem; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px;">
                             <i class="fas fa-users" style="color:#0284c7;"></i> المشتركون
                         </button>
@@ -859,6 +862,22 @@ async function viewPackageSubscribers(pkgId) {
     }
 }
 
+// ============================================================
+// 10. نسخ الرابط
+// ============================================================
+function copyPackageLink(packageId) {
+    const url = window.location.origin + '/package-details.html?id=' + packageId;
+    navigator.clipboard.writeText(url).then(() => {
+        if (typeof showToast === 'function') {
+            showToast('✅ تم نسخ رابط الباقة بنجاح', 'success');
+        } else {
+            alert('تم نسخ الرابط: ' + url);
+        }
+    }).catch(err => {
+        console.error('Failed to copy: ', err);
+    });
+}
+
 // تصدير للدوال العالمية
 window.loadTeacherPackages = loadTeacherPackages;
 window.showCreatePackageModal = showCreatePackageModal;
@@ -881,3 +900,4 @@ window.submitPackageForm = submitPackageForm;
 window.editPackage = editPackage;
 window.deletePackagePrompt = deletePackagePrompt;
 window.viewPackageSubscribers = viewPackageSubscribers;
+window.copyPackageLink = copyPackageLink;
