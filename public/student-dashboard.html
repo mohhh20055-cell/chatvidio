@@ -7762,7 +7762,10 @@
                 <img src="${escapeHtml(imgSrc)}" data-original-url="${escapeHtml(imgSrc)}" style="width: 46px; height: 46px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary); flex-shrink: 0; cursor: pointer;" referrerpolicy="no-referrer" onerror="handleImageFallback(this)" onclick="event.stopPropagation(); ${profileFn}" title="عرض الملف الشخصي">
                 <div style="flex: 1; min-width: 0;">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div class="conversation-name" style="font-weight:700; color:var(--gray-800); cursor:pointer;" onclick="event.stopPropagation(); ${profileFn}">${escapeHtml(conv.other_name)}</div>
+                        <div class="conversation-name" style="font-weight:700; color:var(--gray-800); cursor:pointer; display:flex; align-items:center; gap:8px;" onclick="event.stopPropagation(); ${profileFn}">
+                            ${escapeHtml(conv.other_name)}
+                            ${isUnread ? `<span style="background: #ef4444; color: white; border-radius: 10px; padding: 2px 6px; font-size: 0.65rem; font-weight: 800;">${conv.unread_count > 99 ? '+99' : conv.unread_count}</span>` : ''}
+                        </div>
                         <span style="font-size:0.75rem; color:var(--primary); font-weight:600;"><i class="fas ${iconClass}"></i> ${typeLabel}</span>
                     </div>
                     <div class="conversation-last" style="font-size:0.85rem; color:var(--gray-600); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;">${escapeHtml(conv.last_message)}</div>
@@ -10235,11 +10238,14 @@
                                         ? `<img src="${g.image_url}" style="width: 56px; height: 56px; border-radius: 14px; object-fit: cover; border: 2px solid #e2e8f0;">` 
                                         : `<div style="width: 56px; height: 56px; border-radius: 14px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; color: white;"><i class="fas fa-users"></i></div>`
                                     }
-                                    <div>
-                                        <h3 style="margin: 0 0 4px 0; font-size: 1.1rem; color: #0f172a; font-weight: 800;">${g.name}</h3>
-                                        <span style="display: inline-flex; align-items: center; gap: 5px; background: #ecfdf5; color: #059669; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 700;">
-                                            <i class="fas fa-check-circle"></i> عضو منضم
-                                        </span>
+                                    <div style="flex: 1; min-width: 0;">
+                                        <h3 style="margin: 0 0 4px 0; font-size: 1.1rem; color: #0f172a; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${g.name}</h3>
+                                        <div style="display: flex; gap: 6px;">
+                                            <span style="display: inline-flex; align-items: center; gap: 5px; background: #ecfdf5; color: #059669; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 700;">
+                                                <i class="fas fa-check-circle"></i> عضو منضم
+                                            </span>
+                                            ${g.msg_count ? `<span style="display: inline-flex; align-items: center; background: #ef4444; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem; font-weight: 800;">${g.msg_count > 99 ? '+99' : g.msg_count} رسالة</span>` : ''}
+                                        </div>
                                     </div>
                                 </div>
                                 <div style="display: flex; gap: 8px; width: 100%;">

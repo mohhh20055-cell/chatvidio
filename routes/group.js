@@ -308,6 +308,7 @@ router.get('/teacher', authenticate, authorize(['teacher']), async (req, res) =>
         }
 
         const latestMsgsMap = {};
+        const msgCountsMap = {};
         if (groupIds.length > 0) {
             const { data: latestMsgs } = await supabase
                 .from('group_messages')
@@ -317,6 +318,7 @@ router.get('/teacher', authenticate, authorize(['teacher']), async (req, res) =>
 
             if (latestMsgs) {
                 latestMsgs.forEach(m => {
+                    msgCountsMap[m.group_id] = (msgCountsMap[m.group_id] || 0) + 1;
                     if (!latestMsgsMap[m.group_id]) {
                         latestMsgsMap[m.group_id] = m.created_at;
                     }
@@ -329,7 +331,8 @@ router.get('/teacher', authenticate, authorize(['teacher']), async (req, res) =>
             is_owner: true,
             is_member: true,
             members_count: groupMembersMap[String(g.id)] ? groupMembersMap[String(g.id)].size : 0,
-            latest_message_time: latestMsgsMap[g.id] || null
+            latest_message_time: latestMsgsMap[g.id] || null,
+            msg_count: msgCountsMap[g.id] || 0
         }));
 
         res.json(enriched);
@@ -439,6 +442,7 @@ router.get('/student', authenticate, authorize(['student']), async (req, res) =>
 
         const groupIds = activeGroups.map(g => g.id);
         const latestMsgsMap = {};
+        const msgCountsMap = {};
         if (groupIds.length > 0) {
             const { data: latestMsgs } = await supabase
                 .from('group_messages')
@@ -448,6 +452,7 @@ router.get('/student', authenticate, authorize(['student']), async (req, res) =>
 
             if (latestMsgs) {
                 latestMsgs.forEach(m => {
+                    msgCountsMap[m.group_id] = (msgCountsMap[m.group_id] || 0) + 1;
                     if (!latestMsgsMap[m.group_id]) {
                         latestMsgsMap[m.group_id] = m.created_at;
                     }
@@ -457,7 +462,8 @@ router.get('/student', authenticate, authorize(['student']), async (req, res) =>
 
         const enriched = activeGroups.map(g => ({
             ...g,
-            latest_message_time: latestMsgsMap[g.id] || null
+            latest_message_time: latestMsgsMap[g.id] || null,
+            msg_count: msgCountsMap[g.id] || 0
         }));
             
         res.json(enriched);
