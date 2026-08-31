@@ -59,6 +59,7 @@ class MainActivity : ComponentActivity() {
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
     private var cameraImageUri: Uri? = null
     private var pendingFileChooserParams: WebChromeClient.FileChooserParams? = null
+    private var pendingPermissionRequest: PermissionRequest? = null
     private var persistentWebView: WebView? = null
     private var customView: View? = null
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
@@ -72,8 +73,30 @@ class MainActivity : ComponentActivity() {
     // Permission launcher for runtime permissions (Camera, Storage, Media, Audio, Notifications)
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { _ ->
-        // Once permissions are determined, proceed with file chooser if waiting
+    ) { grants ->
+        // Handle pending WebRTC (Stream / Camera / Mic) permission request
+        pendingPermissionRequest?.let { req ->
+            val requested = req.resources
+            val grantedList = mutableListOf<String>()
+            for (res in requested) {
+                if (res == PermissionRequest.RESOURCE_VIDEO_CAPTURE &&
+                    ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                    grantedList.add(PermissionRequest.RESOURCE_VIDEO_CAPTURE)
+                }
+                if (res == PermissionRequest.RESOURCE_AUDIO_CAPTURE &&
+                    ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                    grantedList.add(PermissionRequest.RESOURCE_AUDIO_CAPTURE)
+                }
+            }
+            if (grantedList.isNotEmpty()) {
+                req.grant(grantedList.toTypedArray())
+            } else {
+                req.deny()
+            }
+            pendingPermissionRequest = null
+        }
+
+        // Handle pending file chooser request
         if (filePathCallback != null) {
             launchFileChooserIntent(pendingFileChooserParams)
         }
@@ -158,17 +181,22 @@ class MainActivity : ComponentActivity() {
         val permissions = mutableListOf<String>()
         permissions.add(Manifest.permission.CAMERA)
         permissions.add(Manifest.permission.RECORD_AUDIO)
+        permissions.add(Manifest.permission.MODIFY_AUDIO_SETTINGS)
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) { // Android 14+
+            permissions.add(Manifest.permission.READ_MEDIA_IMAGES)
+            permissions.add(Manifest.permission.READ_MEDIA_VIDEO)
+            permissions.add(Manifest.permission.READ_MEDIA_AUDIO)
+            permissions.add(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
+            permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // Android 13
             permissions.add(Manifest.permission.READ_MEDIA_IMAGES)
             permissions.add(Manifest.permission.READ_MEDIA_VIDEO)
             permissions.add(Manifest.permission.READ_MEDIA_AUDIO)
             permissions.add(Manifest.permission.POST_NOTIFICATIONS)
-        } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2) {
+        } else { // Android 12 and below
             permissions.add(Manifest.permission.READ_EXTERNAL_STORAGE)
-            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
-                permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-            }
+            permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
         }
         return permissions.toTypedArray()
     }
@@ -428,14 +456,27 @@ class MainActivity : ComponentActivity() {
                     filePathCallback = callback
                     pendingFileChooserParams = params
 
-                    if (!hasAllPermissions()) {
-                        val missing = getRequiredPermissions().filter {
-                            ContextCompat.checkSelfPermission(this@MainActivity, it) != PackageManager.PERMISSION_GRANTED
-                        }
-                        if (missing.isNotEmpty()) {
-                            permissionLauncher.launch(missing.toTypedArray())
-                            return true
-                        }
+                    // Check storage/media/camera permissions
+                    val permissionsToCheck = mutableListOf<String>()
+                    permissionsToCheck.add(Manifest.permission.CAMERA)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                        permissionsToCheck.add(Manifest.permission.READ_MEDIA_IMAGES)
+                        permissionsToCheck.add(Manifest.permission.READ_MEDIA_VIDEO)
+                        permissionsToCheck.add(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
+                    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        permissionsToCheck.add(Manifest.permission.READ_MEDIA_IMAGES)
+                        permissionsToCheck.add(Manifest.permission.READ_MEDIA_VIDEO)
+                    } else {
+                        permissionsToCheck.add(Manifest.permission.READ_EXTERNAL_STORAGE)
+                    }
+
+                    val missing = permissionsToCheck.filter {
+                        ContextCompat.checkSelfPermission(this@MainActivity, it) != PackageManager.PERMISSION_GRANTED
+                    }
+
+                    if (missing.isNotEmpty()) {
+                        permissionLauncher.launch(missing.toTypedArray())
+                        return true
                     }
 
                     launchFileChooserIntent(params)
@@ -444,23 +485,27 @@ class MainActivity : ComponentActivity() {
 
                 override fun onPermissionRequest(request: PermissionRequest?) {
                     if (request == null) return
-                    val missing = mutableListOf<String>()
+                    val neededAndroidPermissions = mutableListOf<String>()
+
                     for (res in request.resources) {
                         if (res == PermissionRequest.RESOURCE_VIDEO_CAPTURE) {
                             if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                                missing.add(Manifest.permission.CAMERA)
+                                neededAndroidPermissions.add(Manifest.permission.CAMERA)
                             }
                         }
                         if (res == PermissionRequest.RESOURCE_AUDIO_CAPTURE) {
                             if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                                missing.add(Manifest.permission.RECORD_AUDIO)
+                                neededAndroidPermissions.add(Manifest.permission.RECORD_AUDIO)
                             }
                         }
                     }
-                    if (missing.isNotEmpty()) {
-                        permissionLauncher.launch(missing.toTypedArray())
+
+                    if (neededAndroidPermissions.isNotEmpty()) {
+                        pendingPermissionRequest = request
+                        permissionLauncher.launch(neededAndroidPermissions.toTypedArray())
+                    } else {
+                        request.grant(request.resources)
                     }
-                    request.grant(request.resources)
                 }
 
                 override fun onGeolocationPermissionsShowPrompt(origin: String?, callback: GeolocationPermissions.Callback?) {
@@ -518,6 +563,9 @@ class MainActivity : ComponentActivity() {
             addJavascriptInterface(object {
                 @JavascriptInterface fun isNativeApp() = true
                 @JavascriptInterface fun getAppVersion() = "2.1.0"
+                @JavascriptInterface fun requestMediaPermissions() {
+                    requestAppStartupPermissions()
+                }
                 @JavascriptInterface fun showToast(msg: String) {
                     Toast.makeText(this@MainActivity, msg, Toast.LENGTH_SHORT).show()
                 }
@@ -657,6 +705,8 @@ class MainActivity : ComponentActivity() {
         if (isFinishing) {
             filePathCallback?.onReceiveValue(null)
             filePathCallback = null
+            pendingPermissionRequest?.deny()
+            pendingPermissionRequest = null
             persistentWebView?.apply {
                 stopLoading()
                 removeJavascriptInterface("ZoomDzNative")
