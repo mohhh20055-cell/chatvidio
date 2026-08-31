@@ -4988,7 +4988,7 @@
             return;
         }
 
-        // 5. الرسائل والمحادثات
+        // 5. الرسا��ل والمحادثات
         if (rawTitle.includes('رسالة') || rawTitle.includes('محادثة') || rawTitle.includes('دردشة')) {
             showSection('messages');
             return;
@@ -6707,7 +6707,7 @@
                     <div style="font-size: 0.85rem; margin: 6px 0; color: var(--gray-700);"><i class="fas fa-calendar-alt" style="color:var(--gray-400); margin-left: 8px;"></i> ${offerDate ? offerDate.toLocaleString('ar-DZ', {timeZone: 'Africa/Algiers', hour12: false}) : 'غير محدد'}</div>
                     <div style="font-size: 0.85rem; margin: 6px 0; color: var(--gray-700);"><i class="fas fa-clock" style="color:var(--gray-400); margin-left: 8px;"></i> ${booking.duration || '0'} دقيقة</div>
                     ${canJoin ? `<button class="join-stream-btn" style="margin-top: 12px; width: 100%;" onclick="joinLiveStream('${booking.offer_id}')"><i class="fas fa-video"></i> انضم للبث المباشر الان</button>` : ''}
-                    ${!canJoin && isLive ? '<div style="color:var(--danger); font-size:0.75rem; margin-top:8px; font-weight:700;">🔴 البث مباشر الآن! انتظر فتح الغرفة من الأستاذ...</div>' : ''}
+                    ${!canJoin && isLive ? '<div style="color:var(--danger); font-size:0.75rem; margin-top:8px; font-weight:700;">🔴 البث مباشر ا��آن! انتظر فتح الغرفة من الأستاذ...</div>' : ''}
                     ${statusInfo.code === 'ended' ? '<div style="color:var(--gray-600); font-size:0.75rem; margin-top:8px;"><i class="fas fa-check-circle" style="color:var(--secondary);"></i> مكتمل - هذا الدرس منتهي.</div>' : ''}
                 </div>
             `;
@@ -8835,7 +8835,7 @@
                     <button id="like-btn-${post.id}" onclick="toggleLikePost(${post.id})" style="background: ${post.user_liked ? '#fff1f2' : '#f8fafc'}; border: 1px solid ${post.user_liked ? '#fecdd3' : '#e2e8f0'}; color: ${post.user_liked ? '#e11d48' : '#64748b'}; font-size: 0.88rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 8px 18px; border-radius: 12px; transition: all 0.2s ease;">
                         <i class="${post.user_liked ? 'fas' : 'far'} fa-heart" style="${post.user_liked ? 'transform: scale(1.1);' : ''}"></i>
                         <span id="like-count-${post.id}">${post.likes_count || 0}</span>
-                        <span style="font-size: 0.8rem; font-weight: 600;">إعجاب</span>
+                        <span style="font-size: 0.8rem; font-weight: 600;">إع��اب</span>
                     </button>
 
                     <button onclick="toggleCommentsDrawer(${post.id})" style="background: #f8fafc; border: 1px solid #e2e8f0; color: #64748b; font-size: 0.88rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 8px 18px; border-radius: 12px; transition: all 0.2s ease;">
@@ -9675,7 +9675,7 @@
             grid.innerHTML = `
                 <div style="grid-column: 1 / -1; text-align: center; padding: 50px 20px; background: white; border-radius: 16px; border: 1px solid #e2e8f0;">
                     <i class="fas fa-folder-open fa-3x" style="color: #cbd5e1; margin-bottom: 12px;"></i>
-                    <h3 style="margin: 0 0 6px 0; color: #334155; font-size: 1.1rem; font-weight: 800;">لا توجد تمارين تطابق خيارات البحث</h3>
+                    <h3 style="margin: 0 0 6px 0; color: #334155; font-size: 1.1rem; font-weight: 800;">لا توجد تمارين تطابق خي��رات البحث</h3>
                     <p style="margin: 0; color: #64748b; font-size: 0.88rem;">جرب تغيير كلمة البحث أو تصفية المستويات لعرض المزيد من التمارينات والحلول.</p>
                 </div>
             `;
@@ -10284,7 +10284,7 @@
                         `;
                     }).join('');
                 } catch (e) {
-                    list.innerHTML = '<p style="text-align: center; color: #ef4444; padding: 20px;">خطأ في تحميل المجموعات.</p>';
+                    list.innerHTML = '<p style="text-align: center; color: #ef4444; padding: 20px;">خطأ في تحميل ال��جموعات.</p>';
                 }
             } else {
                 // EXPLORE ALL GROUPS
@@ -10468,10 +10468,12 @@
 
             if (nameEl) nameEl.textContent = file.name;
             if (sizeEl) sizeEl.textContent = formatFileSize(file.size) + ' • جاهز للإرسال';
-            if (previewBar) previewBar.style.display = 'flex';
-        }
+  if (previewBar) previewBar.style.display = 'flex';
+  // إرسال الصورة أو الملف فوراً بعد الاختيار، بدون انتظار زر إضافي.
+  void sendStudentGroupChatMessage();
+  }
 
-        function cancelStudentChatPdfAttachment() {
+  function cancelStudentChatPdfAttachment() {
             selectedStudentGroupPdf = null;
             const fileInput = document.getElementById('studentChatPdfFileInput');
             if (fileInput) fileInput.value = '';
@@ -10912,6 +10914,8 @@
             if (nameEl) nameEl.textContent = file.name;
             if (sizeEl) sizeEl.textContent = formatFileSize(file.size) + ' • صورة جاهزة للإرسال';
             if (previewBar) previewBar.style.display = 'flex';
+            // إرسال المرفق مباشرة بعد اختياره لتجنب إعادة تنقل Android WebView.
+            void sendStudentGroupChatMessage();
         }
 
         async function sendStudentGroupChatMessage() {

@@ -4001,7 +4001,7 @@
 
             <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 14px; padding: 14px 18px; margin-bottom: 22px; font-size: 0.88rem; color: #1e40af; display: flex; align-items: center; gap: 12px; box-shadow: 0 2px 6px rgba(59, 130, 246, 0.05);">
                 <i class="fas fa-info-circle" style="font-size: 1.3rem; color: #3b82f6; flex-shrink: 0;"></i>
-                <span><strong>تنبيه هام:</strong> هذه الصفحة مخصصة فقط لمشاهدة والاطلاع على تفاصيل برامج دروس الزملاء. لا يمكن للأستاذ حجز دروس أستاذ آخر.</span>
+                <span><strong>تنبيه هام:</strong> هذه الصفحة مخصصة فقط لمشاهدة والاطلاع على ��فاصيل برامج دروس الزملاء. لا يمكن للأستاذ حجز دروس أستاذ آخر.</span>
             </div>
 
             <!-- Filter Controls -->
@@ -4157,7 +4157,7 @@
                             <span id="groupReplyBarText" style="color: #64748b; font-size: 0.75rem;">نص الرسالة</span>
                         </div>
                     </div>
-                    <button type="button" onclick="cancelGroupChatReply()" title="إلغاء الرد" style="background: rgba(0,0,0,0.06); border: none; color: #64748b; border-radius: 50%; width: 26px; height: 26px; min-width: 26px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;">
+                    <button type="button" onclick="cancelGroupChatReply()" title="إلغ��ء الرد" style="background: rgba(0,0,0,0.06); border: none; color: #64748b; border-radius: 50%; width: 26px; height: 26px; min-width: 26px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;">
                         <i class="fas fa-times" style="font-size: 0.75rem;"></i>
                     </button>
                 </div>
@@ -4702,7 +4702,7 @@
         <div class="modal-header" style="position: relative; display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; border-bottom: 2px solid #fef3c7; padding-bottom: 12px;">
             <div>
                 <h3 style="margin: 0; font-size: 1.25rem; color: #b45309; font-weight: 800; display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-crown" style="color: #f59e0b;"></i> ترقية الحساب إلى أستاذ معتمد (الشارة الذهبية)
+                    <i class="fas fa-crown" style="color: #f59e0b;"></i> ترقية الحساب إلى أستاذ معتمد (الشارة ا��ذهبية)
                 </h3>
                 <p style="font-size: 0.82rem; color: var(--gray-600); margin: 4px 0 0 0;">قدم وثائقك الرسمية لتحصل على الاعتماد الذهبي وكافة ميزات الحساب المعتمد</p>
             </div>
@@ -4981,7 +4981,7 @@
         <label style="display:block; margin-bottom:6px; font-weight:700; color:var(--gray-800);">
             عنوان التمارين والحلول <span style="color:red;">*</span>
         </label>
-        <input type="text" id="exerciseModalTitle" placeholder="مثال: سلسلة تمارين المحاليل المائية مع الحل المفضل" style="width:100%; padding:10px 14px; border:1px solid #cbd5e1; border-radius:10px; font-family:'Cairo'; font-size:0.9rem; margin-bottom:12px;">
+        <input type="text" id="exerciseModalTitle" placeholder="مثال: سلسلة تمارين المحاليل المائية ��ع الحل المفضل" style="width:100%; padding:10px 14px; border:1px solid #cbd5e1; border-radius:10px; font-family:'Cairo'; font-size:0.9rem; margin-bottom:12px;">
 
         <div style="display:flex; gap:12px; margin-bottom:12px; flex-wrap:wrap;">
             <div style="flex:1; min-width:150px;">
@@ -7270,7 +7270,7 @@ function updateUI() {
             '3eme_am': 'ثالثة متوسط',
             '4eme_am': 'رابعة متوسط (BEM)',
             'bem': 'رابعة متوسط (BEM)',
-            'secondary_all': 'جميع مستويات الثانوي',
+            'secondary_all': 'جميع مستويات الثانو��',
             '1ere_as': 'أولى ثانوي',
             '2eme_as': 'ثانية ثانوي',
             '3eme_as': 'ثالثة ثانوي (BAC)',
@@ -8722,7 +8722,7 @@ function updateUI() {
                 durationInput.value = 60;
                 syncDurationPreset();
             } else if (val && val > 240) {
-                showToast('⚠️ الحد الأقصى لمدة الدرس هي 4 ساعات (240 دقيقة)', 'warning');
+                showToast('⚠️ الحد الأقصى لمدة ��لدرس هي 4 ساعات (240 دقيقة)', 'warning');
                 durationInput.value = 240;
                 syncDurationPreset();
             }
@@ -11359,7 +11359,7 @@ function updateUI() {
     }
 
     async function clearTeacherLogs() {
-        if (!confirm('⚠️ هل أنت متأكد من مسح جميع سجلات الأخطاء؟ لا يمكن التراجع عن هذه العملية.')) return;
+        if (!confirm('⚠️ ه�� أنت متأكد من مسح جميع سجلات الأخطاء؟ لا يمكن التراجع عن هذه العملية.')) return;
         try {
             const res = await fetch('/api/logs/clear', { method: 'POST' });
             const data = await res.json();
@@ -13412,10 +13412,12 @@ function updateUI() {
 
             if (nameEl) nameEl.textContent = file.name;
             if (sizeEl) sizeEl.textContent = formatFileSize(file.size) + ' • جاهز للإرسال للطلاب';
-            if (previewBar) previewBar.style.display = 'flex';
-        }
+  if (previewBar) previewBar.style.display = 'flex';
+  // إرسال الصورة أو الملف فوراً بعد الاختيار، بدون انتظار زر إضافي.
+  void sendGroupChatMessage();
+  }
 
-        function cancelTeacherChatPdfAttachment() {
+  function cancelTeacherChatPdfAttachment() {
             selectedTeacherGroupPdf = null;
             const fileInput = document.getElementById('teacherChatPdfFileInput');
             if (fileInput) fileInput.value = '';
@@ -13751,6 +13753,9 @@ function updateUI() {
             if (nameEl) nameEl.textContent = file.name;
             if (sizeEl) sizeEl.textContent = formatFileSize(file.size) + ' • صورة جاهزة للإرسال';
             if (previewBar) previewBar.style.display = 'flex';
+            // Android WebView may navigate when the hidden picker keeps focus.
+            // Send immediately after selection so no second tap or form submit is needed.
+            void sendGroupChatMessage();
         }
 
         async function sendGroupChatMessage() {
