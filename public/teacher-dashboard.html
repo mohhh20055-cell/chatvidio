@@ -3203,6 +3203,29 @@
                 justify-content: center !important;
             }
         }
+    /* Mobile group chat layout fixes */
+    @media (max-width: 768px) {
+        #groupsSection, #groupsMainView, #groupsChatView { width: 100% !important; max-width: 100% !important; }
+        #groupsChatView { height: calc(100dvh - 116px) !important; min-height: 480px !important; border-radius: 12px !important; }
+        #groupsChatView > div:first-child { padding: 10px 12px !important; gap: 8px !important; }
+        #groupsChatView > div:first-child > div:first-child { min-width: 0; gap: 8px !important; }
+        #chatGroupName { max-width: 42vw; font-size: .95rem !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #groupsChatView button { min-height: 40px; }
+        #chatMessagesArea { padding: 12px 8px !important; gap: 8px !important; }
+        #chatMessagesArea > div { max-width: 100% !important; }
+        #chatMessagesArea [id^="msgBubble_"] { max-width: calc(100vw - 92px) !important; min-width: 0 !important; padding: 8px 10px !important; }
+        #chatMessagesArea p { font-size: .86rem !important; }
+        #groupsChatView > div:last-child { padding: 8px !important; gap: 7px !important; }
+        #chatInputMessage { min-width: 0 !important; font-size: .88rem !important; }
+        #sendChatMsgBtn { width: 42px !important; height: 42px !important; min-width: 42px !important; }
+        #teacherGroupTabExplore, #teacherGroupTabMy { flex: 1; min-width: 0; padding: 8px 6px !important; font-size: .76rem !important; }
+        #teacherGroupsList { grid-template-columns: 1fr !important; gap: 12px !important; }
+    }
+    @media (max-width: 420px) {
+        #chatEditGroupNameBtn, #chatManageMembersBtn { padding: 7px !important; font-size: 0 !important; }
+        #chatEditGroupNameBtn i, #chatManageMembersBtn i { margin: 0 !important; }
+        #chatMessagesArea [id^="msgBubble_"] { max-width: calc(100vw - 72px) !important; }
+    }
     </style>
 </head>
 <body>
@@ -4639,7 +4662,7 @@
                 <div id="completeLegalConsentBox" style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 12px; padding: 14px; margin-top: 16px; text-align: right; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: #0f172a; font-weight: 800; font-size: 0.88rem;">
                         <i class="fas fa-shield-halved" style="color: var(--primary); font-size: 1.1rem;"></i>
-                        <span>موافقة صريحة على معالجة وحذف معطيات التحقق من الهوية:</span>
+                        <span>موافقة صريحة على معالجة وحذف معط��ات التحقق من الهوية:</span>
                     </div>
                     <div style="font-size: 0.8rem; color: #334155; line-height: 1.6; background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; max-height: 150px; overflow-y: auto; margin-bottom: 10px;">
                         <p style="margin-bottom: 8px; font-weight: 600;">بناءً على مقتضيات التشريع الجزائري لحماية المعطيات ذات الطابع الشخصي، أوافق صراحة وبمحض إرادتي على الرفع المؤقت لنسخة من (بطاقة الهوية / الدبلوم) الخاصة بي عبر المنصة لغرض وحيد وهو: التحقق من أهلية الحساب وتفعيل العضوية.</p>
@@ -4792,7 +4815,7 @@
             <label style="display:block; margin-bottom:6px; font-weight:700; color:var(--gray-800);">طريقة الدفع والسحب المفضلة</label>
             <select id="withdrawMethodSelect" onchange="toggleWithdrawMethodFields()" style="width: 100%; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--gray-300); font-weight: 700; background-color: var(--gray-50);">
                 <option value="ccp" selected>🏛️ حساب جاري (CCP) - يستغرق حتى 3 أيام عمل</option>
-                <option value="sofizpay" disabled style="color: #9ca3af;">🛠️ سوفيز باي (SofiZPay) - قيد ال��يانة (ستكون متاحة لاحقاً)</option>
+                <option value="sofizpay" disabled style="color: #9ca3af;">🛠️ سوفيز باي (SofiZPay) - قيد ال����يانة (ستكون متاحة لاحقاً)</option>
             </select>
         </div>
 
@@ -4895,7 +4918,7 @@
                 </optgroup>
                 <optgroup label="التعليم الجامعي والعالي">
                     <option value="1ere_uni">أولى جامعي (L1)</option>
-                    <option value="2eme_uni">ثا��ية جامعي (L2)</option>
+                    <option value="2eme_uni">��ا��ية جامعي (L2)</option>
                     <option value="3eme_uni">ثالثة جامعي (L3)</option>
                     <option value="master">ماستر</option>
                     <option value="doctorat">دكتوراه</option>
@@ -6659,7 +6682,7 @@
                         <i class="fas fa-check-circle" style="color: #16a34a; font-size: 1.2rem;"></i>
                         <div>
                             <strong>تم استلام معلوماتك الأساسية بنجاح أثناء التسجيل (${userData.specialization} - ${userData.phone}).</strong>
-                            <div style="font-size: 0.82rem; color: #15803d; margin-top: 4px;">لقد قمنا بحفظها مسبقاً، يرجى فقط رفع الوثائق المطلوبة أدناه لتفعيل حسابك النهائي.</div>
+                            <div style="font-size: 0.82rem; color: #15803d; margin-top: 4px;">لقد قم��ا بحفظها مسبقاً، يرجى فقط رفع الوثائق المطلوبة أدناه لتفعيل حسابك النهائي.</div>
                         </div>
                     </div>
                 `;
@@ -7087,7 +7110,7 @@
         } else if (isCertified) {
             warningBoxHtml = `
                 <div style="background: linear-gradient(135deg, #fffbe3, #fef3c7); border: 1.5px solid #fde68a; border-radius: 14px; padding: 18px; margin: 0 auto 20px auto; max-width: 600px; color: #92400e; font-weight: 800; text-align: center; font-size: 0.92rem; line-height: 1.6; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.12);">
-                    🎉 تهانينا! حسابك معتمد بالكامل وتتحصل على الشارة الذهبية وكافة امتيازات وأولوية الظهور في نتائج البحث.
+                    🎉 تهانينا! حسابك معتمد بالكامل وتتحصل على الشار�� الذهبية وكافة امتيازات وأولوية الظهور في نتائج البحث.
                 </div>`;
         } else if (hasUpgradeDocs) {
             warningBoxHtml = `
@@ -7459,7 +7482,7 @@ function updateUI() {
             const balance = data.balance || 0;
             const pending = data.pending_withdraw || 0;
             
-            // تحديث الرصيد في شريط التنقل
+            // تحديث الر��يد في شريط التنقل
             document.getElementById('navBalanceAmount').textContent = balance;
             document.getElementById('navPendingAmount').textContent = pending;
             document.getElementById('withdrawBalance').textContent = balance;
@@ -8518,7 +8541,7 @@ function updateUI() {
             return;
         }
 
-        if (!confirm(`⚠️ هل أنت متأكد من حذف ${expiredOffers.length} درس(دروس) منتهية؟`)) return;
+        if (!confirm(`⚠️ هل ��نت متأكد من حذف ${expiredOffers.length} درس(دروس) منتهية؟`)) return;
 
         let deletedCount = 0;
         for (const offer of expiredOffers) {
@@ -9719,7 +9742,7 @@ function updateUI() {
         const storedToken = localStorage.getItem('token') || localStorage.getItem('zoomdz_token');
 
         if (!storedData || !storedToken) {
-            console.warn('⚠️ مفقود التوكن أو البيانات، تحويل لصفحة الدخول فوراً');
+            console.warn('⚠️ مفقو�� التوكن أو البيانات، تحويل لصفحة الدخول فوراً');
             localStorage.removeItem('token');
             localStorage.removeItem('zoomdz_token');
             localStorage.removeItem('userData');
@@ -10047,7 +10070,7 @@ function updateUI() {
                 const endCardHtml = `
                     <div style="text-align: center; padding: 25px 20px; background: white; border-radius: 16px; border: 1px solid rgba(0,0,0,0.06); box-shadow: 0 4px 18px rgba(0,0,0,0.03); margin-top: 15px; margin-bottom: 25px;">
                         <i class="fas fa-check-circle" style="font-size: 2rem; color: var(--primary); margin-bottom: 8px;"></i>
-                        <h4 style="font-weight: 800; color: #374151; margin-bottom: 4px; font-size: 0.95rem;">${teacherPostsFilter === 'saved' ? 'وصلت إلى نهاية منشوراتك المحفوظة' : 'شاهدت جميع المنشورات'}</h4>
+                        <h4 style="font-weight: 800; color: #374151; margin-bottom: 4px; font-size: 0.95rem;">${teacherPostsFilter === 'saved' ? 'وصلت إلى نهاية منشوراتك المحفوظة' : 'شاهدت ��ميع المنشورات'}</h4>
                         <button onclick="loadTeacherPosts(true)" style="background: #f1f5f9; color: var(--primary); border: 1px solid #cbd5e1; padding: 8px 20px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;">
                             <i class="fas fa-sync-alt"></i> تحديث من البداية
                         </button>
@@ -13711,6 +13734,20 @@ function updateUI() {
             }
         }
 
+        function handleTeacherGroupCameraSelect(e) {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) { showToast('يرجى اختيار صورة صالحة', 'error'); e.target.value = ''; return; }
+            if (file.size > 25 * 1024 * 1024) { showToast('حجم الصورة كبير جداً (الحد الأقصى 25 ميغابايت)', 'error'); e.target.value = ''; return; }
+            selectedTeacherGroupPdf = file;
+            const previewBar = document.getElementById('teacherChatPdfPreviewBar');
+            const nameEl = document.getElementById('teacherChatPdfName');
+            const sizeEl = document.getElementById('teacherChatPdfSize');
+            if (nameEl) nameEl.textContent = file.name;
+            if (sizeEl) sizeEl.textContent = formatFileSize(file.size) + ' • صورة جاهزة للإرسال';
+            if (previewBar) previewBar.style.display = 'flex';
+        }
+
         async function sendGroupChatMessage() {
             if (!activeChatGroupId) return;
             const input = document.getElementById('chatInputMessage');
@@ -13761,7 +13798,7 @@ function updateUI() {
                     file_url: uploadedFileUrl,
                     file_name: uploadedFileName,
                     file_size: uploadedFileSize,
-                    file_type: uploadedFileUrl ? 'application/pdf' : null,
+                    file_type: uploadedFileUrl ? (pdfToSend.type || (pdfToSend.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image')) : null,
                     reply_to_id: currentGroupReplyTo ? currentGroupReplyTo.id : null,
                     reply_to_sender: currentGroupReplyTo ? currentGroupReplyTo.sender : null,
                     reply_to_text: currentGroupReplyTo ? currentGroupReplyTo.text : null

@@ -349,7 +349,7 @@ router.post('/:id/join', authenticate, authorize(['student', 'teacher']), async 
     const role = req.user.role || 'student';
 
     if (!userId || userId === -1 || userId === '-1') {
-        return res.status(401).json({ error: 'يجب تسجيل الدخول أولاً للانضمام إلى المجموعة', require_login: true });
+        return res.status(401).json({ error: 'يجب تسجيل الدخ��ل أولاً للانضمام إلى المجموعة', require_login: true });
     }
 
     try {
@@ -411,7 +411,7 @@ router.post('/:id/join', authenticate, authorize(['student', 'teacher']), async 
             console.error('Error inserting into group_members:', insertErr);
             if (insertErr.code === '23503') { // Foreign key violation on student_id
                 return res.status(400).json({ 
-                    error: 'يرجى تنفيذ سكريبت SQL في Supabase لإزالة قيد المفتاح الأجنبي من جدول group_members لتمكين الأساتذة من الانضمام.',
+                    error: 'يرجى ��نفيذ سكريبت SQL في Supabase لإزالة قيد المفتاح الأجنبي من جدول group_members لتمكين الأساتذة من الانضمام.',
                     sql_fix: 'ALTER TABLE group_members DROP CONSTRAINT IF EXISTS group_members_student_id_fkey; ALTER TABLE group_members ADD COLUMN IF NOT EXISTS user_type TEXT DEFAULT \'student\';'
                 });
             }
@@ -697,7 +697,7 @@ router.post('/:id/messages', authenticate, upload.single('file'), async (req, re
                 file_url = uploadResult.url;
                 file_name = req.file.originalname;
                 file_size = req.file.size;
-                file_type = 'application/pdf';
+                file_type = req.file.mimetype || 'application/octet-stream';
             }
         }
 

@@ -3080,6 +3080,25 @@
                 justify-content: center !important;
             }
         }
+    /* Mobile group chat layout fixes */
+    @media (max-width: 768px) {
+        #groupsSection, #studentGroupsMainView, #studentGroupsChatView { width: 100% !important; max-width: 100% !important; }
+        #studentGroupsChatView { height: calc(100dvh - 116px) !important; min-height: 480px !important; border-radius: 12px !important; }
+        #studentGroupsChatView > div:first-child { padding: 10px 12px !important; gap: 8px !important; }
+        #studentChatGroupName { max-width: 48vw; font-size: .95rem !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #studentChatMessagesArea { padding: 12px 8px !important; gap: 8px !important; }
+        #studentChatMessagesArea > div { max-width: 100% !important; }
+        #studentChatMessagesArea [id^="msgBubble_"] { max-width: calc(100vw - 92px) !important; min-width: 0 !important; padding: 8px 10px !important; }
+        #studentChatMessagesArea p { font-size: .86rem !important; }
+        #studentChatInputBar { padding: 8px !important; gap: 7px !important; }
+        #studentChatInputMessage { min-width: 0 !important; font-size: .88rem !important; }
+        #sendStudentChatBtn { width: 42px !important; height: 42px !important; min-width: 42px !important; }
+        #studentGroupTabExplore, #studentGroupTabMy { flex: 1; min-width: 0; padding: 8px 6px !important; font-size: .76rem !important; }
+        #groupsList { grid-template-columns: 1fr !important; gap: 12px !important; }
+    }
+    @media (max-width: 420px) {
+        #studentChatMessagesArea [id^="msgBubble_"] { max-width: calc(100vw - 72px) !important; }
+    }
     </style>
 </head>
 <body>
@@ -3449,7 +3468,7 @@
     <div class="content-area">
         <!-- OFFERS SECTION -->
         <div id="offersSection" style="display: none;">
-            <div class="section-title"><i class="fas fa-calendar-alt"></i> غرف لايف المباشرة والمقبلة</div>
+            <div class="section-title"><i class="fas fa-calendar-alt"></i> ��رف لايف المباشرة والمقبلة</div>
             <div id="offersList" class="offers-grid"></div>
         </div>
 
@@ -6727,7 +6746,7 @@
             const data = await res.json();
             const transactions = data.transactions || [];
             if (transactions.length === 0) {
-                container.innerHTML = '<p style="text-align:center; padding:30px; color:var(--gray-400);">لا توجد معاملات سابقة</p>';
+                container.innerHTML = '<p style="text-align:center; padding:30px; color:var(--gray-400);">لا ��وجد معاملات سابقة</p>';
                 return;
             }
             window.studentTransactionsMap = {};
@@ -7486,7 +7505,7 @@
             </div>
         `;
         const inputEl = document.getElementById('messageInput');
-        if (inputEl) inputEl.placeholder = `تواصل مع ${typeLabel}... اكتب رسالتك هنا`;
+        if (inputEl) inputEl.placeholder = `تواص�� مع ${typeLabel}... اكتب رسالتك هنا`;
 
         loadConversationMessages(otherId, otherType);
         showSection('messages');
@@ -8896,7 +8915,7 @@
                     if (isFlw) currentCount++;
                     else currentCount = Math.max(0, currentCount - 1);
                     
-                    // إذا كان العنصر يحتوي على أيقونة (مثل الذي في بطاقة الأستاذ)، نحافظ عليها
+                    // إذا كان العنصر يحتوي على أي��ونة (مثل الذي في بطاقة الأستاذ)، نحافظ عليها
                     if (el.querySelector('i')) {
                         el.innerHTML = `<i class="fas fa-users" style="font-size: 1rem; opacity: 0.8; margin-left: 4px;"></i>${currentCount}`;
                     } else {
@@ -9059,7 +9078,7 @@
             }
         } catch (e) {
             console.error('Error toggling post save:', e);
-            showToast('حدث خطأ أثناء حفظ المنشور', 'error');
+            showToast('حدث خطأ أ��ناء حفظ المنشور', 'error');
         }
     }
     window.toggleSavePost = toggleSavePost;
@@ -10876,6 +10895,20 @@
             }
         }
 
+        function handleStudentGroupCameraSelect(e) {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) { showToast('يرجى اختيار صورة صالحة', 'error'); e.target.value = ''; return; }
+            if (file.size > 25 * 1024 * 1024) { showToast('حجم الصورة كبير جداً (الحد الأقصى 25 ميغابايت)', 'error'); e.target.value = ''; return; }
+            selectedStudentGroupPdf = file;
+            const previewBar = document.getElementById('studentChatPdfPreviewBar');
+            const nameEl = document.getElementById('studentChatPdfName');
+            const sizeEl = document.getElementById('studentChatPdfSize');
+            if (nameEl) nameEl.textContent = file.name;
+            if (sizeEl) sizeEl.textContent = formatFileSize(file.size) + ' • صورة جاهزة للإرسال';
+            if (previewBar) previewBar.style.display = 'flex';
+        }
+
         async function sendStudentGroupChatMessage() {
             if (!activeStudentGroupId) return;
             const input = document.getElementById('studentChatInputMessage');
@@ -10926,7 +10959,7 @@
                     file_url: uploadedFileUrl,
                     file_name: uploadedFileName,
                     file_size: uploadedFileSize,
-                    file_type: uploadedFileUrl ? 'application/pdf' : null,
+                    file_type: uploadedFileUrl ? (pdfToSend.type || (pdfToSend.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image')) : null,
                     reply_to_id: currentGroupReplyTo ? currentGroupReplyTo.id : null,
                     reply_to_sender: currentGroupReplyTo ? currentGroupReplyTo.sender : null,
                     reply_to_text: currentGroupReplyTo ? currentGroupReplyTo.text : null
@@ -10950,7 +10983,7 @@
                     if (messagesArea) messagesArea.scrollTop = messagesArea.scrollHeight;
                 }
             } catch (err) {
-                showToast(err.message || '❌ فشل إرسال الرسالة', 'error');
+                showToast(err.message || '��� فشل إرسال الرسالة', 'error');
             } finally {
                 if (sendBtn) {
                     sendBtn.disabled = false;
