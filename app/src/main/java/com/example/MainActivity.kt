@@ -87,26 +87,29 @@ class MainActivity : ComponentActivity() {
         if (result.resultCode == RESULT_OK) {
             val clipData = result.data?.clipData
             val dataString = result.data?.dataString
+            val singleUri = result.data?.data
 
             if (clipData != null && clipData.itemCount > 0) {
-                results = Array(clipData.itemCount) { i -> clipData.getItemAt(i).uri }
-            } else if (dataString != null) {
-                results = arrayOf(Uri.parse(dataString))
-            } else if (result.data?.data != null) {
-                results = arrayOf(result.data!!.data!)
-            } else if (cameraImageUri != null) {
-                try {
-                    // Check if camera captured an image
-                    val file = File(cameraImageUri!!.path ?: "")
-                    if (file.exists() && file.length() > 0) {
-                        results = arrayOf(cameraImageUri!!)
-                    } else {
-                        // In case of FileProvider URI
-                        results = arrayOf(cameraImageUri!!)
+                val list = mutableListOf<Uri>()
+                for (i in 0 until clipData.itemCount) {
+                    val itemUri = clipData.getItemAt(i)?.uri
+                    if (itemUri != null) {
+                        list.add(itemUri)
                     }
-                } catch (e: Exception) {
-                    results = arrayOf(cameraImageUri!!)
                 }
+                if (list.isNotEmpty()) {
+                    results = list.toTypedArray()
+                }
+            } else if (dataString != null) {
+                try {
+                    results = arrayOf(Uri.parse(dataString))
+                } catch (e: Exception) {
+                    // Ignore parse error
+                }
+            } else if (singleUri != null) {
+                results = arrayOf(singleUri)
+            } else if (cameraImageUri != null) {
+                results = arrayOf(cameraImageUri!!)
             }
         }
 
