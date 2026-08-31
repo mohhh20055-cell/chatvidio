@@ -59,9 +59,10 @@ class MainActivity : ComponentActivity() {
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
     private var cameraImageUri: Uri? = null
     private var pendingFileChooserParams: WebChromeClient.FileChooserParams? = null
-    private var webView: WebView? = null
+    private var persistentWebView: WebView? = null
     private var customView: View? = null
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
+    private var savedWebViewState: Bundle? = null
 
     companion object {
         const val PLATFORM_URL = "https://zoomdz.com/"
@@ -100,16 +101,20 @@ class MainActivity : ComponentActivity() {
                 if (list.isNotEmpty()) {
                     results = list.toTypedArray()
                 }
+            } else if (singleUri != null) {
+                results = arrayOf(singleUri)
             } else if (dataString != null) {
                 try {
                     results = arrayOf(Uri.parse(dataString))
                 } catch (e: Exception) {
                     // Ignore parse error
                 }
-            } else if (singleUri != null) {
-                results = arrayOf(singleUri)
             } else if (cameraImageUri != null) {
-                results = arrayOf(cameraImageUri!!)
+                try {
+                    results = arrayOf(cameraImageUri!!)
+                } catch (e: Exception) {
+                    // Ignore
+                }
             }
         }
 
@@ -126,6 +131,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        savedWebViewState = savedInstanceState
+        savedInstanceState?.getString("saved_camera_uri")?.let {
+            cameraImageUri = Uri.parse(it)
+        }
+
         requestAppStartupPermissions()
         enableEdgeToEdge()
         WindowCompat.setDecorFitsSystemWindows(window, true)
@@ -183,6 +193,9 @@ class MainActivity : ComponentActivity() {
             val storageDir = File(cacheDir, "camera_images").apply { if (!exists()) mkdirs() }
             val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
             val imageFile = File(storageDir, "IMG_${timeStamp}.jpg")
+            if (!imageFile.exists()) {
+                imageFile.createNewFile()
+            }
             FileProvider.getUriForFile(this, "${applicationContext.packageName}.fileprovider", imageFile)
         } catch (e: Exception) {
             null
@@ -246,16 +259,14 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun PlatformWebViewScreen() {
-        var isLoading by remember { mutableStateOf(true) }
+        var isLoading by remember { mutableStateOf(persistentWebView?.url == null) }
         var hasError by remember { mutableStateOf(false) }
-        var loadUrl by remember { mutableStateOf(PLATFORM_URL) }
-        var progress by remember { mutableStateOf(0) }
+        var progress by remember { mutableStateOf(100) }
 
         BackHandler { handleBack() }
 
         Box(modifier = Modifier.fillMaxSize()) {
             PlatformWebView(
-                url = loadUrl,
                 onProgress = { progress = it; if (it >= 90) isLoading = false },
                 onPageStarted = { isLoading = true; hasError = false },
                 onPageFinished = { isLoading = false; hasError = false },
@@ -279,8 +290,8 @@ class MainActivity : ComponentActivity() {
                 ErrorScreen {
                     hasError = false
                     isLoading = true
-                    loadUrl = if (isOnline()) PLATFORM_URL else BACKUP_URL
-                    webView?.loadUrl(loadUrl)
+                    val targetUrl = if (isOnline()) PLATFORM_URL else BACKUP_URL
+                    persistentWebView?.loadUrl(targetUrl)
                 }
             }
         }
@@ -357,9 +368,190 @@ class MainActivity : ComponentActivity() {
     }
 
     @SuppressLint("SetJavaScriptEnabled")
+    private fun initOrGetWebView(ctx: Context): WebView {
+        if (persistentWebView != null) {
+            val parent = persistentWebView?.parent as? ViewGroup
+            parent?.removeView(persistentWebView)
+            return persistentWebView!!
+        }
+
+        val wv = WebView(ctx).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            setBackgroundColor(Color.parseColor("#0B172A"))
+
+            webViewClient = object : WebViewClient() {
+                override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                    val targetUrl = request?.url?.toString() ?: return false
+                    val host = request.url.host ?: ""
+
+                    // Internal resources, data URIs, blobs stay in WebView
+                    if (targetUrl.startsWith("blob:") || targetUrl.startsWith("data:") || targetUrl.startsWith("javascript:") || targetUrl.startsWith("about:")) {
+                        return false
+                    }
+
+                    // Keep platform URLs inside the WebView
+                    val isPlatform = host.contains("zoomdz.com") || host.contains("vercel.app") || host.contains("localhost") || targetUrl.startsWith("file://")
+                    if (isPlatform) return false
+
+                    // Open external links in browser or respective apps
+                    if (targetUrl.startsWith("http://") || targetUrl.startsWith("https://") || targetUrl.contains("t.me/") || targetUrl.startsWith("tg:") || targetUrl.contains("whatsapp") || targetUrl.startsWith("wa.me")) {
+                        try {
+                            ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(targetUrl)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                        } catch (e: Exception) {}
+                        return true
+                    }
+                    if (targetUrl.startsWith("tel:") || targetUrl.startsWith("mailto:") || targetUrl.startsWith("sms:")) {
+                        try { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(targetUrl))) } catch (e: Exception) {}
+                        return true
+                    }
+                    return false
+                }
+
+                override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
+                    super.onReceivedError(view, request, error)
+                    if (request?.isForMainFrame == true) {
+                        val failUrl = request.url.toString()
+                        if (failUrl.contains("zoomdz.com")) {
+                            view?.loadUrl(BACKUP_URL)
+                        }
+                    }
+                }
+            }
+
+            webChromeClient = object : WebChromeClient() {
+                override fun onShowFileChooser(wv: WebView?, callback: ValueCallback<Array<Uri>>?, params: FileChooserParams?): Boolean {
+                    // Cancel any prior dangling callback to prevent WebView locking
+                    filePathCallback?.onReceiveValue(null)
+                    filePathCallback = callback
+                    pendingFileChooserParams = params
+
+                    if (!hasAllPermissions()) {
+                        val missing = getRequiredPermissions().filter {
+                            ContextCompat.checkSelfPermission(this@MainActivity, it) != PackageManager.PERMISSION_GRANTED
+                        }
+                        if (missing.isNotEmpty()) {
+                            permissionLauncher.launch(missing.toTypedArray())
+                            return true
+                        }
+                    }
+
+                    launchFileChooserIntent(params)
+                    return true
+                }
+
+                override fun onPermissionRequest(request: PermissionRequest?) {
+                    if (request == null) return
+                    val missing = mutableListOf<String>()
+                    for (res in request.resources) {
+                        if (res == PermissionRequest.RESOURCE_VIDEO_CAPTURE) {
+                            if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                                missing.add(Manifest.permission.CAMERA)
+                            }
+                        }
+                        if (res == PermissionRequest.RESOURCE_AUDIO_CAPTURE) {
+                            if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                                missing.add(Manifest.permission.RECORD_AUDIO)
+                            }
+                        }
+                    }
+                    if (missing.isNotEmpty()) {
+                        permissionLauncher.launch(missing.toTypedArray())
+                    }
+                    request.grant(request.resources)
+                }
+
+                override fun onGeolocationPermissionsShowPrompt(origin: String?, callback: GeolocationPermissions.Callback?) {
+                    callback?.invoke(origin, true, false)
+                }
+
+                override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
+                    if (customView != null) { callback?.onCustomViewHidden(); return }
+                    customView = view
+                    customViewCallback = callback
+                    (window.decorView as FrameLayout).addView(view, FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT
+                    ))
+                    window.decorView.systemUiVisibility = (
+                        View.SYSTEM_UI_FLAG_FULLSCREEN or
+                        View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                        View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                    )
+                }
+
+                override fun onHideCustomView() {
+                    (window.decorView as? FrameLayout)?.removeView(customView)
+                    customView = null
+                    customViewCallback?.onCustomViewHidden()
+                    customViewCallback = null
+                    window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
+                }
+            }
+
+            CookieManager.getInstance().apply {
+                setAcceptCookie(true)
+                setAcceptThirdPartyCookies(this@apply, true)
+            }
+
+            settings.apply {
+                javaScriptEnabled = true
+                domStorageEnabled = true
+                databaseEnabled = true
+                allowFileAccess = true
+                allowContentAccess = true
+                loadsImagesAutomatically = true
+                loadWithOverviewMode = true
+                useWideViewPort = true
+                mediaPlaybackRequiresUserGesture = false
+                mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                cacheMode = WebSettings.LOAD_DEFAULT
+                javaScriptCanOpenWindowsAutomatically = true
+                setSupportMultipleWindows(false)
+                setSupportZoom(true)
+                builtInZoomControls = true
+                displayZoomControls = false
+                textZoom = 100
+                userAgentString = "$userAgentString ZoomDzNativeAndroid/2.1.0"
+            }
+
+            addJavascriptInterface(object {
+                @JavascriptInterface fun isNativeApp() = true
+                @JavascriptInterface fun getAppVersion() = "2.1.0"
+                @JavascriptInterface fun showToast(msg: String) {
+                    Toast.makeText(this@MainActivity, msg, Toast.LENGTH_SHORT).show()
+                }
+                @JavascriptInterface fun shareText(title: String, text: String, url: String) {
+                    val body = if (url.isNotEmpty()) "$text\n$url" else text
+                    startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_SUBJECT, title)
+                        putExtra(Intent.EXTRA_TEXT, body)
+                    }, "مشاركة عبر"))
+                }
+            }, "ZoomDzNative")
+
+            // Restore prior state if activity was recreated, otherwise load initial URL
+            var restored = false
+            if (savedWebViewState != null) {
+                try {
+                    val restoredBundle = restoreState(savedWebViewState!!)
+                    restored = (restoredBundle != null)
+                } catch (e: Exception) {}
+            }
+
+            if (!restored && (url.isNullOrBlank() || url == "about:blank")) {
+                loadUrl(PLATFORM_URL)
+            }
+        }
+
+        persistentWebView = wv
+        return wv
+    }
+
     @Composable
     private fun PlatformWebView(
-        url: String,
         onProgress: (Int) -> Unit,
         onPageStarted: () -> Unit,
         onPageFinished: () -> Unit,
@@ -368,183 +560,55 @@ class MainActivity : ComponentActivity() {
         AndroidView(
             modifier = Modifier.fillMaxSize(),
             factory = { ctx ->
-                WebView(ctx).apply {
-                    webView = this
-                    layoutParams = ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT
-                    )
-                    setBackgroundColor(Color.parseColor("#0B172A"))
-
+                initOrGetWebView(ctx).apply {
+                    val originalClient = webViewClient
                     webViewClient = object : WebViewClient() {
                         override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                            val targetUrl = request?.url?.toString() ?: return false
-                            val host = request.url.host ?: ""
-                            // Keep platform URLs inside the WebView
-                            val isPlatform = host.contains("zoomdz.com") || host.contains("vercel.app") || host.contains("localhost") || targetUrl.startsWith("file://")
-                            if (isPlatform) return false
-                            // Open external links in browser
-                            if (targetUrl.startsWith("http://") || targetUrl.startsWith("https://") || targetUrl.contains("t.me/") || targetUrl.startsWith("tg:") || targetUrl.contains("whatsapp") || targetUrl.startsWith("wa.me")) {
-                                try {
-                                    ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(targetUrl)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                                } catch (e: Exception) {}
-                                return true
-                            }
-                            if (targetUrl.startsWith("tel:") || targetUrl.startsWith("mailto:") || targetUrl.startsWith("sms:")) {
-                                try { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(targetUrl))) } catch (e: Exception) {}
-                                return true
-                            }
-                            return false
+                            return originalClient?.shouldOverrideUrlLoading(view, request) ?: false
                         }
-
                         override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                             super.onPageStarted(view, url, favicon)
                             onPageStarted()
                         }
-
                         override fun onPageFinished(view: WebView?, url: String?) {
                             super.onPageFinished(view, url)
                             onPageFinished()
                         }
-
                         override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                             super.onReceivedError(view, request, error)
+                            originalClient?.onReceivedError(view, request, error)
                             if (request?.isForMainFrame == true) {
-                                val failUrl = request.url.toString()
-                                if (failUrl.contains("zoomdz.com")) {
-                                    view?.loadUrl(BACKUP_URL)
-                                    return
-                                }
                                 onError()
                             }
                         }
                     }
 
+                    val originalChrome = webChromeClient
                     webChromeClient = object : WebChromeClient() {
                         override fun onProgressChanged(view: WebView?, newProgress: Int) {
                             super.onProgressChanged(view, newProgress)
                             onProgress(newProgress)
                         }
-
                         override fun onShowFileChooser(wv: WebView?, callback: ValueCallback<Array<Uri>>?, params: FileChooserParams?): Boolean {
-                            // Cancel any prior dangling callback to prevent WebView locking
-                            filePathCallback?.onReceiveValue(null)
-                            filePathCallback = callback
-                            pendingFileChooserParams = params
-
-                            if (!hasAllPermissions()) {
-                                // Request permissions first, then proceed
-                                val missing = getRequiredPermissions().filter {
-                                    ContextCompat.checkSelfPermission(this@MainActivity, it) != PackageManager.PERMISSION_GRANTED
-                                }
-                                if (missing.isNotEmpty()) {
-                                    permissionLauncher.launch(missing.toTypedArray())
-                                    return true
-                                }
-                            }
-
-                            launchFileChooserIntent(params)
-                            return true
+                            return originalChrome?.onShowFileChooser(wv, callback, params) ?: false
                         }
-
                         override fun onPermissionRequest(request: PermissionRequest?) {
-                            if (request == null) return
-                            val missing = mutableListOf<String>()
-                            for (res in request.resources) {
-                                if (res == PermissionRequest.RESOURCE_VIDEO_CAPTURE) {
-                                    if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                                        missing.add(Manifest.permission.CAMERA)
-                                    }
-                                }
-                                if (res == PermissionRequest.RESOURCE_AUDIO_CAPTURE) {
-                                    if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                                        missing.add(Manifest.permission.RECORD_AUDIO)
-                                    }
-                                }
-                            }
-                            if (missing.isNotEmpty()) {
-                                permissionLauncher.launch(missing.toTypedArray())
-                            }
-                            request.grant(request.resources)
+                            originalChrome?.onPermissionRequest(request)
                         }
-
                         override fun onGeolocationPermissionsShowPrompt(origin: String?, callback: GeolocationPermissions.Callback?) {
-                            callback?.invoke(origin, true, false)
+                            originalChrome?.onGeolocationPermissionsShowPrompt(origin, callback)
                         }
-
                         override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
-                            if (customView != null) { callback?.onCustomViewHidden(); return }
-                            customView = view
-                            customViewCallback = callback
-                            (window.decorView as FrameLayout).addView(view, FrameLayout.LayoutParams(
-                                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT
-                            ))
-                            window.decorView.systemUiVisibility = (
-                                View.SYSTEM_UI_FLAG_FULLSCREEN or
-                                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-                                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                            )
+                            originalChrome?.onShowCustomView(view, callback)
                         }
-
                         override fun onHideCustomView() {
-                            (window.decorView as? FrameLayout)?.removeView(customView)
-                            customView = null
-                            customViewCallback?.onCustomViewHidden()
-                            customViewCallback = null
-                            window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
+                            originalChrome?.onHideCustomView()
                         }
                     }
-
-                    val wv = this
-                    CookieManager.getInstance().apply {
-                        setAcceptCookie(true)
-                        setAcceptThirdPartyCookies(wv, true)
-                    }
-
-                    settings.apply {
-                        javaScriptEnabled = true
-                        domStorageEnabled = true
-                        databaseEnabled = true
-                        allowFileAccess = true
-                        allowContentAccess = true
-                        loadsImagesAutomatically = true
-                        loadWithOverviewMode = true
-                        useWideViewPort = true
-                        mediaPlaybackRequiresUserGesture = false
-                        mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                        cacheMode = WebSettings.LOAD_DEFAULT
-                        javaScriptCanOpenWindowsAutomatically = true
-                        setSupportZoom(true)
-                        builtInZoomControls = true
-                        displayZoomControls = false
-                        textZoom = 100
-                        userAgentString = "$userAgentString ZoomDzNativeAndroid/2.1.0"
-                    }
-
-                    addJavascriptInterface(object {
-                        @JavascriptInterface fun isNativeApp() = true
-                        @JavascriptInterface fun getAppVersion() = "2.1.0"
-                        @JavascriptInterface fun showToast(msg: String) {
-                            Toast.makeText(this@MainActivity, msg, Toast.LENGTH_SHORT).show()
-                        }
-                        @JavascriptInterface fun shareText(title: String, text: String, url: String) {
-                            val body = if (url.isNotEmpty()) "$text\n$url" else text
-                            startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_SUBJECT, title)
-                                putExtra(Intent.EXTRA_TEXT, body)
-                            }, "مشاركة عبر"))
-                        }
-                    }, "ZoomDzNative")
-
-                    loadUrl(url)
                 }
             },
-            update = { view ->
-                webView = view
-                if (view.url.isNullOrBlank() || view.url == "about:blank") {
-                    view.loadUrl(PLATFORM_URL)
-                }
+            update = { _ ->
+                // Do not re-load URL on recompositions
             }
         )
     }
@@ -565,7 +629,7 @@ class MainActivity : ComponentActivity() {
             window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
             return
         }
-        val wv = webView
+        val wv = persistentWebView
         if (wv != null && wv.canGoBack()) {
             wv.goBack()
         } else {
@@ -575,23 +639,32 @@ class MainActivity : ComponentActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        webView?.saveState(outState)
+        persistentWebView?.saveState(outState)
+        cameraImageUri?.let {
+            outState.putString("saved_camera_uri", it.toString())
+        }
     }
 
     override fun onRestoreInstanceState(savedInstanceState: Bundle) {
         super.onRestoreInstanceState(savedInstanceState)
-        webView?.restoreState(savedInstanceState)
+        savedWebViewState = savedInstanceState
+        persistentWebView?.restoreState(savedInstanceState)
+        savedInstanceState.getString("saved_camera_uri")?.let {
+            cameraImageUri = Uri.parse(it)
+        }
     }
 
     override fun onDestroy() {
-        filePathCallback?.onReceiveValue(null)
-        filePathCallback = null
-        webView?.apply {
-            stopLoading()
-            removeJavascriptInterface("ZoomDzNative")
-            destroy()
+        if (isFinishing) {
+            filePathCallback?.onReceiveValue(null)
+            filePathCallback = null
+            persistentWebView?.apply {
+                stopLoading()
+                removeJavascriptInterface("ZoomDzNative")
+                destroy()
+            }
+            persistentWebView = null
         }
-        webView = null
         super.onDestroy()
     }
 }
