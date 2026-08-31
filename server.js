@@ -6150,6 +6150,15 @@ app.post('/api/admin/settings/site_images', authenticate, authorize(['admin']), 
 
         const effectiveLogo = normalizeImgurUrl(app_logo) || normalizeImgurUrl(site_logo) || inMemorySiteImages.app_logo || defaultSiteImages.app_logo;
 
+        // Automatically regenerate all sizes and Android/Web launcher assets
+        try {
+            const { regenerateLogo } = require('./utils/logoGenerator');
+            await regenerateLogo(effectiveLogo);
+            console.log('[LogoGenerator] Successfully updated all logo sizes and web/mobile assets on the fly!');
+        } catch (logoErr) {
+            console.error('[LogoGenerator] Error dynamically regenerating logo sizes:', logoErr.message);
+        }
+
         const updatedImages = {
             app_logo: toAppImageUrl(effectiveLogo),
             site_logo: toAppImageUrl(effectiveLogo),
