@@ -974,8 +974,8 @@ async function loadRevenueSettingsInAiTutor(role) {
             const settings = data.settings || data;
             const isTeacher = role === 'teacher';
             dailyFreePoints = isTeacher 
-                ? (settings.teacher_free_ai_points !== undefined ? settings.teacher_free_ai_points : 100)
-                : (settings.student_free_ai_points !== undefined ? settings.student_free_ai_points : 50);
+                ? (settings.teacher_free_ai_points !== undefined ? settings.teacher_free_ai_points : 5)
+                : (settings.student_free_ai_points !== undefined ? settings.student_free_ai_points : 5);
 
             const noteEl = document.getElementById('dailyPointsNote');
             if (noteEl) {

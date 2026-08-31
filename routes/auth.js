@@ -257,6 +257,7 @@ router.post('/teacher/register', checkBanned, [
             is_banned: false,
             ban_reason: null,
             profile_completion: true, // ✅ حساب مفعل وجاهز للعمل
+            ai_tokens: 5,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
         });
@@ -414,6 +415,7 @@ router.post('/student/register', checkBanned, [
             referral_code: null,
             is_banned: false,
             ban_reason: null,
+            ai_tokens: 5,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
         });

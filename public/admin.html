@@ -4174,8 +4174,8 @@ async function sendNotificationToAllStudents() {
                     if (document.getElementById('aiSubscriptionTeacherPrice')) document.getElementById('aiSubscriptionTeacherPrice').value = data.ai_subscription_teacher_price !== undefined ? data.ai_subscription_teacher_price : 1000;
                     if (document.getElementById('aiPerQueryPrice')) document.getElementById('aiPerQueryPrice').value = data.ai_per_query_price !== undefined ? data.ai_per_query_price : 100;
 
-                    if (document.getElementById('studentFreeAiPoints')) document.getElementById('studentFreeAiPoints').value = data.student_free_ai_points !== undefined ? data.student_free_ai_points : 50;
-                    if (document.getElementById('teacherFreeAiPoints')) document.getElementById('teacherFreeAiPoints').value = data.teacher_free_ai_points !== undefined ? data.teacher_free_ai_points : 100;
+                    if (document.getElementById('studentFreeAiPoints')) document.getElementById('studentFreeAiPoints').value = data.student_free_ai_points !== undefined ? data.student_free_ai_points : 5;
+                    if (document.getElementById('teacherFreeAiPoints')) document.getElementById('teacherFreeAiPoints').value = data.teacher_free_ai_points !== undefined ? data.teacher_free_ai_points : 5;
 
                     if (document.getElementById('teacherWithdrawalCommission')) document.getElementById('teacherWithdrawalCommission').value = data.teacher_withdrawal_commission !== undefined ? data.teacher_withdrawal_commission : 1;
                     if (document.getElementById('studentWithdrawalCommission')) document.getElementById('studentWithdrawalCommission').value = data.student_withdrawal_commission !== undefined ? data.student_withdrawal_commission : 2;

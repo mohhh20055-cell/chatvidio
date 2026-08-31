@@ -4301,7 +4301,7 @@ app.post('/api/ai/chat', authenticate, requireRegisteredUser, async (req, res) =
         let userObj = isTeacher ? teacher : student;
         let userTable = isTeacher ? 'teachers' : 'students';
         let hasCustomTokens = userObj?.ai_tokens !== undefined && userObj?.ai_tokens !== null;
-        let currentTokens = hasCustomTokens ? userObj.ai_tokens : 50;
+        let currentTokens = hasCustomTokens ? userObj.ai_tokens : 5;
         
         if (hasCustomTokens || student || teacher) {
             const now = new Date();
@@ -4316,8 +4316,8 @@ app.post('/api/ai/chat', authenticate, requireRegisteredUser, async (req, res) =
             if (isNewDay) {
                 const revSettings = await getRevenueSettings();
                 const dailyFreeTokens = teacher 
-                    ? (revSettings.teacher_free_ai_points !== undefined ? revSettings.teacher_free_ai_points : 100)
-                    : (revSettings.student_free_ai_points !== undefined ? revSettings.student_free_ai_points : 50);
+                    ? (revSettings.teacher_free_ai_points !== undefined ? revSettings.teacher_free_ai_points : 5)
+                    : (revSettings.student_free_ai_points !== undefined ? revSettings.student_free_ai_points : 5);
                 
                 currentTokens = dailyFreeTokens;
                 try {
@@ -4884,6 +4884,35 @@ app.get('/api/teacher/me', authenticate, authorize(['teacher']), async (req, res
         
         console.log('✅ تم جلب بيانات الأستاذ:', teacher.full_name);
         
+        // التحقق من التجديد اليومي التلقائي وإعادة شحن النقاط مجاناً لـ 5 نقاط
+        const nowTeacher = new Date();
+        const lastResetTeacherStr = teacher.last_ai_reset;
+        const lastResetTeacher = lastResetTeacherStr ? new Date(lastResetTeacherStr) : null;
+        
+        const isNewDayTeacher = !lastResetTeacher || 
+            nowTeacher.getFullYear() !== lastResetTeacher.getFullYear() || 
+            nowTeacher.getMonth() !== lastResetTeacher.getMonth() || 
+            nowTeacher.getDate() !== lastResetTeacher.getDate();
+            
+        const revSettingsTeacher = await getRevenueSettings();
+        const defaultTeacherAiPoints = revSettingsTeacher.teacher_free_ai_points !== undefined ? revSettingsTeacher.teacher_free_ai_points : 5;
+
+        if (isNewDayTeacher) {
+            teacher.ai_tokens = defaultTeacherAiPoints;
+            teacher.last_ai_reset = nowTeacher.toISOString();
+            try {
+                await update('teachers', teacherId, {
+                    ai_tokens: defaultTeacherAiPoints,
+                    last_ai_reset: nowTeacher.toISOString()
+                });
+                console.log(`⏳ تم تجديد النقاط المجانية اليومية (${defaultTeacherAiPoints} نقطة) للأستاذ ${teacherId}`);
+            } catch (dbErr) {
+                console.warn('⚠️ Could not update last_ai_reset or ai_tokens in teacher me endpoint:', dbErr.message);
+            }
+        } else if (teacher.ai_tokens === undefined || teacher.ai_tokens === null) {
+            teacher.ai_tokens = defaultTeacherAiPoints;
+        }
+
         // جلب البث النشط إن وجد
         const { data: activeStream } = await supabase
             .from('offers')
@@ -4930,7 +4959,7 @@ app.get('/api/student/me', authenticate, authorize(['student']), async (req, res
              });
         }
          
-        // التحقق من التجديد اليومي التلقائي وإعادة شحن النقاط مجاناً لـ 50 نقطة
+        // التحقق من التجديد اليومي التلقائي وإعادة شحن النقاط مجاناً لـ 5 نقاط
         const now = new Date();
         const lastResetStr = student.last_ai_reset;
         const lastReset = lastResetStr ? new Date(lastResetStr) : null;
@@ -4941,7 +4970,7 @@ app.get('/api/student/me', authenticate, authorize(['student']), async (req, res
             now.getDate() !== lastReset.getDate();
             
         const revSettings = await getRevenueSettings();
-        const defaultStudentAiPoints = revSettings.student_free_ai_points !== undefined ? revSettings.student_free_ai_points : 50;
+        const defaultStudentAiPoints = revSettings.student_free_ai_points !== undefined ? revSettings.student_free_ai_points : 5;
 
         if (isNewDay) {
             student.ai_tokens = defaultStudentAiPoints;
@@ -5717,8 +5746,8 @@ let inMemoryRevenueSettings = {
     ai_per_query_price: 100,
 
     // 2. النقاط المجانية اليومية
-    student_free_ai_points: 50,
-    teacher_free_ai_points: 100,
+    student_free_ai_points: 5,
+    teacher_free_ai_points: 5,
 
     // 3. السحب والعمولات
     teacher_withdrawal_commission: 1,
@@ -5983,8 +6012,8 @@ app.post('/api/admin/settings/revenue_settings', authenticate, authorize(['admin
             ai_subscription_teacher_price: parseFloat(ai_subscription_teacher_price) >= 0 ? parseFloat(ai_subscription_teacher_price) : 1000,
             ai_per_query_price: parseFloat(ai_per_query_price) >= 0 ? parseFloat(ai_per_query_price) : 100,
 
-            student_free_ai_points: parseInt(student_free_ai_points) >= 0 ? parseInt(student_free_ai_points) : 50,
-            teacher_free_ai_points: parseInt(teacher_free_ai_points) >= 0 ? parseInt(teacher_free_ai_points) : 100,
+            student_free_ai_points: parseInt(student_free_ai_points) >= 0 ? parseInt(student_free_ai_points) : 5,
+            teacher_free_ai_points: parseInt(teacher_free_ai_points) >= 0 ? parseInt(teacher_free_ai_points) : 5,
 
             teacher_withdrawal_commission: parseFloat(teacher_withdrawal_commission) >= 0 ? parseFloat(teacher_withdrawal_commission) : 1,
             student_withdrawal_commission: parseFloat(student_withdrawal_commission) >= 0 ? parseFloat(student_withdrawal_commission) : 2,
