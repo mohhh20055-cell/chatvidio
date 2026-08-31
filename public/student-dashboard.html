@@ -8209,13 +8209,31 @@
     function renderPdfAttachmentHtml(fileUrl, fileName, fileSize, isSelf = false) {
         if (!fileUrl) return '';
         const safeUrl = escapeHtml(fileUrl);
-        const safeName = escapeHtml(fileName || 'ملف PDF مرفق');
-        const sizeStr = formatFileSize(fileSize);
+        const safeName = escapeHtml(fileName || 'مرفق');
+        const sizeStr = fileSize ? formatFileSize(fileSize) : '';
+
+        // التحقق مما إذا كان المرفق صورة لعرضها بشكل مرئي وفوري بجودة عالية
+        const isImage = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|heic|avif)(\?.*)?$/i.test(fileUrl) || 
+                        /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|heic|avif)$/i.test(fileName || '') ||
+                        fileUrl.startsWith('data:image/');
+
+        if (isImage) {
+            return `
+                <div class="chat-image-attachment-container" style="margin-top: 6px; margin-bottom: 4px; border-radius: 12px; overflow: hidden; border: 1px solid ${isSelf ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.08)'}; background: ${isSelf ? 'rgba(0,0,0,0.08)' : '#f8fafc'}; box-shadow: 0 2px 8px rgba(0,0,0,0.06); max-width: 100%; cursor: pointer;" onclick="event.stopPropagation(); if (window.openPlatformImageLightbox) { window.openPlatformImageLightbox('${safeUrl}', '${safeName}'); } else { window.open('${safeUrl}', '_blank'); }">
+                    <div style="position: relative; overflow: hidden; border-radius: 11px; max-height: 280px; min-height: 100px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.03);">
+                        <img src="${safeUrl}" alt="${safeName}" loading="lazy" referrerpolicy="no-referrer" style="width: 100%; max-height: 280px; object-fit: contain; display: block; border-radius: 11px; transition: transform 0.2s ease;" onmouseenter="this.style.transform='scale(1.02)'" onmouseleave="this.style.transform='scale(1)'" onerror="this.onerror=null; this.parentElement.innerHTML='<div style=\'padding:15px; text-align:center; color:#ef4444; font-size:0.8rem;\'><i class=\'fas fa-image\'></i> تعذر تحميل الصورة</div>';" />
+                        <div style="position: absolute; bottom: 8px; right: 8px; background: rgba(15,23,42,0.75); backdrop-filter: blur(4px); color: #ffffff; padding: 3px 8px; border-radius: 20px; font-size: 0.68rem; font-weight: 600; display: flex; align-items: center; gap: 4px; pointer-events: none; box-shadow: 0 2px 6px rgba(0,0,0,0.2);">
+                            <i class="fas fa-search-plus"></i> انقر للتكبير
+                        </div>
+                    </div>
+                    ${fileName ? `<div style="padding: 5px 8px; font-size: 0.72rem; color: ${isSelf ? 'rgba(255,255,255,0.85)' : '#64748b'}; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><i class="fas fa-image" style="margin-left:4px;"></i>${safeName} ${sizeStr ? `(${sizeStr})` : ''}</div>` : ''}
+                </div>`;
+        }
+
         const bgStyle = isSelf ? 'background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);' : 'background: #f8fafc; border: 1px solid #e2e8f0;';
         const textColor = isSelf ? '#ffffff' : '#0f172a';
         const subColor = isSelf ? 'rgba(255,255,255,0.85)' : '#64748b';
         const btnBg = isSelf ? 'background: rgba(255,255,255,0.25); color: #ffffff; border: 1px solid rgba(255,255,255,0.4);' : 'background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe;';
-
         return `
             <div class="chat-pdf-attachment-box" style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; ${bgStyle} border-radius: 12px; margin-top: 6px; margin-bottom: 2px; cursor: pointer; transition: transform 0.15s ease;" onclick="window.open('${safeUrl}', '_blank')" onmouseenter="this.style.transform='translateY(-1px)'" onmouseleave="this.style.transform='translateY(0)'">
                 <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
@@ -8231,9 +8249,9 @@
                         </div>
                     </div>
                 </div>
-                <a href="${safeUrl}" target="_blank" download="${safeName}" onclick="event.stopPropagation();" style="${btnBg} border-radius: 8px; padding: 6px 10px; font-size: 0.78rem; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; font-weight: 700; flex-shrink: 0;" title="تحميل الملف">
-                    <i class="fas fa-download"></i>
-                </a>
+                <div style="padding: 5px 10px; border-radius: 8px; ${btnBg} font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
+                    <i class="fas fa-download"></i> فتح
+                </div>
             </div>
         `;
     }

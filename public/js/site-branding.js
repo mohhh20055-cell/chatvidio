@@ -252,7 +252,7 @@ window.addEventListener('offline', function() {
             <a href="https://www.facebook.com/profile.php?id=61593360985540" target="_blank" rel="noopener noreferrer" class="platform-social-btn facebook" title="صفحتنا على فيسبوك" aria-label="Facebook">
                 <i class="fab fa-facebook-f"></i>
             </a>
-            <a href="https://t.me/mohhh20055" target="_blank" rel="noopener noreferrer" class="platform-social-btn telegram" title="قناتنا على تلغرام" aria-label="Telegram">
+            <a href="https://t.me/zoomdz1" target="_blank" rel="noopener noreferrer" class="platform-social-btn telegram" title="قناتنا على تلغرام" aria-label="Telegram">
                 <i class="fab fa-telegram-plane"></i>
             </a>
         `;
@@ -349,4 +349,202 @@ window.addEventListener('offline', function() {
     }
 
     setInterval(attachScrollPagination, 1500);
+})();
+
+
+// Global High-Performance Image Lightbox & Zoom Viewer
+(function() {
+    'use strict';
+    
+    function injectLightboxStyles() {
+        if (document.getElementById('platform-lightbox-styles')) return;
+        var style = document.createElement('style');
+        style.id = 'platform-lightbox-styles';
+        style.textContent = `
+            .platform-lightbox-backdrop {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(10, 15, 29, 0.92);
+                backdrop-filter: blur(8px);
+                -webkit-backdrop-filter: blur(8px);
+                z-index: 999999;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                opacity: 0;
+                visibility: hidden;
+                transition: opacity 0.25s ease, visibility 0.25s ease;
+                padding: 16px;
+                box-sizing: border-box;
+                touch-action: none;
+            }
+            .platform-lightbox-backdrop.active {
+                opacity: 1;
+                visibility: visible;
+            }
+            .platform-lightbox-toolbar {
+                position: absolute;
+                top: 16px;
+                right: 16px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                z-index: 10;
+            }
+            .platform-lightbox-btn {
+                background: rgba(255, 255, 255, 0.15);
+                border: 1px solid rgba(255, 255, 255, 0.25);
+                color: #ffffff;
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                font-size: 1.1rem;
+                transition: all 0.2s ease;
+                outline: none;
+            }
+            .platform-lightbox-btn:hover {
+                background: rgba(255, 255, 255, 0.3);
+                transform: scale(1.08);
+            }
+            .platform-lightbox-img-wrap {
+                position: relative;
+                max-width: 90vw;
+                max-height: 85vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                overflow: hidden;
+                cursor: grab;
+            }
+            .platform-lightbox-img-wrap:active {
+                cursor: grabbing;
+            }
+            .platform-lightbox-img {
+                max-width: 90vw;
+                max-height: 80vh;
+                object-fit: contain;
+                border-radius: 8px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+                transition: transform 0.15s ease-out;
+                user-select: none;
+                -webkit-user-drag: none;
+            }
+            .platform-lightbox-caption {
+                margin-top: 12px;
+                color: #e2e8f0;
+                font-size: 0.9rem;
+                font-weight: 600;
+                text-align: center;
+                max-width: 80%;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    var currentScale = 1;
+    var currentRotate = 0;
+    var currentImgUrl = '';
+
+    window.openPlatformImageLightbox = function(imgUrl, caption) {
+        if (!imgUrl) return;
+        injectLightboxStyles();
+
+        currentScale = 1;
+        currentRotate = 0;
+        currentImgUrl = imgUrl;
+
+        var el = document.getElementById('platformImageLightboxModal');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'platformImageLightboxModal';
+            el.className = 'platform-lightbox-backdrop';
+            el.innerHTML = `
+                <div class="platform-lightbox-toolbar">
+                    <button class="platform-lightbox-btn" id="lightboxZoomInBtn" title="تكبير"><i class="fas fa-search-plus"></i></button>
+                    <button class="platform-lightbox-btn" id="lightboxZoomOutBtn" title="تصغير"><i class="fas fa-search-minus"></i></button>
+                    <button class="platform-lightbox-btn" id="lightboxRotateBtn" title="تدوير"><i class="fas fa-redo"></i></button>
+                    <a class="platform-lightbox-btn" id="lightboxDownloadBtn" target="_blank" download title="تحميل الصورة"><i class="fas fa-download"></i></a>
+                    <button class="platform-lightbox-btn" id="lightboxCloseBtn" title="إغلاق (ESC)" style="background: rgba(239, 68, 68, 0.4); border-color: rgba(239, 68, 68, 0.6);"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="platform-lightbox-img-wrap" id="lightboxImgWrap">
+                    <img class="platform-lightbox-img" id="lightboxImg" src="" alt="" />
+                </div>
+                <div class="platform-lightbox-caption" id="lightboxCaption"></div>
+            `;
+            document.body.appendChild(el);
+
+            document.getElementById('lightboxCloseBtn').onclick = closeLightbox;
+            el.onclick = function(e) {
+                if (e.target === el || e.target.id === 'lightboxImgWrap') {
+                    closeLightbox();
+                }
+            };
+
+            document.getElementById('lightboxZoomInBtn').onclick = function(e) {
+                e.stopPropagation();
+                currentScale = Math.min(currentScale + 0.3, 4);
+                updateTransform();
+            };
+
+            document.getElementById('lightboxZoomOutBtn').onclick = function(e) {
+                e.stopPropagation();
+                currentScale = Math.max(currentScale - 0.3, 0.5);
+                updateTransform();
+            };
+
+            document.getElementById('lightboxRotateBtn').onclick = function(e) {
+                e.stopPropagation();
+                currentRotate = (currentRotate + 90) % 360;
+                updateTransform();
+            };
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && el.classList.contains('active')) {
+                    closeLightbox();
+                }
+            });
+        }
+
+        var img = document.getElementById('lightboxImg');
+        var cap = document.getElementById('lightboxCaption');
+        var dl = document.getElementById('lightboxDownloadBtn');
+
+        img.src = imgUrl;
+        img.alt = caption || 'صورة مكبرة';
+        cap.textContent = caption || '';
+        dl.href = imgUrl;
+        dl.setAttribute('download', caption || 'image.png');
+
+        updateTransform();
+        el.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    };
+
+    function updateTransform() {
+        var img = document.getElementById('lightboxImg');
+        if (img) {
+            img.style.transform = 'scale(' + currentScale + ') rotate(' + currentRotate + 'deg)';
+        }
+    }
+
+    function closeLightbox() {
+        var el = document.getElementById('platformImageLightboxModal');
+        if (el) {
+            el.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    }
+
+    window.closePlatformImageLightbox = closeLightbox;
 })();
