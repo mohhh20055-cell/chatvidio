@@ -2140,6 +2140,24 @@
     <div id="notificationToast" class="notification-toast"></div>
 
     <script>
+        // 🛡️ Global safety stubs
+        window.showTab = window.showTab || function(tabId) {
+            console.log("showTab called for:", tabId);
+            document.querySelectorAll(".admin-tab-content").forEach(el => el.style.display = "none");
+            const target = document.getElementById(tabId);
+            if (target) target.style.display = "block";
+        };
+        window.handlePreviewError = window.handlePreviewError || function(img, statusId) {
+            if (img) img.style.display = "none";
+            const statusEl = document.getElementById(statusId);
+            if (statusEl) { statusEl.textContent = "❌ تعذر تحميل المعاينة"; statusEl.style.color = "red"; }
+        };
+        window.handlePreviewSuccess = window.handlePreviewSuccess || function(img, statusId) {
+            if (img) img.style.display = "block";
+            const statusEl = document.getElementById(statusId);
+            if (statusEl) { statusEl.textContent = "✅ جاهز"; statusEl.style.color = "green"; }
+        };
+
         // ============================================================
         // ✅ التحقق من صلاحية المدير
         // ============================================================
@@ -3503,7 +3521,7 @@
             } catch(e) { showNotification("❌ فشل إرسال الإشعار", "error"); }
         }
 
-function sendNotificationToAllStudents() {
+async function sendNotificationToAllStudents() {
             const title = document.getElementById('notificationTitle').value.trim();
             const message = document.getElementById('notificationMessage').value.trim();
             
