@@ -3080,6 +3080,11 @@
                 justify-content: center !important;
             }
         }
+    /* Cool blue group chat surface */
+    #studentGroupsChatView, #studentChatMessagesArea { background: #dbeafe !important; }
+    #studentChatMessagesArea { background-image: linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%) !important; }
+    /* Prevent Android WebView form navigation during file picking */
+    #studentGroupsChatView form, #studentGroupsChatView input[type="file"] { touch-action: manipulation; }
     /* Mobile group chat layout fixes */
     @media (max-width: 768px) {
         #groupsSection, #studentGroupsMainView, #studentGroupsChatView { width: 100% !important; max-width: 100% !important; }
@@ -3629,7 +3634,7 @@
                         <option value="primary_2">السنة الثانية ابتدائي</option>
                         <option value="primary_3">السنة الثالثة ابتدائي</option>
                         <option value="primary_4">السنة الرابعة ابتدائي</option>
-                        <option value="primary_5">السنة ا��خامسة ابتدائي</option>
+                        <option value="primary_5">السنة ا����خامسة ابتدائي</option>
                         <option value="5eme_pri">خامسة ابتدائي</option>
                     </optgroup>
                     <optgroup label="التعليم المتوسط">
@@ -3914,7 +3919,7 @@
 
                 <!-- Chat Input Bar for Authenticated Student -->
                 <div id="studentChatInputBar" style="background: #ffffff; padding: 14px 20px; display: flex; align-items: center; gap: 12px; border-top: 1px solid #e2e8f0; box-shadow: 0 -4px 12px rgba(0,0,0,0.02);">
-                    <input type="file" id="studentChatPdfFileInput" accept="application/pdf,.pdf,image/*,.jpg,.jpeg,.png,.webp" style="display: none;" onchange="handleStudentGroupPdfSelect(event); return false;"><input type="file" id="studentChatCameraInput" accept="image/*" capture="environment" style="display: none;" onchange="handleStudentGroupCameraSelect(event)"><div style="display: flex; align-items: center; gap: 8px; flex-grow: 1;"><button type="button" onclick="document.getElementById('studentChatPdfFileInput').click()" title="إرفاق ملف" style="background: #f8fafc; color: #475569; border: 1.5px solid #e2e8f0; border-radius: 50%; width: 44px; height: 44px; min-width: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.15rem;"><i class="fas fa-plus"></i></button><button type="button" onclick="document.getElementById('studentChatCameraInput').click()" title="التقاط صورة" style="background: #f8fafc; color: #475569; border: 1.5px solid #e2e8f0; border-radius: 50%; width: 44px; height: 44px; min-width: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.15rem;"><i class="fas fa-camera"></i></button><textarea id="studentChatInputMessage" placeholder="اكتب استفسارك أو شارك ملاحظاتك هنا... (Enter للإرسال)" rows="1" onkeydown="handleStudentChatInputKey(event)" oninput="this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 110) + 'px';" style="width: 100%; padding: 12px 18px; border: 1.5px solid #cbd5e1; border-radius: 24px; font-size: 0.95rem; resize: none; outline: none; line-height: 1.45; font-family: inherit; background: #f8fafc; max-height: 110px; color: #0f172a;"></textarea>
+                    <input type="file" id="studentChatPdfFileInput" accept="application/pdf,.pdf,image/*,.jpg,.jpeg,.png,.webp" style="display: none;" onchange="handleStudentGroupPdfSelect(event); return false;" onkeydown="event.stopPropagation();"><input type="file" id="studentChatCameraInput" accept="image/*" capture="environment" style="display: none;" onchange="handleStudentGroupCameraSelect(event)"><div style="display: flex; align-items: center; gap: 8px; flex-grow: 1;"><button type="button" onclick="document.getElementById('studentChatPdfFileInput').click()" title="إرفاق ملف" style="background: #f8fafc; color: #475569; border: 1.5px solid #e2e8f0; border-radius: 50%; width: 44px; height: 44px; min-width: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.15rem;"><i class="fas fa-plus"></i></button><button type="button" onclick="document.getElementById('studentChatCameraInput').click()" title="التقاط صورة" style="background: #f8fafc; color: #475569; border: 1.5px solid #e2e8f0; border-radius: 50%; width: 44px; height: 44px; min-width: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.15rem;"><i class="fas fa-camera"></i></button><textarea id="studentChatInputMessage" placeholder="اكتب استفسارك أو شارك ملاحظاتك هنا... (Enter للإرسال)" rows="1" onkeydown="handleStudentChatInputKey(event)" oninput="this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 110) + 'px';" style="width: 100%; padding: 12px 18px; border: 1.5px solid #cbd5e1; border-radius: 24px; font-size: 0.95rem; resize: none; outline: none; line-height: 1.45; font-family: inherit; background: #f8fafc; max-height: 110px; color: #0f172a;"></textarea>
                     </div>
                     <button id="sendStudentChatBtn" onclick="sendStudentGroupChatMessage()" style="background: var(--primary, #3b82f6); color: white; border: none; border-radius: 50%; width: 46px; height: 46px; min-width: 46px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.15rem; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35); transition: all 0.2s ease;">
                         <i class="fas fa-paper-plane"></i>
@@ -4296,7 +4301,7 @@
         <div class="mobile-drawer-menu-item" onclick="showSection('courses'); closeMobileDrawer();">
             <div class="item-content">
                 <i class="fas fa-play-circle" style="color:#38bdf8;"></i>
-                <span>الدورات التعليمية</span>
+                <span>الدورات التعليم��ة</span>
             </div>
             <i class="fas fa-chevron-left" style="font-size:0.8rem; opacity:0.5;"></i>
         </div>
@@ -4483,7 +4488,7 @@
         'bts': 'شهادة التقني السامي (BTS)',
         'insfp': 'المعاهد الوطنية المتخصصة (INSFP)',
         'insta_uni': 'المعاهد الجامعية والتقنية (ISTA / LMD)',
-        'other': 'مستوى آخر / عام'
+        'other': 'مستوى آخر / ع��م'
     };
 
     // ================================================================
@@ -5773,7 +5778,7 @@
                     showToast(data.error, 'info');
                 }
             } else {
-                showToast(data.error || 'البث غير متاح حالياً', 'warning');
+                showToast(data.error || '��لبث غير متاح حالياً', 'warning');
             }
         } catch(e) {
             if (e.message !== 'انتهت صلاحية الجلسة') {
@@ -11704,6 +11709,14 @@ window.addEventListener("offline", function() {
         }, 3000);
     }
 });
-</script>
+    </script>
+    <script>
+      document.addEventListener('submit', function (event) {
+        if (event.target && event.target.closest && event.target.closest('#studentGroupsChatView')) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }, true);
+    </script>
 </body>
 </html>

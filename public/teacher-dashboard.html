@@ -3203,6 +3203,11 @@
                 justify-content: center !important;
             }
         }
+    /* Cool blue group chat surface */
+    #groupsChatView, #chatMessagesArea { background: #dbeafe !important; }
+    #chatMessagesArea { background-image: linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%) !important; }
+    /* Prevent Android WebView form navigation during file picking */
+    #groupsChatView form, #groupsChatView input[type="file"] { touch-action: manipulation; }
     /* Mobile group chat layout fixes */
     @media (max-width: 768px) {
         #groupsSection, #groupsMainView, #groupsChatView { width: 100% !important; max-width: 100% !important; }
@@ -3342,7 +3347,7 @@
             <div class="nav-tabs" id="navTabs"><button class="nav-tab" onclick="window.location.href='/ai-tutor'" style="background: linear-gradient(135deg, rgba(37,99,235,0.12), rgba(16,185,129,0.12)); border: 1.5px solid rgba(37,99,235,0.3); color:#2563eb;"><i class="fas fa-robot" style="color:#2563eb;"></i><span class="tab-label" style="font-weight:800; color:#2563eb;">تعلم بالذكاء الاصطناعي (AI) 🤖</span></button>
                 <button class="nav-tab active" data-section="offers" onclick="showSection('offers')">
                     <i class="fas fa-video"></i>
-                    <span class="tab-label">غرف الفيدي��</span>
+                    <span class="tab-label">غرف ال��يدي��</span>
                     <span class="nav-badge" id="offersBadge" style="display:none;">0</span>
                 </button>
                 <button class="nav-tab" data-section="all-lessons" onclick="showSection('all-lessons')">
@@ -4159,7 +4164,7 @@
 
                 <!-- Chat Input Bar -->
                 <div style="background: #ffffff; padding: 14px 20px; display: flex; align-items: center; gap: 12px; border-top: 1px solid #e2e8f0; box-shadow: 0 -4px 12px rgba(0,0,0,0.02);">
-                    <input type="file" id="teacherChatPdfFileInput" accept="application/pdf,.pdf,image/*,.jpg,.jpeg,.png,.webp" style="display: none;" onchange="handleTeacherGroupPdfSelect(event); return false;"><input type="file" id="teacherChatCameraInput" accept="image/*" capture="environment" style="display: none;" onchange="handleTeacherGroupCameraSelect(event)"><div style="display: flex; align-items: center; gap: 8px; flex-grow: 1; position: relative;"><button type="button" onclick="document.getElementById('teacherChatPdfFileInput').click()" title="إرفاق ملف" style="background: #f8fafc; color: #475569; border: 1.5px solid #e2e8f0; border-radius: 50%; width: 44px; height: 44px; min-width: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.15rem; transition: all 0.2s ease;"><i class="fas fa-plus"></i></button><button type="button" onclick="document.getElementById('teacherChatCameraInput').click()" title="التقاط صورة" style="background: #f8fafc; color: #475569; border: 1.5px solid #e2e8f0; border-radius: 50%; width: 44px; height: 44px; min-width: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.15rem; transition: all 0.2s ease;"><i class="fas fa-camera"></i></button><textarea id="chatInputMessage" placeholder="اكتب رسالة، توجيهاً، أو واجباً لطلابك في المجموعة... (Enter للإرسال، Shift+Enter لسطر جديد)" rows="1" onkeydown="handleChatInputKey(event)" oninput="autoResizeChatInput(this)" style="width: 100%; padding: 12px 18px; border: 1.5px solid #cbd5e1; border-radius: 24px; font-size: 0.95rem; resize: none; outline: none; line-height: 1.45; font-family: inherit; background: #f8fafc; max-height: 110px; color: #0f172a; transition: all 0.2s ease;"></textarea>
+                    <input type="file" id="teacherChatPdfFileInput" accept="application/pdf,.pdf,image/*,.jpg,.jpeg,.png,.webp" style="display: none;" onchange="handleTeacherGroupPdfSelect(event); return false;" onkeydown="event.stopPropagation();"><input type="file" id="teacherChatCameraInput" accept="image/*" capture="environment" style="display: none;" onchange="handleTeacherGroupCameraSelect(event)"><div style="display: flex; align-items: center; gap: 8px; flex-grow: 1; position: relative;"><button type="button" onclick="document.getElementById('teacherChatPdfFileInput').click()" title="إرفاق ملف" style="background: #f8fafc; color: #475569; border: 1.5px solid #e2e8f0; border-radius: 50%; width: 44px; height: 44px; min-width: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.15rem; transition: all 0.2s ease;"><i class="fas fa-plus"></i></button><button type="button" onclick="document.getElementById('teacherChatCameraInput').click()" title="التقاط صورة" style="background: #f8fafc; color: #475569; border: 1.5px solid #e2e8f0; border-radius: 50%; width: 44px; height: 44px; min-width: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.15rem; transition: all 0.2s ease;"><i class="fas fa-camera"></i></button><textarea id="chatInputMessage" placeholder="اكتب رسالة، توجيهاً، أو واجباً لطلابك في المجموعة... (Enter للإرسال، Shift+Enter لسطر جديد)" rows="1" onkeydown="handleChatInputKey(event)" oninput="autoResizeChatInput(this)" style="width: 100%; padding: 12px 18px; border: 1.5px solid #cbd5e1; border-radius: 24px; font-size: 0.95rem; resize: none; outline: none; line-height: 1.45; font-family: inherit; background: #f8fafc; max-height: 110px; color: #0f172a; transition: all 0.2s ease;"></textarea>
                     </div>
                     <button id="sendChatMsgBtn" onclick="sendGroupChatMessage()" style="background: var(--primary, #3b82f6); color: white; border: none; border-radius: 50%; width: 46px; height: 46px; min-width: 46px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.15rem; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35); transition: all 0.2s ease;">
                         <i class="fas fa-paper-plane"></i>
@@ -4318,7 +4323,7 @@
                     <optgroup label="الطور الابتدائي">
                         <option value="primary_all">جميع مستويات الابتدائي</option>
                         <option value="primary_1">السنة الأولى ابتدائي</option>
-                        <option value="primary_2">السنة الثانية ابتدائي</option>
+                        <option value="primary_2">السنة الث��نية ابتدائي</option>
                         <option value="primary_3">السنة الثالثة ابتدائي</option>
                         <option value="primary_4">السنة الرابعة ابتدائي</option>
                         <option value="primary_5">السنة الخامسة ابتدائي (شهادة التعليم الابتدائي)</option>
@@ -4658,7 +4663,7 @@
                     <canvas id="modalCameraCanvas" style="display:none;"></canvas>
                 </div>
 
-                <!-- ✅ بطاقة الموافقة القانونية الصريحة ��لى معالجة وحذف معطيات التحقق من الهوية -->
+                <!-- ✅ بطاقة ا��موافقة القانونية الصريحة ��لى معالجة وحذف معطيات التحقق من الهوية -->
                 <div id="completeLegalConsentBox" style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 12px; padding: 14px; margin-top: 16px; text-align: right; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: #0f172a; font-weight: 800; font-size: 0.88rem;">
                         <i class="fas fa-shield-halved" style="color: var(--primary); font-size: 1.1rem;"></i>
@@ -5153,7 +5158,7 @@
                     <option value="4eme_am">رابعة متوسط (BEM)</option>
                 </optgroup>
                 <optgroup label="التعليم الثانوي">
-                    <option value="secondary_all">جميع مستويات الثانوي</option>
+                    <option value="secondary_all">جم��ع مستويات الثانوي</option>
                     <option value="1ere_as">أولى ثانوي</option>
                     <option value="2eme_as">ثانية ثانوي</option>
                     <option value="3eme_as">ثالثة ثانوي (BAC)</option>
@@ -6474,7 +6479,7 @@
 
         } catch(e) {
             if (e.message === 'انتهت صلاحية الجلسة') { window.location.href = '/'; return; }
-            showErrorDiagnostics('خطأ عام في تهيئة الصفحة', e.message);
+            showErrorDiagnostics('خطأ عام في تهيئة الص��حة', e.message);
         }
     }
 
@@ -8066,7 +8071,7 @@ function updateUI() {
                         </div>
                         <h3 style="font-weight:850; font-size:1.25rem; color:var(--gray-900); margin-bottom:12px;">قسم الأساتذة</h3>
                         <p style="color:var(--gray-600); font-size:0.95rem; line-height:1.7; margin-bottom:24px; max-width:480px; margin-left:auto; margin-right:auto;">
-                            للوصول إلى قسم الأساتذة والتواصل معهم، يرجى <strong>إنشاء حساب أستاذ ورفع الوثائق المطلوبة</strong> (صورة الشهادة/الدبلوم وإثبات الهوية) ليتم تفعيل حسابك من قبل الإدارة.
+                            للوصول إلى قسم الأساتذة والتواصل معهم، يرجى <strong>إنشاء حساب أستاذ ورفع الوثائق المطلوبة</strong> (صورة الشهادة/الدبلوم وإثبات الهوية) ليتم تفعيل حس��بك من قبل الإدارة.
                         </p>
                         <button onclick="exitGuestAndNavigate('/?login=true&role=teacher')" class="btn-primary" style="padding:12px 32px; border-radius:30px; font-weight:800; font-size:0.95rem; display:inline-flex; align-items:center; gap:10px; box-shadow:0 4px 15px rgba(15,92,191,0.25); cursor:pointer;">
                             <i class="fas fa-user-plus"></i> إنشاء حساب أستاذ ورفع الوثائق
@@ -8168,7 +8173,7 @@ function updateUI() {
     }
 
     // ================================================================
-    // ✅ دروس الزملاء (الدروس العامة للم��اهدة والاطلاع فقط)
+    // ✅ ��روس الزملاء (الدروس العامة للم��اهدة والاطلاع فقط)
     // ================================================================
     let colleagueLessonsData = [];
 
@@ -8858,7 +8863,7 @@ function updateUI() {
                 const newOfferId = (result.offer && result.offer.id) || result.id;
                 if (newOfferId) {
                     setTimeout(() => {
-                        if (confirm('✅ تم إنشاء الدرس بنجاح!\n\nهل ترغب في نسخ رابط مشاركة هذا الدرس لمشاركته مع الطلاب خارج المنصة الآن؟')) {
+                        if (confirm('✅ تم إنشاء الدرس بنجاح!\n\nهل ترغب في نسخ رابط مشاركة هذا ��لدرس لمشاركته مع الطلاب خارج المنصة الآن؟')) {
                             shareOffer(newOfferId);
                         }
                     }, 400);
@@ -9022,7 +9027,7 @@ function updateUI() {
                 showToast(data.error || 'فشل إرسال رمز التحقق', 'error');
                 if (btnSend) {
                     btnSend.disabled = false;
-                    btnSend.innerHTML = '<i class="fas fa-paper-plane"></i> إعادة حاول إرسال رمز التحقق';
+                    btnSend.innerHTML = '<i class="fas fa-paper-plane"></i> إعادة حا��ل إرسال رمز التحقق';
                 }
             }
         } catch (e) {
@@ -9672,7 +9677,7 @@ function updateUI() {
                 const newCourseId = (data.course && data.course.id) || data.id;
                 if (!editingId && newCourseId) {
                     setTimeout(() => {
-                        if (confirm('✅ تم إنشاء الدورة بنجاح!\n\nهل ترغب في نسخ رابط مشاركة هذه الدورة لمشاركتها مع الطلاب خارج المنصة الآن؟')) {
+                        if (confirm('✅ تم إنشاء الدورة بنجاح!\n\nهل ترغب في نسخ رابط مشاركة هذه الدورة لمشاركتها مع الطلا�� خارج المنصة الآن؟')) {
                             shareCourse(newCourseId);
                         }
                     }, 400);
@@ -14434,6 +14439,14 @@ window.addEventListener("offline", function() {
         }, 3000);
     }
 });
-</script>
+    </script>
+    <script>
+      document.addEventListener('submit', function (event) {
+        if (event.target && event.target.closest && event.target.closest('#groupsChatView')) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }, true);
+    </script>
 </body>
 </html>
