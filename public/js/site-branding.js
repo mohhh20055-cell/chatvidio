@@ -184,3 +184,169 @@ window.addEventListener('offline', function() {
         }, 3000);
     }
 });
+
+
+// Social Media Floating Quick Links (Facebook & Telegram)
+(function() {
+    function injectSocialLinks() {
+        if (document.getElementById('platform-floating-socials')) return;
+        
+        var style = document.createElement('style');
+        style.id = 'platform-socials-style';
+        style.textContent = `
+            .platform-social-links-wrap {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .platform-social-btn {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 36px;
+                height: 36px;
+                border-radius: 50%;
+                color: #ffffff !important;
+                text-decoration: none !important;
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+                box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+                font-size: 1.05rem;
+            }
+            .platform-social-btn:hover {
+                transform: translateY(-2px) scale(1.05);
+                box-shadow: 0 5px 15px rgba(0,0,0,0.25);
+            }
+            .platform-social-btn.facebook {
+                background: linear-gradient(135deg, #1877f2, #0d65d9);
+            }
+            .platform-social-btn.telegram {
+                background: linear-gradient(135deg, #229ed9, #0088cc);
+            }
+            /* Floating container for fast access */
+            #platform-floating-socials {
+                position: fixed;
+                bottom: 85px;
+                right: 18px;
+                z-index: 9998;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+            @media (max-width: 768px) {
+                #platform-floating-socials {
+                    bottom: 78px;
+                    right: 12px;
+                }
+                .platform-social-btn {
+                    width: 34px;
+                    height: 34px;
+                    font-size: 0.95rem;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+
+        var floatContainer = document.createElement('div');
+        floatContainer.id = 'platform-floating-socials';
+        floatContainer.innerHTML = `
+            <a href="https://www.facebook.com/profile.php?id=61593360985540" target="_blank" rel="noopener noreferrer" class="platform-social-btn facebook" title="صفحتنا على فيسبوك" aria-label="Facebook">
+                <i class="fab fa-facebook-f"></i>
+            </a>
+            <a href="https://t.me/mohhh20055" target="_blank" rel="noopener noreferrer" class="platform-social-btn telegram" title="قناتنا على تلغرام" aria-label="Telegram">
+                <i class="fab fa-telegram-plane"></i>
+            </a>
+        `;
+        document.body.appendChild(floatContainer);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', injectSocialLinks);
+    } else {
+        injectSocialLinks();
+    }
+})();
+
+
+// Global Chat & Group Messages Infinite Scroll and 10-message Pagination Engine
+(function() {
+    'use strict';
+    
+    var paginationState = {
+        directLimit: 10,
+        groupLimit: 10,
+        isLoadingMore: false,
+        hasMoreDirect: true,
+        hasMoreGroup: true,
+        oldestDirectTimestamp: null,
+        oldestGroupTimestamp: null
+    };
+
+    window.PlatformChatPagination = {
+        state: paginationState,
+        resetDirect: function() {
+            paginationState.directLimit = 10;
+            paginationState.hasMoreDirect = true;
+            paginationState.oldestDirectTimestamp = null;
+        },
+        resetGroup: function() {
+            paginationState.groupLimit = 10;
+            paginationState.hasMoreGroup = true;
+            paginationState.oldestGroupTimestamp = null;
+        },
+        getDirectLimit: function() { return paginationState.directLimit; },
+        getGroupLimit: function() { return paginationState.groupLimit; },
+        loadMoreDirect: function(callback) {
+            if (paginationState.isLoadingMore) return;
+            paginationState.directLimit += 10;
+            if (typeof callback === 'function') callback();
+        },
+        loadMoreGroup: function(callback) {
+            if (paginationState.isLoadingMore) return;
+            paginationState.groupLimit += 10;
+            if (typeof callback === 'function') callback();
+        }
+    };
+
+    // Attach scroll listener to chat containers when they appear
+    function attachScrollPagination() {
+        var directContainer = document.getElementById('chatMessages');
+        if (directContainer && !directContainer.dataset.paginationAttached) {
+            directContainer.dataset.paginationAttached = 'true';
+            directContainer.addEventListener('scroll', function() {
+                if (directContainer.scrollTop <= 20) {
+                    if (window.loadMoreDirectMessagesHistory && typeof window.loadMoreDirectMessagesHistory === 'function') {
+                        window.loadMoreDirectMessagesHistory();
+                    } else if (typeof window.loadConversationMessages === 'function' && window.currentChatTeacher) {
+                        PlatformChatPagination.loadMoreDirect(function() {
+                            var currentH = directContainer.scrollHeight;
+                            var curOther = window.currentChatTeacher;
+                            window.loadConversationMessages(curOther.id, curOther.type, true);
+                        });
+                    }
+                }
+            }, { passive: true });
+        }
+
+        var groupContainer = document.getElementById('studentGroupMessages') || document.getElementById('groupMessagesArea') || document.getElementById('groupMessages');
+        if (groupContainer && !groupContainer.dataset.paginationAttached) {
+            groupContainer.dataset.paginationAttached = 'true';
+            groupContainer.addEventListener('scroll', function() {
+                if (groupContainer.scrollTop <= 20) {
+                    if (window.loadMoreGroupMessagesHistory && typeof window.loadMoreGroupMessagesHistory === 'function') {
+                        window.loadMoreGroupMessagesHistory();
+                    } else if (window.PlatformChatPagination) {
+                        PlatformChatPagination.loadMoreGroup(function() {
+                            if (typeof window.fetchStudentGroupMessages === 'function') {
+                                window.fetchStudentGroupMessages();
+                            } else if (typeof window.loadGroupMessages === 'function') {
+                                window.loadGroupMessages();
+                            }
+                        });
+                    }
+                }
+            }, { passive: true });
+        }
+    }
+
+    setInterval(attachScrollPagination, 1500);
+})();

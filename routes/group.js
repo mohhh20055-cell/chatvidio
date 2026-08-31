@@ -480,11 +480,29 @@ router.get('/:id/messages', optionalAuth, async (req, res) => {
         const numericGroupId = parseInt(groupId, 10);
         const checkGroupId = isNaN(numericGroupId) ? groupId : numericGroupId;
 
-        const { data: messages, error } = await supabase
+        const limitParam = req.query.limit !== undefined ? parseInt(req.query.limit, 10) : 10;
+        const beforeParam = req.query.before || null;
+
+        let gQuery = supabase
             .from('group_messages')
             .select('*')
-            .eq('group_id', checkGroupId)
-            .order('created_at', { ascending: true });
+            .eq('group_id', checkGroupId);
+
+        if (beforeParam) {
+            gQuery = gQuery.lt('created_at', beforeParam);
+        }
+
+        if (limitParam && !isNaN(limitParam) && limitParam > 0) {
+            gQuery = gQuery.order('created_at', { ascending: false }).limit(limitParam);
+        } else {
+            gQuery = gQuery.order('created_at', { ascending: true });
+        }
+
+        const { data: rawMessages, error } = await gQuery;
+        let messages = rawMessages || [];
+        if (limitParam && !isNaN(limitParam) && limitParam > 0) {
+            messages.reverse();
+        }
         
         if (error) throw error;
         if (!messages || messages.length === 0) {

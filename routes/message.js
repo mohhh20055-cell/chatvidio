@@ -339,11 +339,29 @@ router.get('/:user_id/:user_type/:other_id/:other_type', authenticate, [
             return res.status(403).json({ success: false, error: 'غير مصرح لك بدرس هذه المحادثة' });
         }
 
-        const { data } = await supabase
+        const limitParam = req.query.limit !== undefined ? parseInt(req.query.limit, 10) : 10;
+        const beforeParam = req.query.before || null;
+
+        let query = supabase
             .from('messages')
             .select('*')
-            .or(`and(sender_id.eq.${userId},receiver_id.eq.${otherId}),and(sender_id.eq.${otherId},receiver_id.eq.${userId})`)
-            .order('created_at', { ascending: true });
+            .or(`and(sender_id.eq.${userId},receiver_id.eq.${otherId}),and(sender_id.eq.${otherId},receiver_id.eq.${userId})`);
+
+        if (beforeParam) {
+            query = query.lt('created_at', beforeParam);
+        }
+
+        if (limitParam && !isNaN(limitParam) && limitParam > 0) {
+            query = query.order('created_at', { ascending: false }).limit(limitParam);
+        } else {
+            query = query.order('created_at', { ascending: true });
+        }
+
+        const { data } = await query;
+        let messagesList = data || [];
+        if (limitParam && !isNaN(limitParam) && limitParam > 0) {
+            messagesList.reverse();
+        }
 
         await supabase
             .from('messages')
@@ -351,7 +369,7 @@ router.get('/:user_id/:user_type/:other_id/:other_type', authenticate, [
             .eq('receiver_id', userId)
             .eq('sender_id', otherId);
 
-        const messagesList = data || [];
+        // messagesList initialized above
 
         // جلب تفاعلات الرسائل
         if (messagesList.length > 0) {
