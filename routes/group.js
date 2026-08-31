@@ -859,15 +859,38 @@ router.post('/:id/messages', authenticate, upload.single('file'), async (req, re
     }
 });
 
-// حذف رسالة في المجموعة (صاحب/مالك المجموعة أو صاحب الرسالة فقط)
+// حذف رسالة في المجموعة (صاحب/مالك المجموعة أو صاحب الرسالة - طالب أو أستاذ - في أي مجموعة)
 router.delete('/:groupId/messages/:messageId', authenticate, async (req, res) => {
     const { groupId, messageId } = req.params;
-    const userId = req.user.userId;
-    const role = req.user.role;
+    const userId = req.user?.userId || req.user?.id;
+    const role = (req.user?.role || '').toLowerCase();
 
     try {
         const numericGroupId = parseInt(groupId, 10);
         const checkGroupId = isNaN(numericGroupId) ? groupId : numericGroupId;
+
+        const numericMsgId = parseInt(messageId, 10);
+        const checkMsgId = isNaN(numericMsgId) ? messageId : numericMsgId;
+
+        // البحث عن الرسالة
+        let { data: msg } = await supabase
+            .from('group_messages')
+            .select('*')
+            .eq('id', checkMsgId)
+            .maybeSingle();
+
+        if (!msg && String(checkMsgId) !== String(messageId)) {
+            const { data: fallbackMsg } = await supabase
+                .from('group_messages')
+                .select('*')
+                .eq('id', String(messageId))
+                .maybeSingle();
+            msg = fallbackMsg;
+        }
+
+        if (!msg) {
+            return res.status(404).json({ error: 'الرسالة غير موجودة أو تم حذفها مسبقاً' });
+        }
 
         // التحقق من مالك المجموعة
         const { data: group } = await supabase
@@ -876,34 +899,21 @@ router.delete('/:groupId/messages/:messageId', authenticate, async (req, res) =>
             .eq('id', checkGroupId)
             .maybeSingle();
 
-        const numericMsgId = parseInt(messageId, 10);
-        const checkMsgId = isNaN(numericMsgId) ? messageId : numericMsgId;
-
-        const { data: msg } = await supabase
-            .from('group_messages')
-            .select('*')
-            .eq('id', checkMsgId)
-            .maybeSingle();
-
-        if (!msg) {
-            return res.status(404).json({ error: 'الرسالة غير موجودة' });
-        }
-
-        const isGroupOwner = group && role === 'teacher' && String(group.teacher_id) === String(userId);
-        const isMsgSender = String(msg.sender_id) === String(userId) && msg.sender_type === role;
+        const isGroupOwner = (group && role === 'teacher' && String(group.teacher_id) === String(userId)) || role === 'admin';
+        const isMsgSender = String(msg.sender_id) === String(userId) && (String(msg.sender_type || '').toLowerCase() === role || !msg.sender_type);
 
         if (!isGroupOwner && !isMsgSender) {
-            return res.status(403).json({ error: 'غير مصرح لك بحذف هذه الرسالة! يحق فقط لصاحب الرسالة أو مالك المجموعة حذفها.' });
+            return res.status(403).json({ error: 'غير مصرح لك بحذف هذه الرسالة! يحق فقط لصاحب الرسالة (طالب أو أستاذ) أو مالك المجموعة حذفها.' });
         }
 
         const { error } = await supabase
             .from('group_messages')
             .delete()
-            .eq('id', checkMsgId);
+            .eq('id', msg.id);
 
         if (error) throw error;
 
-        res.json({ success: true, message: 'تم حذف الرسالة بنجاح', messageId: checkMsgId });
+        res.json({ success: true, message: 'تم حذف الرسالة بنجاح', messageId: msg.id });
     } catch (error) {
         console.error('Error deleting group message:', error);
         res.status(500).json({ error: 'حدث خطأ أثناء حذف الرسالة' });

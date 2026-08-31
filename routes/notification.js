@@ -43,11 +43,23 @@ router.get('/:user_id/:user_type', authenticate, [
             return res.status(403).json({ success: false, error: 'غير مصرح لك بدرس هذه الإشعارات' });
         }
 
+        // تاريخ قبل 7 أيام - إزالة واستبعاد الإشعارات الأقدم من 7 أيام تلقائياً
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+        // تنظيف الإشعارات القديمة في قاعدة البيانات تلقائياً في الخلفية
+        supabase
+            .from('notifications')
+            .delete()
+            .lt('created_at', sevenDaysAgo)
+            .then(() => {})
+            .catch(e => logger.warn('⚠️ خطأ تنظيف الإشعارات القديمة:', e.message));
+
         const { data } = await supabase
             .from('notifications')
             .select('*')
             .eq('user_id', parseInt(user_id))
             .eq('user_type', user_type)
+            .gte('created_at', sevenDaysAgo)
             .order('created_at', { ascending: false })
             .limit(50);
 

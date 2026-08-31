@@ -1,8 +1,10 @@
 package com.example
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.ConnectivityManager
@@ -10,8 +12,9 @@ import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.view.ViewGroup
+import android.provider.MediaStore
 import android.view.View
+import android.view.ViewGroup
 import android.webkit.*
 import android.widget.FrameLayout
 import android.widget.Toast
@@ -43,12 +46,19 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
 import com.example.ui.theme.MyApplicationTheme
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.*
 
 class MainActivity : ComponentActivity() {
 
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
+    private var cameraImageUri: Uri? = null
+    private var pendingFileChooserParams: WebChromeClient.FileChooserParams? = null
     private var webView: WebView? = null
     private var customView: View? = null
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
@@ -58,25 +68,62 @@ class MainActivity : ComponentActivity() {
         const val BACKUP_URL = "https://zooooooom-mown.vercel.app"
     }
 
+    // Permission launcher for runtime permissions (Camera, Storage, Media, Audio, Notifications)
+    private val permissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { _ ->
+        // Once permissions are determined, proceed with file chooser if waiting
+        if (filePathCallback != null) {
+            launchFileChooserIntent(pendingFileChooserParams)
+        }
+    }
+
+    // File chooser launcher with robust camera + gallery handling
     private val fileChooserLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        val results = if (result.resultCode == RESULT_OK) {
+        var results: Array<Uri>? = null
+
+        if (result.resultCode == RESULT_OK) {
             val clipData = result.data?.clipData
             val dataString = result.data?.dataString
-            if (clipData != null) {
-                Array(clipData.itemCount) { i -> clipData.getItemAt(i).uri }
+
+            if (clipData != null && clipData.itemCount > 0) {
+                results = Array(clipData.itemCount) { i -> clipData.getItemAt(i).uri }
             } else if (dataString != null) {
-                arrayOf(Uri.parse(dataString))
-            } else null
-        } else null
-        filePathCallback?.onReceiveValue(results)
-        filePathCallback = null
+                results = arrayOf(Uri.parse(dataString))
+            } else if (result.data?.data != null) {
+                results = arrayOf(result.data!!.data!)
+            } else if (cameraImageUri != null) {
+                try {
+                    // Check if camera captured an image
+                    val file = File(cameraImageUri!!.path ?: "")
+                    if (file.exists() && file.length() > 0) {
+                        results = arrayOf(cameraImageUri!!)
+                    } else {
+                        // In case of FileProvider URI
+                        results = arrayOf(cameraImageUri!!)
+                    }
+                } catch (e: Exception) {
+                    results = arrayOf(cameraImageUri!!)
+                }
+            }
+        }
+
+        try {
+            filePathCallback?.onReceiveValue(results)
+        } catch (e: Exception) {
+            // Safeguard against webview callback failures
+        } finally {
+            filePathCallback = null
+            cameraImageUri = null
+            pendingFileChooserParams = null
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        requestNotificationPermission()
+        requestAppStartupPermissions()
         enableEdgeToEdge()
         WindowCompat.setDecorFitsSystemWindows(window, true)
         window.statusBarColor = Color.parseColor("#0B172A")
@@ -94,11 +141,103 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun requestNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
-        ) {
-            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1001)
+    private fun getRequiredPermissions(): Array<String> {
+        val permissions = mutableListOf<String>()
+        permissions.add(Manifest.permission.CAMERA)
+        permissions.add(Manifest.permission.RECORD_AUDIO)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions.add(Manifest.permission.READ_MEDIA_IMAGES)
+            permissions.add(Manifest.permission.READ_MEDIA_VIDEO)
+            permissions.add(Manifest.permission.READ_MEDIA_AUDIO)
+            permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+        } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2) {
+            permissions.add(Manifest.permission.READ_EXTERNAL_STORAGE)
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+                permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            }
+        }
+        return permissions.toTypedArray()
+    }
+
+    private fun hasAllPermissions(): Boolean {
+        return getRequiredPermissions().all { perm ->
+            ContextCompat.checkSelfPermission(this, perm) == PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    private fun requestAppStartupPermissions() {
+        val missingPermissions = getRequiredPermissions().filter { perm ->
+            ContextCompat.checkSelfPermission(this, perm) != PackageManager.PERMISSION_GRANTED
+        }
+        if (missingPermissions.isNotEmpty()) {
+            permissionLauncher.launch(missingPermissions.toTypedArray())
+        }
+    }
+
+    private fun createTempCameraImageUri(): Uri? {
+        return try {
+            val storageDir = File(cacheDir, "camera_images").apply { if (!exists()) mkdirs() }
+            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val imageFile = File(storageDir, "IMG_${timeStamp}.jpg")
+            FileProvider.getUriForFile(this, "${applicationContext.packageName}.fileprovider", imageFile)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun launchFileChooserIntent(params: WebChromeClient.FileChooserParams?) {
+        try {
+            val intentList = mutableListOf<Intent>()
+
+            // 1. Camera capture intent with FileProvider
+            cameraImageUri = createTempCameraImageUri()
+            if (cameraImageUri != null) {
+                val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
+                    putExtra(MediaStore.EXTRA_OUTPUT, cameraImageUri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                }
+                if (takePictureIntent.resolveActivity(packageManager) != null) {
+                    intentList.add(takePictureIntent)
+                }
+            }
+
+            // 2. Primary document / gallery / file picker intent
+            val mimeTypes = params?.acceptTypes?.filter { it.isNotBlank() }?.toTypedArray()
+            val pickIntent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+                type = if (mimeTypes != null && mimeTypes.isNotEmpty()) {
+                    if (mimeTypes.size == 1) mimeTypes[0] else "*/*"
+                } else {
+                    "*/*"
+                }
+                if (mimeTypes != null && mimeTypes.size > 1) {
+                    putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
+                }
+                if (params?.mode == WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE) {
+                    putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                }
+            }
+
+            val chooserIntent = Intent.createChooser(pickIntent, "اختيار ملف أو صورة").apply {
+                if (intentList.isNotEmpty()) {
+                    putExtra(Intent.EXTRA_INITIAL_INTENTS, intentList.toTypedArray())
+                }
+            }
+
+            fileChooserLauncher.launch(chooserIntent)
+        } catch (e: Exception) {
+            // Fallback to simple file picker if chooser crashes
+            try {
+                val fallbackIntent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "*/*"
+                }
+                fileChooserLauncher.launch(Intent.createChooser(fallbackIntent, "اختيار ملف"))
+            } catch (fallbackEx: Exception) {
+                filePathCallback?.onReceiveValue(null)
+                filePathCallback = null
+            }
         }
     }
 
@@ -138,6 +277,7 @@ class MainActivity : ComponentActivity() {
                     hasError = false
                     isLoading = true
                     loadUrl = if (isOnline()) PLATFORM_URL else BACKUP_URL
+                    webView?.loadUrl(loadUrl)
                 }
             }
         }
@@ -284,22 +424,45 @@ class MainActivity : ComponentActivity() {
                         }
 
                         override fun onShowFileChooser(wv: WebView?, callback: ValueCallback<Array<Uri>>?, params: FileChooserParams?): Boolean {
+                            // Cancel any prior dangling callback to prevent WebView locking
                             filePathCallback?.onReceiveValue(null)
                             filePathCallback = callback
-                            try {
-                                fileChooserLauncher.launch(params?.createIntent() ?: Intent(Intent.ACTION_GET_CONTENT).apply {
-                                    addCategory(Intent.CATEGORY_OPENABLE)
-                                    type = "*/*"
-                                })
-                            } catch (e: Exception) {
-                                filePathCallback = null
-                                return false
+                            pendingFileChooserParams = params
+
+                            if (!hasAllPermissions()) {
+                                // Request permissions first, then proceed
+                                val missing = getRequiredPermissions().filter {
+                                    ContextCompat.checkSelfPermission(this@MainActivity, it) != PackageManager.PERMISSION_GRANTED
+                                }
+                                if (missing.isNotEmpty()) {
+                                    permissionLauncher.launch(missing.toTypedArray())
+                                    return true
+                                }
                             }
+
+                            launchFileChooserIntent(params)
                             return true
                         }
 
                         override fun onPermissionRequest(request: PermissionRequest?) {
-                            request?.grant(request.resources)
+                            if (request == null) return
+                            val missing = mutableListOf<String>()
+                            for (res in request.resources) {
+                                if (res == PermissionRequest.RESOURCE_VIDEO_CAPTURE) {
+                                    if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                                        missing.add(Manifest.permission.CAMERA)
+                                    }
+                                }
+                                if (res == PermissionRequest.RESOURCE_AUDIO_CAPTURE) {
+                                    if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                                        missing.add(Manifest.permission.RECORD_AUDIO)
+                                    }
+                                }
+                            }
+                            if (missing.isNotEmpty()) {
+                                permissionLauncher.launch(missing.toTypedArray())
+                            }
+                            request.grant(request.resources)
                         }
 
                         override fun onGeolocationPermissionsShowPrompt(origin: String?, callback: GeolocationPermissions.Callback?) {
@@ -346,18 +509,18 @@ class MainActivity : ComponentActivity() {
                         useWideViewPort = true
                         mediaPlaybackRequiresUserGesture = false
                         mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                        cacheMode = WebSettings.LOAD_NO_CACHE
+                        cacheMode = WebSettings.LOAD_DEFAULT
                         javaScriptCanOpenWindowsAutomatically = true
                         setSupportZoom(true)
                         builtInZoomControls = true
                         displayZoomControls = false
                         textZoom = 100
-                        userAgentString = "$userAgentString ZoomDzNativeAndroid/2.0.0"
+                        userAgentString = "$userAgentString ZoomDzNativeAndroid/2.1.0"
                     }
 
                     addJavascriptInterface(object {
                         @JavascriptInterface fun isNativeApp() = true
-                        @JavascriptInterface fun getAppVersion() = "2.0.0"
+                        @JavascriptInterface fun getAppVersion() = "2.1.0"
                         @JavascriptInterface fun showToast(msg: String) {
                             Toast.makeText(this@MainActivity, msg, Toast.LENGTH_SHORT).show()
                         }
@@ -371,8 +534,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }, "ZoomDzNative")
 
-                    val freshUrl = if (url.contains("?")) "$url&v=${System.currentTimeMillis()}" else "$url?v=${System.currentTimeMillis()}"
-                    loadUrl(freshUrl)
+                    loadUrl(url)
                 }
             },
             update = { view ->
@@ -408,7 +570,19 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        webView?.saveState(outState)
+    }
+
+    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+        super.onRestoreInstanceState(savedInstanceState)
+        webView?.restoreState(savedInstanceState)
+    }
+
     override fun onDestroy() {
+        filePathCallback?.onReceiveValue(null)
+        filePathCallback = null
         webView?.apply {
             stopLoading()
             removeJavascriptInterface("ZoomDzNative")

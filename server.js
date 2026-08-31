@@ -6290,30 +6290,54 @@ function startOfferCron() {
 }
 
 // ============================================================
-// ✅ Cron: تنظيف السجلات القديمة (كل 24 ساعة)
+// ✅ Cron: تنظيف الإشعارات والسجلات القديمة الأقدم من 7 أيام
 // ============================================================
-function startCleanupCron() {
-    setInterval(async () => {
-        try {
-            const sevenDaysAgo = new Date();
-            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+async function runCleanupJob() {
+    try {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const sevenDaysAgoISO = sevenDaysAgo.toISOString();
+
+        // 1. تنظيف جدول الإشعارات العامة notifications الأقدم من 7 أيام
+        const { error: notifErr } = await supabase
+            .from('notifications')
+            .delete()
+            .lt('created_at', sevenDaysAgoISO);
             
-            const { error } = await supabase
+        if (notifErr) {
+            console.error('⚠️ خطأ في تنظيف الإشعارات القديمة (>7 أيام):', notifErr.message);
+        } else {
+            console.log('✅ تم تنظيف جميع الإشعارات الأقدم من 7 أيام بنجاح.');
+        }
+
+        // 2. تنظيف إشعارات الأدمن الأقدم من 7 أيام
+        try {
+            await supabase
+                .from('admin_notifications')
+                .delete()
+                .lt('created_at', sevenDaysAgoISO);
+        } catch (e) {}
+
+        // 3. تنظيف معاملات المحفظة المؤقتة الأقدم من 7 أيام
+        try {
+            await supabase
                 .from('wallet_transactions')
                 .delete()
-                .lt('created_at', sevenDaysAgo.toISOString());
-                
-            if (error) {
-                console.error('Error cleaning up old transactions:', error.message);
-            } else {
-                console.log('✅ تم تنظيف سجلات المحفظة الأقدم من 7 أيام بنجاح.');
-            }
-        } catch (err) {
-            console.error('Cron cleanup error:', err.message);
-        }
-    }, 24 * 60 * 60 * 1000); // كل 24 ساعة
+                .lt('created_at', sevenDaysAgoISO);
+        } catch (e) {}
+    } catch (err) {
+        console.error('Cron cleanup error:', err.message);
+    }
+}
+
+function startCleanupCron() {
+    // تشغيل فوري عند بدء الخادم
+    runCleanupJob();
+
+    // ثم تشغيل دوري كل 6 ساعات
+    setInterval(runCleanupJob, 6 * 60 * 60 * 1000);
     
-    console.log('🧹 Cron: تنظيف سجلات المحفظة القديمة - يعمل كل 24 ساعة');
+    console.log('🧹 Cron: تنظيف الإشعارات والسجلات القديمة (أكثر من 7 أيام) - يعمل كل 6 ساعات');
 }
 
 // ✅ التحقق من وجود حاوية التخزين profiles وتكوينها كحاوية عامة (Public) تلقائياً

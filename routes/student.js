@@ -1188,11 +1188,14 @@ router.get('/notifications/:student_id', authenticate, authorize(['student']), [
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
 
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
         const { data, error } = await supabase
             .from('notifications')
             .select('*')
             .eq('user_id', student_id)
             .eq('user_type', 'student')
+            .gte('created_at', sevenDaysAgo)
             .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -1353,12 +1356,14 @@ router.get('/stats/:student_id', authenticate, authorize(['student']), [
             logger.error('خطأ في جلب عدد الحجوزات المكتملة:', completedError.message);
         }
 
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
         const { count: unreadNotifications, error: unreadError } = await supabase
             .from('notifications')
             .select('*', { count: 'exact', head: true })
             .eq('user_id', student_id)
             .eq('user_type', 'student')
-            .eq('is_read', false);
+            .eq('is_read', false)
+            .gte('created_at', sevenDaysAgo);
 
         if (unreadError) {
             logger.error('خطأ في جلب عدد الإشعارات غير المقروءة:', unreadError.message);
