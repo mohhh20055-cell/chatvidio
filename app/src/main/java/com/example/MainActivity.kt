@@ -27,6 +27,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -41,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -336,12 +338,17 @@ class MainActivity : ComponentActivity() {
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(
-                    modifier = Modifier.size(100.dp).clip(CircleShape).background(
-                        Brush.linearGradient(listOf(ComposeColor(0xFF2563EB), ComposeColor(0xFF1D4ED8)))
-                    ),
+                    modifier = Modifier
+                        .size(110.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(ComposeColor(0xFF1E293B)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("ZoomDz", color = ComposeColor.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Image(
+                        painter = painterResource(id = R.drawable.app_logo),
+                        contentDescription = "ZoomDz Logo",
+                        modifier = Modifier.size(90.dp).clip(RoundedCornerShape(18.dp))
+                    )
                 }
                 Spacer(Modifier.height(28.dp))
                 CircularProgressIndicator(color = ComposeColor(0xFF3B82F6), strokeWidth = 3.5.dp, modifier = Modifier.size(36.dp))
