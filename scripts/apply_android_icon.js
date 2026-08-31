@@ -24,10 +24,12 @@ async function applyAndroidAppIcon() {
 
     // List of ONLY Android app icon target files
     const androidTargets = [
-        // Android drawables
+        // Android drawables & adaptive icon foregrounds
         { file: 'app/src/main/res/drawable/app_logo.png', width: 512, height: 512 },
         { file: 'app/src/main/res/drawable/ic_logo_img.png', width: 512, height: 512 },
+        { file: 'app/src/main/res/drawable/ic_launcher_foreground.png', width: 512, height: 512 },
         { file: 'app/src/main/res/drawable-nodpi/app_logo.png', width: 512, height: 512 },
+        { file: 'app/src/main/res/drawable-nodpi/ic_launcher_foreground.png', width: 512, height: 512 },
 
         // Android mipmap launcher icons
         { file: 'app/src/main/res/mipmap-mdpi/ic_launcher.png', width: 48, height: 48 },

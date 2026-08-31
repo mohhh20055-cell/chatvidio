@@ -83,7 +83,9 @@ async function regenerateLogo(logoUrlOrPath) {
             // Android master drawable icons (aspect ratio centered inside transparent canvas)
             { file: 'app/src/main/res/drawable/app_logo.png', width: 360, height: 512, contain: true },
             { file: 'app/src/main/res/drawable/ic_logo_img.png', width: 360, height: 512, contain: true },
+            { file: 'app/src/main/res/drawable/ic_launcher_foreground.png', width: 512, height: 512, contain: true },
             { file: 'app/src/main/res/drawable-nodpi/app_logo.png', width: 360, height: 512, contain: true },
+            { file: 'app/src/main/res/drawable-nodpi/ic_launcher_foreground.png', width: 512, height: 512, contain: true },
 
             // Android mipmap launchers (square/round icons)
             { file: 'app/src/main/res/mipmap-mdpi/ic_launcher.png', width: 48, height: 48, contain: true },
