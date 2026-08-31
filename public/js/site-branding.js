@@ -135,6 +135,17 @@
         sync: syncBranding
     };
 
+    // Auto-inject mobile navbar swipe behavior
+    try {
+        if (!document.getElementById('mobile-navbar-swipe-script') && !window.MobileNavbarSwipe) {
+            var swipeScript = document.createElement('script');
+            swipeScript.id = 'mobile-navbar-swipe-script';
+            swipeScript.src = '/js/mobile-navbar-swipe.js';
+            swipeScript.async = true;
+            document.head.appendChild(swipeScript);
+        }
+    } catch(e) {}
+
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', syncBranding);
     } else {
