@@ -222,6 +222,76 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private var chunkOutputStream: java.io.FileOutputStream? = null
+    private var currentChunkFile: File? = null
+
+    @Synchronized
+    fun saveBase64Chunk(chunkBase64: String, fileName: String, mimeType: String, isFirst: Boolean, isLast: Boolean) {
+        try {
+            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            if (!downloadsDir.exists()) downloadsDir.mkdirs()
+
+            if (isFirst || currentChunkFile == null) {
+                try { chunkOutputStream?.close() } catch (ignored: Throwable) {}
+                val safeName = if (fileName.isBlank()) "zoomdz_stream_${System.currentTimeMillis()}.webm" else fileName
+                currentChunkFile = File(downloadsDir, safeName)
+                chunkOutputStream = java.io.FileOutputStream(currentChunkFile!!, false)
+            }
+
+            val cleanChunk = if (chunkBase64.contains(",")) chunkBase64.substringAfter(",") else chunkBase64
+            val sanitized = cleanChunk.replace("\\s+".toRegex(), "")
+            val fileBytes = Base64.decode(sanitized, Base64.NO_WRAP or Base64.DEFAULT)
+
+            chunkOutputStream?.write(fileBytes)
+
+            if (isLast) {
+                chunkOutputStream?.flush()
+                chunkOutputStream?.close()
+                chunkOutputStream = null
+
+                val savedFile = currentChunkFile
+                currentChunkFile = null
+                if (savedFile != null && savedFile.exists()) {
+                    val cleanMime = if (mimeType.isBlank() || mimeType == "application/octet-stream") {
+                        if (fileName.endsWith(".mp4")) "video/mp4" else "video/webm"
+                    } else mimeType
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        try {
+                            val contentValues = ContentValues().apply {
+                                put(MediaStore.MediaColumns.DISPLAY_NAME, savedFile.name)
+                                put(MediaStore.MediaColumns.MIME_TYPE, cleanMime)
+                                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                            }
+                            applicationContext.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+                        } catch (e: Throwable) {
+                            e.printStackTrace()
+                        }
+                    } else {
+                        try {
+                            val dm = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                            dm.addCompletedDownload(savedFile.name, "تسجيل بث ZoomDz", true, cleanMime, savedFile.absolutePath, savedFile.length(), true)
+                        } catch (e: Throwable) {
+                            e.printStackTrace()
+                        }
+                    }
+
+                    runOnUiThread {
+                        Toast.makeText(this@MainActivity, "✅ تم حفظ تسجيل البث بنجاح في مجلد التنزيلات: ${savedFile.name}", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        } catch (t: Throwable) {
+            t.printStackTrace()
+            try { chunkOutputStream?.close() } catch (ignored: Throwable) {}
+            chunkOutputStream = null
+            currentChunkFile = null
+            runOnUiThread {
+                Toast.makeText(this@MainActivity, "❌ تعذر حفظ البث: ${t.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     fun saveBase64File(base64Data: String, fileName: String, mimeType: String) {
         try {
             val pureBase64 = if (base64Data.contains(",")) {
@@ -229,7 +299,8 @@ class MainActivity : ComponentActivity() {
             } else {
                 base64Data
             }
-            val fileBytes = Base64.decode(pureBase64, Base64.DEFAULT)
+            val sanitized = pureBase64.replace("\\s+".toRegex(), "")
+            val fileBytes = Base64.decode(sanitized, Base64.NO_WRAP or Base64.DEFAULT)
 
             val cleanMime = if (mimeType.isBlank() || mimeType == "application/octet-stream") {
                 if (fileName.endsWith(".mp4")) "video/mp4"
@@ -276,11 +347,64 @@ class MainActivity : ComponentActivity() {
                     Toast.makeText(this@MainActivity, "✅ تم حفظ التنزيل في مجلد التنزيلات: $fileName", Toast.LENGTH_LONG).show()
                 }
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
+        } catch (t: Throwable) {
+            t.printStackTrace()
             runOnUiThread {
-                Toast.makeText(this@MainActivity, "❌ تعذر حفظ الملف: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@MainActivity, "❌ تعذر حفظ الملف: ${t.message}", Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channelId = "zoomdz_notifications"
+            val channelName = "إشعارات منصة ZoomDz"
+            val channelDesc = "تنبيهات الدروس والطلبات الجديدة والرسائل"
+            val importance = android.app.NotificationManager.IMPORTANCE_HIGH
+            val channel = android.app.NotificationChannel(channelId, channelName, importance).apply {
+                description = channelDesc
+                enableVibration(true)
+                enableLights(true)
+            }
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+            manager.createNotificationChannel(channel)
+        }
+    }
+
+    fun showNativeNotification(title: String, body: String, targetUrl: String? = null) {
+        try {
+            createNotificationChannel()
+            val channelId = "zoomdz_notifications"
+            val intent = Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                if (!targetUrl.isNullOrBlank()) {
+                    putExtra("target_url", targetUrl)
+                }
+            }
+            val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+            } else {
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT
+            }
+            val pendingIntent = android.app.PendingIntent.getActivity(this, System.currentTimeMillis().toInt(), intent, pendingIntentFlags)
+
+            val builder = androidx.core.app.NotificationCompat.Builder(this, channelId)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle(title)
+                .setContentText(body)
+                .setStyle(androidx.core.app.NotificationCompat.BigTextStyle().bigText(body))
+                .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
+                .setDefaults(androidx.core.app.NotificationCompat.DEFAULT_ALL)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+
+            val notificationManager = androidx.core.app.NotificationManagerCompat.from(this)
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+                notificationManager.notify(System.currentTimeMillis().toInt(), builder.build())
+            }
+        } catch (t: Throwable) {
+            t.printStackTrace()
         }
     }
 
@@ -558,6 +682,46 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+
+                override fun onPageFinished(view: WebView?, url: String?) {
+                    super.onPageFinished(view, url)
+                    val notifPollJs = """
+                        (function() {
+                            if (window.__zoomdz_notif_bridge_injected) return;
+                            window.__zoomdz_notif_bridge_injected = true;
+
+                            function checkAndNotifyNative() {
+                                if (!window.ZoomDzNative || typeof window.ZoomDzNative.showNativeNotification !== 'function') return;
+                                try {
+                                    var userRole = localStorage.getItem('user_role') || (location.href.indexOf('teacher') !== -1 ? 'teacher' : 'student');
+                                    var userId = localStorage.getItem('user_id') || localStorage.getItem('student_id') || localStorage.getItem('teacher_id');
+                                    var token = localStorage.getItem('token');
+                                    if (!userId || !token) return;
+
+                                    fetch('/api/notifications/' + userId + '/' + userRole, {
+                                        headers: { 'Authorization': 'Bearer ' + token }
+                                    }).then(function(r) { return r.json(); }).then(function(notifs) {
+                                        if (!Array.isArray(notifs)) return;
+                                        var notified = JSON.parse(localStorage.getItem('native_notified_ids') || '[]');
+                                        notifs.forEach(function(n) {
+                                            if (!n.is_read && notified.indexOf(n.id) === -1) {
+                                                notified.push(n.id);
+                                                var targetUrl = userRole === 'teacher' ? '/teacher-dashboard.html' : '/student-dashboard.html';
+                                                window.ZoomDzNative.showNativeNotification(n.title || 'ZoomDz', n.message || '', targetUrl);
+                                            }
+                                        });
+                                        if (notified.length > 200) notified = notified.slice(-100);
+                                        localStorage.setItem('native_notified_ids', JSON.stringify(notified));
+                                    }).catch(function(e){});
+                                } catch(e){}
+                            }
+
+                            setInterval(checkAndNotifyNative, 20000);
+                            setTimeout(checkAndNotifyNative, 3000);
+                        })();
+                    """.trimIndent()
+                    view?.evaluateJavascript(notifPollJs, null)
+                }
             }
 
             webChromeClient = object : WebChromeClient() {
@@ -695,13 +859,29 @@ class MainActivity : ComponentActivity() {
                                 xhr.onload = function() {
                                     if (this.status === 200 || this.status === 0) {
                                         var blob = this.response;
-                                        var reader = new FileReader();
-                                        reader.readAsDataURL(blob);
-                                        reader.onloadend = function() {
-                                            if (window.ZoomDzNative && window.ZoomDzNative.saveBase64File) {
-                                                window.ZoomDzNative.saveBase64File(reader.result, '$finalFileName', '$safeMime');
-                                            }
-                                        };
+                                        var chunkSize = 1024 * 1024;
+                                        var totalChunks = Math.ceil(blob.size / chunkSize);
+                                        var currentChunk = 0;
+                                        function sendChunk() {
+                                            if (currentChunk >= totalChunks) return;
+                                            var start = currentChunk * chunkSize;
+                                            var end = Math.min(start + chunkSize, blob.size);
+                                            var slice = blob.slice(start, end);
+                                            var reader = new FileReader();
+                                            reader.onloadend = function() {
+                                                var result = reader.result || '';
+                                                var base64 = result.indexOf(',') !== -1 ? result.split(',')[1] : result;
+                                                var isFirst = (currentChunk === 0);
+                                                var isLast = (currentChunk === totalChunks - 1);
+                                                if (window.ZoomDzNative && window.ZoomDzNative.saveBase64Chunk) {
+                                                    window.ZoomDzNative.saveBase64Chunk(base64, '$finalFileName', '$safeMime', isFirst, isLast);
+                                                }
+                                                currentChunk++;
+                                                if (!isLast) setTimeout(sendChunk, 5);
+                                            };
+                                            reader.readAsDataURL(slice);
+                                        }
+                                        sendChunk();
                                     }
                                 };
                                 xhr.send();
@@ -731,6 +911,12 @@ class MainActivity : ComponentActivity() {
                 }
                 @JavascriptInterface fun saveBase64File(base64Data: String, fileName: String, mimeType: String) {
                     this@MainActivity.saveBase64File(base64Data, fileName, mimeType)
+                }
+                @JavascriptInterface fun saveBase64Chunk(chunkBase64: String, fileName: String, mimeType: String, isFirst: Boolean, isLast: Boolean) {
+                    this@MainActivity.saveBase64Chunk(chunkBase64, fileName, mimeType, isFirst, isLast)
+                }
+                @JavascriptInterface fun showNativeNotification(title: String, message: String, targetUrl: String?) {
+                    this@MainActivity.showNativeNotification(title, message, targetUrl)
                 }
                 @JavascriptInterface fun downloadFile(url: String, fileName: String, mimeType: String) {
                     if (url.startsWith("data:") || url.contains(";base64,")) {

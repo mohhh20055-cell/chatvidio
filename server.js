@@ -3044,14 +3044,38 @@ function generateTeacherZoomPage(offer, teacher, token) {
                 const timeStr = new Date().toTimeString().slice(0, 8).replace(/:/g, '-');
                 const fileName = 'تسجيل_بث_' + safeSubject + '_${offer.id}_' + today + '_' + timeStr + '.' + ext;
 
-                // 📱 Android Native App download direct bridge
-                if (window.ZoomDzNative && typeof window.ZoomDzNative.saveBase64File === 'function') {
-                    const reader = new FileReader();
-                    reader.readAsDataURL(blob);
-                    reader.onloadend = function() {
-                        window.ZoomDzNative.saveBase64File(reader.result, fileName, mime);
-                    };
-                    console.log('✅ تم إرسال ملف فيديو التسجيل مباشرة لتطبيق الأندرويد!');
+                // 📱 Android Native App download direct bridge (Chunked streaming)
+                if (window.ZoomDzNative && (typeof window.ZoomDzNative.saveBase64Chunk === 'function' || typeof window.ZoomDzNative.saveBase64File === 'function')) {
+                    if (typeof window.ZoomDzNative.saveBase64Chunk === 'function') {
+                        const chunkSize = 1024 * 1024;
+                        const totalChunks = Math.ceil(blob.size / chunkSize);
+                        let currentChunk = 0;
+                        function sendNextChunk() {
+                            if (currentChunk >= totalChunks) return;
+                            const start = currentChunk * chunkSize;
+                            const end = Math.min(start + chunkSize, blob.size);
+                            const slice = blob.slice(start, end);
+                            const reader = new FileReader();
+                            reader.onloadend = function() {
+                                const result = reader.result || '';
+                                const base64 = result.indexOf(',') !== -1 ? result.split(',')[1] : result;
+                                const isFirst = (currentChunk === 0);
+                                const isLast = (currentChunk === totalChunks - 1);
+                                window.ZoomDzNative.saveBase64Chunk(base64, fileName, mime || 'video/webm', isFirst, isLast);
+                                currentChunk++;
+                                if (!isLast) setTimeout(sendNextChunk, 10);
+                            };
+                            reader.readAsDataURL(slice);
+                        }
+                        sendNextChunk();
+                        console.log('✅ تم إرسال تسجيل البث بالأجزاء لتطبيق الأندرويد بنجاح!');
+                    } else {
+                        const reader = new FileReader();
+                        reader.readAsDataURL(blob);
+                        reader.onloadend = function() {
+                            window.ZoomDzNative.saveBase64File(reader.result, fileName, mime);
+                        };
+                    }
                     return;
                 }
 

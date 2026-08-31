@@ -1801,6 +1801,151 @@ router.post('/send-notification-to-all-students', [
 });
 
 // ============================================================
+// ✅ إرسال إشعار لجميع الأساتذة
+// ============================================================
+router.post('/send-notification-to-all-teachers', [
+    authenticate,
+    authorize(['admin']),
+    body('title').notEmpty().withMessage('العنوان مطلوب').isLength({ max: 100 }),
+    body('message').notEmpty().withMessage('المحتوى مطلوب').isLength({ max: 500 })
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+        const { title, message } = req.body;
+        console.log(`📥 إرسال إشعار لجميع الأساتذة: ${title}`);
+
+        const { data: teachers, error: teachersError } = await supabase
+            .from('teachers')
+            .select('id');
+
+        if (teachersError) {
+            logger.error('❌ خطأ في جلب الأساتذة:', teachersError);
+            return res.status(500).json({ success: false, error: teachersError.message });
+        }
+
+        if (!teachers || teachers.length === 0) {
+            return res.status(404).json({ success: false, error: 'لا يوجد أساتذة مسجلين' });
+        }
+
+        const notifications = teachers.map(t => ({
+            user_id: t.id,
+            user_type: 'teacher',
+            title: title.trim(),
+            message: message.trim(),
+            is_read: false,
+            created_at: new Date().toISOString()
+        }));
+
+        const { error } = await supabase
+            .from('notifications')
+            .insert(notifications);
+
+        if (error) {
+            logger.error('❌ خطأ في إرسال الإشعارات للأساتذة:', error);
+            return res.status(500).json({ success: false, error: error.message });
+        }
+
+        res.json({
+            success: true,
+            teachers_count: teachers.length,
+            message: `تم إرسال الإشعار إلى ${teachers.length} أستاذ`
+        });
+    } catch (error) {
+        logger.error('❌ خطأ في إرسال الإشعار للأساتذة:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// ✅ إرسال إشعار "هناك دروس جديدة بانتظارك" للطلاب
+// ============================================================
+router.post('/notify-students-new-lessons', [
+    authenticate,
+    authorize(['admin'])
+], async (req, res) => {
+    try {
+        const title = "هناك دروس جديدة بانتظارك 📚";
+        const message = req.body.message || "هناك دروس جديدة بانتظارك! ادخل إلى منصة ZoomDz واكتشف الدروس والدورات الجديدة في المنصة.";
+
+        const { data: students, error: studentsError } = await supabase
+            .from('students')
+            .select('id');
+
+        if (studentsError) throw studentsError;
+
+        if (!students || students.length === 0) {
+            return res.status(404).json({ success: false, error: 'لا يوجد طلاب مسجلين' });
+        }
+
+        const notifications = students.map(s => ({
+            user_id: s.id,
+            user_type: 'student',
+            title,
+            message,
+            is_read: false,
+            created_at: new Date().toISOString()
+        }));
+
+        await supabase.from('notifications').insert(notifications);
+
+        res.json({
+            success: true,
+            students_count: students.length,
+            message: `تم إرسال إشعار الدروس الجديدة إلى ${students.length} طالب`
+        });
+    } catch (error) {
+        logger.error('❌ خطأ في إرسال تذكير الدروس للطلاب:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// ✅ إرسال إشعار "هناك طلبات جديدة بانتظارك" للأساتذة
+// ============================================================
+router.post('/notify-teachers-new-requests', [
+    authenticate,
+    authorize(['admin'])
+], async (req, res) => {
+    try {
+        const title = "هناك طلبات جديدة بانتظارك 🎓";
+        const message = req.body.message || "هناك طلبات جدد بانتظارك! ادخل للتطبيق ورؤية الجديد وحجوزات الدروس في المنصة.";
+
+        const { data: teachers, error: teachersError } = await supabase
+            .from('teachers')
+            .select('id');
+
+        if (teachersError) throw teachersError;
+
+        if (!teachers || teachers.length === 0) {
+            return res.status(404).json({ success: false, error: 'لا يوجد أساتذة مسجلين' });
+        }
+
+        const notifications = teachers.map(t => ({
+            user_id: t.id,
+            user_type: 'teacher',
+            title,
+            message,
+            is_read: false,
+            created_at: new Date().toISOString()
+        }));
+
+        await supabase.from('notifications').insert(notifications);
+
+        res.json({
+            success: true,
+            teachers_count: teachers.length,
+            message: `تم إرسال إشعار الطلبات الجديدة إلى ${teachers.length} أستاذ`
+        });
+    } catch (error) {
+        logger.error('❌ خطأ في إرسال تذكير الطلبات للأساتذة:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
 // ✅ إرسال إشعار لمستخدم محدد (طالب أو أستاذ)
 // ============================================================
 router.post('/send-notification-to-user', [

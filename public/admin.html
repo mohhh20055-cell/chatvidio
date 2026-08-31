@@ -1151,9 +1151,20 @@
                 <input type="text" id="notificationTitle" placeholder="عنوان الإشعار" style="width:100%; padding:12px; border:1px solid #e4e6eb; border-radius:8px; margin-bottom:10px;">
                 <textarea id="notificationMessage" placeholder="محت����ى الإشعار" style="width:100%; padding:12px; border:1px solid #e4e6eb; border-radius:8px; min-height:100px; margin-bottom:10px; font-family:'Cairo',sans-serif;"></textarea>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-                    <button class="btn-save" onclick="sendNotificationToAllStudents()" style="padding: 12px 30px;">
-                        <i class="fas fa-paper-plane"></i> إرسال الإشعار للجميع
+                    <button class="btn-save" onclick="sendNotificationToAllStudents()" style="padding: 12px 20px;">
+                        <i class="fas fa-paper-plane"></i> إرسال للطلاب
                     </button>
+                    <button class="btn-save" onclick="sendNotificationToAllTeachers()" style="padding: 12px 20px; background: #059669;">
+                        <i class="fas fa-chalkboard-teacher"></i> إرسال للأساتذة
+                    </button>
+                    <div style="width: 100%; margin-top: 15px; padding-top: 15px; border-top: 1px dashed #e2e8f0; display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button type="button" onclick="sendQuickStudentNotification()" style="padding: 10px 18px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                            <i class="fas fa-graduation-cap"></i> إرسال للطلاب: "هناك دروس جديدة بانتظارك"
+                        </button>
+                        <button type="button" onclick="sendQuickTeacherNotification()" style="padding: 10px 18px; background: #8b5cf6; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                            <i class="fas fa-user-tie"></i> إرسال للأساتذة: "هناك طلاب جدد بانتظارك"
+                        </button>
+                    </div>
                     <span style="font-size:0.8rem; color:#94a3b8;">
                         <i class="fas fa-users"></i> سيتم إرسال الإشعار لجميع الطلاب المسجلين
                     </span>
@@ -3441,7 +3452,59 @@
         // ============================================================
         // ✅ إرسال إشعار لجميع الطلاب
         // ============================================================
-        async function sendNotificationToAllStudents() {
+        async 
+        async function sendNotificationToAllTeachers() {
+            const title = document.getElementById("notificationTitle").value.trim();
+            const message = document.getElementById("notificationMessage").value.trim();
+            if (!title || !message) {
+                showNotification("⚠️ الرجاء إدخال عنوان ومحتوى الإشعار", "warning");
+                return;
+            }
+            if (!confirm("📢 هل أنت متأكد من إرسال الإشعار لجميع الأساتذة؟")) return;
+            try {
+                const token = localStorage.getItem("token");
+                const res = await fetch("/api/admin/send-notification-to-all-teachers", {
+                    method: "POST",
+                    headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+                    body: JSON.stringify({ title, message })
+                });
+                const data = await res.json();
+                if (data.success) { showNotification("✅ " + data.message, "success"); }
+                else { showNotification("❌ " + data.error, "error"); }
+            } catch(e) { showNotification("❌ حدث خطأ أثناء الإرسال", "error"); }
+        }
+
+        async function sendQuickStudentNotification() {
+            if (!confirm("📢 هل تريد إرسال تذكير (هناك دروس جديدة بانتظارك) لجميع الطلاب الآن؟")) return;
+            try {
+                const token = localStorage.getItem("token");
+                const res = await fetch("/api/admin/notify-students-new-lessons", {
+                    method: "POST",
+                    headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+                    body: JSON.stringify({})
+                });
+                const data = await res.json();
+                if (data.success) { showNotification("✅ " + data.message, "success"); }
+                else { showNotification("❌ " + data.error, "error"); }
+            } catch(e) { showNotification("❌ فشل إرسال الإشعار", "error"); }
+        }
+
+        async function sendQuickTeacherNotification() {
+            if (!confirm("📢 هل تريد إرسال تذكير (هناك طلاب جدد بانتظارك) لجميع الأساتذة الآن؟")) return;
+            try {
+                const token = localStorage.getItem("token");
+                const res = await fetch("/api/admin/notify-teachers-new-requests", {
+                    method: "POST",
+                    headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+                    body: JSON.stringify({})
+                });
+                const data = await res.json();
+                if (data.success) { showNotification("✅ " + data.message, "success"); }
+                else { showNotification("❌ " + data.error, "error"); }
+            } catch(e) { showNotification("❌ فشل إرسال الإشعار", "error"); }
+        }
+
+function sendNotificationToAllStudents() {
             const title = document.getElementById('notificationTitle').value.trim();
             const message = document.getElementById('notificationMessage').value.trim();
             
