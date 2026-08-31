@@ -3038,17 +3038,28 @@ function generateTeacherZoomPage(offer, teacher, token) {
                 const blob = new Blob(recordedChunks, { type: mime });
                 if (blob.size === 0) return;
 
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-
                 const rawSubject = ${JSON.stringify(subjectName)};
                 const safeSubject = rawSubject.replace(/[^a-zA-Z0-9\u0600-\u06FF_-]/g, '_') || 'live_stream';
                 const today = new Date().toISOString().slice(0, 10);
                 const timeStr = new Date().toTimeString().slice(0, 8).replace(/:/g, '-');
-                
-                a.download = 'تسجيل_بث_' + safeSubject + '_${offer.id}_' + today + '_' + timeStr + '.' + ext;
+                const fileName = 'تسجيل_بث_' + safeSubject + '_${offer.id}_' + today + '_' + timeStr + '.' + ext;
+
+                // 📱 Android Native App download direct bridge
+                if (window.ZoomDzNative && typeof window.ZoomDzNative.saveBase64File === 'function') {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(blob);
+                    reader.onloadend = function() {
+                        window.ZoomDzNative.saveBase64File(reader.result, fileName, mime);
+                    };
+                    console.log('✅ تم إرسال ملف فيديو التسجيل مباشرة لتطبيق الأندرويد!');
+                    return;
+                }
+
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = fileName;
                 document.body.appendChild(a);
                 a.click();
 

@@ -2,6 +2,8 @@ package com.example
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.DownloadManager
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -12,7 +14,9 @@ import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.provider.MediaStore
+import android.util.Base64
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.*
@@ -215,6 +219,106 @@ class MainActivity : ComponentActivity() {
         }
         if (missingPermissions.isNotEmpty()) {
             permissionLauncher.launch(missingPermissions.toTypedArray())
+        }
+    }
+
+    fun saveBase64File(base64Data: String, fileName: String, mimeType: String) {
+        try {
+            val pureBase64 = if (base64Data.contains(",")) {
+                base64Data.substringAfter(",")
+            } else {
+                base64Data
+            }
+            val fileBytes = Base64.decode(pureBase64, Base64.DEFAULT)
+
+            val cleanMime = if (mimeType.isBlank() || mimeType == "application/octet-stream") {
+                if (fileName.endsWith(".mp4")) "video/mp4"
+                else if (fileName.endsWith(".webm")) "video/webm"
+                else if (fileName.endsWith(".pdf")) "application/pdf"
+                else "video/webm"
+            } else mimeType
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                    put(MediaStore.MediaColumns.MIME_TYPE, cleanMime)
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                }
+                val resolver = applicationContext.contentResolver
+                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+                if (uri != null) {
+                    resolver.openOutputStream(uri)?.use { os ->
+                        os.write(fileBytes)
+                    }
+                    runOnUiThread {
+                        Toast.makeText(this@MainActivity, "✅ تم حفظ التنزيل في مجلد التنزيلات: $fileName", Toast.LENGTH_LONG).show()
+                    }
+                } else {
+                    throw Exception("Could not create MediaStore Download entry")
+                }
+            } else {
+                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                if (!downloadsDir.exists()) downloadsDir.mkdirs()
+                val file = File(downloadsDir, fileName)
+                file.writeBytes(fileBytes)
+
+                val dm = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                dm.addCompletedDownload(
+                    fileName,
+                    "تسجيل بث ZoomDz",
+                    true,
+                    cleanMime,
+                    file.absolutePath,
+                    file.length(),
+                    true
+                )
+                runOnUiThread {
+                    Toast.makeText(this@MainActivity, "✅ تم حفظ التنزيل في مجلد التنزيلات: $fileName", Toast.LENGTH_LONG).show()
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            runOnUiThread {
+                Toast.makeText(this@MainActivity, "❌ تعذر حفظ الملف: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    fun startStandardDownload(url: String, userAgent: String?, contentDisposition: String?, mimeType: String?, fileName: String) {
+        try {
+            val request = DownloadManager.Request(Uri.parse(url)).apply {
+                val cleanMime = if (mimeType.isNullOrBlank() || mimeType == "application/octet-stream") {
+                    if (fileName.endsWith(".mp4")) "video/mp4"
+                    else if (fileName.endsWith(".webm")) "video/webm"
+                    else if (fileName.endsWith(".pdf")) "application/pdf"
+                    else "application/octet-stream"
+                } else mimeType
+                setMimeType(cleanMime)
+
+                if (!userAgent.isNullOrBlank()) {
+                    addRequestHeader("User-Agent", userAgent)
+                }
+                val cookies = CookieManager.getInstance().getCookie(url)
+                if (!cookies.isNullOrEmpty()) {
+                    addRequestHeader("Cookie", cookies)
+                }
+                setTitle(fileName)
+                setDescription("جاري تنزيل الملف...")
+                setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+                setAllowedOverMetered(true)
+                setAllowedOverRoaming(true)
+            }
+            val dm = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            dm.enqueue(request)
+            runOnUiThread {
+                Toast.makeText(this@MainActivity, "📥 جاري تحميل $fileName في التنزيلات...", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            runOnUiThread {
+                Toast.makeText(this@MainActivity, "❌ خطأ في التنزيل: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -567,6 +671,55 @@ class MainActivity : ComponentActivity() {
                 userAgentString = "$userAgentString ZoomDzNativeAndroid/2.1.0"
             }
 
+            setDownloadListener { url, userAgent, contentDisposition, mimetype, contentLength ->
+                val guessedName = URLUtil.guessFileName(url, contentDisposition, mimetype)
+                val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+                val safeMime = if (mimetype.isNullOrBlank() || mimetype == "application/octet-stream") {
+                    if (guessedName.endsWith(".mp4") || url.contains("mp4")) "video/mp4" else "video/webm"
+                } else mimetype
+
+                val ext = if (safeMime.contains("mp4")) "mp4" else "webm"
+                val finalFileName = if (guessedName.isBlank() || guessedName.endsWith(".bin")) {
+                    "zoomdz_recording_${timeStamp}.$ext"
+                } else {
+                    guessedName
+                }
+
+                if (url.startsWith("blob:")) {
+                    val js = """
+                        (function() {
+                            try {
+                                var xhr = new XMLHttpRequest();
+                                xhr.open('GET', '$url', true);
+                                xhr.responseType = 'blob';
+                                xhr.onload = function() {
+                                    if (this.status === 200 || this.status === 0) {
+                                        var blob = this.response;
+                                        var reader = new FileReader();
+                                        reader.readAsDataURL(blob);
+                                        reader.onloadend = function() {
+                                            if (window.ZoomDzNative && window.ZoomDzNative.saveBase64File) {
+                                                window.ZoomDzNative.saveBase64File(reader.result, '$finalFileName', '$safeMime');
+                                            }
+                                        };
+                                    }
+                                };
+                                xhr.send();
+                            } catch(e) {
+                                console.error('Blob download JS error:', e);
+                            }
+                        })();
+                    """.trimIndent()
+                    post {
+                        evaluateJavascript(js, null)
+                    }
+                } else if (url.startsWith("data:")) {
+                    saveBase64File(url, finalFileName, safeMime)
+                } else {
+                    startStandardDownload(url, userAgent, contentDisposition, safeMime, finalFileName)
+                }
+            }
+
             addJavascriptInterface(object {
                 @JavascriptInterface fun isNativeApp() = true
                 @JavascriptInterface fun getAppVersion() = "2.1.0"
@@ -575,6 +728,16 @@ class MainActivity : ComponentActivity() {
                 }
                 @JavascriptInterface fun showToast(msg: String) {
                     Toast.makeText(this@MainActivity, msg, Toast.LENGTH_SHORT).show()
+                }
+                @JavascriptInterface fun saveBase64File(base64Data: String, fileName: String, mimeType: String) {
+                    this@MainActivity.saveBase64File(base64Data, fileName, mimeType)
+                }
+                @JavascriptInterface fun downloadFile(url: String, fileName: String, mimeType: String) {
+                    if (url.startsWith("data:") || url.contains(";base64,")) {
+                        this@MainActivity.saveBase64File(url, fileName, mimeType)
+                    } else {
+                        this@MainActivity.startStandardDownload(url, null, null, mimeType, fileName)
+                    }
                 }
                 @JavascriptInterface fun shareText(title: String, text: String, url: String) {
                     val body = if (url.isNotEmpty()) "$text\n$url" else text
