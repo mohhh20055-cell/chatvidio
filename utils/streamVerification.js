@@ -240,12 +240,13 @@ async function verifyStreamCompletion(offerId) {
         return { complete: false, completion_percentage: 0, error: 'الدرس غير موجود' };
     }
 
-    // 1. مدة البث المخطط لها بالثواني بناءً على بيانات الأستاذ
+    // مدة البث المخطط لها بالثواني بناءً على بيانات الأستاذ
     const durationMins = offer.duration || 60;
     const expectedDuration = Number(offer.total_seconds || (durationMins * 60)) || 3600;
     
-    // 50 دقيقة كحد أدنى لإكمال الحصة (سواء كانت ساعة أو أقل، نحتاج 50/60 من المدة المطلوبة)
-    const requiredDuration = expectedDuration * (50/60);
+    // نسبة الإنجاز المطلوبة (50 دقيقة من أصل 60 دقيقة = 5/6 من المدة)
+    const completionRatio = 50 / 60;
+    const requiredDuration = expectedDuration * completionRatio;
 
     // 2. حساب الوقت المنقضي بناءً على موقت الأستاذ المقاس بالسيرفر
     let actualDurationFromTimer = 0;
@@ -475,7 +476,7 @@ async function processStreamPayments(offerId, earlyEnd = false) {
                         user_id: session.student_id,
                         user_type: 'student',
                         title: '💰 استرداد كامل',
-                        message: `تم استرداد كامل المبلغ (${refundAmount} دج) لحصة "${offer.subject_name}" بسبب عدم إكمال مدة البث المطلوبة (50 دقيقة).`,
+                        message: `تم استرداد كامل المبلغ (${refundAmount} دج) لحصة "${offer.subject_name}" بسبب عدم إكمال مدة البث المطلوبة (${Math.round(50 / 60 * 100)}% من زمن الحصة).`,
                         is_read: false,
                         created_at: new Date().toISOString()
                     });
@@ -489,7 +490,7 @@ async function processStreamPayments(offerId, earlyEnd = false) {
                 user_id: offer.teacher_id,
                 user_type: 'teacher',
                 title: '📊 تقرير البث',
-                message: `تم إنهاء البث "${offer.subject_name}". ${completion.complete ? 'تمت الحصة بنجاح.' : 'لم يتم إكمال مدة البث المطلوبة (50 دقيقة).'}`,
+                message: `تم إنهاء البث "${offer.subject_name}". ${completion.complete ? 'تمت الحصة بنجاح.' : `لم يتم إكمال مدة البث المطلوبة (${Math.round(50 / 60 * 100)}% من زمن الحصة).`}`,
                 is_read: false,
                 created_at: new Date().toISOString()
             });
