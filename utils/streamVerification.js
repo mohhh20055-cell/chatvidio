@@ -280,7 +280,7 @@ async function verifyStreamCompletion(offerId) {
     }
     completionPercentage = Math.min(100, Math.round(completionPercentage * 100) / 100);
 
-    const isComplete = completionPercentage >= 80 || (completionPercentage >= 75);
+    const isComplete = completionPercentage >= 90;
 
     // ✅ حفظ نسبة الإكتمال والمدة الفعلية للبث في قاعدة البيانات (جدول offers وجدول stream_verification)
     const completionPctRounded = Math.round(completionPercentage);
@@ -330,7 +330,7 @@ async function processStreamPayments(offerId, earlyEnd = false) {
     
     const { data: offer, error: offerError } = await supabase
         .from('offers')
-        .select('id, teacher_id, price, subject_name, is_free')
+        .select('id, teacher_id, price, subject_name, is_free, price_per_session')
         .eq('id', offerId)
         .single();
 
@@ -361,13 +361,13 @@ async function processStreamPayments(offerId, earlyEnd = false) {
     console.log(`📊 جاري معالجة ${sessions?.length || 0} جلسة للبث ${offerId}`);
 
     for (const session of (sessions || [])) {
-        // إذا كان البث مكتمل بنسبة 80% فما فوق (أو تم تحقيقه بحسب الموقت)، يعتبر مكتملاً ولا يوجد استرداد
-        const isCompleted = completion.complete || completion.completion_percentage >= 80;
+        // إذا كان البث مكتمل بنسبة 90% فما فوق، يعتبر مكتملاً ولا يوجد استرداد
+        const isCompleted = completion.complete || completion.completion_percentage >= 90;
         const completionPctRounded = Math.round(completion.completion_percentage);
 
         if (isCompleted) {
             // البث مكتمل - لا استرداد للطالب، الأستاذ يحصل على سعر الحصة
-            const teacherAmount = isOfferFree ? 0 : (offer.price || 0);
+            const teacherAmount = isOfferFree ? 0 : (parseFloat(offer.price_per_session || offer.price || 0));
 
             // تحديث حالة الجلسة ونسبة الإكتمال
             await supabase
