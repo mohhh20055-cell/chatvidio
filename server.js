@@ -2535,15 +2535,27 @@ function generateTeacherZoomPage(offer, teacher, token) {
                         localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack();
                     }
 
-                    // 📹 إعداد فيديو متوافق بدقة 480p/720p قياسية
+                    // 📹 إعداد فيديو متكيف فائق السلاسة وموفر جداً للإنترنت الضعيف لمنع التقطيع
                     try {
                         localVideoTrack = await AgoraRTC.createCameraVideoTrack({
-                            encoderConfig: '480p_1',
+                            encoderConfig: {
+                                width: 480,
+                                height: 360,
+                                frameRate: 15,
+                                bitrateMax: 280,
+                                bitrateMin: 70
+                            },
                             optimizationMode: 'detail'
                         });
                     } catch (e) {
-                        console.warn('Camera config fallback:', e);
-                        localVideoTrack = await AgoraRTC.createCameraVideoTrack();
+                        try {
+                            localVideoTrack = await AgoraRTC.createCameraVideoTrack({
+                                encoderConfig: '360p_1'
+                            });
+                        } catch(err) {
+                            console.warn('Camera config fallback:', err);
+                            localVideoTrack = await AgoraRTC.createCameraVideoTrack();
+                        }
                     }
                 } catch (mediaErr) {
                     console.warn('فشل فتح الكاميرا والميكروفون معاً، جاري تجربة الميكروفون فقط...', mediaErr);
@@ -2649,11 +2661,11 @@ function generateTeacherZoomPage(offer, teacher, token) {
                 if (localVideoTrack && typeof localVideoTrack.setEncoderConfiguration === 'function') {
                     if (profile === 'auto') {
                         await localVideoTrack.setEncoderConfiguration({
-                            width: { ideal: 640, min: 320 },
-                            height: { ideal: 480, min: 240 },
-                            frameRate: { ideal: 24, min: 12 },
-                            bitrateMin: 80,
-                            bitrateMax: 600,
+                            width: { ideal: 480, max: 640 },
+                            height: { ideal: 360, max: 480 },
+                            frameRate: { ideal: 15, max: 15 },
+                            bitrateMin: 70,
+                            bitrateMax: 280,
                             degradationPreference: 'MAINTAIN_FRAMERATE'
                         });
                     } else {
@@ -2802,10 +2814,27 @@ function generateTeacherZoomPage(offer, teacher, token) {
                     try { localVideoTrack.close(); } catch(e){}
                 }
 
-                localVideoTrack = await AgoraRTC.createCameraVideoTrack({
-                    encoderConfig: '480p_1',
-                    facingMode: currentFacingMode
-                });
+                try {
+                    localVideoTrack = await AgoraRTC.createCameraVideoTrack({
+                        encoderConfig: {
+                            width: 480,
+                            height: 360,
+                            frameRate: 15,
+                            bitrateMax: 280,
+                            bitrateMin: 70
+                        },
+                        facingMode: currentFacingMode
+                    });
+                } catch(e) {
+                    try {
+                        localVideoTrack = await AgoraRTC.createCameraVideoTrack({
+                            encoderConfig: '360p_1',
+                            facingMode: currentFacingMode
+                        });
+                    } catch(err) {
+                        localVideoTrack = await AgoraRTC.createCameraVideoTrack({ facingMode: currentFacingMode });
+                    }
+                }
 
                 localVideoTrack.play('localVideo');
 
@@ -3625,6 +3654,8 @@ function generateStudentZoomPage(offer, student) {
                     c.on('user-joined', updateViewersCount);
                     c.on('user-left', (user) => {
                         updateViewersCount();
+                        const remoteEl = document.getElementById('remoteVideo');
+                        if (remoteEl) remoteEl.innerHTML = '';
                         const existingEl = document.getElementById('remote-video-' + user.uid);
                         if (existingEl) existingEl.remove();
                     });
@@ -3668,13 +3699,18 @@ function generateStudentZoomPage(offer, student) {
                                 const remoteEl = document.getElementById('remoteVideo');
                                 if (remoteEl) {
                                     remoteEl.innerHTML = '';
-                                    user.videoTrack.play(remoteEl, { fit: 'contain' });
+                                    // 🎥 إنشاء عنصر نقي بالكامل لمنع تصادم خصائص البث القديمة
+                                    const videoPlaceholder = document.createElement('div');
+                                    videoPlaceholder.id = 'remote-video-placeholder-' + user.uid;
+                                    videoPlaceholder.style.cssText = 'width:100%;height:100%;position:absolute;inset:0;border-radius:12px;overflow:hidden;background:#000;z-index:1;';
+                                    remoteEl.appendChild(videoPlaceholder);
+                                    user.videoTrack.play(videoPlaceholder, { fit: 'contain' });
                                 } else if (container) {
                                     let vEl = document.getElementById('remote-video-' + user.uid);
                                     if (!vEl) {
                                         vEl = document.createElement('div');
                                         vEl.id = 'remote-video-' + user.uid;
-                                        vEl.style.cssText = 'width:100%;height:100%;position:absolute;top:0;left:0;border-radius:12px;overflow:hidden;';
+                                        vEl.style.cssText = 'width:100%;height:100%;position:absolute;inset:0;border-radius:12px;overflow:hidden;background:#000;';
                                         container.appendChild(vEl);
                                     }
                                     user.videoTrack.play(vEl, { fit: 'contain' });
@@ -4012,6 +4048,35 @@ function generateStudentZoomPage(offer, student) {
             }, 1000);
         }
 
+        async function reconnectAgora() {
+            try {
+                if (client) {
+                    try { await client.leave(); } catch(e){}
+                }
+                const statusElem = document.getElementById('statusText');
+                if (statusElem) statusElem.innerHTML = "جاري استئناف البث وتحديث الاتصال...";
+                const ov = document.getElementById('statusOverlay');
+                if (ov) ov.style.display = 'flex';
+                
+                client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+                try {
+                    if (typeof client.setStreamFallbackOption === 'function') {
+                        client.setStreamFallbackOption(null, 2);
+                    }
+                } catch(e){}
+                setupStudentClient(client);
+                
+                const tokenToUse = (agoraToken && agoraToken !== 'null' && agoraToken !== 'undefined' && agoraToken.trim() !== '') ? agoraToken.trim() : null;
+                await client.join(APP_ID, channelName, tokenToUse, studentUid);
+                
+                setTimeout(() => {
+                    if (ov) ov.style.display = 'none';
+                }, 1000);
+            } catch(err) {
+                console.error('Error during automatic reconnection:', err);
+            }
+        }
+
         async function fetchStudentChatMessages() {
             try {
                 const token = new URLSearchParams(window.location.search).get('token') || localStorage.getItem('token');
@@ -4033,10 +4098,17 @@ function generateStudentZoomPage(offer, student) {
                         studentTotalSeconds = Math.max(Number(data.total_seconds), studentRemainingSeconds);
                     }
                     if (data.stream_status !== undefined || data.is_paused !== undefined) {
+                        const wasPaused = isStreamPaused;
                         // إظهار التوقف فقط إذا كانت حالة البث صريحة paused
                         const pauseCondition = (data.stream_status === 'paused');
                         isStreamPaused = !!pauseCondition;
                         togglePauseOverlay(isStreamPaused);
+
+                        // 🔄 إذا رجع الأستاذ من التوقف مؤقتاً إلى نشط، نقوم بإعادة تهيئة الاتصال بالبث لضمان عدم حدوث الشاشة السوداء!
+                        if (wasPaused && !isStreamPaused) {
+                            console.log('الأستاذ عاد للبث، جاري إعادة تهيئة البث لضمان جودة الصورة...');
+                            reconnectAgora();
+                        }
                     }
                     if (data.remaining_seconds !== undefined && data.remaining_seconds !== null) {
                         studentRemainingSeconds = Number(data.remaining_seconds);
