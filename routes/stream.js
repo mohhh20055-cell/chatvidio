@@ -82,6 +82,9 @@ const handleStreamStart = async (req, res) => {
                 stream_url: roomUrl,
                 stream_platform: 'agora',
                 status: 'live',
+                stream_active: true,
+                is_paused: false,
+                stream_started_at: new Date().toISOString(),
                 room_name: roomName,
                 room_password: password
             })
@@ -140,6 +143,10 @@ const handleStreamStart = async (req, res) => {
         res.status(500).json({ success: false, error: error.message });
     }
 };
+
+router.post('/start-agora-stream', authenticate, authorize(['teacher']), checkNoActiveStream, [
+    body('offer_id').isInt().withMessage('معرف الدرس غير صالح')
+], handleStreamStart);
 
 router.post('/start-jitsi-stream', authenticate, authorize(['teacher']), checkNoActiveStream, [
     body('offer_id').isInt().withMessage('معرف الدرس غير صالح')
@@ -249,7 +256,11 @@ router.post('/end/:offer_id', authenticate, authorize(['teacher']), validateOffe
             .update({
                 status: isAllCompleted ? 'completed' : 'upcoming',
                 completed_at: isAllCompleted ? new Date().toISOString() : null,
-                stream_active: false
+                stream_active: false,
+                stream_url: null,
+                stream_started_at: null,
+                room_name: null,
+                room_password: null
             })
             .eq('id', offer_id);
 

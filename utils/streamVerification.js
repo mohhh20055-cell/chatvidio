@@ -324,18 +324,9 @@ async function verifyStreamCompletion(offerId) {
  * معالجة المدفوعات حسب وقت البث الفعلي
  */
 async function processStreamPayments(offerId, earlyEnd = false) {
-    
-    // إذا كان إنهاء مبكر، استرداد كامل للطلاب
-    if (earlyEnd) {
-        return await processEarlyEndRefund(offerId);
-    }
-    
-    // Otherwise, process normal completion with partial payments
-    const completion = await verifyStreamCompletion(offerId);
-    
     const { data: offer, error: offerError } = await supabase
         .from('offers')
-        .select('id, teacher_id, price, subject_name, is_free, price_per_session')
+        .select('id, teacher_id, price, subject_name, is_free, price_per_session, total_sessions, plan_type')
         .eq('id', offerId)
         .single();
 
@@ -344,76 +335,111 @@ async function processStreamPayments(offerId, earlyEnd = false) {
         return;
     }
 
-    // إذا كان مجانياً، لا حاجة للمعالجة
-    const isOfferFree = offer ? (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1 || offer.price === 0 || parseFloat(offer.price) === 0) : false;
+    const isOfferFree = (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1 || offer.price === 0 || parseFloat(offer.price) === 0);
     if (isOfferFree) {
         console.log('الدرس مجاني، لا حاجة لمعالجة المدفوعات');
         return;
     }
 
-    const isMultiSession = offer && (offer.total_sessions > 1 || offer.plan_type);
+    const isMultiSession = offer.total_sessions > 1 || offer.plan_type;
+    const pricePerSession = isMultiSession ? parseFloat(offer.price_per_session || offer.price || 0) : parseFloat(offer.price || 0);
+    
+    let isCompleted = false;
+    let completionPctRounded = 0;
+    let actualSeconds = 0;
 
-    // إذا كان العرض يحتوي على خطة اشتراك متعددة الحصص، نحرر دفعة الحصة الحالية
+    if (!earlyEnd) {
+        const completion = await verifyStreamCompletion(offerId);
+        isCompleted = completion.complete;
+        completionPctRounded = Math.round(completion.completion_percentage);
+        actualSeconds = completion.actual_seconds;
+    }
+
     if (isMultiSession) {
-        try {
-            await releasePlanSessionEscrow(offerId);
-        } catch (e) {
-            console.error('خطأ في تحرير مستحقات حصة الخطة:', e.message);
+        if (isCompleted && !earlyEnd) {
+            try {
+                await releasePlanSessionEscrow(offerId);
+            } catch (e) {
+                console.error('خطأ في تحرير مستحقات حصة الخطة:', e.message);
+            }
+        } else {
+            try {
+                await refundPlanSessionEscrow(offerId);
+            } catch (e) {
+                console.error('خطأ في استرداد مبلغ الحصة للطلاب:', e.message);
+            }
         }
 
-        // تحديث حالة العرض للتحقق مما إذا اكتملت جميع الحصص
         const { data: updatedOffer } = await supabase
             .from('offers')
             .select('completed_sessions_count, total_sessions')
             .eq('id', offerId)
             .single();
-        
+            
         const isAllCompleted = updatedOffer && (updatedOffer.completed_sessions_count || 0) >= (updatedOffer.total_sessions || 1);
         
-        // إذا لم تكتمل جميع الحصص بعد، نخرج دون تحديث الجلسات لـ paid (ليبقى pending_stream)
-        if (!isAllCompleted && !earlyEnd) {
-            return;
+        if (isAllCompleted) {
+            const { data: sessions } = await supabase
+                .from('sessions')
+                .select('id, payment_amount')
+                .eq('offer_id', offerId)
+                .eq('payment_status', 'pending_stream');
+
+            for (const session of (sessions || [])) {
+                await supabase
+                    .from('sessions')
+                    .update({
+                        payment_status: 'paid',
+                        teacher_earned: session.payment_amount,
+                        completed_at: new Date().toISOString(),
+                        partial_payment_note: `اكتملت جميع حصص الخطة`
+                    })
+                    .eq('id', session.id);
+            }
         }
+        
+        await supabase
+            .from('notifications')
+            .insert({
+                user_id: offer.teacher_id,
+                user_type: 'teacher',
+                title: '📊 تقرير حصة',
+                message: `تم إنهاء حصة من الخطة "${offer.subject_name}". ${(isCompleted && !earlyEnd) ? 'تمت الحصة بنجاح.' : 'لم يتم إكمال مدة البث المطلوبة.'}`,
+                is_read: false,
+                created_at: new Date().toISOString()
+            });
+            
+        return;
     }
 
-    // جلب جميع الجلسات المعلقة لهذا الدرس
+    if (earlyEnd) {
+        return await processEarlyEndRefund(offerId);
+    }
+
     const { data: sessions, error: sessionsError } = await supabase
         .from('sessions')
         .select('id, student_id, payment_amount, payment_status')
         .eq('offer_id', offerId)
         .eq('payment_status', 'pending_stream');
 
-    if (sessionsError) {
-        logger.error('خطأ في جلب الجلسات:', sessionsError);
-        return;
-    }
-
-    console.log(`📊 جاري معالجة ${sessions?.length || 0} جلسة للبث ${offerId}`);
+    if (sessionsError) return;
 
     for (const session of (sessions || [])) {
-        // إذا كان البث مكتملاً (إتمام 50 دقيقة على الأقل)، يعتبر مكتملاً ولا يوجد استرداد
-        const isCompleted = completion.complete;
-        const completionPctRounded = Math.round(completion.completion_percentage);
-
-        if (isCompleted || isMultiSession) { // إذا كانت خطة متعددة الحصص واكتملت جميعها
-            // البث مكتمل - لا استرداد للطالب، الأستاذ يحصل على سعر الحصة
-            const teacherAmount = isOfferFree ? 0 : (isMultiSession ? 0 : parseFloat(offer.price_per_session || offer.price || 0));
-
-            // تحديث حالة الجلسة ونسبة الإكتمال
+        if (isCompleted) {
+            const teacherAmount = pricePerSession;
             await supabase
                 .from('sessions')
                 .update({
                     payment_status: 'paid',
-                    teacher_earned: isMultiSession ? (session.payment_amount || 0) : teacherAmount,
+                    teacher_earned: teacherAmount,
                     completed_at: new Date().toISOString(),
                     completion_percentage: completionPctRounded,
-                    actual_duration: completion.actual_seconds,
+                    actual_duration: actualSeconds,
                     partial_payment_note: `بث مكتمل - نسبة الإكتمال: ${completionPctRounded}%`
                 })
                 .eq('id', session.id);
 
-            // إضافة للأستاذ (فقط للحصص الفردية، لأن الحصص المتعددة يتم الدفع لها عبر releasePlanSessionEscrow)
-            if (teacherAmount > 0 && !isMultiSession) {
+            if (teacherAmount > 0) {
                 const { data: teacher } = await supabase
                     .from('teachers')
                     .select('pending_withdraw, total_earned')
@@ -427,100 +453,71 @@ async function processStreamPayments(offerId, earlyEnd = false) {
                         total_earned: (teacher?.total_earned || 0) + teacherAmount
                     })
                     .eq('id', offer.teacher_id);
-                
-                console.log(`✅ تم تحويل ${teacherAmount} دج للأستاذ (بث مكتمل بنسبة ${completionPctRounded}%)`);
             }
         } else {
-            // البث غير مكتمل (أقل من 80%) - استرداد كامل للطالب في الحصص المدفوعة، لا شيء للأستاذ
-            const teacherAmount = 0;
-            const refundAmount = Math.max(0, session.payment_amount - 100); // استرداد مبلغ الحصه فقط بدون رسوم 100
-
-            // تحديث حالة الجلسة ونسبة الإكتمال
+            const refundAmount = Math.max(0, session.payment_amount - 100); 
             await supabase
                 .from('sessions')
                 .update({
                     payment_status: 'refunded',
-                    teacher_earned: teacherAmount,
+                    teacher_earned: 0,
                     completed_at: new Date().toISOString(),
                     completion_percentage: completionPctRounded,
-                    actual_duration: completion.actual_seconds,
+                    actual_duration: actualSeconds,
                     partial_payment_note: `استرداد - البث غير مكتمل (نسبة الإكتمال: ${completionPctRounded}%)`
                 })
                 .eq('id', session.id);
 
-            // إزالة المبلغ المعلق من الأستاذ إذا كان قد أضيف له
-            const originalTeacherEarned = isOfferFree ? 0 : (offer.price || 0);
-            if (originalTeacherEarned > 0) {
-                const { data: teacher } = await supabase
-                    .from('teachers')
-                    .select('pending_withdraw')
-                    .eq('id', offer.teacher_id)
-                    .single();
+            const { data: student } = await supabase
+                .from('students')
+                .select('wallet_balance')
+                .eq('id', session.student_id)
+                .single();
+                
+            await supabase
+                .from('students')
+                .update({
+                    wallet_balance: (student?.wallet_balance || 0) + refundAmount
+                })
+                .eq('id', session.student_id);
 
-                await supabase
-                    .from('teachers')
-                    .update({
-                        pending_withdraw: Math.max(0, (teacher?.pending_withdraw || 0) - originalTeacherEarned)
-                    })
-                    .eq('id', offer.teacher_id);
-            }
-
-            if (refundAmount > 0) {
-                // استرداد المبلغ للطالب
-                const { data: student } = await supabase
-                    .from('students')
-                    .select('wallet_balance')
-                    .eq('id', session.student_id)
-                    .single();
-
-                await supabase
-                    .from('students')
-                    .update({
-                        wallet_balance: (student?.wallet_balance || 0) + refundAmount
-                    })
-                    .eq('id', session.student_id);
-
-                // تسجيل المعاملة
-                await supabase
-                    .from('wallet_transactions')
-                    .insert({
-                        student_id: session.student_id,
-                        amount: refundAmount,
-                        type: 'refund',
-                        status: 'completed',
-                        description: `استرداد كامل ${refundAmount} دج - البث لم يكتمل (${Math.round(completion.completion_percentage)}% فقط)`,
-                        created_at: new Date().toISOString()
-                    });
-
-                console.log(`💰 تم استرداد كامل ${refundAmount} دج للطالب`);
-
-                // إشعار الطالب بالاسترداد
-                await supabase
-                    .from('notifications')
-                    .insert({
-                        user_id: session.student_id,
-                        user_type: 'student',
-                        title: '💰 استرداد كامل',
-                        message: `تم استرداد كامل المبلغ (${refundAmount} دج) لحصة "${offer.subject_name}" بسبب عدم إكمال مدة البث المطلوبة (${Math.round(50 / 60 * 100)}% من زمن الحصة).`,
-                        is_read: false,
-                        created_at: new Date().toISOString()
-                    });
-            }
+            await supabase
+                .from('wallet_transactions')
+                .insert({
+                    student_id: session.student_id,
+                    amount: refundAmount,
+                    type: 'refund',
+                    status: 'completed',
+                    description: `استرداد مبلغ حصة غير مكتملة بنسبة ${completionPctRounded}%`,
+                    created_at: new Date().toISOString()
+                });
+                
+            await supabase
+                .from('notifications')
+                .insert({
+                    user_id: session.student_id,
+                    user_type: 'student',
+                    title: '💰 استرداد كامل',
+                    message: `تم استرداد مبلغ ${refundAmount} دج لحصة "${offer.subject_name}" لعدم إكمال مدة البث.`,
+                    is_read: false,
+                    created_at: new Date().toISOString()
+                });
         }
-
-        // إشعار الأستاذ
-        await supabase
-            .from('notifications')
-            .insert({
-                user_id: offer.teacher_id,
-                user_type: 'teacher',
-                title: '📊 تقرير البث',
-                message: `تم إنهاء البث "${offer.subject_name}". ${completion.complete ? 'تمت الحصة بنجاح.' : `لم يتم إكمال مدة البث المطلوبة (${Math.round(50 / 60 * 100)}% من زمن الحصة).`}`,
-                is_read: false,
-                created_at: new Date().toISOString()
-            });
     }
+    
+    await supabase
+        .from('notifications')
+        .insert({
+            user_id: offer.teacher_id,
+            user_type: 'teacher',
+            title: '📊 تقرير البث',
+            message: `تم إنهاء البث "${offer.subject_name}". ${isCompleted ? 'تمت الحصة بنجاح.' : 'لم يتم إكمال مدة البث المطلوبة.'}`,
+            is_read: false,
+            created_at: new Date().toISOString()
+        });
 }
+
+
 
 /**
  * تحرير مستحقات حصة محددة ضمن خطة اشتراك
@@ -704,6 +701,132 @@ async function releasePlanSessionEscrow(offerId, sessionNumber = null) {
         return { success: false, error: err.message };
     }
 }
+
+async function refundPlanSessionEscrow(offerId, sessionNumber = null) {
+    try {
+        const { data: offer, error: offerError } = await supabase
+            .from('offers')
+            .select('*')
+            .eq('id', offerId)
+            .single();
+
+        if (offerError || !offer) return;
+
+        const totalSessions = offer.total_sessions || 1;
+        const pricePerSession = parseFloat(offer.price_per_session || offer.price || 0);
+        const isFree = (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && pricePerSession === 0;
+
+        if (isFree || pricePerSession <= 0) return;
+
+        const { data: streamSessions } = await supabase
+            .from('stream_sessions')
+            .select('*')
+            .eq('offer_id', offerId)
+            .order('session_number', { ascending: true });
+
+        let targetSession = null;
+        if (sessionNumber) {
+            targetSession = (streamSessions || []).find(s => s.session_number === sessionNumber);
+        } else {
+            targetSession = (streamSessions || []).find(s => s.status !== 'completed' && s.status !== 'refunded');
+            if (!targetSession && streamSessions && streamSessions.length > 0) {
+                targetSession = streamSessions[streamSessions.length - 1];
+            }
+        }
+        
+        const currentSessionNum = targetSession ? targetSession.session_number : ((offer.completed_sessions_count || 0) + 1);
+
+        const { data: students } = await supabase
+            .from('sessions')
+            .select('student_id, id')
+            .eq('offer_id', offerId)
+            .in('payment_status', ['pending_stream', 'paid']);
+
+        for (const session of (students || [])) {
+            const { data: student } = await supabase
+                .from('students')
+                .select('wallet_balance')
+                .eq('id', session.student_id)
+                .single();
+            
+            await supabase
+                .from('students')
+                .update({
+                    wallet_balance: (student?.wallet_balance || 0) + pricePerSession
+                })
+                .eq('id', session.student_id);
+
+            await supabase
+                .from('wallet_transactions')
+                .insert({
+                    student_id: session.student_id,
+                    amount: pricePerSession,
+                    type: 'refund',
+                    status: 'completed',
+                    description: `استرداد مبلغ الحصة ${currentSessionNum} من خطة "${offer.subject_name || 'غير معروف'}" لعدم اكتمالها`,
+                    created_at: new Date().toISOString()
+                });
+
+            await supabase
+                .from('notifications')
+                .insert({
+                    user_id: session.student_id,
+                    user_type: 'student',
+                    title: '💰 استرداد مبلغ الحصة',
+                    message: `تم استرداد ${pricePerSession} دج للحصة ${currentSessionNum} لأن البث لم يكتمل.`,
+                    is_read: false,
+                    created_at: new Date().toISOString()
+                });
+        }
+        
+        const amountToRefundTotal = pricePerSession * (students?.length || 0);
+        const { data: teacher } = await supabase
+            .from('teachers')
+            .select('pending_withdraw')
+            .eq('id', offer.teacher_id)
+            .single();
+
+        if (teacher && amountToRefundTotal > 0) {
+            const newPending = Math.max(0, (parseFloat(teacher.pending_withdraw) || 0) - amountToRefundTotal);
+            await supabase
+                .from('teachers')
+                .update({ pending_withdraw: newPending })
+                .eq('id', offer.teacher_id);
+        }
+
+        if (targetSession) {
+            await supabase
+                .from('stream_sessions')
+                .update({
+                    status: 'refunded',
+                    completed_at: new Date().toISOString()
+                })
+                .eq('id', targetSession.id);
+        }
+
+        const newCompletedCount = Math.min(totalSessions, (offer.completed_sessions_count || 0) + 1);
+        let updatedSchedule = offer.sessions_schedule || [];
+        if (Array.isArray(updatedSchedule)) {
+            updatedSchedule = updatedSchedule.map(s => {
+                if (s.session_number === currentSessionNum) {
+                    return { ...s, status: 'refunded', completed_at: new Date().toISOString() };
+                }
+                return s;
+            });
+        }
+        await supabase
+            .from('offers')
+            .update({ 
+                completed_sessions_count: newCompletedCount,
+                sessions_schedule: updatedSchedule
+            })
+            .eq('id', offerId);
+
+    } catch (e) {
+        console.error('خطأ في refundPlanSessionEscrow:', e);
+    }
+}
+
 
 /**
  * معالجة الاسترداد الكامل عند الإنهاء المبكر

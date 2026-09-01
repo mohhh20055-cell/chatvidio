@@ -5542,12 +5542,21 @@
         
         const offerDate = offer.offer_date ? new Date(offer.offer_date) : null;
         const durationMs = ((offer.duration || 60) * 60 * 1000);
-        const isExpired = offerDate ? ((offerDate.getTime() + durationMs) < now.getTime() && rawStatus !== 'live' && rawStatus !== 'teacher_ready' && rawStatus !== 'paused') : false;
+        
+        const totalSessions = offer.total_sessions || 1;
+        const completedCount = offer.completed_sessions_count || 0;
+        const isMultiSessionRemaining = totalSessions > 1 && completedCount < totalSessions;
 
-        const isExplicitlyTerminated = ['completed', 'cancelled', 'ended'].includes(rawStatus) || !!offer.completed_at || !!offer.force_ended_at || offer.terminated === true || offer.completed === true;
+        const isExpired = offerDate ? ((offerDate.getTime() + durationMs) < now.getTime() && 
+                          rawStatus !== 'live' && 
+                          rawStatus !== 'teacher_ready' && 
+                          rawStatus !== 'paused' &&
+                          !isMultiSessionRemaining) : false;
+
+        const isExplicitlyTerminated = ['completed', 'cancelled', 'ended'].includes(rawStatus) || (!!offer.completed_at && !isMultiSessionRemaining) || !!offer.force_ended_at || offer.terminated === true || offer.completed === true;
         const isTerminated = isExplicitlyTerminated || isExpired;
 
-        if (rawStatus === 'live' || !!offer.stream_started_at || (!!offer.stream_url && !isTerminated)) {
+        if (offer.stream_active === true || rawStatus === 'live' || (!!offer.stream_url && !isTerminated)) {
             return {
                 text: '🔴 بث مباشر',
                 code: 'live',
