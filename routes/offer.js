@@ -1107,10 +1107,25 @@ router.delete('/offer/delete/:offer_id', authenticate, authorize(['teacher']), [
             return res.status(403).json({ success: false, error: 'غير مصرح لك بحذف هذا الدرس' });
         }
 
-        const isMultiSession = offer.total_sessions > 1 || offer.plan_type;
-        const completedCount = offer.completed_sessions_count || 0;
-        if (isMultiSession && completedCount < offer.total_sessions) {
-            return res.status(400).json({ success: false, error: 'لا يمكنك حذف البث حتى تكتمل جميع الحصص المتبقية' });
+        // ✅ التحقق من وجود حجز للعرض قبل الحذف
+        const { count: sessionCount } = await supabase
+            .from('sessions')
+            .select('id', { count: 'exact', head: true })
+            .eq('offer_id', offer_id);
+
+        const { count: subCount } = await supabase
+            .from('stream_subscriptions')
+            .select('id', { count: 'exact', head: true })
+            .eq('offer_id', offer_id);
+
+        const currentStudents = parseInt(offer.current_students || 0);
+        const hasBookings = currentStudents > 0 || (sessionCount && sessionCount > 0) || (subCount && subCount > 0);
+
+        if (hasBookings) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'لا يمكنك حذف هذا العرض لوجود حجز مسبق عليه من قبل الطلاب' 
+            });
         }
 
         if (offer.status === 'live' || offer.status === 'teacher_ready' || offer.status === 'upcoming') {
