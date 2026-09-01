@@ -243,6 +243,9 @@ async function verifyStreamCompletion(offerId) {
     // 1. مدة البث المخطط لها بالثواني بناءً على بيانات الأستاذ
     const durationMins = offer.duration || 60;
     const expectedDuration = Number(offer.total_seconds || (durationMins * 60)) || 3600;
+    
+    // 50 دقيقة كحد أدنى لإكمال الحصة (سواء كانت ساعة أو أقل، نحتاج 50/60 من المدة المطلوبة)
+    const requiredDuration = expectedDuration * (50/60);
 
     // 2. حساب الوقت المنقضي بناءً على موقت الأستاذ المقاس بالسيرفر
     let actualDurationFromTimer = 0;
@@ -274,13 +277,14 @@ async function verifyStreamCompletion(offerId) {
     // تأكيد ألا يتجاوز الوقت الفعلي مدة البث الكلية
     actualDuration = Math.min(expectedDuration, actualDuration);
 
+    // التحقق من أن الاستاذ أتم 50 دقيقة على الأقل
+    const isComplete = actualDuration >= requiredDuration;
+
     let completionPercentage = (actualDuration / expectedDuration) * 100;
     if (isNaN(completionPercentage) || completionPercentage < 0) {
         completionPercentage = 0;
     }
     completionPercentage = Math.min(100, Math.round(completionPercentage * 100) / 100);
-
-    const isComplete = completionPercentage >= 90;
 
     // ✅ حفظ نسبة الإكتمال والمدة الفعلية للبث في قاعدة البيانات (جدول offers وجدول stream_verification)
     const completionPctRounded = Math.round(completionPercentage);
@@ -361,8 +365,8 @@ async function processStreamPayments(offerId, earlyEnd = false) {
     console.log(`📊 جاري معالجة ${sessions?.length || 0} جلسة للبث ${offerId}`);
 
     for (const session of (sessions || [])) {
-        // إذا كان البث مكتمل بنسبة 90% فما فوق، يعتبر مكتملاً ولا يوجد استرداد
-        const isCompleted = completion.complete || completion.completion_percentage >= 90;
+        // إذا كان البث مكتملاً (إتمام 50 دقيقة على الأقل)، يعتبر مكتملاً ولا يوجد استرداد
+        const isCompleted = completion.complete;
         const completionPctRounded = Math.round(completion.completion_percentage);
 
         if (isCompleted) {
@@ -471,7 +475,7 @@ async function processStreamPayments(offerId, earlyEnd = false) {
                         user_id: session.student_id,
                         user_type: 'student',
                         title: '💰 استرداد كامل',
-                        message: `تم استرداد كامل المبلغ (${refundAmount} دج) لحصة "${offer.subject_name}" بسبب عدم اكتمال البث (${Math.round(completion.completion_percentage)}% فقط).`,
+                        message: `تم استرداد كامل المبلغ (${refundAmount} دج) لحصة "${offer.subject_name}" بسبب عدم إكمال مدة البث المطلوبة (50 دقيقة).`,
                         is_read: false,
                         created_at: new Date().toISOString()
                     });
@@ -485,7 +489,7 @@ async function processStreamPayments(offerId, earlyEnd = false) {
                 user_id: offer.teacher_id,
                 user_type: 'teacher',
                 title: '📊 تقرير البث',
-                message: `تم إنهاء البث "${offer.subject_name}". نسبة الاكتمال: ${Math.round(completion.completion_percentage)}%`,
+                message: `تم إنهاء البث "${offer.subject_name}". ${completion.complete ? 'تمت الحصة بنجاح.' : 'لم يتم إكمال مدة البث المطلوبة (50 دقيقة).'}`,
                 is_read: false,
                 created_at: new Date().toISOString()
             });
