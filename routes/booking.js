@@ -213,7 +213,7 @@ router.post('/create', authenticate, authorize(['student']), [
         await supabase
             .from('sessions')
             .update({
-                teacher_earned: teacherAmount
+                teacher_earned: totalTeacherPrice
             })
             .eq('id', session.id);
 
