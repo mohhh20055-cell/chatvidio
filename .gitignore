@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+app/build/
+.gradle/
+
+# Environment files (contains secrets)
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Gradle wrapper jar is kept (needed for build)
+# Keystore files
+*.keystore
+debug.keystore
+
+# APK/AAB artifacts
+*.apk
+*.aab
+public/downloads/*.apk

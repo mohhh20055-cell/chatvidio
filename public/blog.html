@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
+    <title>مدونة ZoomDz التعليمية | نصائح واستراتيجيات</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --dark: #0f172a;
+            --gray-text: #64748b;
+            --bg-light: #f8fafc;
+            --card-border: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: var(--bg-light);
+            color: var(--dark);
+            line-height: 1.7;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .blog-header {
+            background: #ffffff;
+            padding: 36px 20px;
+            text-align: center;
+            border-bottom: 1px solid var(--card-border);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+        }
+
+        .blog-header h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--dark);
+            margin-bottom: 8px;
+        }
+
+        .blog-header p {
+            color: var(--gray-text);
+            font-size: 1.05rem;
+        }
+
+        .nav-links {
+            margin-top: 18px;
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .nav-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 0.95rem;
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: #eff6ff;
+            transition: all 0.2s ease;
+        }
+
+        .nav-link:hover {
+            background: #dbeafe;
+            color: var(--primary-dark);
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 0 20px;
+            width: 100%;
+            flex: 1;
+        }
+
+        .blog-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 24px;
+        }
+
+        .blog-card {
+            background: #ffffff;
+            border-radius: 18px;
+            border: 1px solid var(--card-border);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .blog-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px -10px rgba(0,0,0,0.08);
+        }
+
+        .blog-card-img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            background: #e2e8f0;
+        }
+
+        .blog-card-body {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        .blog-card-title {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--dark);
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+
+        .blog-card-excerpt {
+            color: var(--gray-text);
+            font-size: 0.95rem;
+            margin-bottom: 20px;
+            flex: 1;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .blog-card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            pt: 12px;
+            border-top: 1px solid #f1f5f9;
+        }
+
+        .blog-card-btn {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 0.95rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .single-article {
+            background: #ffffff;
+            border-radius: 24px;
+            border: 1px solid var(--card-border);
+            padding: 36px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+        }
+
+        .article-title {
+            font-size: 2.2rem;
+            font-weight: 900;
+            color: var(--dark);
+            margin-bottom: 16px;
+            line-height: 1.3;
+        }
+
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--gray-text);
+            font-size: 0.9rem;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #f1f5f9;
+            flex-wrap: wrap;
+        }
+
+        .article-cover {
+            width: 100%;
+            max-height: 420px;
+            object-fit: cover;
+            border-radius: 16px;
+            margin-bottom: 28px;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            color: #334155;
+            line-height: 1.9;
+        }
+
+        .article-content p {
+            margin-bottom: 18px;
+        }
+
+        .article-content img {
+            max-width: 100%;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+
+        .loading-spinner {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--gray-text);
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .error-box {
+            text-align: center;
+            padding: 50px 20px;
+            background: white;
+            border-radius: 20px;
+            border: 1px solid var(--card-border);
+        }
+
+        .error-box h3 {
+            font-size: 1.5rem;
+            color: #ef4444;
+            margin-bottom: 12px;
+        }
+    </style>
+    <script src="/js/mobile-navbar-swipe.js"></script>
+</head>
+<body>
+    <header class="blog-header">
+        <h1 id="pageHeading">مدونة ZoomDz التعليمية</h1>
+        <p id="pageSubheading">نصائح واستراتيجيات للطلاب والأساتذة</p>
+        <div class="nav-links">
+            <a href="/" class="nav-link"><i class="fas fa-home"></i> العودة للمنصة</a>
+            <a href="/blog" id="backToBlogBtn" class="nav-link" style="display:none;"><i class="fas fa-arrow-right"></i> جميع المقالات</a>
+        </div>
+    </header>
+
+    <main class="container">
+        <div id="blogList" class="blog-grid" style="display:none;"></div>
+        <div id="singleBlog" style="display:none;"></div>
+        <div id="statusMessage" class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> جاري تحميل المحتوى...</div>
+    </main>
+
+    <script>
+        async function initBlogPage() {
+            const path = window.location.pathname;
+            const statusEl = document.getElementById('statusMessage');
+            const listEl = document.getElementById('blogList');
+            const singleEl = document.getElementById('singleBlog');
+            const backBtn = document.getElementById('backToBlogBtn');
+
+            // Normalize path to check if we are viewing a single blog article
+            // Routes: /blog or /blog/ or /blog/:identifier
+            const segments = path.split('/').filter(Boolean);
+            
+            if (segments.length > 1 && segments[0] === 'blog') {
+                // Viewing a specific article (/blog/:identifier)
+                const identifier = segments.slice(1).join('/');
+                backBtn.style.display = 'inline-flex';
+                await loadSingleArticle(identifier);
+            } else {
+                // Viewing full blog listing (/blog)
+                backBtn.style.display = 'none';
+                await loadBlogList();
+            }
+        }
+
+        async function loadBlogList() {
+            const statusEl = document.getElementById('statusMessage');
+            const listEl = document.getElementById('blogList');
+            const singleEl = document.getElementById('singleBlog');
+
+            statusEl.style.display = 'block';
+            listEl.style.display = 'none';
+            singleEl.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/blogs');
+                const data = await res.json();
+                
+                if (!data.success || !data.blogs || data.blogs.length === 0) {
+                    statusEl.className = 'error-box';
+                    statusEl.innerHTML = `
+                        <i class="fas fa-newspaper" style="font-size: 3rem; color: #94a3b8; margin-bottom: 16px;"></i>
+                        <h3>لا توجد مقالات حالياً</h3>
+                        <p style="color:#64748b;">سوف يتم إضافة مقالات جديدة قريباً.</p>
+                    `;
+                    return;
+                }
+
+                statusEl.style.display = 'none';
+                listEl.style.display = 'grid';
+
+                listEl.innerHTML = data.blogs.map(b => {
+                    const cover = b.cover_image || 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&q=80';
+                    const dateStr = b.created_at ? new Date(b.created_at).toLocaleDateString('ar-DZ') : '';
+                    const link = `/blog/${encodeURIComponent(b.slug || b.id)}`;
+
+                    return `
+                        <div class="blog-card">
+                            <img src="${cover}" alt="${escapeHtml(b.title)}" class="blog-card-img" referrerpolicy="no-referrer" loading="lazy" onerror="if(!this.dataset.proxy && this.src.includes('imgur.com')){this.dataset.proxy=1;this.src='/api/proxy-image?url='+encodeURIComponent('${cover}');}else{this.src='https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&q=80';}">
+                            <div class="blog-card-body">
+                                <h3 class="blog-card-title">${escapeHtml(b.title)}</h3>
+                                <p class="blog-card-excerpt">${escapeHtml(b.excerpt || '')}</p>
+                                <div class="blog-card-footer">
+                                    <span style="font-size:0.85rem; color:#94a3b8;"><i class="far fa-calendar-alt"></i> ${dateStr}</span>
+                                    <a href="${link}" class="blog-card-btn">اقرأ المزيد <i class="fas fa-arrow-left"></i></a>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                console.error('Error loading blogs:', err);
+                statusEl.className = 'error-box';
+                statusEl.innerHTML = `<h3>حدث خطأ أثناء تحميل المقالات</h3><p style="color:#64748b;">يرجى المحاولة لاحقاً</p>`;
+            }
+        }
+
+        async function loadSingleArticle(identifier) {
+            const statusEl = document.getElementById('statusMessage');
+            const listEl = document.getElementById('blogList');
+            const singleEl = document.getElementById('singleBlog');
+
+            statusEl.style.display = 'block';
+            listEl.style.display = 'none';
+            singleEl.style.display = 'none';
+
+            try {
+                const res = await fetch(`/api/blogs/${encodeURIComponent(identifier)}`);
+                const data = await res.json();
+
+                if (!data.success || !data.blog) {
+                    statusEl.className = 'error-box';
+                    statusEl.innerHTML = `
+                        <i class="fas fa-exclamation-circle" style="font-size: 3rem; color: #ef4444; margin-bottom: 16px;"></i>
+                        <h3>المقال غير موجود</h3>
+                        <p style="color:#64748b; margin-bottom:20px;">المقال الذي تبحث عنه غير موجود أو تم إزالته.</p>
+                        <a href="/blog" class="nav-link"><i class="fas fa-arrow-right"></i> العودة للمدونة</a>
+                    `;
+                    return;
+                }
+
+                const blog = data.blog;
+                document.title = `${blog.title} | مدونة ZoomDz`;
+                document.getElementById('pageHeading').textContent = blog.title;
+                document.getElementById('pageSubheading').textContent = blog.excerpt || 'مقالة تعليمية من منصة ZoomDz';
+
+                statusEl.style.display = 'none';
+                singleEl.style.display = 'block';
+
+                const cover = blog.cover_image ? `<img src="${blog.cover_image}" alt="${escapeHtml(blog.title)}" class="article-cover" referrerpolicy="no-referrer" onerror="if(!this.dataset.proxy && this.src.includes('imgur.com')){this.dataset.proxy=1;this.src='/api/proxy-image?url='+encodeURIComponent('${blog.cover_image}');}">` : '';
+                const dateStr = blog.created_at ? new Date(blog.created_at).toLocaleDateString('ar-DZ', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+                const author = blog.author || 'إدارة ZoomDz';
+
+                singleEl.className = 'single-article';
+                singleEl.innerHTML = `
+                    <div class="article-meta">
+                        <span><i class="fas fa-user-pen" style="color:var(--primary);"></i> ${escapeHtml(author)}</span>
+                        ${dateStr ? `<span><i class="far fa-calendar-alt" style="color:var(--primary);"></i> ${dateStr}</span>` : ''}
+                    </div>
+                    ${cover}
+                    <div class="article-content">${blog.content}</div>
+                `;
+
+                // Also ensure any images in article content have referrerpolicy
+                const contentImgs = singleEl.querySelectorAll('.article-content img');
+                contentImgs.forEach(img => {
+                    img.setAttribute('referrerpolicy', 'no-referrer');
+                    img.onerror = function() {
+                        if (!this.dataset.proxy && this.src.includes('imgur.com')) {
+                            this.dataset.proxy = '1';
+                            this.src = '/api/proxy-image?url=' + encodeURIComponent(this.src);
+                        }
+                    };
+                });
+
+            } catch (err) {
+                console.error('Error loading article:', err);
+                statusEl.className = 'error-box';
+                statusEl.innerHTML = `
+                    <h3>حدث خطأ في جلب المقال</h3>
+                    <p style="color:#64748b; margin-bottom: 20px;">يرجى المحاولة مرة أخرى لاحقاً.</p>
+                    <a href="/blog" class="nav-link"><i class="fas fa-arrow-right"></i> العودة للمدونة</a>
+                `;
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        window.addEventListener('DOMContentLoaded', initBlogPage);
+    </script>
+<script>
+// الشبكة - حالة الاتصال بالانترنت
+window.addEventListener("online", function() {
+    if (typeof showToast === "function") {
+        showToast("✅ تم الاتصال بالإنترنت", "success");
+        setTimeout(() => window.location.reload(), 1500);
+    } else {
+        const msg = document.createElement("div");
+        msg.innerHTML = "✅ تم الاتصال بالإنترنت";
+        msg.style.cssText = "position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#10b981; color:white; padding:12px 24px; border-radius:8px; font-weight:bold; z-index:999999; box-shadow:0 4px 12px rgba(0,0,0,0.2); font-family:Cairo,sans-serif;";
+        document.body.appendChild(msg);
+        setTimeout(() => window.location.reload(), 1500);
+    }
+});
+
+window.addEventListener("offline", function() {
+    if (typeof showToast === "function") {
+        showToast("❌ فقد الاتصال بالإنترنت", "error");
+    } else {
+        const msg = document.createElement("div");
+        msg.id = "offline-toast-msg";
+        msg.innerHTML = "❌ فقد الاتصال بالإنترنت";
+        msg.style.cssText = "position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#ef4444; color:white; padding:12px 24px; border-radius:8px; font-weight:bold; z-index:999999; box-shadow:0 4px 12px rgba(0,0,0,0.2); font-family:Cairo,sans-serif;";
+        document.body.appendChild(msg);
+        setTimeout(() => {
+            if (document.getElementById("offline-toast-msg")) {
+                document.getElementById("offline-toast-msg").remove();
+            }
+        }, 3000);
+    }
+});
+</script>
+</body>
+</html>
