@@ -940,11 +940,7 @@ async function expireOverdueOffer(offerId) {
     const tables = [
         'active_stream', 
         'waiting_room', 
-        'student_room_passwords', 
-        'stream_verification', 
-        'stream_chat_messages', 
-        'stream_mutes',
-        'sessions'
+        'student_room_passwords'
     ];
     for (const table of tables) {
         try {
@@ -954,15 +950,18 @@ async function expireOverdueOffer(offerId) {
         }
     }
 
-    // ✅ حذف الدرس نفسه من جدول offers
+    // ✅ تحديث حالة الدرس إلى completed بدلاً من حذفه
     try {
         await supabase
             .from('offers')
-            .delete()
+            .update({
+                status: 'completed',
+                completed_at: new Date().toISOString()
+            })
             .eq('id', offerId);
-        console.log(`✅ تم حذف الدرس رقم ${offerId} بنجاح من قاعدة البيانات`);
+        console.log(`✅ تم تحديث الدرس رقم ${offerId} إلى الحالة completed بنجاح`);
     } catch (e) {
-        logger.error('expireOverdueOffer: خطأ في حذف الدرس من جدول offers:', e.message);
+        logger.error('expireOverdueOffer: خطأ في تحديث الدرس في جدول offers:', e.message);
     }
 }
 
