@@ -5782,6 +5782,7 @@
                         <div class="offer-title">${escapeHtml(offer.subject_name)}</div>
                         <div class="offer-info"><i class="fas fa-calendar-alt"></i> موعد البداية: ${offerDate.toLocaleDateString('ar-DZ', {timeZone: 'Africa/Algiers'})}</div>
                         <div class="offer-info"><i class="fas fa-clock"></i> توقيت الحصة: ${offerDate.toLocaleTimeString('ar-DZ', {hour: '2-digit', minute:'2-digit', hour12: false, timeZone: 'Africa/Algiers'})} (${sessionDuration} دقيقة)</div>
+                        <div class="offer-info"><i class="fas fa-list-ol"></i> الحصة الحالية: ${ (offer.completed_sessions_count || 0) + 1 } من ${totalSessions}</div>
                         ${levelDisplay}
 
                         ${!isFree ? `
