@@ -243,8 +243,13 @@ app.use(helmet({
             ],
             mediaSrc: ["'self'", "blob:", "data:", "https://assets.mixkit.co", "https:"],
             connectSrc: [
-                "'self'", "https://*.agora.io", "wss://*.agora.io", "https://*.sd-rtn.com",
+                "'self'", "https:", "wss:", "https://*.agora.io", "wss://*.agora.io", "https://*.sd-rtn.com",
                 "wss://*.sd-rtn.com", "https://*.agoraio.cn", "wss://*.agoraio.cn",
+                "https://*.edge.sd-rtn.com", "wss://*.edge.sd-rtn.com",
+                "https://*.edge.sd-rtn.com:*", "wss://*.edge.sd-rtn.com:*",
+                "https://*.sd-rtn.com:*", "wss://*.sd-rtn.com:*",
+                "https://*.agora.io:*", "wss://*.agora.io:*",
+                "https://*.agoraio.cn:*", "wss://*.agoraio.cn:*",
                 "https://*.supabase.co", "https://sofizpay.com", "https://*.vercel.app",
                 "https://*.google.com", "https://*.gstatic.com", "https://*.google",
                 "https://*.adtrafficquality.google", "https://*.googleadservices.com",
@@ -3736,11 +3741,6 @@ function generateStudentZoomPage(offer, student) {
                 }
 
                 client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
-                try {
-                    if (typeof client.setStreamFallbackOption === 'function') {
-                        client.setStreamFallbackOption(null, 2);
-                    }
-                } catch(e){}
                 setupStudentClient(client);
 
                 const tokenToUse = (agoraToken && agoraToken !== 'null' && agoraToken !== 'undefined' && agoraToken.trim() !== '') ? agoraToken.trim() : null;
@@ -3762,6 +3762,15 @@ function generateStudentZoomPage(offer, student) {
                     } else {
                         throw joinErr;
                     }
+                }
+
+                // 🚀 تعيين خيار تقليل جودة البث عند ضعف الإنترنت فقط بعد نجاح الانضمام واستقرار اتصال الـ WebSocket!
+                try {
+                    if (client && typeof client.setStreamFallbackOption === 'function') {
+                        client.setStreamFallbackOption(null, 2);
+                    }
+                } catch(fallbackErr){
+                    console.warn('تعذر ضبط خيار تقليل الجودة لضعف الشبكة:', fallbackErr);
                 }
                 const statusOv = document.getElementById('statusOverlay');
                 if (statusOv) statusOv.style.display = 'none';
@@ -4059,15 +4068,19 @@ function generateStudentZoomPage(offer, student) {
                 if (ov) ov.style.display = 'flex';
                 
                 client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
-                try {
-                    if (typeof client.setStreamFallbackOption === 'function') {
-                        client.setStreamFallbackOption(null, 2);
-                    }
-                } catch(e){}
                 setupStudentClient(client);
                 
                 const tokenToUse = (agoraToken && agoraToken !== 'null' && agoraToken !== 'undefined' && agoraToken.trim() !== '') ? agoraToken.trim() : null;
                 await client.join(APP_ID, channelName, tokenToUse, studentUid);
+
+                // 🚀 تعيين خيار تقليل جودة البث عند ضعف الإنترنت فقط بعد نجاح الانضمام واستقرار اتصال الـ WebSocket!
+                try {
+                    if (client && typeof client.setStreamFallbackOption === 'function') {
+                        client.setStreamFallbackOption(null, 2);
+                    }
+                } catch(fallbackErr){
+                    console.warn('Fallback settings warning:', fallbackErr);
+                }
                 
                 setTimeout(() => {
                     if (ov) ov.style.display = 'none';
