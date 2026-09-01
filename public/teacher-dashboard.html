@@ -23,6 +23,7 @@
     <script src="/js/site-branding.js"></script>
     <script src="/js/mobile-navbar-swipe.js"></script>
     <script src="/js/zoomy-assistant-widget.js"></script>
+  <script src="/js/community-modal.js" defer></script>
     
     <meta charset="UTF-8">
     <meta name="referrer" content="no-referrer">
@@ -4517,7 +4518,7 @@
                             انضمام الأساتذة وتدريسهم في المنصة <strong>مجاني بالكامل</strong>، ونرحب بقبول <strong>جميع الشهادات والدبلومات المعتمدة</strong> من طرف الدولة.
                         </p>
                         <p style="margin: 0; font-size: 0.8rem; color: #15803d; line-height: 1.5; font-weight: 700;">
-                            ⚠️ <span style="text-decoration: underline;">مراجعة آمنة وسريعة:</span> يتم مراقبة ومراجعة جميع المستندات والوثائق بدقة من قبل مشرفين مختصين في المنصة، ويتم تفعيل وقبول الحساب في <strong>أقل من 24 ساعة</strong> كحد أقصى.
+                            ⚠️ <span style="text-decoration: underline;">مراجعة آمنة وسريعة:</span> يتم مراقبة ومراجعة جميع المستندات والوثائق بدقة من قبل مشر��ين مختصين في المنصة، ويتم تفعيل وقبول الحساب في <strong>أقل من 24 ساعة</strong> كحد أقصى.
                         </p>
                     </div>
                 </div>
@@ -4567,7 +4568,7 @@
                         </optgroup>
                         <optgroup label="التعليم الثانوي">
                             <option value="secondary_all">جميع مستويات الثانوي</option>
-                            <option value="1ere_as">السنة الأولى ثانوي</option>
+                            <option value="1ere_as">السنة ا��أولى ثانوي</option>
                             <option value="2eme_as">السنة الثانية ثانوي</option>
                             <option value="3eme_as">السنة الثالثة ثانوي (شهادة البكالوريا - BAC)</option>
                         </optgroup>
@@ -8624,7 +8625,7 @@ function updateUI() {
             return;
         }
         if (!userData || !userData.teaching_level) {
-            showToast('⚠️ قم بإدخال المستوى الدراسي في ملفك الشخصي أولاً', 'warning');
+            showToast('⚠️ قم بإدخال المستوى الدر��سي في ملفك الشخصي أولاً', 'warning');
             showEditProfileModal();
             return;
         }
@@ -9151,7 +9152,7 @@ function updateUI() {
             document.getElementById('editBio').value = userData.bio || '';
         }
 
-        // تعبئة روابط التواصل الاجتماعي
+        // تعبئة رواب�� التواصل الاجتماعي
         if (document.getElementById('facebookUrl')) document.getElementById('facebookUrl').value = userData.facebook_url || '';
         if (document.getElementById('instagramUrl')) document.getElementById('instagramUrl').value = userData.instagram_url || '';
         if (document.getElementById('linkedinUrl')) document.getElementById('linkedinUrl').value = userData.linkedin_url || '';
@@ -9493,7 +9494,7 @@ function updateUI() {
                 } else if (userData.status === 'rejected') {
                     c.innerHTML = '<p style="text-align:center; padding:25px; color:var(--danger);"><i class="fas fa-times-circle"></i> ❌ تم رفض طلبك. يرجى إعادة رفع الوثائق والصور للوصول إلى هذا القسم.</p>';
                 } else {
-                    c.innerHTML = '<p style="text-align:center; padding:25px; color:var(--gold-dark);"><i class="fas fa-clock"></i> حسابك قيد المراجعة. سيتم تفعيل قسم الدورات بعد قبول حسابك من قبل الإدارة.</p>';
+                    c.innerHTML = '<p style="text-align:center; padding:25px; color:var(--gold-dark);"><i class="fas fa-clock"></i> حسا��ك قيد المراجعة. سيتم تفعيل قسم الدورات بعد قبول حسابك من قبل الإدارة.</p>';
                 }
             }
             return;
@@ -10485,7 +10486,7 @@ function updateUI() {
                         <div id="teacher-content-ratings" style="display: none;">
                             <div style="background: #fefce8; border: 1px solid #fef08a; padding: 10px 14px; border-radius: 12px; margin-bottom: 16px; font-size: 0.82rem; color: #854d0e; font-weight: 700; display: flex; align-items: center; gap: 8px; text-align: right;">
                                 <i class="fas fa-eye" style="color: #ca8a04; font-size: 0.95rem;"></i>
-                                <span>تقييمات الأستاذ (للقراءة فقط) - لا يمكن للمعلمين تقييم بعضهم البعض.</span>
+                                <span>تقييمات الأستاذ (للقراءة فقط) - لا يمكن للمعلمين ��قييم بعضهم البعض.</span>
                             </div>
 
                             <!-- Rating Summary Box -->

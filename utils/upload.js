@@ -49,10 +49,10 @@ async function uploadToSupabase(file, folder, oldFileName = null) {
                 const image = sharp(fileBuffer).rotate();
                 const metadata = await image.metadata();
                 const largestSide = Math.max(metadata.width || 0, metadata.height || 0);
-                const resizeOptions = largestSide > 900
-                    ? { width: 900, height: 900, fit: 'inside', withoutEnlargement: true }
+                const resizeOptions = largestSide > 720
+                    ? { width: 720, height: 720, fit: 'inside', withoutEnlargement: true }
                     : undefined;
-                const qualities = [58, 48, 38, 30];
+                const qualities = [52, 42, 34, 26, 20];
                 let compressed = null;
 
                 for (const quality of qualities) {
@@ -61,7 +61,15 @@ async function uploadToSupabase(file, folder, oldFileName = null) {
                     compressed = await pipeline
                         .jpeg({ quality, progressive: true, mozjpeg: true })
                         .toBuffer();
-                    if (compressed.length <= 450 * 1024) break;
+                    if (compressed.length <= 300 * 1024) break;
+                }
+
+                // حد أخير للصور شديدة الدقة حتى لا تتجاوز قيود التخزين.
+                if (compressed && compressed.length > 300 * 1024) {
+                    compressed = await image.clone()
+                        .resize({ width: 540, height: 540, fit: 'inside', withoutEnlargement: true })
+                        .jpeg({ quality: 18, progressive: true, mozjpeg: true })
+                        .toBuffer();
                 }
 
                 fileBuffer = compressed;
