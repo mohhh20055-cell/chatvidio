@@ -5884,7 +5884,8 @@ window.certifyAllTeachers = certifyAllTeachers;
             let totalStudentsCount = 0;
 
             list.forEach(item => {
-                if (item.completion_percentage >= 80) completedCount++;
+                const required = (item.expected_duration_seconds || 3600) * (5/6);
+                if ((item.actual_live_seconds || 0) >= required) completedCount++;
                 else incompleteCount++;
                 totalStudentsCount += (item.students_count || 0);
             });
@@ -5910,8 +5911,10 @@ window.certifyAllTeachers = certifyAllTeachers;
             let html = '';
             list.forEach(item => {
                 const completion = item.completion_percentage || 0;
-                let badgeStyle = completion >= 80 ? 'background: #dcfce7; color: #15803d;' : 'background: #fee2e2; color: #b91c1c;';
-                let completionText = completion >= 80 ? `🟢 ${completion}% (مكتمل)` : `🔴 ${completion}% (غير مكتمل)`;
+                const required = (item.expected_duration_seconds || 3600) * (5/6);
+                const isCompleted = (item.actual_live_seconds || 0) >= required;
+                let badgeStyle = isCompleted ? 'background: #dcfce7; color: #15803d;' : 'background: #fee2e2; color: #b91c1c;';
+                let completionText = isCompleted ? `🟢 ${completion}% (مكتمل)` : `🔴 ${completion}% (غير مكتمل)`;
 
                 const expectedMin = item.expected_duration_minutes || Math.round((item.expected_duration_seconds || 3600) / 60);
                 const actualMin = item.actual_live_minutes || Math.round((item.actual_live_seconds || 0) / 60);
@@ -5982,7 +5985,8 @@ window.certifyAllTeachers = certifyAllTeachers;
             if (!modal || !content) return;
 
             const completion = item.completion_percentage || 0;
-            const isCompleted = completion >= 80;
+            const required = (item.expected_duration_seconds || 3600) * (5/6);
+            const isCompleted = (item.actual_live_seconds || 0) >= required;
 
             const startDate = item.stream_started_at ? new Date(item.stream_started_at).toLocaleString('ar-DZ') : 'غير مسجل';
             const endDate = item.stream_ended_at ? new Date(item.stream_ended_at).toLocaleString('ar-DZ') : 'غير مسجل';
@@ -6063,7 +6067,7 @@ window.certifyAllTeachers = certifyAllTeachers;
                     <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
                         <div style="font-weight: 800; color: ${isCompleted ? '#166534' : '#9f1239'}; font-size: 1rem; display: flex; align-items: center; gap: 6px;">
                             <i class="fas ${isCompleted ? 'fa-check-circle' : 'fa-exclamation-triangle'}"></i>
-                            <span>${isCompleted ? 'البث استوفى شروط الإكتمال (أكثر من 80%)' : 'البث لم يستوفِ شروط الإكتمال القاطعة'}</span>
+                            <span>${isCompleted ? 'البث استوفى شروط الإكتمال (أكثر من 50 دقيقة/ 83%)' : 'البث لم يستوفِ شروط الإكتمال القاطعة'}</span>
                         </div>
                         <span style="background: ${isCompleted ? '#15803d' : '#be123c'}; color: white; font-weight: 800; padding: 4px 12px; border-radius: 20px; font-size: 0.85rem;">
                             نسبة الإكتمال: ${completion}%
