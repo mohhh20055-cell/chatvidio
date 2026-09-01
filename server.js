@@ -3612,6 +3612,95 @@ function generateStudentZoomPage(offer, student) {
         let localAudioTrack = null;
         let isMicOn = false;
 
+        function setupStudentClient(c) {
+            function updateViewersCount() {
+                // Handled dynamically via backend polling
+            }
+
+            c.on('user-joined', updateViewersCount);
+            c.on('user-left', (user) => {
+                updateViewersCount();
+                const remoteEl = document.getElementById('remoteVideo');
+                if (remoteEl) remoteEl.innerHTML = '';
+                const existingEl = document.getElementById('remote-video-' + user.uid);
+                if (existingEl) existingEl.remove();
+            });
+
+            // 📡 مراقبة سرعة اتصال الطالب والتكيف التلقائي مع البث
+            c.on('network-quality', (stats) => {
+                const downlink = stats.downlinkNetworkQuality;
+                const netBadge = document.getElementById('studentNetBadge');
+                const netText = document.getElementById('studentNetText');
+                if (netBadge && netText) {
+                    if (downlink >= 4) {
+                        netBadge.style.display = 'inline-flex';
+                        netText.textContent = 'الإنترنت ضعيف - تم تفعيل البث الخفيف لمنع التقطيع';
+                    } else {
+                        netBadge.style.display = 'none';
+                    }
+                }
+                if (client && client.remoteUsers) {
+                    client.remoteUsers.forEach(rUser => {
+                        try {
+                            if (downlink >= 4) {
+                                // طلب البث الخفيف ذي استهلاك البيانات المنخفض لتجنب التقطيع
+                                client.setRemoteVideoStreamType(rUser.uid, 1);
+                            } else if (downlink <= 2) {
+                                // العودة للبث عالي الجودة
+                                client.setRemoteVideoStreamType(rUser.uid, 0);
+                            }
+                        } catch(e){}
+                    });
+                }
+            });
+
+            c.on('user-published', async (user, mediaType) => {
+                updateViewersCount();
+                const ov = document.getElementById('statusOverlay');
+                if (ov) ov.style.display = 'none';
+                try {
+                    await c.subscribe(user, mediaType);
+                    if (mediaType === 'video') {
+                        const container = document.getElementById('mediaContainer');
+                        const remoteEl = document.getElementById('remoteVideo');
+                        if (remoteEl) {
+                            remoteEl.innerHTML = '';
+                            // 🎥 إنشاء عنصر نقي بالكامل لمنع تصادم خصائص البث القديمة
+                            const videoPlaceholder = document.createElement('div');
+                            videoPlaceholder.id = 'remote-video-placeholder-' + user.uid;
+                            videoPlaceholder.style.cssText = 'width:100%;height:100%;position:absolute;inset:0;border-radius:12px;overflow:hidden;background:#000;z-index:1;';
+                            remoteEl.appendChild(videoPlaceholder);
+                            user.videoTrack.play(videoPlaceholder, { fit: 'contain' });
+                        } else if (container) {
+                            let vEl = document.getElementById('remote-video-' + user.uid);
+                            if (!vEl) {
+                                vEl = document.createElement('div');
+                                vEl.id = 'remote-video-' + user.uid;
+                                vEl.style.cssText = 'width:100%;height:100%;position:absolute;inset:0;border-radius:12px;overflow:hidden;background:#000;';
+                                container.appendChild(vEl);
+                            }
+                            user.videoTrack.play(vEl, { fit: 'contain' });
+                        }
+                    }
+                    if (mediaType === 'audio') {
+                        user.audioTrack.play();
+                    }
+                } catch(subErr) {
+                    console.error('Subscription error:', subErr);
+                }
+            });
+
+            c.on('user-unpublished', (user, mediaType) => {
+                updateViewersCount();
+                if (mediaType === 'video') {
+                    const remoteEl = document.getElementById('remoteVideo');
+                    if (remoteEl) remoteEl.innerHTML = '';
+                    const vEl = document.getElementById('remote-video-' + user.uid);
+                    if (vEl) vEl.remove();
+                }
+            });
+        }
+
         async function loadSingleScript(url) {
             return new Promise((resolve) => {
                 if (typeof AgoraRTC !== 'undefined') return resolve(true);
@@ -3650,94 +3739,6 @@ function generateStudentZoomPage(offer, student) {
                 }
                 if (!APP_ID) {
                     throw new Error('لم يتم تعيين معرف التطبيق AGORA_APP_ID');
-                }
-                function setupStudentClient(c) {
-                    function updateViewersCount() {
-                        // Handled dynamically via backend polling
-                    }
-
-                    c.on('user-joined', updateViewersCount);
-                    c.on('user-left', (user) => {
-                        updateViewersCount();
-                        const remoteEl = document.getElementById('remoteVideo');
-                        if (remoteEl) remoteEl.innerHTML = '';
-                        const existingEl = document.getElementById('remote-video-' + user.uid);
-                        if (existingEl) existingEl.remove();
-                    });
-
-                    // 📡 مراقبة سرعة اتصال الطالب والتكيف التلقائي مع البث
-                    c.on('network-quality', (stats) => {
-                        const downlink = stats.downlinkNetworkQuality;
-                        const netBadge = document.getElementById('studentNetBadge');
-                        const netText = document.getElementById('studentNetText');
-                        if (netBadge && netText) {
-                            if (downlink >= 4) {
-                                netBadge.style.display = 'inline-flex';
-                                netText.textContent = 'الإنترنت ضعيف - تم تفعيل البث الخفيف لمنع التقطيع';
-                            } else {
-                                netBadge.style.display = 'none';
-                            }
-                        }
-                        if (client && client.remoteUsers) {
-                            client.remoteUsers.forEach(rUser => {
-                                try {
-                                    if (downlink >= 4) {
-                                        // طلب البث الخفيف ذي استهلاك البيانات المنخفض لتجنب التقطيع
-                                        client.setRemoteVideoStreamType(rUser.uid, 1);
-                                    } else if (downlink <= 2) {
-                                        // العودة للبث عالي الجودة
-                                        client.setRemoteVideoStreamType(rUser.uid, 0);
-                                    }
-                                } catch(e){}
-                            });
-                        }
-                    });
-
-                    c.on('user-published', async (user, mediaType) => {
-                        updateViewersCount();
-                        const ov = document.getElementById('statusOverlay');
-                        if (ov) ov.style.display = 'none';
-                        try {
-                            await c.subscribe(user, mediaType);
-                            if (mediaType === 'video') {
-                                const container = document.getElementById('mediaContainer');
-                                const remoteEl = document.getElementById('remoteVideo');
-                                if (remoteEl) {
-                                    remoteEl.innerHTML = '';
-                                    // 🎥 إنشاء عنصر نقي بالكامل لمنع تصادم خصائص البث القديمة
-                                    const videoPlaceholder = document.createElement('div');
-                                    videoPlaceholder.id = 'remote-video-placeholder-' + user.uid;
-                                    videoPlaceholder.style.cssText = 'width:100%;height:100%;position:absolute;inset:0;border-radius:12px;overflow:hidden;background:#000;z-index:1;';
-                                    remoteEl.appendChild(videoPlaceholder);
-                                    user.videoTrack.play(videoPlaceholder, { fit: 'contain' });
-                                } else if (container) {
-                                    let vEl = document.getElementById('remote-video-' + user.uid);
-                                    if (!vEl) {
-                                        vEl = document.createElement('div');
-                                        vEl.id = 'remote-video-' + user.uid;
-                                        vEl.style.cssText = 'width:100%;height:100%;position:absolute;inset:0;border-radius:12px;overflow:hidden;background:#000;';
-                                        container.appendChild(vEl);
-                                    }
-                                    user.videoTrack.play(vEl, { fit: 'contain' });
-                                }
-                            }
-                            if (mediaType === 'audio') {
-                                user.audioTrack.play();
-                            }
-                        } catch(subErr) {
-                            console.error('Subscription error:', subErr);
-                        }
-                    });
-
-                    c.on('user-unpublished', (user, mediaType) => {
-                        updateViewersCount();
-                        if (mediaType === 'video') {
-                            const remoteEl = document.getElementById('remoteVideo');
-                            if (remoteEl) remoteEl.innerHTML = '';
-                            const vEl = document.getElementById('remote-video-' + user.uid);
-                            if (vEl) vEl.remove();
-                        }
-                    });
                 }
 
                 client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
