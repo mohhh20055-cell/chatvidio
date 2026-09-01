@@ -2519,7 +2519,7 @@
             </div>
 
             <div id="forgotPasswordTab" class="form-container" style="display: none;">
-                <h3><i class="fas fa-key"></i> استعادة كلمة المرور</h3>
+                <h3><i class="fas fa-key"></i> استعادة ك��مة المرور</h3>
                 <p style="color: var(--gray); margin-bottom: 18px;">أدخل بريدك الإلكتروني وسنرسل لك رابطاً لإعادة تعيين كلمة المرور</p>
                 <input type="email" id="resetEmail" placeholder="البريد الإلكتروني">
                 <select id="resetRole">
@@ -3044,7 +3044,7 @@
                                 <p style="color: var(--gray); line-height: 1.8; font-size: 0.95rem; text-align: right;">
                                     <strong>ChatVidio</strong> هي منصة تعليمية جزائرية مبتكرة، تهدف إلى ربط الأساتذة المتخصصين بالطلاب الباحثين عن التفوق. 
                                     تم تصميم وبناء هذا المشروع بالكامل بأيادي جزائرية شابة وطموحة، مع التركيز على توفير تجربة مستخدم سلسة، آمنة، وفعالة.
-                                    نسعى دائماً لتطوير المنصة وإضافة ميزات جديدة تلبي احتياجات المجتمع التعليمي في الجزائر.
+                                    نسعى دائماً لتطوير المنصة وإضافة ميزات ج��يدة تلبي احتياجات المجتمع التعليمي في الجزائر.
                                 </p>
                             </div>
                         `;
@@ -3828,14 +3828,14 @@
                     twitter_url: { icon: 'fab fa-twitter', name: 'تويتر', color: '#1da1f2' },
                     linkedin_url: { icon: 'fab fa-linkedin', name: 'لينكدإن', color: '#0a66c2' },
                     youtube_url: { icon: 'fab fa-youtube', name: 'يوتيوب', color: '#ff0000' },
-                    whatsapp_url: { icon: 'fab fa-whatsapp', name: 'واتساب', color: '#25d366' },
+                    whatsapp_number: { icon: 'fab fa-whatsapp', name: 'واتساب', color: '#25d366' },
                     website_url: { icon: 'fas fa-globe', name: 'موقع شخصي', color: '#1e40af' }
                 };
 
                 for (var key in socialIcons) {
                     if (teacher[key] && teacher[key].trim() !== '') {
                         socialLinks.push({
-                            url: teacher[key],
+                            url: key === 'whatsapp_number' ? `https://wa.me/${teacher[key].replace(/\\D/g, '')}` : teacher[key],
                             icon: socialIcons[key].icon,
                             name: socialIcons[key].name,
                             color: socialIcons[key].color

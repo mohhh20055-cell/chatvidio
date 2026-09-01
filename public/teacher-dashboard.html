@@ -4412,7 +4412,7 @@
             </div>
             <div class="social-input-group">
                 <div class="social-icon whatsapp"><i class="fab fa-whatsapp"></i></div>
-                <input type="url" id="whatsappUrl" placeholder="رابط واتساب (مثال: https://wa.me/213XXXXXXXXX)">
+                <input type="tel" id="whatsappUrl" inputmode="tel" placeholder="رقم واتساب بصيغة دولية (مثال: 213550123456)">
             </div>
         </div>
 
@@ -4773,7 +4773,7 @@
                 </div>
 
                 <p style="font-size: 0.78rem; color: #15803d; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 10px; border-radius: 8px; margin-bottom: 16px; font-weight: 700; line-height: 1.5;">
-                    🔒 <strong>سرية وضغط البيانات:</strong> يتم ضغط الصور تلقائياً لضمان تخزينها وسرعتها بكفاءة عالية وأمان تام من قِبل المشرفين لتفعيل شارة الاعتماد الذهبية.
+                    🔒 <strong>سرية وضغط البيانات:</strong> يتم ضغط الصور تلقائياً لضمان تخزينها وسرعتها بكفاءة عالية وأمان تام من قِ��ل المشرفين لتفعيل شارة الاعتماد الذهبية.
                 </p>
 
                 <div style="display: flex; gap: 12px; justify-content: flex-end;">
@@ -7139,7 +7139,7 @@
         } else if (hasUpgradeDocs) {
             warningBoxHtml = `
                 <div style="background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 14px; padding: 18px; margin: 0 auto 20px auto; max-width: 600px; color: #1e40af; font-weight: 800; text-align: center; font-size: 0.92rem; line-height: 1.6; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.12);">
-                    ⏳ تم تسليم وثائق الهوية والشهادة بنجاح. طلب الترقية إلى أستاذ معتمد (شارة ذهبية) قيد المراجعة حالياً من قِبل إدارة المنصة.
+                    ⏳ تم تسليم وثائق الهوية والشهادة بنجاح. طلب الترقية إلى أستاذ معتمد (شارة ذهبية) قيد المرا��عة حالياً من قِبل إدارة المنصة.
                 </div>`;
         } else {
             warningBoxHtml = `
@@ -7212,7 +7212,7 @@
             { url: userData.youtube_url, icon: 'fab fa-youtube', label: 'يوتيوب', cls: 'youtube' },
             { url: userData.twitter_url, icon: 'fab fa-x-twitter', label: 'تويتر', cls: 'twitter' },
             { url: userData.website_url, icon: 'fas fa-globe', label: 'الموقع', cls: 'website' },
-            { url: userData.whatsapp_url, icon: 'fab fa-whatsapp', label: 'واتساب', cls: 'whatsapp' }
+            { url: userData.whatsapp_number ? `https://wa.me/${userData.whatsapp_number.replace(/\\D/g, '')}` : '', icon: 'fab fa-whatsapp', label: 'واتساب', cls: 'whatsapp' }
         ];
         let html = '', hasLinks = false;
         for (const link of socialLinks) {
@@ -8269,7 +8269,7 @@ function updateUI() {
             'primary_2': 'السنة الثانية ابتدائي',
             'primary_3': 'السنة الثالثة ابتدائي',
             'primary_4': 'السنة الرابعة ابتدائي',
-            'primary_5': 'السنة الخامسة ابتدائي',
+            'primary_5': 'السنة الخامسة ا��تدائي',
             '5eme_pri': 'خامسة ابتدائي',
             'middle_all': 'جميع مستويات المتوسط',
             '1ere_am': 'أولى متوسط',
@@ -8391,7 +8391,7 @@ function updateUI() {
             'primary_2': 'السنة الثانية ابتدائي',
             'primary_3': 'السنة الثالثة ابتدائي',
             'primary_4': 'السنة الرابعة ابتدائي',
-            'primary_5': 'السنة الخامسة ابتدائي',
+            'primary_5': 'السنة ا��خامسة ابتدائي',
             '5eme_pri': 'خامسة ابتدائي',
             'middle_all': 'جميع مستويات المتوسط',
             '1ere_am': 'أولى متوسط',
@@ -9158,7 +9158,7 @@ function updateUI() {
         if (document.getElementById('youtubeUrl')) document.getElementById('youtubeUrl').value = userData.youtube_url || '';
         if (document.getElementById('twitterUrl')) document.getElementById('twitterUrl').value = userData.twitter_url || '';
         if (document.getElementById('websiteUrl')) document.getElementById('websiteUrl').value = userData.website_url || '';
-        if (document.getElementById('whatsappUrl')) document.getElementById('whatsappUrl').value = userData.whatsapp_url || '';
+        if (document.getElementById('whatsappUrl')) document.getElementById('whatsappUrl').value = userData.whatsapp_number || '';
         
         // تعبئة بيانات الدفع والسحب
         if (document.getElementById('ccpAccount')) {
@@ -9230,7 +9230,7 @@ function updateUI() {
             youtube_url: document.getElementById('youtubeUrl')?.value.trim() || null,
             twitter_url: document.getElementById('twitterUrl')?.value.trim() || null,
             website_url: document.getElementById('websiteUrl')?.value.trim() || null,
-            whatsapp_url: document.getElementById('whatsappUrl')?.value.trim() || null,
+            whatsapp_number: document.getElementById('whatsappUrl')?.value.trim() || null,
             ccp_account: document.getElementById('ccpAccount')?.value.trim() || null,
             sofizpay_public_key: document.getElementById('sofizpayPublicKey')?.value.trim() || null
         };
@@ -13910,7 +13910,7 @@ function updateUI() {
                 renderGroupMembers(cachedGroupMembers);
             } catch (e) {
                 console.error('Error fetching group members:', e);
-                container.innerHTML = '<div style="text-align: center; padding: 25px; color: #ef4444; font-weight: 700;">حدث خطأ أثناء تحميل بيانات الأعضاء.</div>';
+                container.innerHTML = '<div style="text-align: center; padding: 25px; color: #ef4444; font-weight: 700;">حدث خطأ أثناء تحميل بيانا�� الأعضاء.</div>';
             }
         }
 

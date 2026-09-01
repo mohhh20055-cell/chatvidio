@@ -340,7 +340,7 @@ router.post('/update-profile-with-social', authenticate, authorize(['teacher', '
             youtube_url, 
             twitter_url, 
             website_url, 
-            whatsapp_url,
+            whatsapp_number,
             ccp_account,
             sofizpay_public_key
         } = req.body;
@@ -420,8 +420,7 @@ router.post('/update-profile-with-social', authenticate, authorize(['teacher', '
             linkedin_url,
             youtube_url,
             twitter_url,
-            website_url,
-            whatsapp_url
+            website_url
         };
 
         for (const [key, value] of Object.entries(socialFields)) {
@@ -435,6 +434,14 @@ router.post('/update-profile-with-social', authenticate, authorize(['teacher', '
                 }
                 updateData[key] = cleaned === '' ? null : cleaned;
             }
+        }
+
+        if (whatsapp_number !== undefined && whatsapp_number !== null) {
+            const normalizedWhatsapp = whatsapp_number.replace(/[\s()-]/g, '').replace(/^00/, '+');
+            if (normalizedWhatsapp && !/^\+?[1-9]\d{7,14}$/.test(normalizedWhatsapp)) {
+                return res.status(400).json({ success: false, error: 'رقم واتساب غير صالح. أدخل الرقم بصيغة دولية مثل 213550123456' });
+            }
+            updateData.whatsapp_number = normalizedWhatsapp || null;
         }
 
         updateData.updated_at = new Date().toISOString();
@@ -642,7 +649,7 @@ router.get('/public/teaching-levels', async (req, res) => {
         const levelMap = {
             'primary_all': 'التعليم الابتدائي',
             'primary_1': 'السنة الأولى ابتدائي',
-            'primary_2': 'السنة الثانية ابتدائي',
+            'primary_2': 'السنة الثانية ابت��ائي',
             'primary_3': 'السنة الثالثة ابتدائي',
             'primary_4': 'السنة الرابعة ابتدائي',
             'primary_5': 'السنة الخامسة ابتدائي',
@@ -1490,7 +1497,7 @@ router.post('/complete-profile', authenticate, authorize(['teacher']), upload.fi
     body('teacher_id').optional(),
     body('phone').optional({ checkFalsy: true }).trim().custom((val) => {
         if (!isValidDzPhone(val)) {
-            throw new Error('⚠️ رقم الهاتف يجب أن يكون برقم جزائري صحيح (مثال: 0550123456 أو 0660123456 أو 0770123456)');
+            throw new Error('⚠️ رقم الهاتف يجب أن يكون برقم جزائري ��حيح (مثال: 0550123456 أو 0660123456 أو 0770123456)');
         }
         return true;
     }),

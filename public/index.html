@@ -5456,7 +5456,7 @@
                         <!-- الخطوة 8: النبذة التعريفية -->
                         <div class="wizard-step" id="teacherWizardStep8" style="display: none;">
                             <label style="display: block; font-weight: 700; margin-bottom: 10px; color: #1e293b; font-size: 0.9rem; text-align: right;">نبذة تعريفية قصيرة عنك: <span style="color: red;">*</span></label>
-                            <textarea id="teacherBio" placeholder="تحدث بإيجاز عن أسلوبك في التدريس وخبراتك..." required style="width: 100%; padding: 14px 18px; border: 2px solid #f1f5f9; border-radius: var(--radius-sm); font-family: var(--font-family); font-size: 0.95rem; min-height: 80px; direction: rtl;" onkeydown="handleWizardKeyDown(event, 8)"></textarea>
+                            <textarea id="teacherBio" placeholder="تحدث بإيجاز ع�� أسلوبك في التدريس وخبراتك..." required style="width: 100%; padding: 14px 18px; border: 2px solid #f1f5f9; border-radius: var(--radius-sm); font-family: var(--font-family); font-size: 0.95rem; min-height: 80px; direction: rtl;" onkeydown="handleWizardKeyDown(event, 8)"></textarea>
                         </div>
 
                         <!-- الخطوة 9: التأكيد النهائي والموافقة -->
@@ -7177,7 +7177,7 @@
                 renderTeachers(allTeachers);
             } catch(e) {
                 console.error(e);
-                container.innerHTML = '<p style="text-align:center; padding:40px; color:#dc2626;">حدث خطأ في تحميل البيانات</p>';
+                container.innerHTML = '<p style="text-align:center; padding:40px; color:#dc2626;">حدث خطأ في تحميل ��لبيانات</p>';
             }
         }
 
@@ -7956,14 +7956,14 @@
                     twitter_url: { icon: 'fab fa-twitter', name: 'تويتر', color: '#1da1f2' },
                     linkedin_url: { icon: 'fab fa-linkedin', name: 'لينكدإن', color: '#0a66c2' },
                     youtube_url: { icon: 'fab fa-youtube', name: 'يوتيوب', color: '#ff0000' },
-                    whatsapp_url: { icon: 'fab fa-whatsapp', name: 'واتساب', color: '#25d366' },
+                    whatsapp_number: { icon: 'fab fa-whatsapp', name: 'واتساب', color: '#25d366' },
                     website_url: { icon: 'fas fa-globe', name: 'موقع شخصي', color: '#1e40af' }
                 };
 
                 for (var key in socialIcons) {
                     if (teacher[key] && teacher[key].trim() !== '') {
                         socialLinks.push({
-                            url: teacher[key],
+                            url: key === 'whatsapp_number' ? `https://wa.me/${teacher[key].replace(/\\D/g, '')}` : teacher[key],
                             icon: socialIcons[key].icon,
                             name: socialIcons[key].name,
                             color: socialIcons[key].color

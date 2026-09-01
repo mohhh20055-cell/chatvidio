@@ -39,7 +39,7 @@ async function fetchApprovedTeachers() {
     try {
         const res = await supabase
             .from('teachers')
-            .select('id, full_name, specialization, experience, bio, profile_image, profile_url, teaching_level, facebook_url, instagram_url, linkedin_url, youtube_url, twitter_url, website_url, whatsapp_url, status, is_certified, is_banned')
+            .select('id, full_name, specialization, experience, bio, profile_image, profile_url, teaching_level, facebook_url, instagram_url, linkedin_url, youtube_url, twitter_url, website_url, whatsapp_number, status, is_certified, is_banned')
             .neq('status', 'rejected')
             .eq('is_banned', false)
             .order('is_certified', { ascending: false, nullsFirst: false })
@@ -53,7 +53,7 @@ async function fetchApprovedTeachers() {
         try {
             const resFallback = await supabase
                 .from('teachers')
-                .select('id, full_name, specialization, experience, bio, profile_image, profile_url, teaching_level, facebook_url, instagram_url, linkedin_url, youtube_url, twitter_url, website_url, whatsapp_url, status, is_certified, is_banned')
+                .select('id, full_name, specialization, experience, bio, profile_image, profile_url, teaching_level, facebook_url, instagram_url, linkedin_url, youtube_url, twitter_url, website_url, whatsapp_number, status, is_certified, is_banned')
                 .neq('status', 'rejected')
                 .order('created_at', { ascending: false });
             data = resFallback.data || [];

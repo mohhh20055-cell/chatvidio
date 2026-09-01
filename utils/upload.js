@@ -42,16 +42,18 @@ async function uploadToSupabase(file, folder, oldFileName = null) {
         let fileExt = path.extname(file.originalname);
         let mimeType = file.mimetype;
 
-        if (mimeType && mimeType.startsWith('image/') && mimeType !== 'image/gif') {
+        if (mimeType && mimeType.startsWith('image/')) {
             try {
                 fileBuffer = await sharp(fileBuffer)
-                    .resize({ width: 1200, withoutEnlargement: true })
-                    .jpeg({ quality: 80 })
+                    .rotate()
+                    .resize({ width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true })
+                    .jpeg({ quality: 80, progressive: true, mozjpeg: true })
                     .toBuffer();
                 fileExt = '.jpg';
                 mimeType = 'image/jpeg';
             } catch (sharpErr) {
-                logger.warn('⚠️ فشل ضغط الصورة باستخدام sharp، سيتم استخدام الملف الاصلي:', sharpErr.message);
+                logger.error('فشل ضغط الصورة باستخدام sharp:', sharpErr.message);
+                throw new Error('تعذر ضغط الصورة قبل التخزين');
             }
         }
 
