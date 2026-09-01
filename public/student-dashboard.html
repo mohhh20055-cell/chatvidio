@@ -8651,10 +8651,14 @@
                         await loadConversations(true);
                     }
                 }
+                // Background update of bookings to detect when teacher starts or pauses stream
+                if (currentSection !== 'bookings') {
+                    await loadMyBookings(true);
+                }
             } catch (e) {
                 // silent background polling
             }
-        }, 15000);
+        }, 5000);
     }
 
     // ============================================================

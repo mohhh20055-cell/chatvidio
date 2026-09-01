@@ -3559,26 +3559,51 @@ function generateStudentZoomPage(offer, student) {
                     }
 
                     c.on('user-joined', updateViewersCount);
-                    c.on('user-left', updateViewersCount);
+                    c.on('user-left', (user) => {
+                        updateViewersCount();
+                        const existingEl = document.getElementById('remote-video-' + user.uid);
+                        if (existingEl) existingEl.remove();
+                    });
 
                     c.on('user-published', async (user, mediaType) => {
                         updateViewersCount();
                         const ov = document.getElementById('statusOverlay');
                         if (ov) ov.style.display = 'none';
-                        await c.subscribe(user, mediaType);
-                        if (mediaType === 'video') {
-                            const remoteEl = document.getElementById('remoteVideo');
-                            remoteEl.innerHTML = '';
-                            user.videoTrack.play(remoteEl);
-                        }
-                        if (mediaType === 'audio') {
-                            user.audioTrack.play();
+                        try {
+                            await c.subscribe(user, mediaType);
+                            if (mediaType === 'video') {
+                                const container = document.getElementById('mediaContainer');
+                                const remoteEl = document.getElementById('remoteVideo');
+                                if (remoteEl) {
+                                    remoteEl.innerHTML = '';
+                                    user.videoTrack.play(remoteEl, { fit: 'contain' });
+                                } else if (container) {
+                                    let vEl = document.getElementById('remote-video-' + user.uid);
+                                    if (!vEl) {
+                                        vEl = document.createElement('div');
+                                        vEl.id = 'remote-video-' + user.uid;
+                                        vEl.style.cssText = 'width:100%;height:100%;position:absolute;top:0;left:0;border-radius:12px;overflow:hidden;';
+                                        container.appendChild(vEl);
+                                    }
+                                    user.videoTrack.play(vEl, { fit: 'contain' });
+                                }
+                            }
+                            if (mediaType === 'audio') {
+                                user.audioTrack.play();
+                            }
+                        } catch(subErr) {
+                            console.error('Subscription error:', subErr);
                         }
                     });
 
-                    c.on('user-unpublished', (user) => {
+                    c.on('user-unpublished', (user, mediaType) => {
                         updateViewersCount();
-                        document.getElementById('remoteVideo').innerHTML = '';
+                        if (mediaType === 'video') {
+                            const remoteEl = document.getElementById('remoteVideo');
+                            if (remoteEl) remoteEl.innerHTML = '';
+                            const vEl = document.getElementById('remote-video-' + user.uid);
+                            if (vEl) vEl.remove();
+                        }
                     });
                 }
 
@@ -3590,6 +3615,24 @@ function generateStudentZoomPage(offer, student) {
                     if (statusElem) statusElem.innerHTML = "جاري الاتصال بخوادم البث المباشر...";
                     console.log('جاري الاتصال بالغرفة:', channelName);
                     await client.join(APP_ID, channelName, tokenToUse, studentUid);
+                    
+                    // Check if teacher/host is already publishing tracks
+                    if (client.remoteUsers && client.remoteUsers.length > 0) {
+                        client.remoteUsers.forEach(async (rUser) => {
+                            if (rUser.hasVideo) {
+                                await client.subscribe(rUser, 'video').catch(()=>{});
+                                const remoteEl = document.getElementById('remoteVideo');
+                                if (remoteEl && rUser.videoTrack) {
+                                    remoteEl.innerHTML = '';
+                                    rUser.videoTrack.play(remoteEl, { fit: 'contain' });
+                                }
+                            }
+                            if (rUser.hasAudio) {
+                                await client.subscribe(rUser, 'audio').catch(()=>{});
+                                if (rUser.audioTrack) rUser.audioTrack.play();
+                            }
+                        });
+                    }
                 } catch (joinErr) {
                     console.warn('فشل الانضمام بالمحاولة الأولى (قد يكون التوكن غير مطلوب أو غير متطابق):', joinErr);
                     if (tokenToUse) {
@@ -3598,6 +3641,22 @@ function generateStudentZoomPage(offer, student) {
                             client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
                             setupStudentClient(client);
                             await client.join(APP_ID, channelName, null, studentUid);
+                            if (client.remoteUsers && client.remoteUsers.length > 0) {
+                                client.remoteUsers.forEach(async (rUser) => {
+                                    if (rUser.hasVideo) {
+                                        await client.subscribe(rUser, 'video').catch(()=>{});
+                                        const remoteEl = document.getElementById('remoteVideo');
+                                        if (remoteEl && rUser.videoTrack) {
+                                            remoteEl.innerHTML = '';
+                                            rUser.videoTrack.play(remoteEl, { fit: 'contain' });
+                                        }
+                                    }
+                                    if (rUser.hasAudio) {
+                                        await client.subscribe(rUser, 'audio').catch(()=>{});
+                                        if (rUser.audioTrack) rUser.audioTrack.play();
+                                    }
+                                });
+                            }
                         } catch (noTokenErr) {
                             throw joinErr;
                         }
