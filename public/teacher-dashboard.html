@@ -5067,6 +5067,28 @@
     </div>
 </div>
 
+<!-- VIEW OFFER STUDENTS MODAL -->
+<div id="viewOfferStudentsModal" class="modal" style="display: none; max-width: 700px;">
+    <div class="modal-header" style="background: linear-gradient(135deg, #3730a3 0%, #4f46e5 100%); color: white; border-radius: 12px 12px 0 0; padding: 16px 20px;">
+        <h3 style="color: white; margin: 0; display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-users"></i> قائمة الطلاب المسجلين في الدرس
+        </h3>
+        <button class="close-modal" onclick="closeOfferStudentsModal()" style="color: white; font-size: 1.5rem;">&times;</button>
+    </div>
+    <div class="modal-body" style="padding: 20px; max-height: 75vh; overflow-y: auto;">
+        <div id="offerStudentsModalHeader" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+            <!-- ملخص الدرس وعدد الطلاب -->
+        </div>
+
+        <div id="offerStudentsModalList" style="display: flex; flex-direction: column; gap: 12px;">
+            <!-- يتم تحميل قائمة الطلاب ديناميكياً -->
+        </div>
+    </div>
+    <div class="modal-footer" style="padding: 12px 20px; background: #f8fafc;">
+        <button class="cancel-btn" onclick="closeOfferStudentsModal()" style="width: 100%;">إغلاق النافذة</button>
+    </div>
+</div>
+
 <!-- CREATE EXERCISE MODAL -->
 <div id="createExerciseModal" class="modal" style="display: none; max-width: 650px;">
     <div class="modal-header">
@@ -8587,6 +8609,7 @@ function updateUI() {
 
                         <div style="display: flex; flex-wrap: wrap; gap: 8px;">
                             <button onclick="shareOffer(${offer.id})" style="background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; font-weight: bold; display: inline-flex; align-items: center; gap: 4px;" title="مشاركة الدرس"><i class="fas fa-share-alt"></i> مشاركة</button>
+                            <button onclick="viewOfferStudents(${offer.id}, '${escapeHtml(offer.subject_name)}')" style="background: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; font-weight: bold; display: inline-flex; align-items: center; gap: 4px;" title="عرض الطلاب المسجلين"><i class="fas fa-users"></i> الطلاب (${offer.current_students || offer.booked_count || 0})</button>
                             ${isGuestUser ? `
                                 <span style="flex: 1; text-align: center; font-size: 0.78rem; color: var(--gray-500); padding: 6px; background: var(--gray-50); border-radius: 6px;"><i class="fas fa-lock"></i> عرض فقط (حساب زائر)</span>
                             ` : `
@@ -8700,6 +8723,128 @@ function updateUI() {
         document.getElementById('modalOverlay').style.display = 'none';
     }
     window.closeOfferSessionsModal = closeOfferSessionsModal;
+
+    async function viewOfferStudents(offerId, subjectName) {
+        if (checkGuestAction()) return;
+        const modal = document.getElementById('viewOfferStudentsModal');
+        const headerEl = document.getElementById('offerStudentsModalHeader');
+        const listEl = document.getElementById('offerStudentsModalList');
+        if (!modal || !headerEl || !listEl) return;
+
+        modal.style.display = 'block';
+        document.getElementById('modalOverlay').style.display = 'block';
+        headerEl.innerHTML = `<div style="text-align:center; color:#64748b;"><i class="fas fa-spinner fa-spin"></i> جاري تحميل قائمة الطلاب المسجلين...</div>`;
+        listEl.innerHTML = '';
+
+        try {
+            const res = await fetchWithAuth(`/api/offer/${offerId}/students`);
+            const data = await res.json();
+            if (!data.success) {
+                headerEl.innerHTML = `<div style="color:#ef4444; font-weight:bold;">❌ ${data.error || 'تعذر جلب قائمة الطلاب'}</div>`;
+                return;
+            }
+
+            const students = data.students || [];
+            headerEl.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                    <div>
+                        <h4 style="margin:0; font-size:1.05rem; color:#1e293b; font-weight:800;">📚 ${escapeHtml(data.offer.subject_name)}</h4>
+                        <p style="margin:4px 0 0 0; font-size:0.85rem; color:#64748b;">إجمالي الحجوزات المؤكدة: <strong>${students.length} طالب</strong></p>
+                    </div>
+                </div>
+            `;
+
+            if (students.length === 0) {
+                listEl.innerHTML = `
+                    <div style="text-align:center; padding:30px 10px; color:#64748b; background:#f8fafc; border-radius:10px; border:1px dashed #cbd5e1;">
+                        <i class="fas fa-user-slash" style="font-size:2rem; color:#94a3b8; margin-bottom:10px;"></i>
+                        <p style="margin:0; font-size:0.9rem; font-weight:600;">لا يوجد أي طلاب قاموا بحجز هذا الدرس بعد.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            students.forEach(s => {
+                const bookedDate = s.booked_at ? new Date(s.booked_at).toLocaleString('ar-DZ', {
+                    timeZone: 'Africa/Algiers',
+                    dateStyle: 'medium',
+                    timeStyle: 'short'
+                }) : 'غير محدد';
+
+                html += `
+                    <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:10px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+                            <div style="display:flex; align-items:center; gap:12px;">
+                                <div style="width:42px; height:42px; border-radius:50%; background:#e0e7ff; color:#3730a3; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:1.1rem; overflow:hidden;">
+                                    ${s.profile_image ? `<img src="${s.profile_image}" style="width:100%; height:100%; object-fit:cover;">` : `<i class="fas fa-user-graduate"></i>`}
+                                </div>
+                                <div>
+                                    <h5 style="margin:0; font-size:0.95rem; color:#0f172a; font-weight:800;">${escapeHtml(s.student_name)}</h5>
+                                    <div style="font-size:0.8rem; color:#64748b; margin-top:2px;">
+                                        <span><i class="fas fa-graduation-cap"></i> ${escapeHtml(s.student_education_level)}</span>
+                                        <span style="margin:0 6px;">•</span>
+                                        <span><i class="fas fa-phone"></i> ${escapeHtml(s.student_phone)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="text-align:left;">
+                                <span style="background:#dcfce7; color:#166534; padding:4px 8px; border-radius:6px; font-size:0.75rem; font-weight:700;">
+                                    <i class="fas fa-check-circle"></i> ${s.payment_amount > 0 ? `${s.payment_amount} دج` : 'مجاني'}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; padding:8px 12px; border-radius:8px; font-size:0.8rem; color:#475569; flex-wrap:wrap; gap:8px;">
+                            <span><i class="fas fa-clock"></i> تاريخ الحجز: ${bookedDate}</span>
+                            <button onclick="cancelStudentBookingByTeacher(${s.session_id}, ${offerId}, '${escapeHtml(s.student_name)}', ${s.payment_amount})" style="background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; padding:5px 10px; border-radius:6px; font-size:0.78rem; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:4px; transition:all 0.2s;">
+                                <i class="fas fa-user-xmark"></i> إلغاء الحجز واسترداد المبلغ
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            listEl.innerHTML = html;
+        } catch (err) {
+            headerEl.innerHTML = `<div style="color:#ef4444; font-weight:bold;">❌ حدث خطأ في الاتصال بالسيرفر</div>`;
+        }
+    }
+    window.viewOfferStudents = viewOfferStudents;
+
+    function closeOfferStudentsModal() {
+        const modal = document.getElementById('viewOfferStudentsModal');
+        if (modal) modal.style.display = 'none';
+        document.getElementById('modalOverlay').style.display = 'none';
+    }
+    window.closeOfferStudentsModal = closeOfferStudentsModal;
+
+    async function cancelStudentBookingByTeacher(sessionId, offerId, studentName, amount) {
+        if (checkGuestAction()) return;
+        const confirmMsg = `هل أنت متأكد من إلغاء حجز الطالب "${studentName}"؟\n\nسيتم استرداد مبلغ ${amount} دج تلقائياً لحسابه وإلغاء تسجيله من هذا الدرس.`;
+        if (!confirm(confirmMsg)) return;
+
+        try {
+            showToast('⏳ جاري إلغاء الحجز ومعالجة استرداد المبلغ...', 'info');
+            const res = await fetchWithAuth('/api/booking/teacher-cancel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ session_id: sessionId })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                showToast('✅ ' + (data.message || 'تم إلغاء الحجز وإعادة المبلغ للطالب بنجاح'), 'success');
+                viewOfferStudents(offerId, '');
+                if (typeof loadTeacherOffers === 'function') loadTeacherOffers();
+            } else {
+                showToast('❌ ' + (data.error || 'تعذر إلغاء الحجز'), 'error');
+            }
+        } catch (err) {
+            showToast('❌ حدث خطأ غير متوقع أثناء إلغاء الحجز', 'error');
+        }
+    }
+    window.cancelStudentBookingByTeacher = cancelStudentBookingByTeacher;
 
     async function completeSessionEscrow(offerId, sessionNumber) {
         if (checkGuestAction()) return;

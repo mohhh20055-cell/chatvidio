@@ -621,11 +621,10 @@ router.get('/teacher/:teacher_id', authenticate, authorize(['teacher']), async (
 });
 
 // ============================================================
-// ✅ إلغاء حجز (مع استرداد الرصيد المعلق)
+// ✅ إلغاء حجز (طالب أو أستاذ مع استرداد الرصيد المعلق)
 // ============================================================
 router.post('/cancel', authenticate, [
-    body('session_id').isInt().withMessage('معرف الجلسة غير صالح'),
-    body('student_id').isInt().withMessage('معرف الطالب غير صالح')
+    body('session_id').isInt().withMessage('معرف الجلسة غير صالح')
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -635,23 +634,27 @@ router.post('/cancel', authenticate, [
 
         const { session_id, student_id } = req.body;
 
-        // ✅ التحقق من الصلاحية
-        if (req.user.userId !== student_id && req.user.role !== 'admin') {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
-        }
-
         // ✅ جلب الجلسة
         const session = await getOne('sessions', 'id', session_id);
         if (!session) {
             return res.status(404).json({ success: false, error: 'الجلسة غير موجودة' });
         }
 
-        if (session.student_id !== student_id) {
-            return res.status(403).json({ success: false, error: 'هذه الجلسة ليست لك' });
+        const targetStudentId = student_id || session.student_id;
+
+        // ✅ جلب الدرس
+        const offer = await getOne('offers', 'id', session.offer_id);
+
+        // ✅ التحقق من الصلاحية: (الطالب صاحب الحجز أو الأدمن أو الأستاذ صاحب العرض)
+        const isStudentOwner = (req.user.userId === session.student_id);
+        const isAdmin = (req.user.role === 'admin');
+        const isTeacherOwner = (req.user.role === 'teacher' && offer && offer.teacher_id === req.user.userId);
+
+        if (!isStudentOwner && !isAdmin && !isTeacherOwner) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك بإلغاء هذا الحجز' });
         }
 
         // ✅ التحقق من أن الحجز ليس منتهياً أو قيد البث
-        const offer = await getOne('offers', 'id', session.offer_id);
         if (offer && (offer.status === 'live' || offer.status === 'teacher_ready')) {
             return res.status(400).json({ 
                 success: false, 
@@ -668,9 +671,9 @@ router.post('/cancel', authenticate, [
             
             if (refundAmount > 0) {
                 // ✅ إعادة المبلغ للطالب
-                const student = await getOne('students', 'id', student_id);
+                const student = await getOne('students', 'id', targetStudentId);
                 if (student) {
-                    await update('students', student_id, {
+                    await update('students', targetStudentId, {
                         wallet_balance: (student.wallet_balance || 0) + refundAmount
                     });
                 }
@@ -685,11 +688,11 @@ router.post('/cancel', authenticate, [
 
                 // ✅ تسجيل معاملة الاسترداد
                 await insert('wallet_transactions', {
-                    student_id: student_id,
+                    student_id: targetStudentId,
                     amount: refundAmount,
                     type: 'refund',
                     status: 'completed',
-                    description: `استرداد مبلغ حجز "${offer?.subject_name || 'غير معروف'}"`,
+                    description: isTeacherOwner ? `استرداد مبلغ الحجز من قبل الأستاذ لدرس "${offer?.subject_name || 'غير معروف'}"` : `استرداد مبلغ حجز "${offer?.subject_name || 'غير معروف'}"`,
                     created_at: new Date().toISOString()
                 });
             }
@@ -701,12 +704,34 @@ router.post('/cancel', authenticate, [
             cancelled_at: new Date().toISOString()
         });
 
-        // ✅ إزالة من غرفة الانتظار
+        // ✅ إزالة من الاشتراكات وغرفة الانتظار
+        await supabase
+            .from('stream_subscriptions')
+            .delete()
+            .eq('offer_id', session.offer_id)
+            .eq('student_id', targetStudentId);
+
         await supabase
             .from('waiting_room')
             .delete()
             .eq('offer_id', session.offer_id)
-            .eq('student_id', student_id);
+            .eq('student_id', targetStudentId);
+
+        // ✅ إرسال إشعار للطالب إذا تم الإلغاء من الأستاذ
+        if (isTeacherOwner || isAdmin) {
+            try {
+                await supabase.from('notifications').insert({
+                    user_id: targetStudentId,
+                    title: 'إلغاء حجز واسترداد مبلغ',
+                    message: `تم إلغاء حجزك في درس "${offer?.subject_name || 'غير معروف'}" من قبل الأستاذ وإعادة مبلغ ${refundAmount} دج إلى محفظتك.`,
+                    type: 'refund',
+                    is_read: false,
+                    created_at: new Date().toISOString()
+                });
+            } catch (notifErr) {
+                console.warn('⚠️ تعذر إرسال إشعار الإلغاء للطالب:', notifErr.message);
+            }
+        }
 
         // ✅ تحديث عدد الطلاب في الدرس
         if (offer) {
@@ -717,17 +742,146 @@ router.post('/cancel', authenticate, [
                 .in('payment_status', ['paid', 'pending_stream']);
 
             await update('offers', offer.id, {
-                booked_count: bookedCount || 0
+                booked_count: bookedCount || 0,
+                current_students: bookedCount || 0
             });
         }
 
         return res.json({
             success: true,
-            message: 'تم إلغاء الحجز واسترداد الرصيد بنجاح',
+            message: isTeacherOwner ? 'تم إلغاء حجز الطالب واسترداد المبلغ لحسابه بنجاح' : 'تم إلغاء الحجز واسترداد الرصيد بنجاح',
             refund_amount: refundAmount
         });
     } catch (error) {
         logger.error('خطأ في إلغاء الحجز:', error.message);
+        return res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// ✅ إلغاء حجز طالب من قبل الأستاذ صاحب الدرس مع استرداد أمواله
+// ============================================================
+router.post('/teacher-cancel', authenticate, authorize(['teacher', 'admin']), [
+    body('session_id').isInt().withMessage('معرف الجلسة غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { session_id } = req.body;
+
+        // ✅ جلب الجلسة
+        const session = await getOne('sessions', 'id', session_id);
+        if (!session) {
+            return res.status(404).json({ success: false, error: 'الجلسة غير موجودة' });
+        }
+
+        if (session.payment_status === 'cancelled') {
+            return res.status(400).json({ success: false, error: 'الحجز ملغى بالفعل' });
+        }
+
+        // ✅ جلب الدرس والتحقق من ملكية الأستاذ
+        const offer = await getOne('offers', 'id', session.offer_id);
+        if (!offer) {
+            return res.status(404).json({ success: false, error: 'الدرس الخاص بهذا الحجز غير موجود' });
+        }
+
+        if (req.user.role === 'teacher' && offer.teacher_id !== req.user.userId) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك بإلغاء حجز في درس أستاذ آخر' });
+        }
+
+        const student_id = session.student_id;
+
+        // ✅ استرداد الرصيد المعلق للطالب
+        let refundAmount = 0;
+        const isOfferFree = (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && parseFloat(offer.price || 0) === 0;
+
+        if ((session.payment_status === 'pending_stream' || session.payment_status === 'paid') && !isOfferFree) {
+            refundAmount = session.payment_amount || 0;
+            
+            if (refundAmount > 0) {
+                // ✅ إعادة المبلغ لمحفظة الطالب
+                const student = await getOne('students', 'id', student_id);
+                if (student) {
+                    await update('students', student_id, {
+                        wallet_balance: (student.wallet_balance || 0) + refundAmount
+                    });
+                }
+
+                // ✅ خصم المبلغ من الرصيد المعلق للأستاذ
+                const teacher = await getOne('teachers', 'id', offer.teacher_id);
+                if (teacher) {
+                    await update('teachers', offer.teacher_id, {
+                        pending_withdraw: Math.max(0, (teacher.pending_withdraw || 0) - refundAmount)
+                    });
+                }
+
+                // ✅ تسجيل معاملة استرداد
+                await insert('wallet_transactions', {
+                    student_id: student_id,
+                    amount: refundAmount,
+                    type: 'refund',
+                    status: 'completed',
+                    description: `استرداد مبلغ الحجز من قبل الأستاذ لدرس "${offer.subject_name}"`,
+                    created_at: new Date().toISOString()
+                });
+            }
+        }
+
+        // ✅ تحديث حالة الجلسة إلى "ملغى"
+        await update('sessions', session_id, {
+            payment_status: 'cancelled',
+            cancelled_at: new Date().toISOString()
+        });
+
+        // ✅ إزالة من الاشتراك وغرفة الانتظار
+        await supabase
+            .from('stream_subscriptions')
+            .delete()
+            .eq('offer_id', session.offer_id)
+            .eq('student_id', student_id);
+
+        await supabase
+            .from('waiting_room')
+            .delete()
+            .eq('offer_id', session.offer_id)
+            .eq('student_id', student_id);
+
+        // ✅ إرسال إشعار للطالب
+        try {
+            await supabase.from('notifications').insert({
+                user_id: student_id,
+                title: 'إلغاء حجز واسترداد مبلغ',
+                message: `قام الأستاذ بإلغاء حجزك لدرس "${offer.subject_name}" وتمت إعادة مبلغ ${refundAmount} دج إلى محفظتك.`,
+                type: 'refund',
+                is_read: false,
+                created_at: new Date().toISOString()
+            });
+        } catch (notifErr) {
+            console.warn('⚠️ تعذر إرسال إشعار الإلغاء للطالب:', notifErr.message);
+        }
+
+        // ✅ تحديث عدد الطلاب المعروض بالدرس
+        const { count: bookedCount } = await supabase
+            .from('sessions')
+            .select('*', { count: 'exact', head: true })
+            .eq('offer_id', offer.id)
+            .in('payment_status', ['paid', 'pending_stream']);
+
+        await update('offers', offer.id, {
+            booked_count: bookedCount || 0,
+            current_students: bookedCount || 0
+        });
+
+        return res.json({
+            success: true,
+            message: 'تم إلغاء حجز الطالب وإعادة المبلغ لحسابه بنجاح',
+            refund_amount: refundAmount
+        });
+    } catch (error) {
+        logger.error('خطأ في إلغاء حجز الطالب من قبل الأستاذ:', error.message);
         return res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });

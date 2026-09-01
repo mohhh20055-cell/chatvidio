@@ -1193,6 +1193,93 @@ router.delete('/offer/delete/:offer_id', authenticate, authorize(['teacher']), [
 });
 
 // ============================================================
+// ✅ جلب قائمة الطلاب الحاديين/المسجلين في درس معين (للأستاذ)
+// ============================================================
+router.get(['/offer/:offer_id/students', '/teacher/offer/:offer_id/students'], authenticate, authorize(['teacher', 'admin']), [
+    param('offer_id').isInt().withMessage('معرف الدرس غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const offer_id = parseInt(req.params.offer_id);
+        const offer = await getOne('offers', 'id', offer_id);
+
+        if (!offer) {
+            return res.status(404).json({ success: false, error: 'الدرس غير موجود' });
+        }
+
+        // التحقق من الملكية إذا كان المستخدم أستاذ
+        if (req.user.role === 'teacher' && offer.teacher_id !== req.user.userId) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك برؤية طلاب هذا الدرس' });
+        }
+
+        const { data: sessions, error: sessionsError } = await supabase
+            .from('sessions')
+            .select(`
+                id,
+                student_id,
+                offer_id,
+                payment_status,
+                payment_amount,
+                created_at,
+                students:student_id (
+                    id,
+                    full_name,
+                    email,
+                    phone,
+                    education_level,
+                    profile_image,
+                    profile_url
+                )
+            `)
+            .eq('offer_id', offer_id)
+            .in('payment_status', ['paid', 'pending_stream'])
+            .order('created_at', { ascending: false });
+
+        if (sessionsError) {
+            logger.error('خطأ في جلب طلاب الدرس:', sessionsError.message);
+            return res.status(500).json({ success: false, error: 'حدث خطأ في قاعدة البيانات' });
+        }
+
+        const students = (sessions || []).map(s => {
+            const studentInfo = s.students || {};
+            let profileImg = studentInfo.profile_url || studentInfo.profile_image;
+            if (profileImg && !profileImg.startsWith('http')) {
+                profileImg = getPublicImageUrl('profiles', 'students', profileImg);
+            }
+            return {
+                session_id: s.id,
+                student_id: s.student_id,
+                student_name: studentInfo.full_name || 'طالب منصة',
+                student_email: studentInfo.email || '',
+                student_phone: studentInfo.phone || 'غير متوفر',
+                student_education_level: studentInfo.education_level || 'غير محدد',
+                profile_image: profileImg,
+                payment_status: s.payment_status,
+                payment_amount: s.payment_amount || 0,
+                booked_at: s.created_at
+            };
+        });
+
+        return res.json({
+            success: true,
+            offer: {
+                id: offer.id,
+                subject_name: offer.subject_name,
+                booked_count: students.length
+            },
+            students: students
+        });
+    } catch (error) {
+        logger.error('خطأ في جلب قائمة طلاب الدرس:', error.message);
+        return res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
 // ✅ جلب مستويات التعليم المتاحة (للفلترة)
 // ============================================================
 router.get('/education-levels', async (req, res) => {
