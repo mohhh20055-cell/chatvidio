@@ -8732,7 +8732,7 @@ function updateUI() {
         if (!shouldStart) return;
 
         try {
-            const res = await fetchWithAuth('/api/start-agora-stream', {
+            const res = await fetchWithAuth('/api/stream/start-agora-stream', {
                 method: 'POST',
                 body: JSON.stringify({ offer_id: offerId })
             });
