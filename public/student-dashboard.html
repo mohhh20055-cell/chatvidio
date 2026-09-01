@@ -5877,11 +5877,7 @@
             let sHtml = '';
             sessions.forEach(s => {
                 const sDate = s.session_date ? new Date(s.session_date) : null;
-                const formattedDate = sDate ? sDate.toLocaleString('ar-DZ', { 
-                    timeZone: 'Africa/Algiers', 
-                    dateStyle: 'full', 
-                    timeStyle: 'short' 
-                }) : 'غير محدد';
+                const formattedDate = sDate ? (sDate.toLocaleDateString('ar-DZ', { timeZone: 'Africa/Algiers' }) + ' - ' + sDate.toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Africa/Algiers' })) : 'غير محدد';
                 const isCompleted = s.status === 'completed' || s.is_completed;
                 const isLive = s.status === 'live';
 
