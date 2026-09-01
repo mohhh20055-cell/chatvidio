@@ -5033,12 +5033,6 @@
                 </div>
             </div>
         </div>
-
-        <label style="display:block; margin-top:6px; margin-bottom:6px; font-weight:700; color:var(--gray-800);">
-            <i class="fas fa-image" style="color:var(--primary); margin-left:6px;"></i> الصورة المصغرة للدرس (Thumbnail)
-        </label>
-        <input type="file" id="offerThumbnail" accept="image/*" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; background: white;">
-        <p style="font-size:0.75rem; color:var(--gray-500); margin-top:4px;">تظهر هذه الصورة عند مشاركة رابط الدرس في وسائل التواصل الاجتماعي</p>
     </div>
     <div class="modal-footer" style="padding: 14px 20px;">
         <button class="cancel-btn" onclick="closeModal()">إلغاء</button>
@@ -8555,8 +8549,6 @@ function updateUI() {
             html += `
                 <div class="offer-card" id="offer-card-${offer.id}" style="background: white; border-radius: 12px; padding: 16px; box-shadow: var(--shadow); border: 1px solid var(--gray-200); display: flex; flex-direction: column; justify-content: space-between;">
                     <div>
-                        ${(offer.thumbnail_url || offer.image_url || offer.thumbnail) ? `<div style="width:100%; max-height:280px; min-height:140px; background:#f8fafc; border-radius:10px; overflow:hidden; margin-bottom:10px; display:flex; align-items:center; justify-content:center; border: 1px solid #e2e8f0;"><img src="${escapeHtml(offer.thumbnail_url || offer.image_url || offer.thumbnail)}" alt="${escapeHtml(offer.subject_name)}" style="width:100%; max-height:280px; object-fit:contain; border-radius:10px;" onerror="this.onerror=null; this.parentElement.style.display='none';"></div>` : ''}
-                        
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 4px;">
                             <span style="font-weight: 700; font-size: 1rem; color: var(--gray-800);">${escapeHtml(offer.subject_name)}</span>
                             <div>${planBadge} <span class="${statusClass}" style="padding: 4px 8px; border-radius: 20px; font-size: 0.75rem; font-weight: bold;">${statusText}</span></div>
@@ -8895,9 +8887,11 @@ function updateUI() {
         document.getElementById('educationLevel').value = '';
         document.getElementById('otherLevelText').value = '';
         document.getElementById('otherLevelGroup').style.display = 'none';
+        if (document.getElementById('totalSessions')) document.getElementById('totalSessions').value = '1';
+        selectOfferPlan('1_day');
+        calculatePlanCosts();
         document.getElementById('modalOverlay').style.display = 'block';
         document.getElementById('createOfferModal').style.display = 'block';
-        updateFeeDisplay();
     }
 
     function applyDurationPreset(val) {
@@ -9212,47 +9206,27 @@ function updateUI() {
             });
         }
 
-        const thumbnailFile = document.getElementById('offerThumbnail')?.files[0];
-        let reqBody;
-        if (thumbnailFile) {
-            const formData = new FormData();
-            formData.append('teacher_id', teacherId);
-            formData.append('subject_name', subject_name);
-            formData.append('duration', durationVal);
-            formData.append('max_students', isFree ? Math.min(20, maxStudentsVal) : maxStudentsVal);
-            formData.append('offer_date', offer_date);
-            formData.append('is_free', isFree);
-            formData.append('price', isFree ? 0 : priceVal);
-            formData.append('education_level', finalLevel);
-            formData.append('plan_type', plan_type);
-            formData.append('total_sessions', total_sessions);
-            formData.append('session_duration', durationVal);
-            formData.append('price_per_session', isFree ? 0 : priceVal);
-            formData.append('sessions_schedule', JSON.stringify(sessionsSchedule));
-            formData.append('thumbnail', thumbnailFile);
-            reqBody = formData;
-        } else {
-            reqBody = JSON.stringify({
-                teacher_id: teacherId,
-                subject_name: subject_name,
-                duration: durationVal,
-                max_students: isFree ? Math.min(20, maxStudentsVal) : maxStudentsVal,
-                offer_date: offer_date,
-                is_free: isFree,
-                price: isFree ? 0 : priceVal,
-                education_level: finalLevel,
-                plan_type: plan_type,
-                total_sessions: total_sessions,
-                session_duration: durationVal,
-                price_per_session: isFree ? 0 : priceVal,
-                sessions_schedule: sessionsSchedule
-            });
-        }
+        const reqBody = JSON.stringify({
+            teacher_id: teacherId,
+            subject_name: subject_name,
+            duration: durationVal,
+            max_students: isFree ? Math.min(20, maxStudentsVal) : maxStudentsVal,
+            offer_date: offer_date,
+            is_free: isFree,
+            price: isFree ? 0 : priceVal,
+            education_level: finalLevel,
+            plan_type: plan_type,
+            total_sessions: total_sessions,
+            session_duration: durationVal,
+            price_per_session: isFree ? 0 : priceVal,
+            sessions_schedule: sessionsSchedule
+        });
 
         isCreatingOffer = true;
         try {
             const res = await fetchWithAuth('/api/offer/create', {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: reqBody
             });
             const result = await res.json();
