@@ -44,13 +44,30 @@ async function uploadToSupabase(file, folder, oldFileName = null) {
 
         if (mimeType && mimeType.startsWith('image/')) {
             try {
-                fileBuffer = await sharp(fileBuffer)
-                    .rotate()
-                    .resize({ width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true })
-                    .jpeg({ quality: 80, progressive: true, mozjpeg: true })
-                    .toBuffer();
+                // تحويل كل صور الملف الشخصي إلى JPEG صغير لتجنب حدود Supabase Storage.
+                // نعيد الضغط تدريجياً حتى نصل إلى 450KB كحد أقصى تقريباً.
+                const image = sharp(fileBuffer).rotate();
+                const metadata = await image.metadata();
+                const largestSide = Math.max(metadata.width || 0, metadata.height || 0);
+                const resizeOptions = largestSide > 900
+                    ? { width: 900, height: 900, fit: 'inside', withoutEnlargement: true }
+                    : undefined;
+                const qualities = [58, 48, 38, 30];
+                let compressed = null;
+
+                for (const quality of qualities) {
+                    const pipeline = image.clone();
+                    if (resizeOptions) pipeline.resize(resizeOptions);
+                    compressed = await pipeline
+                        .jpeg({ quality, progressive: true, mozjpeg: true })
+                        .toBuffer();
+                    if (compressed.length <= 450 * 1024) break;
+                }
+
+                fileBuffer = compressed;
                 fileExt = '.jpg';
                 mimeType = 'image/jpeg';
+                logger.info(`تم ضغط صورة الملف الشخصي إلى ${Math.round(fileBuffer.length / 1024)}KB`);
             } catch (sharpErr) {
                 logger.error('فشل ضغط الصورة باستخدام sharp:', sharpErr.message);
                 throw new Error('تعذر ضغط الصورة قبل التخزين');
