@@ -2171,7 +2171,10 @@ function generateTeacherZoomPage(offer, teacher, token) {
             <div class="header-title" style="display: flex; align-items: center; gap: 8px; flex-wrap: nowrap;">
                 <i class="fas fa-video"></i>
                 <span style="font-size: 14px;">بث الأستاذ: ${escapeHtml(subjectName)}</span>
-                <span class="badge" style="font-size: 10px; padding: 1px 6px;">مباشر HD</span>
+                <span class="badge" style="font-size: 10px; padding: 1px 6px;">مباشر</span>
+                <div id="teacherNetBadge" style="display: none; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 16px; font-size: 11px; font-weight: 700; border: 1px solid #f59e0b; background: rgba(245, 158, 11, 0.2); color: #fcd34d;">
+                    <i class="fas fa-wifi"></i> <span id="teacherNetText">جودة الاتصال</span>
+                </div>
             <div id="recordingBadge" style="display: flex; align-items: center; gap: 6px; background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #f87171; padding: 2px 10px; border-radius: 16px; font-size: 11px; font-weight: 700;"><i class="fas fa-circle" style="color: #ef4444; animation: blink 1s infinite; font-size: 8px;"></i><span id="recordingStatusText">جاري التسجيل (حفظ بجهازك عند الإنهاء)</span></div>
             </div>
             <div id="liveViewersBadge" style="display: flex; align-items: center; gap: 6px; background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #34d399; padding: 2px 8px; border-radius: 16px; font-size: 11px; font-weight: 700;">
@@ -2186,8 +2189,8 @@ function generateTeacherZoomPage(offer, teacher, token) {
                     <i class="fas fa-hand-pointer" style="font-size: 13px; color: #fef08a;"></i> 👆 انقر هنا لإدخال الطلاب وبدء البث
                     <span id="waitingCountBadge" style="position: absolute; top: -6px; left: -6px; background: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; display: none; align-items: center; justify-content: center; font-size: 9px; border: 2px solid #111827;">0</span>
                 </button>
-                <button onclick="leaveSession()" style="background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: bold; display: inline-flex; align-items: center; gap: 4px; transition: background 0.2s; height: 28px;">
-                    <i class="fas fa-stop-circle"></i> إنهاء البث
+                <button onclick="leaveSession()" style="background: #dc2626; color: white; border: none; padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: bold; display: inline-flex; align-items: center; gap: 4px; transition: background 0.2s; height: 28px;">
+                    <i class="fas fa-stop-circle"></i> إنهاء والعودة للوحتي
                 </button>
             </div>
             <div id="streamTimerContainer" style="display: flex; align-items: center; gap: 6px; background: #1f2937; padding: 3px 10px; border-radius: 16px; border: 1px solid #374151; margin-right: auto;">
@@ -2249,30 +2252,33 @@ function generateTeacherZoomPage(offer, teacher, token) {
             </button>
             <button class="ctrl-btn" id="downloadRecBtn" onclick="triggerManualDownloadRecording()" title="تحميل تسجيل البث المباشر الآن على جهازك" style="width: auto; padding: 0 12px; border-radius: 20px; font-size: 12px; font-weight: 700; gap: 6px; background: #059669; border-color: #10b981; color: white;"><i class="fas fa-download"></i> <span>تحميل التسجيل</span></button>
             
-            <!-- زر التحكم بجودة البث -->
+            <!-- زر التحكم بجودة البث والتكيف مع الإنترنت -->
             <div style="position: relative; display: inline-block;">
-                <button class="ctrl-btn" id="qualityBtn" onclick="toggleQualityMenu()" title="رفع/تغيير جودة البث" style="width: auto; padding: 0 14px; border-radius: 20px; font-size: 12px; font-weight: 700; gap: 6px; background: #2563eb; border-color: #3b82f6;">
-                    <i class="fas fa-sliders-h"></i> <span id="currentQualityLabel">الجودة: 480p SD</span>
+                <button class="ctrl-btn" id="qualityBtn" onclick="toggleQualityMenu()" title="ضبط جودة البث والتكيف مع الإنترنت" style="width: auto; padding: 0 14px; border-radius: 20px; font-size: 12px; font-weight: 700; gap: 6px; background: #2563eb; border-color: #3b82f6;">
+                    <i class="fas fa-sliders-h"></i> <span id="currentQualityLabel">الجودة: تلقائي (متكيف)</span>
                 </button>
-                <div id="qualityMenu" style="display: none; position: absolute; bottom: 52px; right: 0; background: #1f2937; border: 1px solid #374151; border-radius: 10px; padding: 6px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 100; min-width: 160px; text-align: right;">
-                    <div style="font-size: 11px; color: #9ca3af; padding: 4px 8px; border-bottom: 1px solid #374151; margin-bottom: 4px; font-weight: 700;">جودة بث الفيديو:</div>
-                    <button onclick="changeVideoQuality('1080p_1', '1080p Full HD')" style="width: 100%; text-align: right; background: transparent; border: none; color: #fff; padding: 8px 10px; border-radius: 6px; font-family: Cairo; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: space-between;">
-                        <span>1080p Full HD</span> <i class="fas fa-check quality-check" id="check-1080p_1" style="display:none; color: #10b981;"></i>
+                <div id="qualityMenu" style="display: none; position: absolute; bottom: 52px; right: 0; background: #1f2937; border: 1px solid #374151; border-radius: 10px; padding: 6px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 100; min-width: 190px; text-align: right;">
+                    <div style="font-size: 11px; color: #9ca3af; padding: 4px 8px; border-bottom: 1px solid #374151; margin-bottom: 4px; font-weight: 700;">جودة البث وتكيف الإنترنت:</div>
+                    <button onclick="changeVideoQuality('auto', 'تلقائي (متكيف)')" style="width: 100%; text-align: right; background: transparent; border: none; color: #fff; padding: 8px 10px; border-radius: 6px; font-family: Cairo; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: space-between;">
+                        <span>⚡ تلقائي (يتكيف مع النت)</span> <i class="fas fa-check quality-check" id="check-auto" style="color: #10b981;"></i>
                     </button>
                     <button onclick="changeVideoQuality('720p_1', '720p HD')" style="width: 100%; text-align: right; background: transparent; border: none; color: #fff; padding: 8px 10px; border-radius: 6px; font-family: Cairo; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: space-between;">
-                        <span>720p HD</span> <i class="fas fa-check quality-check" id="check-720p_1" style="display:none; color: #10b981;"></i>
+                        <span>720p HD عالي</span> <i class="fas fa-check quality-check" id="check-720p_1" style="display:none; color: #10b981;"></i>
                     </button>
                     <button onclick="changeVideoQuality('480p_1', '480p SD')" style="width: 100%; text-align: right; background: transparent; border: none; color: #fff; padding: 8px 10px; border-radius: 6px; font-family: Cairo; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: space-between;">
-                        <span>480p SD</span> <i class="fas fa-check quality-check" id="check-480p_1" style="color: #10b981;"></i>
+                        <span>480p SD متوازن</span> <i class="fas fa-check quality-check" id="check-480p_1" style="display:none; color: #10b981;"></i>
                     </button>
                     <button onclick="changeVideoQuality('360p_1', '360p اقتصادي')" style="width: 100%; text-align: right; background: transparent; border: none; color: #fff; padding: 8px 10px; border-radius: 6px; font-family: Cairo; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: space-between;">
-                        <span>360p اقتصادي</span> <i class="fas fa-check quality-check" id="check-360p_1" style="display:none; color: #10b981;"></i>
+                        <span>360p اقتصادي (نت متوسط)</span> <i class="fas fa-check quality-check" id="check-360p_1" style="display:none; color: #10b981;"></i>
+                    </button>
+                    <button onclick="changeVideoQuality('240p_1', '240p منخفض جداً')" style="width: 100%; text-align: right; background: transparent; border: none; color: #fff; padding: 8px 10px; border-radius: 6px; font-family: Cairo; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: space-between;">
+                        <span>240p منخفض (نت ضعيف)</span> <i class="fas fa-check quality-check" id="check-240p_1" style="display:none; color: #10b981;"></i>
                     </button>
                 </div>
             </div>
 
             <button class="ctrl-btn end" onclick="leaveSession()">
-                <i class="fas fa-stop-circle"></i> إنهاء البث المباشر
+                <i class="fas fa-sign-out-alt"></i> إنهاء والعودة للوحتي
             </button>
         </div>
     </div>
@@ -2486,6 +2492,30 @@ function generateTeacherZoomPage(offer, teacher, token) {
                         const el = document.getElementById('remote-video-' + user.uid);
                         if (el) el.remove();
                     });
+
+                    // 📡 مراقبة سرعة إنترنت الأستاذ والتكيف التلقائي
+                    c.on('network-quality', (stats) => {
+                        const uplink = stats.uplinkNetworkQuality;
+                        const netBadge = document.getElementById('teacherNetBadge');
+                        const netText = document.getElementById('teacherNetText');
+                        if (netBadge && netText) {
+                            if (uplink >= 4) {
+                                netBadge.style.display = 'inline-flex';
+                                netBadge.style.borderColor = '#ef4444';
+                                netBadge.style.background = 'rgba(239, 68, 68, 0.25)';
+                                netBadge.style.color = '#fca5a5';
+                                netText.textContent = 'الإنترنت ضعيف - تم تقليل الاستهلاك تلقائياً لمنع التقطيع';
+                            } else if (uplink === 3) {
+                                netBadge.style.display = 'inline-flex';
+                                netBadge.style.borderColor = '#f59e0b';
+                                netBadge.style.background = 'rgba(245, 158, 11, 0.2)';
+                                netBadge.style.color = '#fcd34d';
+                                netText.textContent = 'سرعة الإنترنت متوسطة';
+                            } else {
+                                netBadge.style.display = 'none';
+                            }
+                        }
+                    });
                 }
 
                 client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
@@ -2493,10 +2523,32 @@ function generateTeacherZoomPage(offer, teacher, token) {
 
                 try {
                     if (statusElem) statusElem.innerHTML = "يرجى الموافقة على صلاحيات الكاميرا والميكروفون من متصفحك...";
-                    [localAudioTrack, localVideoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
-                    if (localVideoTrack && typeof localVideoTrack.setEncoderConfiguration === 'function') {
-                        await localVideoTrack.setEncoderConfiguration('480p_1').catch(e => console.warn('Quality set warn:', e));
-                    }
+                    // 🎙 إعداد صوت فائق الكفاءة ومضاد للضجيج ببيانات خفيفة جداً
+                    localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack({
+                        encoderConfig: 'speech_standard',
+                        AEC: true,
+                        ANS: true,
+                        AGC: true
+                    }).catch(async (e) => {
+                        console.warn('Audio track specific config error, falling back:', e);
+                        return await AgoraRTC.createMicrophoneAudioTrack();
+                    });
+
+                    // 📹 إعداد فيديو متكيف مع الشبكة لتجنب انقطاع البث أو ظهور شاشة سوداء
+                    const adaptiveVideoConfig = {
+                        width: { ideal: 640, min: 320 },
+                        height: { ideal: 480, min: 240 },
+                        frameRate: { ideal: 24, min: 12 },
+                        bitrateMin: 80,
+                        bitrateMax: 600,
+                        degradationPreference: 'MAINTAIN_FRAMERATE'
+                    };
+                    localVideoTrack = await AgoraRTC.createCameraVideoTrack({
+                        encoderConfig: adaptiveVideoConfig
+                    }).catch(async (e) => {
+                        console.warn('Camera specific config error, falling back:', e);
+                        return await AgoraRTC.createCameraVideoTrack();
+                    });
                 } catch (mediaErr) {
                     console.warn('فشل فتح الكاميرا والميكروفون معاً، جاري تجربة الميكروفون فقط...', mediaErr);
                     try {
@@ -2532,6 +2584,23 @@ function generateTeacherZoomPage(offer, teacher, token) {
                     }
                 }
 
+                // ⚡ تفعيل البث المزدوج (Dual Stream) ليتلقى الطلاب ذوو الإنترنت الضعيف بثاً خفيفاً بدون شاشة سوداء
+                try {
+                    if (typeof client.enableDualStream === 'function') {
+                        await client.enableDualStream();
+                        if (typeof client.setLowStreamParameter === 'function') {
+                            await client.setLowStreamParameter({
+                                width: 320,
+                                height: 240,
+                                framerate: 15,
+                                bitrate: 120
+                            });
+                        }
+                    }
+                } catch (dualErr) {
+                    console.warn('Dual stream enable notice:', dualErr);
+                }
+
                 if (localVideoTrack) {
                     await client.publish(localAudioTrack ? [localAudioTrack, localVideoTrack] : [localVideoTrack]);
                 } else if (localAudioTrack) {
@@ -2558,11 +2627,11 @@ function generateTeacherZoomPage(offer, teacher, token) {
                 let userFriendlyAdvice = '';
 
                 if (rawErrStr.includes('PERMISSION_DENIED') || rawErrStr.includes('NotAllowedError') || rawErrStr.includes('Permission denied')) {
-                    userFriendlyTitle = '📷���� الإذن بالوصول للميكروفون أو الكاميرا مرفوض';
+                    userFriendlyTitle = '📷 الإذن بالوصول للميكروفون أو الكاميرا مرفوض';
                     userFriendlyAdvice = 'يرجى السماح بفتح الكاميرا والميكروفون من إعدادات المتصفح وإعادة المحاولة.';
                 } else if (rawErrStr.includes('NotFoundError') || rawErrStr.includes('DevicesNotFoundError')) {
                     userFriendlyTitle = '🔌 لم يتم العثور على كاميرا أو ميكروفون';
-                    userFriendlyAdvice = 'تأكد من توصيل الكاميرا وا��ميكروفون بجهازك بشكل صحيح.';
+                    userFriendlyAdvice = 'تأكد من توصيل الكاميرا والميكروفون بجهازك بشكل صحيح.';
                 } else if (rawErrStr.includes('CANNOT_GET_GATEWAY') || rawErrStr.includes('DYNAMIC_KEY_TIMEOUT') || rawErrStr.includes('INVALID_VENDOR_KEY') || rawErrStr.includes('INVALID_TOKEN') || rawErrStr.includes('WS_ABORT')) {
                     userFriendlyTitle = '🔑 خطأ في الاتصال بالخادم أو مفاتيح البث المباشر (WS_ABORT)';
                     userFriendlyAdvice = 'تأكد من جودة الاتصال بالإنترنت وعدم وجود إضافة تعترض الاتصال (AdBlock/Firewall)، وتحقق من إعدادات المفاتيح بـ Vercel.';
@@ -2597,7 +2666,18 @@ function generateTeacherZoomPage(offer, teacher, token) {
         async function changeVideoQuality(profile, label) {
             try {
                 if (localVideoTrack && typeof localVideoTrack.setEncoderConfiguration === 'function') {
-                    await localVideoTrack.setEncoderConfiguration(profile);
+                    if (profile === 'auto') {
+                        await localVideoTrack.setEncoderConfiguration({
+                            width: { ideal: 640, min: 320 },
+                            height: { ideal: 480, min: 240 },
+                            frameRate: { ideal: 24, min: 12 },
+                            bitrateMin: 80,
+                            bitrateMax: 600,
+                            degradationPreference: 'MAINTAIN_FRAMERATE'
+                        });
+                    } else {
+                        await localVideoTrack.setEncoderConfiguration(profile);
+                    }
                     document.getElementById('currentQualityLabel').textContent = 'الجودة: ' + label;
                     document.querySelectorAll('.quality-check').forEach(el => el.style.display = 'none');
                     const activeCheck = document.getElementById('check-' + profile);
@@ -3170,8 +3250,8 @@ function generateTeacherZoomPage(offer, teacher, token) {
                 if (client) { client.leave().catch(e => console.warn('Agora client leave:', e)); }
             } catch(e){}
             
-            try { window.close(); } catch(e){}
-            window.location.href = '/teacher-dashboard.html';
+            window.location.replace('/teacher-dashboard.html');
+            setTimeout(() => { window.location.href = '/teacher-dashboard.html'; }, 300);
         }
 
         // حفظ وإيق����ف الموقت تلقائياً عند إغلاق التبويب أو مغادرة الصفحة دون إنهاء البث
@@ -3439,6 +3519,9 @@ function generateStudentZoomPage(offer, student) {
                 <i class="fas fa-play-circle"></i>
                 <span style="font-size: 14px;">البث المباشر: ${escapeHtml(subjectName)}</span>
                 <span class="badge" style="font-size: 10px; padding: 1px 6px;">مباشر</span>
+                <div id="studentNetBadge" style="display: none; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 16px; font-size: 11px; font-weight: 700; border: 1px solid #f59e0b; background: rgba(245, 158, 11, 0.2); color: #fcd34d;">
+                    <i class="fas fa-bolt"></i> <span id="studentNetText">وضع الإنترنت الخفيف</span>
+                </div>
             </div>
             <div id="liveViewersBadge" style="display: flex; align-items: center; gap: 6px; background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #34d399; padding: 2px 8px; border-radius: 16px; font-size: 11px; font-weight: 700;">
                 <i class="fas fa-users"></i>
@@ -3565,6 +3648,34 @@ function generateStudentZoomPage(offer, student) {
                         if (existingEl) existingEl.remove();
                     });
 
+                    // 📡 مراقبة سرعة اتصال الطالب والتكيف التلقائي مع البث
+                    c.on('network-quality', (stats) => {
+                        const downlink = stats.downlinkNetworkQuality;
+                        const netBadge = document.getElementById('studentNetBadge');
+                        const netText = document.getElementById('studentNetText');
+                        if (netBadge && netText) {
+                            if (downlink >= 4) {
+                                netBadge.style.display = 'inline-flex';
+                                netText.textContent = 'الإنترنت ضعيف - تم تفعيل البث الخفيف لمنع التقطيع';
+                            } else {
+                                netBadge.style.display = 'none';
+                            }
+                        }
+                        if (client && client.remoteUsers) {
+                            client.remoteUsers.forEach(rUser => {
+                                try {
+                                    if (downlink >= 4) {
+                                        // طلب البث الخفيف ذي استهلاك البيانات المنخفض لتجنب التقطيع
+                                        client.setRemoteVideoStreamType(rUser.uid, 1);
+                                    } else if (downlink <= 2) {
+                                        // العودة للبث عالي الجودة
+                                        client.setRemoteVideoStreamType(rUser.uid, 0);
+                                    }
+                                } catch(e){}
+                            });
+                        }
+                    });
+
                     c.on('user-published', async (user, mediaType) => {
                         updateViewersCount();
                         const ov = document.getElementById('statusOverlay');
@@ -3608,6 +3719,11 @@ function generateStudentZoomPage(offer, student) {
                 }
 
                 client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+                try {
+                    if (typeof client.setStreamFallbackOption === 'function') {
+                        client.setStreamFallbackOption(null, 2);
+                    }
+                } catch(e){}
                 setupStudentClient(client);
 
                 const tokenToUse = (agoraToken && agoraToken !== 'null' && agoraToken !== 'undefined' && agoraToken.trim() !== '') ? agoraToken.trim() : null;
@@ -3962,8 +4078,8 @@ function generateStudentZoomPage(offer, student) {
                         isLeaving = true;
                         try { if (client) client.leave(); } catch(e){}
                         alert('🔴 قام الأستاذ بإنهاء البث المباشر.');
-                        try { window.close(); } catch(e){}
-                        window.location.href = '/student-dashboard.html';
+                        window.location.replace('/student-dashboard.html');
+                        setTimeout(() => { window.location.href = '/student-dashboard.html'; }, 300);
                         return;
                     }
                     if (data.total_seconds && !isNaN(Number(data.total_seconds))) {
@@ -4101,8 +4217,8 @@ function generateStudentZoomPage(offer, student) {
             if (client) {
                 try { client.leave().catch(e => console.warn('Agora client leave:', e)); } catch(e){}
             }
-            window.close();
-            window.location.href = '/student-dashboard.html';
+            window.location.replace('/student-dashboard.html');
+            setTimeout(() => { window.location.href = '/student-dashboard.html'; }, 300);
         }
 
         document.addEventListener('DOMContentLoaded', () => {
