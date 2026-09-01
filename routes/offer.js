@@ -1107,36 +1107,69 @@ router.delete('/offer/delete/:offer_id', authenticate, authorize(['teacher']), [
             return res.status(403).json({ success: false, error: 'غير مصرح لك بحذف هذا الدرس' });
         }
 
-        // ✅ التحقق من وجود حجز للعرض قبل الحذف
-        const { count: sessionCount } = await supabase
+        // ✅ معالجة استرداد أي حجوزات نشطة إن وجدت قبل الحذف
+        const { data: activeSessions } = await supabase
             .from('sessions')
-            .select('id', { count: 'exact', head: true })
-            .eq('offer_id', offer_id);
+            .select('id, student_id, payment_amount, payment_status')
+            .eq('offer_id', offer_id)
+            .in('payment_status', ['paid', 'pending_stream']);
 
-        const { count: subCount } = await supabase
-            .from('stream_subscriptions')
-            .select('id', { count: 'exact', head: true })
-            .eq('offer_id', offer_id);
+        if (activeSessions && activeSessions.length > 0) {
+            console.log(`⚠️ حذف درس يحتوي على ${activeSessions.length} حجز نشط - البدء في إعادة المبالغ للطلاب`);
+            const isOfferFree = (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && parseFloat(offer.price || 0) === 0;
 
-        const currentStudents = parseInt(offer.current_students || 0);
-        const hasBookings = currentStudents > 0 || (sessionCount && sessionCount > 0) || (subCount && subCount > 0);
+            for (const session of activeSessions) {
+                const refundAmount = (!isOfferFree && session.payment_amount > 0) ? session.payment_amount : 0;
 
-        if (hasBookings) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'لا يمكنك حذف هذا العرض لوجود حجز مسبق عليه من قبل الطلاب' 
-            });
+                if (refundAmount > 0) {
+                    // إعادة المبلغ للطالب
+                    const student = await getOne('students', 'id', session.student_id);
+                    if (student) {
+                        await update('students', session.student_id, {
+                            wallet_balance: (student.wallet_balance || 0) + refundAmount
+                        });
+                    }
+
+                    // خصم من الرصيد المعلق للأستاذ
+                    const teacher = await getOne('teachers', 'id', offer.teacher_id);
+                    if (teacher) {
+                        await update('teachers', offer.teacher_id, {
+                            pending_withdraw: Math.max(0, (teacher.pending_withdraw || 0) - refundAmount)
+                        });
+                    }
+
+                    // تسجيل المعاملة
+                    await insert('wallet_transactions', {
+                        student_id: session.student_id,
+                        amount: refundAmount,
+                        type: 'refund',
+                        status: 'completed',
+                        description: `استرداد مبلغ حجز لدرس محذوف "${offer.subject_name || 'غير معروف'}"`,
+                        created_at: new Date().toISOString()
+                    });
+                }
+
+                // إرسال إشعار للطالب
+                try {
+                    await supabase.from('notifications').insert({
+                        user_id: session.student_id,
+                        title: 'إلغاء حجز واسترداد مبلغ (حذف الدرس)',
+                        message: `قام الأستاذ بحذف درس "${offer.subject_name || 'غير معروف'}" وتمت إعادة مبلغ ${refundAmount} دج إلى محفظتك.`,
+                        type: 'refund',
+                        is_read: false,
+                        created_at: new Date().toISOString()
+                    });
+                } catch (notifErr) {
+                    console.warn('⚠️ تعذر إرسال إشعار الإلغاء للطالب:', notifErr.message);
+                }
+            }
         }
 
-        if (offer.status === 'live' || offer.status === 'teacher_ready' || offer.status === 'upcoming') {
-            console.log(`⚠️ حذف درس نشط أو قادم - البدء في معالجة الاستردادات`);
-            try {
-                // استرداد كامل للطلاب عند حذف الدرس من قبل الأستاذ
-                await processStreamPayments(offer_id, true);
-            } catch (refundError) {
-                logger.error('❌ خطأ أثناء معالجة الاستردادات عند الحذف:', refundError.message);
-                // نكمل الحذف حتى لو فشل الاسترداد لبعض الحالات، أو يمكن التوقف هنا
-            }
+        try {
+            // استرداد كامل للطلاب عند حذف الدرس من قبل الأستاذ عبر نظام البث
+            await processStreamPayments(offer_id, true);
+        } catch (refundError) {
+            logger.error('❌ خطأ أثناء معالجة الاستردادات عند الحذف:', refundError.message);
         }
 
         // ✅ أرشفة وسجل تفاصيل البث المحذوف كدليل قاطع للمدير قبل الحذف
