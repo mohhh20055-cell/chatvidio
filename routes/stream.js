@@ -270,10 +270,29 @@ router.post('/end/:offer_id', authenticate, authorize(['teacher']), validateOffe
         }
 
         console.log(`✅ تم إنهاء البث وتحديث الدرس ${offer_id} بنجاح`);
+
+        // ✅ جلب تفاصيل الحصة القادمة لعرضها للأستاذ
+        let nextSession = null;
+        try {
+            const { data: nextOffer } = await supabase
+                .from('offers')
+                .select('subject_name, education_level, start_time')
+                .eq('teacher_id', currentOffer.teacher_id)
+                .gt('start_time', currentOffer.start_time)
+                .eq('status', 'upcoming')
+                .order('start_time', { ascending: true })
+                .limit(1)
+                .maybeSingle();
+            nextSession = nextOffer;
+        } catch (e) {
+            logger.error('Error fetching next session:', e.message);
+        }
+
         return res.json({
             success: true,
             message: 'تم إنهاء البث بنجاح',
-            deleted: false
+            deleted: false,
+            next_session: nextSession
         });
     } catch (error) {
         logger.error('❌ خطأ في إنهاء البث:', error.message);
@@ -299,6 +318,21 @@ router.get('/status/:offer_id', async (req, res) => {
             });
         }
 
+        // Calculate active student count
+        let activeCount = 0;
+        try {
+            const tenSecondsAgo = new Date(Date.now() - 10 * 1000).toISOString();
+            const { count } = await supabase
+                .from('active_stream')
+                .select('*', { count: 'exact', head: true })
+                .eq('offer_id', offer_id)
+                .not('student_id', 'is', null)
+                .gte('last_ping', tenSecondsAgo);
+            activeCount = count || 0;
+        } catch (e) {
+            logger.error('Error fetching active count:', e.message);
+        }
+
         res.json({ 
             status: offer.status || 'not_found',
             stream_url: offer.stream_url || null,
@@ -307,6 +341,7 @@ router.get('/status/:offer_id', async (req, res) => {
             subject_name: offer.subject_name,
             teacher_id: offer.teacher_id,
             booked_count: offer.booked_count || 0,
+            active_students_count: activeCount,
             room_password: offer.room_password || null
         });
     } catch (error) {
@@ -761,6 +796,9 @@ router.get('/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                             });
                             const data = await res.json();
                             if (data.success) {
+                                if (data.next_session) {
+                                    alert('تم إنهاء البث بنجاح.\n\nالحصة القادمة:\nالمادة: ' + data.next_session.subject_name + '\nالمستوى: ' + data.next_session.education_level + '\nالوقت: ' + new Date(data.next_session.start_time).toLocaleString('ar-EG'));
+                                }
                                 window.location.href = '/teacher-dashboard.html';
                             }
                         } catch (e) { alert('خطأ في الاتصال بالخادم'); manualClose = false; }
@@ -1729,6 +1767,21 @@ router.post('/stream/heartbeat/:offer_id', authenticate, authorize(['teacher']),
         const activeStudentIds = new Set((activeStudents || []).map(s => s.student_id));
         const pendingStudentsCount = (paidSessions || []).filter(s => !activeStudentIds.has(s.student_id)).length;
 
+        // ✅ حساب الطلاب النشطين حالياً في البث
+        let activeCount = 0;
+        try {
+            const tenSecondsAgo = new Date(Date.now() - 10 * 1000).toISOString();
+            const { count } = await supabase
+                .from('active_stream')
+                .select('*', { count: 'exact', head: true })
+                .eq('offer_id', offer_id)
+                .not('student_id', 'is', null)
+                .gte('last_ping', tenSecondsAgo);
+            activeCount = count || 0;
+        } catch (e) {
+            logger.error('Error fetching active count in heartbeat:', e.message);
+        }
+
         let remainingSeconds = Math.max(0, Math.floor((offerEnd - now) / 1000));
 
         return res.json({
@@ -1738,7 +1791,7 @@ router.post('/stream/heartbeat/:offer_id', authenticate, authorize(['teacher']),
             overdue,
             grace_remaining_seconds: graceRemainingSeconds,
             pending_students_count: pendingStudentsCount,
-            active_students_count: activeStudentIds.size,
+            active_students_count: activeCount,
             server_time: now.toISOString()
         });
 
