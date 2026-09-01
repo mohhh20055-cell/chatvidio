@@ -144,7 +144,7 @@ function isOriginAllowed(origin) {
 // ============================================================
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 
 // LRU-like simple cache to prevent memory leak
 const publicCache = new Map();

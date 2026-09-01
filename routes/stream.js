@@ -98,7 +98,7 @@ const handleStreamStart = async (req, res) => {
             .eq('offer_id', offer_id)
             .in('payment_status', ['paid', 'pending_stream']);
         
-        // ✅ تحديث حالة المدفوعات إلى "pending_stream"
+        // ✅ تحديث حالة المدفوعات إلى "pending_stream" وإرسال إشعار
         if (sessions && sessions.length > 0) {
             for (const session of sessions) {
                 await supabase
@@ -108,6 +108,21 @@ const handleStreamStart = async (req, res) => {
                     })
                     .eq('offer_id', offer_id)
                     .eq('student_id', session.student_id);
+
+                try {
+                    await supabase
+                        .from('notifications')
+                        .insert({
+                            user_id: session.student_id,
+                            user_type: 'student',
+                            title: '🔴 البث المباشر بدأ!',
+                            message: `البث المباشر لحصة "${offer.subject_name || 'الدرس'}" قد بدأ الآن. يمكنك الانضمام فوراً!`,
+                            is_read: false,
+                            created_at: new Date().toISOString()
+                        });
+                } catch (notifErr) {
+                    logger.error(`⚠️ تعذر إرسال إشعار للطالب ${session.student_id}:`, notifErr.message);
+                }
             }
         }
         

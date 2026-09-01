@@ -8513,12 +8513,17 @@ function updateUI() {
         for (const offer of offers) {
             const offerDate = new Date(offer.offer_date);
             const durationMs = (offer.duration || 60) * 60 * 1000;
+            const totalSessions = offer.total_sessions || 1;
+            const completedCount = offer.completed_sessions_count || 0;
+            const isMultiSessionRemaining = totalSessions > 1 && completedCount < totalSessions;
+
             const isExpired = (offerDate.getTime() + durationMs) < now.getTime() && 
                               offer.status !== 'live' && 
                               offer.status !== 'teacher_ready' && 
-                              offer.status !== 'paused';
+                              offer.status !== 'paused' && 
+                              !isMultiSessionRemaining;
 
-            const isExplicitlyTerminated = ['completed', 'cancelled'].includes(offer.status) || !!offer.completed_at || !!offer.force_ended_at || offer.terminated === true;
+            const isExplicitlyTerminated = ['completed', 'cancelled'].includes(offer.status) || (!!offer.completed_at && !isMultiSessionRemaining) || !!offer.force_ended_at || offer.terminated === true;
             const isTerminated = isExplicitlyTerminated || isExpired;
 
             let statusText = '', statusClass = '';
@@ -8533,7 +8538,6 @@ function updateUI() {
             const formattedDate = offerDate.toLocaleString('ar-DZ', { dateStyle: 'medium', timeStyle: 'short' });
 
             const planType = offer.plan_type || '1_day';
-            const totalSessions = offer.total_sessions || 1;
             const completedSessions = offer.completed_sessions || 0;
 
             const planMap = {

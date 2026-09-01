@@ -1107,6 +1107,12 @@ router.delete('/offer/delete/:offer_id', authenticate, authorize(['teacher']), [
             return res.status(403).json({ success: false, error: 'غير مصرح لك بحذف هذا الدرس' });
         }
 
+        const isMultiSession = offer.total_sessions > 1 || offer.plan_type;
+        const completedCount = offer.completed_sessions_count || 0;
+        if (isMultiSession && completedCount < offer.total_sessions) {
+            return res.status(400).json({ success: false, error: 'لا يمكنك حذف البث حتى تكتمل جميع الحصص المتبقية' });
+        }
+
         if (offer.status === 'live' || offer.status === 'teacher_ready' || offer.status === 'upcoming') {
             console.log(`⚠️ حذف درس نشط أو قادم - البدء في معالجة الاستردادات`);
             try {
