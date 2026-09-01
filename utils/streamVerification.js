@@ -994,9 +994,11 @@ async function forceEndStream(offerId, reason = 'grace_timeout') {
         logger.error('⚠️ خطأ في أرشفة البث الإجباري:', archErr.message);
     }
 
+    const isAllCompleted = (offer.completed_sessions_count || 0) >= (offer.total_sessions || 1);
+    
     await supabase.from('offers').update({
-        status: 'completed',
-        completed_at: new Date().toISOString(),
+        status: isAllCompleted ? 'completed' : 'upcoming',
+        completed_at: isAllCompleted ? new Date().toISOString() : null,
         force_ended_at: new Date().toISOString()
     }).eq('id', offerId);
 
