@@ -208,17 +208,7 @@ router.post('/end/:offer_id', authenticate, authorize(['teacher']), validateOffe
             logger.error('⚠️ خطأ في أرشفة البث قبل الحذف:', archErr.message);
         }
 
-        // ✅ تصفير offer_id في الجداول التي تحتفظ بالسجلات لتجنب قيود المفتاح الأجنبي (Foreign Key Constraints)
-        const tablesToNullify = ['sessions', 'bookings', 'wallet_transactions', 'notifications', 'reports'];
-        for (const tbl of tablesToNullify) {
-            try {
-                await supabase.from(tbl).update({ offer_id: null }).eq('offer_id', offer_id);
-            } catch (e) {
-                logger.error(`⚠️ خطأ عند تصفير offer_id في ${tbl}:`, e.message);
-            }
-        }
-
-        // ✅ حذف البيانات المؤقتة الخاصة بالبث
+        // ✅ حذف البيانات المؤقتة الخاصة بالبث فقط
         const tablesToDelete = [
             'active_stream', 
             'waiting_room', 
@@ -236,22 +226,28 @@ router.post('/end/:offer_id', authenticate, authorize(['teacher']), validateOffe
             }
         }
 
-        // ✅ حذف الدرس نهائياً من جدول offers
-        const { error: deleteError } = await supabase
+        // ✅ تحديث حالة الدرس بدلاً من حذفه
+        const isAllCompleted = (currentOffer.completed_sessions_count || 0) >= (currentOffer.total_sessions || 1);
+        
+        const { error: updateError } = await supabase
             .from('offers')
-            .delete()
+            .update({
+                status: isAllCompleted ? 'completed' : 'upcoming',
+                completed_at: isAllCompleted ? new Date().toISOString() : null,
+                stream_active: false
+            })
             .eq('id', offer_id);
 
-        if (deleteError) {
-            logger.error('❌ خطأ في حذف الدرس بعد إنهاء البث:', deleteError.message);
-            return res.status(500).json({ success: false, error: deleteError.message });
+        if (updateError) {
+            logger.error('❌ خطأ في تحديث حالة الدرس بعد إنهاء البث:', updateError.message);
+            return res.status(500).json({ success: false, error: updateError.message });
         }
 
-        console.log(`✅ تم إنهاء البث وحذف الدرس ${offer_id} بنجاح من قاعدة البيانات`);
+        console.log(`✅ تم إنهاء البث وتحديث الدرس ${offer_id} بنجاح`);
         return res.json({
             success: true,
-            message: 'تم إنهاء البث وتوزيع مستحقات/استرداد الأموال وحذف الدرس بنجاح',
-            deleted: true
+            message: 'تم إنهاء البث بنجاح',
+            deleted: false
         });
     } catch (error) {
         logger.error('❌ خطأ في إنهاء البث:', error.message);

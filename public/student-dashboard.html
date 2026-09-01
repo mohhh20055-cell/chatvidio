@@ -6854,7 +6854,7 @@
         let html = '';
         for (const booking of bookings) {
             const offerDate = booking.offer_date ? new Date(booking.offer_date) : null;
-            const isPaid = booking.payment_status === 'paid' || booking.is_free === true;
+            const isPaid = booking.payment_status === 'paid' || booking.payment_status === 'pending_stream' || booking.is_free === true;
             const statusInfo = getOfferStatus(booking);
 
             const isLive = statusInfo.code === 'live';

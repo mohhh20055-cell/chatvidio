@@ -351,6 +351,31 @@ async function processStreamPayments(offerId, earlyEnd = false) {
         return;
     }
 
+    const isMultiSession = offer && (offer.total_sessions > 1 || offer.plan_type);
+
+    // إذا كان العرض يحتوي على خطة اشتراك متعددة الحصص، نحرر دفعة الحصة الحالية
+    if (isMultiSession) {
+        try {
+            await releasePlanSessionEscrow(offerId);
+        } catch (e) {
+            console.error('خطأ في تحرير مستحقات حصة الخطة:', e.message);
+        }
+
+        // تحديث حالة العرض للتحقق مما إذا اكتملت جميع الحصص
+        const { data: updatedOffer } = await supabase
+            .from('offers')
+            .select('completed_sessions_count, total_sessions')
+            .eq('id', offerId)
+            .single();
+        
+        const isAllCompleted = updatedOffer && (updatedOffer.completed_sessions_count || 0) >= (updatedOffer.total_sessions || 1);
+        
+        // إذا لم تكتمل جميع الحصص بعد، نخرج دون تحديث الجلسات لـ paid (ليبقى pending_stream)
+        if (!isAllCompleted && !earlyEnd) {
+            return;
+        }
+    }
+
     // جلب جميع الجلسات المعلقة لهذا الدرس
     const { data: sessions, error: sessionsError } = await supabase
         .from('sessions')
@@ -370,16 +395,16 @@ async function processStreamPayments(offerId, earlyEnd = false) {
         const isCompleted = completion.complete;
         const completionPctRounded = Math.round(completion.completion_percentage);
 
-        if (isCompleted) {
+        if (isCompleted || isMultiSession) { // إذا كانت خطة متعددة الحصص واكتملت جميعها
             // البث مكتمل - لا استرداد للطالب، الأستاذ يحصل على سعر الحصة
-            const teacherAmount = isOfferFree ? 0 : (parseFloat(offer.price_per_session || offer.price || 0));
+            const teacherAmount = isOfferFree ? 0 : (isMultiSession ? 0 : parseFloat(offer.price_per_session || offer.price || 0));
 
             // تحديث حالة الجلسة ونسبة الإكتمال
             await supabase
                 .from('sessions')
                 .update({
                     payment_status: 'paid',
-                    teacher_earned: teacherAmount,
+                    teacher_earned: isMultiSession ? (session.payment_amount || 0) : teacherAmount,
                     completed_at: new Date().toISOString(),
                     completion_percentage: completionPctRounded,
                     actual_duration: completion.actual_seconds,
@@ -387,8 +412,8 @@ async function processStreamPayments(offerId, earlyEnd = false) {
                 })
                 .eq('id', session.id);
 
-            // إضافة للأستاذ
-            if (teacherAmount > 0) {
+            // إضافة للأستاذ (فقط للحصص الفردية، لأن الحصص المتعددة يتم الدفع لها عبر releasePlanSessionEscrow)
+            if (teacherAmount > 0 && !isMultiSession) {
                 const { data: teacher } = await supabase
                     .from('teachers')
                     .select('pending_withdraw, total_earned')
@@ -494,15 +519,6 @@ async function processStreamPayments(offerId, earlyEnd = false) {
                 is_read: false,
                 created_at: new Date().toISOString()
             });
-    }
-
-    // إذا كان العرض يحتوي على خطة اشتراك متعددة الحصص، نحرر دفعة الحصة الحالية
-    if (offer && (offer.total_sessions > 1 || offer.plan_type)) {
-        try {
-            await releasePlanSessionEscrow(offerId);
-        } catch (e) {
-            console.error('خطأ في تحرير مستحقات حصة الخطة:', e.message);
-        }
     }
 }
 
