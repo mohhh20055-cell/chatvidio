@@ -8601,7 +8601,7 @@ function updateUI() {
             'primary_2': 'السنة الثانية ابتدائي',
             'primary_3': 'السنة الثالثة ابتدائي',
             'primary_4': 'السنة الرابعة ابتدائي',
-            'primary_5': 'السنة ا��خامسة ابتدائي',
+            'primary_5': 'السنة الخامسة ابتدائي',
             '5eme_pri': 'خامسة ابتدائي',
             'middle_all': 'جميع مستويات المتوسط',
             '1ere_am': 'أولى متوسط',
@@ -8630,6 +8630,7 @@ function updateUI() {
             const durationMs = (offer.duration || 60) * 60 * 1000;
             const totalSessions = offer.total_sessions || 1;
             const completedCount = offer.completed_sessions_count || 0;
+            const isFinished = completedCount >= totalSessions;
             const isMultiSessionRemaining = totalSessions > 1 && completedCount < totalSessions;
 
             const isExpired = (offerDate.getTime() + durationMs) < now.getTime() && 
@@ -8639,10 +8640,11 @@ function updateUI() {
                               !isMultiSessionRemaining;
 
             const isExplicitlyTerminated = ['completed', 'cancelled'].includes(offer.status) || (!!offer.completed_at && !isMultiSessionRemaining) || !!offer.force_ended_at || offer.terminated === true;
-            const isTerminated = isExplicitlyTerminated || isExpired;
+            const isTerminated = isExplicitlyTerminated || isExpired || isFinished;
 
             let statusText = '', statusClass = '';
-            if (offer.status === 'upcoming' && !isExpired) { statusText = '⏳ قادم'; statusClass = 'status-upcoming'; }
+            if (isFinished) { statusText = '✅ منتهية بالكامل'; statusClass = 'status-completed'; }
+            else if (offer.status === 'upcoming' && !isExpired) { statusText = '⏳ قادم'; statusClass = 'status-upcoming'; }
             else if (offer.status === 'teacher_ready') { statusText = '🎥 جاهز للبث'; statusClass = 'status-teacher-ready'; }
             else if (offer.status === 'live') { statusText = '🔴 بث مباشر'; statusClass = 'status-live'; }
             else if (offer.status === 'paused') { statusText = '⏸ متوقف مؤقتاً'; statusClass = 'status-teacher-ready'; }
@@ -8678,22 +8680,16 @@ function updateUI() {
                         <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><strong>مدة الحصة:</strong> ${offer.duration || 60} دقيقة</p>
                         <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><strong>سعر الحصة:</strong> ${offer.is_free ? 'مجاني' : (offer.price_per_session || offer.price || 0) + ' دج'}</p>
                         
-                        ${totalSessions > 1 ? `
-                            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 10px; margin: 8px 0; font-size:0.8rem;">
-                                <div style="display:flex; justify-content:space-between; font-weight:700; color:#334155; margin-bottom:4px;">
-                                    <span>تقدم الخطة:</span>
-                                    <span style="color:#2563eb;">${completedSessions} من ${totalSessions} حصص مكتملة</span>
-                                </div>
-                                <div style="background:#e2e8f0; border-radius:10px; height:6px; overflow:hidden;">
-                                    <div style="background:#2563eb; width:${Math.min(100, Math.round((completedSessions/totalSessions)*100))}%; height:100%;"></div>
-                                </div>
-                                <div style="font-size: 0.75rem; color: var(--gray-600); margin-top: 5px;">
-                                    الحصة الحالية: ${completedSessions + 1} | الحصة القادمة: ${completedSessions + 2 > totalSessions ? 'لا يوجد' : completedSessions + 2}
-                                </div>
+                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 10px; margin: 8px 0; font-size:0.8rem;">
+                            <div style="font-weight:700; color:#334155; margin-bottom:4px;">
+                                <span>حالة الحصص:</span>
+                                <span style="color:#2563eb;">${completedCount} من ${totalSessions} حصص مكتملة</span>
                             </div>
-                        ` : ''}
-
-                        <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 8px;"><i class="fas fa-eye" style="color:var(--primary);"></i> المشاهدات: <strong>${offer.views_count || offer.views || 0}</strong></p>
+                            <div style="font-size: 0.75rem; color: var(--gray-600); margin-top: 5px;">
+                                <span>رقم الحصة التي انتهت: <strong>${completedCount}</strong></span> |
+                                <span>رقم الحصة القادمة: <strong>${completedCount < totalSessions ? completedCount + 1 : 'لا يوجد'}</strong></span>
+                            </div>
+                        </div>
                     </div>
 
                     <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px; border-top: 1px solid var(--gray-100); padding-top: 10px;">
@@ -8710,7 +8706,7 @@ function updateUI() {
                                 <span style="flex: 1; text-align: center; font-size: 0.78rem; color: var(--gray-500); padding: 6px; background: var(--gray-50); border-radius: 6px;"><i class="fas fa-lock"></i> عرض فقط (حساب زائر)</span>
                             ` : `
                                 ${!isTerminated && offer.status !== 'live' && offer.status !== 'teacher_ready' && offer.status !== 'paused' ? `
-                                    <button onclick="startStreamNow(${offer.id}, ${completedSessions + 1})" style="flex: 1; background: var(--primary); color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; font-weight: bold;"><i class="fas fa-video"></i> بدء البث</button>
+                                    <button onclick="startStreamNow(${offer.id}, ${completedCount + 1})" style="flex: 1; background: var(--primary); color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; font-weight: bold;"><i class="fas fa-video"></i> بدء البث</button>
                                 ` : ''}
                                 ${!isTerminated && (['live', 'teacher_ready', 'paused'].includes(offer.status) || offer.stream_url) ? `
                                     <button onclick="joinTeacherStream(${offer.id})" style="flex: 1; background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; font-weight: bold;"><i class="fas fa-play"></i> فتح البث</button>
