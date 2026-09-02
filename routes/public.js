@@ -622,16 +622,9 @@ router.get('/public/stats', async (req, res) => {
             activeResult,
             levelsResult
         ] = await Promise.all([
-            supabase
-                .from('teachers')
-                .select('*', { count: 'exact', head: true })
-                .eq('status', 'approved')
-                .eq('is_banned', false),
+            supabase.from('teachers').select('*', { count: 'exact', head: true }).eq('status', 'approved').eq('is_banned', false),
 
-            supabase
-                .from('students')
-                .select('*', { count: 'exact', head: true })
-                .eq('is_banned', false),
+            supabase.from('students').select('*', { count: 'exact', head: true }),
 
             supabase
                 .from('offers')

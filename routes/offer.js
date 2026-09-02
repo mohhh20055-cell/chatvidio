@@ -354,41 +354,14 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
             .single();
 
         if (insertError) {
-            // في حال عدم وجود الأعمدة الجديدة بعد في جدول offers، نقوم بالإدخال بالأعمدة الأساسية كإجراء احتياطي آمن
-            console.warn('⚠️ محاولة الإدخال الاحتياطي الأساسي بسبب أعمدة غير مضافة بعد:', insertError.message);
-            const fallbackOffer = {
-                teacher_id: teacher_id,
-                subject_name: subject_name.trim(),
-                duration: parsedDuration,
-                offer_date: offerDateUTC.toISOString(),
-                price: isFreeOffer ? 0 : parsedPrice,
-                is_free: isFreeOffer,
-                room_name: room_name,
-                room_password: defaultPassword,
-                status: 'upcoming',
-                education_level: finalEducationLevel,
-                thumbnail_url: thumbnailUrl,
-                image_url: thumbnailUrl,
-                booked_count: 0,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            };
-            const { data: fbData, error: fbError } = await supabase
-                .from('offers')
-                .insert(fallbackOffer)
-                .select()
-                .single();
-            if (fbError) {
-                logger.error('❌ خطأ في إدخال الدرس:', fbError);
-                return res.status(500).json({ 
-                    success: false, 
-                    error: 'حدث خطأ في قاعدة البيانات: ' + fbError.message 
-                });
-            }
-            insertedOffer = { ...fbData, ...newOffer, id: fbData.id };
-        } else {
-            insertedOffer = dbOffer;
+            console.error('❌ خطأ في إدخال الدرس:', insertError);
+            return res.status(500).json({ 
+                success: false, 
+                error: 'الرجاء تحديث قاعدة البيانات وتشغيل كود SQL الخاص بالاشتراكات (schema_stream_subscription_plans.sql) في Supabase.' 
+            });
         }
+        
+        insertedOffer = dbOffer;
 
         if (!insertedOffer) {
             return res.status(500).json({ 
