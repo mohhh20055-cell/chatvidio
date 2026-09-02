@@ -706,18 +706,20 @@ router.get('/offers', async (req, res) => {
                 subject_name: offer.subject_name,
                 duration: sessionDuration,
                 session_duration: sessionDuration,
-                offer_date: offer.offer_date,
+                offer_date: mergedOffer.session_date || offer.offer_date,
                 price: pricePerSession,
                 price_per_session: pricePerSession,
                 is_free: isFree,
-                plan_type: mergedOffer.plan_type || (totalSessions > 1 ? '1_month' : '1_day'),
+                plan_type: mergedOffer.plan_type || '1_day',
+                session_number: mergedOffer.session_number || 1,
                 session_date: mergedOffer.session_date || offer.offer_date,
                 total_sessions: totalSessions,
                 platform_fee_per_session: platformFeePerSession,
                 total_platform_fee: totalPlatformFee,
                 total_teacher_price: totalTeacherPrice,
                 total_student_price: totalStudentPrice,
-                completed_sessions_count: offer.completed_sessions_count || 0,
+                completed_sessions_count: Number(mergedOffer.completed_sessions ?? offer.completed_sessions_count ?? 0),
+                completed_sessions: Number(mergedOffer.completed_sessions ?? offer.completed_sessions_count ?? 0),
                 sessions_schedule: offer.sessions_schedule || [],
                 total_released_amount: offer.total_released_amount || 0,
                 status: offer.status,
@@ -976,15 +978,26 @@ router.get('/teacher/offers/:teacher_id', authenticate, authorize(['teacher']), 
             logger.warn('تعذر جلب بيانات اشتراكات الحصص:', subscriptionsError.message);
         }
 
+        const { data: streamSessions, error: streamSessionsError } = await supabase
+            .from('stream_sessions')
+            .select('offer_id, session_number, title, session_date, duration_minutes, price_per_session, status, stream_url, completed_at, actual_duration_seconds')
+            .in('offer_id', offerIds)
+            .order('session_number', { ascending: true });
+        if (streamSessionsError) logger.warn('تعذر جلب جلسات البث:', streamSessionsError.message);
+
         const subscriptionByOffer = new Map();
         for (const subscription of subscriptions || []) {
-            if (!subscriptionByOffer.has(subscription.offer_id)) {
-                subscriptionByOffer.set(subscription.offer_id, subscription);
-            }
+            if (!subscriptionByOffer.has(subscription.offer_id)) subscriptionByOffer.set(subscription.offer_id, subscription);
+        }
+        const streamByOffer = new Map();
+        for (const session of streamSessions || []) {
+            if (!streamByOffer.has(session.offer_id)) streamByOffer.set(session.offer_id, session);
         }
 
         const formatted = offers.map(offer => {
             const subscription = subscriptionByOffer.get(offer.id);
+            const streamSession = streamByOffer.get(offer.id);
+            const mergedOffer = { ...offer, ...(subscription || {}), ...(streamSession || {}) };
             const mergedOffer = subscription ? { ...offer, ...subscription } : offer;
             if (subscription) Object.assign(offer, subscription);
             // ✅ حساب الوقت المتبقي
@@ -1006,18 +1019,20 @@ router.get('/teacher/offers/:teacher_id', authenticate, authorize(['teacher']), 
                 subject_name: offer.subject_name,
                 duration: sessionDuration,
                 session_duration: sessionDuration,
-                offer_date: offer.offer_date,
+                offer_date: mergedOffer.session_date || offer.offer_date,
                 price: pricePerSession,
                 price_per_session: pricePerSession,
                 is_free: isFree,
-                plan_type: mergedOffer.plan_type || (totalSessions > 1 ? '1_month' : '1_day'),
+                plan_type: mergedOffer.plan_type || '1_day',
+                session_number: mergedOffer.session_number || 1,
                 session_date: mergedOffer.session_date || offer.offer_date,
                 total_sessions: totalSessions,
                 platform_fee_per_session: platformFeePerSession,
                 total_platform_fee: totalPlatformFee,
                 total_teacher_price: totalTeacherPrice,
                 total_student_price: totalStudentPrice,
-                completed_sessions_count: offer.completed_sessions_count || 0,
+                completed_sessions_count: Number(mergedOffer.completed_sessions ?? offer.completed_sessions_count ?? 0),
+                completed_sessions: Number(mergedOffer.completed_sessions ?? offer.completed_sessions_count ?? 0),
                 sessions_schedule: offer.sessions_schedule || [],
                 total_released_amount: offer.total_released_amount || 0,
                 status: mergedOffer.status || offer.status,
@@ -1167,7 +1182,7 @@ router.delete('/offer/delete/:offer_id', authenticate, authorize(['teacher']), [
                         created_at: new Date().toISOString()
                     });
                 } catch (notifErr) {
-                    console.warn('⚠️ تعذر إرسال إشعار الإلغاء للطالب:', notifErr.message);
+                    console.warn('⚠️ تعذر إرسال إشعار ��لإلغاء للطالب:', notifErr.message);
                 }
             }
         }
@@ -1353,7 +1368,7 @@ router.get('/education-levels', async (req, res) => {
             '2eme_as': 'ثانية ثانوي',
             '3eme_as': 'ثالثة ثانوي (BAC)',
             'bac': 'ثالثة ثانوي (BAC)',
-            'university': 'تع��يم جامعي / عالي',
+            'university': 'تع��ي�� جامعي / عالي',
             '1ere_uni': 'أولى جامعي (L1)',
             '2eme_uni': 'ثانية جامعي (L2)',
             '2ere_uni': 'ثانية جامعي (L2)',

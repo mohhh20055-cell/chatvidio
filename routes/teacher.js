@@ -752,8 +752,6 @@ router.get('/balance/:teacher_id', authenticate, authorize(['teacher']), [
                     plan_type,
                     total_sessions,
                     completed_sessions,
-                    session_date,
-                    duration_minutes,
                     students:student_id (
                         id,
                         full_name,
@@ -761,13 +759,25 @@ router.get('/balance/:teacher_id', authenticate, authorize(['teacher']), [
                     )
                 `)
                 .in('offer_id', offerIds)
-                .or('payment_status.in.(paid,pending_stream,pending,completed),status.eq.active')
+                .eq('status', 'active')
                 .order('created_at', { ascending: false });
 
             if (sessionsError) {
-                logger.error('خطأ في جلب الجلسات:', sessionsError.message);
+                logger.error('خطأ في جلب الاشتراكات:', sessionsError.message);
             } else if (sessions) {
+                const { data: streamSessions, error: streamSessionsError } = await supabase
+                    .from('stream_sessions')
+                    .select('id, offer_id, teacher_id, session_number, title, session_date, duration_minutes, price_per_session, status, stream_url, completed_at, actual_duration_seconds')
+                    .in('offer_id', offerIds)
+                    .order('session_number', { ascending: true });
+                if (streamSessionsError) logger.error('خطأ في جلب جلسات البث:', streamSessionsError.message);
+                const streamByOffer = new Map();
+                for (const session of streamSessions || []) {
+                    if (!streamByOffer.has(session.offer_id)) streamByOffer.set(session.offer_id, session);
+                }
                 allSessions = sessions.map(s => {
+                    const streamSession = streamByOffer.get(s.offer_id) || {};
+                    s = { ...s, ...streamSession };
                     const offer = offersMap.get(s.offer_id);
                     const offerPrice = parseFloat(offer?.price || 0);
                     let earned = (s.teacher_earned !== undefined && s.teacher_earned !== null && Number(s.teacher_earned) > 0)
@@ -789,6 +799,7 @@ router.get('/balance/:teacher_id', authenticate, authorize(['teacher']), [
                         session_date: s.session_date || offer?.offer_date,
                         duration_minutes: Number(s.duration_minutes) || 60,
                         status: s.status || 'upcoming',
+                        title: s.title || offer?.subject_name,
                         offers: {
                             subject_name: offer?.subject_name || 'درس خصوصي',
                             price: offerPrice,
@@ -1461,7 +1472,7 @@ router.get('/students/:teacher_id', authenticate, authorize(['teacher']), [
         const teacher_id = parseInt(req.params.teacher_id);
 
         if (req.user.userId !== teacher_id && req.user.role !== 'admin' && req.user.email !== ADMIN_EMAIL) {
-            return res.status(403).json({ success: false, error: 'غير مصرح لك بدرس هذه المعلومات' });
+            return res.status(403).json({ success: false, error: 'غير مصرح لك ب��رس هذه المعلومات' });
         }
 
         const { data: offers, error: offersError } = await supabase
