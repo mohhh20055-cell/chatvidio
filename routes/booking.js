@@ -594,9 +594,13 @@ router.post('/confirm-session-incomplete', authenticate, authorize(['teacher', '
         // ✅ خصم المبلغ من الرصيد المعلق للأستاذ
         const teacher = await getOne('teachers', 'id', sub.teacher_id);
         if (teacher) {
+            const newPending = Math.max(0, (teacher.pending_withdraw || 0) - amountPerSession);
+            logger.info(`🔄 خصم المبلغ من الرصيد المعلق للأستاذ: ${sub.teacher_id}. القديم: ${teacher.pending_withdraw}, الخصم: ${amountPerSession}, الجديد: ${newPending}`);
             await update('teachers', sub.teacher_id, {
-                pending_withdraw: Math.max(0, (teacher.pending_withdraw || 0) - amountPerSession)
+                pending_withdraw: newPending
             });
+        } else {
+            logger.error(`❌ لم يتم العثور على الأستاذ لتحديث الرصيد المعلق: ${sub.teacher_id}`);
         }
 
         // ✅ تسجيل المعاملة
@@ -737,6 +741,11 @@ router.get('/teacher/:teacher_id', authenticate, authorize(['teacher']), async (
                     phone,
                     profile_image,
                     profile_url
+                ),
+                stream_subscriptions:offer_id!inner (
+                    id,
+                    total_sessions,
+                    completed_sessions
                 )
             `)
             .in('offer_id', offerIds)
@@ -757,7 +766,13 @@ router.get('/teacher/:teacher_id', authenticate, authorize(['teacher']), async (
             return {
                 ...booking,
                 is_pending_stream: isPending,
-                pending_balance: booking.payment_amount || 0
+                pending_balance: booking.payment_amount || 0,
+                session_progress: booking.stream_subscriptions ? {
+                    total: booking.stream_subscriptions[0].total_sessions,
+                    completed: booking.stream_subscriptions[0].completed_sessions,
+                    current: booking.stream_subscriptions[0].completed_sessions + 1,
+                    next: booking.stream_subscriptions[0].completed_sessions + 2
+                } : null
             };
         });
 
