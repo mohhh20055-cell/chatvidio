@@ -206,15 +206,7 @@ router.post('/create', authenticate, authorize(['student']), [
             created_at: new Date().toISOString()
         });
 
-        // ✅ تحديث الرصيد المعلق للأستاذ (في جدول teachers) - يحصل الأستاذ على إجمالي سعر الحصص كرصيد معلق
-        if (totalTeacherPrice > 0) {
-            const teacher = await getOne('teachers', 'id', offer.teacher_id);
-            if (teacher) {
-                await update('teachers', offer.teacher_id, {
-                    pending_withdraw: (parseFloat(teacher.pending_withdraw) || 0) + totalTeacherPrice
-                });
-            }
-        }
+        // ✅ لم نعد نستخدم pending_withdraw لحجز الأموال لتجنب تداخلها مع طلبات السحب
         
         // ✅ تحديث الجلسة بمبلغ ما يحصل عليه الأستاذ
         await supabase
@@ -431,8 +423,7 @@ router.post('/confirm-stream-completion', authenticate, authorize(['teacher']), 
             if (teacher) {
                 await update('teachers', teacher_id, {
                     balance: (parseFloat(teacher.balance) || 0) + totalEarned,
-                    total_earned: (parseFloat(teacher.total_earned) || 0) + totalEarned,
-                    pending_withdraw: Math.max(0, (parseFloat(teacher.pending_withdraw) || 0) - totalEarned)
+                    total_earned: (parseFloat(teacher.total_earned) || 0) + totalEarned
                 });
             }
         }
@@ -530,14 +521,10 @@ router.post('/confirm-session-completion', authenticate, authorize(['teacher']),
             })
             .eq('id', subscription_id);
 
-        const currentPending = parseFloat(teacher.pending_withdraw || 0);
-        const newPending = Math.max(0, currentPending - teacherSharePerSession);
-        
-        logger.info(`🔄 تحرير رصيد حصة: الاشتراك ${subscription_id}. الخصم من المعلق: ${teacherSharePerSession}. الرصيد المعلق الجديد: ${newPending}`);
+        logger.info(`🔄 تحرير رصيد حصة: الاشتراك ${subscription_id}.`);
         
         await update('teachers', sub.teacher_id, {
-            balance: (parseFloat(teacher.balance) || 0) + teacherSharePerSession,
-            pending_withdraw: newPending
+            balance: (parseFloat(teacher.balance) || 0) + teacherSharePerSession
         });
 
         // ✅ تسجيل المعاملة
@@ -604,15 +591,8 @@ router.post('/confirm-session-incomplete', authenticate, authorize(['teacher', '
             wallet_balance: (parseFloat(student.wallet_balance) || 0) + amountPerSessionForStudent
         });
 
-        // ✅ خصم المبلغ من الرصيد المعلق للأستاذ
-        const currentPending = parseFloat(teacher.pending_withdraw || 0);
-        const newPending = Math.max(0, currentPending - teacherSharePerSession);
-        
-        logger.info(`🔄 استرداد حصة: الاشتراك ${subscription_id}. الخصم من المعلق: ${teacherSharePerSession}. الرصيد المعلق الجديد: ${newPending}`);
-        
-        await update('teachers', sub.teacher_id, {
-            pending_withdraw: newPending
-        });
+        // ✅ لا حاجة لخصم الرصيد المعلق من الأستاذ، لأننا لم نقم بإضافته أصلاً (لمنع ثغرات السحب)
+        logger.info(`🔄 استرداد حصة: الاشتراك ${subscription_id}.`);
 
         // ✅ تسجيل المعاملة
         await insert('wallet_transactions', {
@@ -857,14 +837,7 @@ router.post('/cancel', authenticate, [
                     });
                 }
 
-                // ✅ إزالة الرصيد المعلق من الأستاذ (يخصم فقط ما كان سيحصل عليه الأستاذ)
-                const teacherShare = session.teacher_earned || 0;
-                const teacher = await getOne('teachers', 'id', offer?.teacher_id);
-                if (teacher && offer) {
-                    await update('teachers', offer.teacher_id, {
-                        pending_withdraw: Math.max(0, (parseFloat(teacher.pending_withdraw) || 0) - teacherShare)
-                    });
-                }
+                // ✅ إزالة الرصيد المعلق من الأستاذ (تم إيقاف هذه الميزة لتجنب مشاكل السحب)
 
                 // ✅ تسجيل معاملة الاسترداد
                 await insert('wallet_transactions', {
@@ -990,14 +963,7 @@ router.post('/teacher-cancel', authenticate, authorize(['teacher', 'admin']), [
                     });
                 }
 
-                // ✅ خصم المبلغ من الرصيد المعلق للأستاذ (يخصم فقط ما كان سيحصل عليه الأستاذ)
-                const teacherShare = session.teacher_earned || 0;
-                const teacher = await getOne('teachers', 'id', offer.teacher_id);
-                if (teacher) {
-                    await update('teachers', offer.teacher_id, {
-                        pending_withdraw: Math.max(0, (parseFloat(teacher.pending_withdraw) || 0) - teacherShare)
-                    });
-                }
+                // ✅ خصم المبلغ من الرصيد المعلق للأستاذ (تم إيقاف هذه الميزة لتجنب مشاكل السحب)
 
                 // ✅ تسجيل معاملة استرداد
                 await insert('wallet_transactions', {
