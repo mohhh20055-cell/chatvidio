@@ -152,8 +152,10 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
                 const timeClean = timePart.replace('Z', '').split('+')[0].split('-')[0];
                 const [hours, minutes] = timeClean.split(':').map(Number);
                 const localDate = new Date(year, (month || 1) - 1, day || 1, hours || 0, minutes || 0);
-                // Parsing directly to avoid double timezone offsets
-                offerDateUTC = new Date(`${datePart}T${timePart.replace('Z', '')}`);
+                const [year, month, day] = datePart.split('-').map(Number);
+                const [hours, minutes] = timePart.split(':').map(Number);
+                // Algeria is UTC+1. Create Date representing Algeria time, then convert to UTC.
+                offerDateUTC = new Date(Date.UTC(year, month - 1, day, hours - 1, minutes));
             } else if (offer_date) {
                 offerDateUTC = new Date(offer_date);
             } else {
