@@ -967,8 +967,8 @@ router.get('/teacher/offers/:teacher_id', authenticate, authorize(['teacher']), 
 
         const offerIds = offers.map(offer => offer.id);
         const { data: subscriptions, error: subscriptionsError } = await supabase
-            .from('sessions')
-            .select('offer_id, session_number, plan_type, total_sessions, completed_sessions, session_date, duration_minutes, status')
+            .from('stream_subscriptions')
+            .select('offer_id, session_number, plan_type, total_sessions, completed_sessions, status, created_at')
             .in('offer_id', offerIds)
             .order('session_number', { ascending: true });
 
@@ -1353,7 +1353,7 @@ router.get('/education-levels', async (req, res) => {
             '2eme_as': 'ثانية ثانوي',
             '3eme_as': 'ثالثة ثانوي (BAC)',
             'bac': 'ثالثة ثانوي (BAC)',
-            'university': 'تعليم جامعي / عالي',
+            'university': 'تع��يم جامعي / عالي',
             '1ere_uni': 'أولى جامعي (L1)',
             '2eme_uni': 'ثانية جامعي (L2)',
             '2ere_uni': 'ثانية جامعي (L2)',

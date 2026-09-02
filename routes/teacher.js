@@ -739,14 +739,14 @@ router.get('/balance/:teacher_id', authenticate, authorize(['teacher']), [
         if (offerIds.length > 0) {
             // 2. جلب جميع الجلسات (المعلقة والمدفوعة) المرتبطة بحصص الأستاذ
             const { data: sessions, error: sessionsError } = await supabase
-                .from('sessions')
+                .from('stream_subscriptions')
                 .select(`
                     id,
                     offer_id,
                     student_id,
-                    payment_status,
-                    payment_amount,
-                    teacher_earned,
+                    status,
+                    total_amount_paid,
+                    teacher_total_escrow,
                     created_at,
                     session_number,
                     plan_type,
@@ -754,7 +754,6 @@ router.get('/balance/:teacher_id', authenticate, authorize(['teacher']), [
                     completed_sessions,
                     session_date,
                     duration_minutes,
-                    status,
                     students:student_id (
                         id,
                         full_name,
@@ -779,9 +778,9 @@ router.get('/balance/:teacher_id', authenticate, authorize(['teacher']), [
                         id: s.id,
                         offer_id: s.offer_id,
                         student_id: s.student_id,
-                        payment_status: s.payment_status,
-                        payment_amount: s.payment_amount,
-                        teacher_earned: earned,
+                        payment_status: s.status === 'active' ? 'pending_stream' : s.status,
+                        payment_amount: Number(s.total_amount_paid || 0),
+                        teacher_earned: Number(s.teacher_total_escrow || 0) || earned,
                         created_at: s.created_at,
                         session_number: s.session_number || 1,
                         plan_type: s.plan_type || '1_day',
@@ -811,7 +810,7 @@ router.get('/balance/:teacher_id', authenticate, authorize(['teacher']), [
         // 3. حساب الرصيد المعلق الفعلي من الجلسات قيد الانتظار
         let calculatedPending = 0;
         allSessions.forEach(s => {
-            if (s.payment_status === 'pending_stream' || s.payment_status === 'pending') {
+            if (s.payment_status === 'pending_stream' || s.payment_status === 'pending' || s.status === 'active') {
                 calculatedPending += parseFloat(s.teacher_earned || 0);
             }
         });
@@ -935,7 +934,7 @@ router.post('/withdraw-request', authenticate, authorize(['teacher']), [
             return res.status(403).json({ success: false, error: 'غير مصرح لك بطلب السحب' });
         }
 
-        // ✅ التحقق من صحة رمز التحقق OTP
+        // �� التحقق من صحة رمز التحقق OTP
         const storedOtp = withdrawalOtpStore.get(parseInt(teacher_id));
         if (!storedOtp) {
             return res.status(400).json({
