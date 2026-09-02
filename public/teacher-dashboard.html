@@ -8710,7 +8710,7 @@ function updateUI() {
                                 <span style="flex: 1; text-align: center; font-size: 0.78rem; color: var(--gray-500); padding: 6px; background: var(--gray-50); border-radius: 6px;"><i class="fas fa-lock"></i> عرض فقط (حساب زائر)</span>
                             ` : `
                                 ${!isTerminated && offer.status !== 'live' && offer.status !== 'teacher_ready' && offer.status !== 'paused' ? `
-                                    <button onclick="startStreamNow(${offer.id})" style="flex: 1; background: var(--primary); color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; font-weight: bold;"><i class="fas fa-video"></i> بدء البث</button>
+                                    <button onclick="startStreamNow(${offer.id}, ${completedSessions + 1})" style="flex: 1; background: var(--primary); color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; font-weight: bold;"><i class="fas fa-video"></i> بدء البث</button>
                                 ` : ''}
                                 ${!isTerminated && (['live', 'teacher_ready', 'paused'].includes(offer.status) || offer.stream_url) ? `
                                     <button onclick="joinTeacherStream(${offer.id})" style="flex: 1; background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; font-weight: bold;"><i class="fas fa-play"></i> فتح البث</button>
@@ -8967,9 +8967,15 @@ function updateUI() {
     }
     window.completeSessionEscrow = completeSessionEscrow;
 
-    async function startStreamNow(offerId) {
+    async function startStreamNow(offerId, sessionNumber) {
         if (checkGuestAction()) return;
-        const shouldStart = confirm("⚠️ هل تريد بدء البث المباشر لهذه الغرفة الآن؟");
+        
+        let confirmMsg = "⚠️ هل تريد بدء البث المباشر لهذه الغرفة الآن؟";
+        if (sessionNumber) {
+            confirmMsg = `⚠️ أنت على وشك فتح الحصة رقم ${sessionNumber}.\nهل أنت متأكد من بدء البث المباشر لهذه الحصة الآن؟`;
+        }
+        
+        const shouldStart = confirm(confirmMsg);
         if (!shouldStart) return;
 
         try {
