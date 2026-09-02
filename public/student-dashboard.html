@@ -3502,7 +3502,7 @@
                     <select id="exerciseLevelFilter" onchange="filterExercises()" style="width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 10px; font-family: 'Cairo', sans-serif; font-size: 0.9rem; background: white;">
                         <option value="my_level">مستواي الدراسي فقط</option>
                         <option value="all">جميع المستويات الدراسية</option>
-                        <optgroup label="التعليم الابتدائي">
+                        <optgroup label="التعليم الابتدائ��">
                             <option value="primary_all">جميع مستويات الابتدائي</option>
                             <option value="primary_1">السنة الأولى ابتدائي</option>
                             <option value="primary_2">السنة الثانية ابتدائي</option>
@@ -6026,7 +6026,7 @@
                 loadNotifications();
             } else {
                 if (data.insufficient_balance) {
-                    showToast(`⚠️ رصيدك غير كافٍ! المبلغ المطلوب: ${data.needed} دج`, 'error');
+                    showToast(`���️ رصيدك غير كافٍ! المبلغ المطلوب: ${data.needed} دج`, 'error');
                 } else {
                     showToast(data.error || 'حدث خطأ في عملية الحجز', 'error');
                 }
@@ -6977,8 +6977,10 @@
                             <div style="height: 6px; background: var(--gray-200); border-radius: 3px; overflow: hidden; margin-bottom: 5px;">
                                 <div style="height: 100%; width: ${(booking.session_progress.completed / booking.session_progress.total) * 100}%; background: var(--secondary);"></div>
                             </div>
-                            <div style="font-size: 0.75rem; color: var(--gray-600);">
-                                الحصة التالية: رقم ${booking.session_progress.next}
+                            <div style="font-size: 0.75rem; color: var(--gray-600); display:flex; flex-direction:column; gap:4px;">
+                                <span>الحصة المنتهية: رقم ${booking.session_progress.completed_number || 'لا توجد'}</span>
+                                <span>الحصة القادمة: رقم ${booking.session_progress.next_number || 'اكتمل الاشتراك'}</span>
+                                ${booking.session_progress.next_date ? `<span>موعد القادمة: ${new Date(booking.session_progress.next_date).toLocaleString('ar-DZ', {timeZone: 'Africa/Algiers', hour12: false})}</span>` : ''}
                             </div>
                         </div>
                     ` : ''}
