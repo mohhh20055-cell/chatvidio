@@ -3415,7 +3415,7 @@
                 <div class="nav-search-box" id="navSearchBox">
                     <i class="fas fa-search nav-search-icon"></i>
                     <input type="text" id="navSearchInput" placeholder="بحث عن أستاذ أو طالب..." autocomplete="off" oninput="handleNavUserSearch(this.value)" onfocus="openNavSearchResults()" />
-                    <button type="button" id="navSearchClearBtn" class="nav-search-clear" onclick="clearNavUserSearch()" style="display:none;" title="مس��">
+                    <button type="button" id="navSearchClearBtn" class="nav-search-clear" onclick="clearNavUserSearch()" style="display:none;" title="مس����">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
@@ -5129,7 +5129,7 @@
             <div style="flex:1; min-width:150px;">
                 <label style="display:block; margin-bottom:6px; font-weight:700; color:var(--gray-800);">المستوى الدراسي <span style="color:red;">*</span></label>
                 <select id="exerciseModalLevel" style="width:100%; padding:10px 14px; border:1px solid #cbd5e1; border-radius:10px; font-family:'Cairo'; font-size:0.9rem; background:white;">
-                    <option value="all">جميع المستويات الدراسية</option>
+                    <option value="all">جميع المستويات الدراسي��</option>
                     <optgroup label="التعلي�� الابتدائي">
                         <option value="primary_all">جميع مستويات الابتدائي</option>
                         <option value="primary_1">السنة الأولى ابتدائي</option>
@@ -7149,7 +7149,7 @@
             return;
         }
         if (idImage && idImage.size > MAX_SINGLE_FILE_SIZE) {
-            showToast(`⚠️ حجم صورة الهوية (${(idImage.size / (1024 * 1024)).toFixed(2)} MB) يتجاوز الحد الأقصى المسموح به للصورة الواحدة وهو 50 ميجابايت`, 'error');
+            showToast(`⚠️ حجم صورة الهوية (${(idImage.size / (1024 * 1024)).toFixed(2)} MB) يتجاوز الحد ��لأقصى المسموح به للصورة الواحدة وهو 50 ميجابايت`, 'error');
             return;
         }
         if (profileImage && profileImage.size > MAX_SINGLE_FILE_SIZE) {
@@ -8677,9 +8677,10 @@ function updateUI() {
                         </div>
 
                         <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><strong>المستوى:</strong> ${escapeHtml(levelName)}</p>
-                        <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><strong>الموعد:</strong> ${formattedDate}</p>
-                        <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><strong>مدة الحصة:</strong> ${offer.duration || 60} دقيقة</p>
-                        <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><strong>سعر الحصة:</strong> ${offer.is_free ? 'مجاني' : (offer.price_per_session || offer.price || 0) + ' دج'}</p>
+                        <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><strong>تاريخ الحصة:</strong> ${formattedDate}</p>
+                        <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><strong>الخطة:</strong> ${escapeHtml(planMap[planType] || planType)} | <strong>الحصة:</strong> ${completedCount + 1} من ${totalSessions}</p>
+                        <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><strong>المدة:</strong> ${offer.duration_minutes || offer.session_duration || offer.duration || 60} دقيقة | <strong>الحالة:</strong> ${escapeHtml(offer.status || 'upcoming')}</p>
+                        <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><strong>المكتملة:</strong> ${completedCount} | <strong>السعر:</strong> ${offer.is_free ? 'مجاني' : (offer.price_per_session || offer.price || 0) + ' دج'}</p>
                         
                         <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 10px; margin: 8px 0; font-size:0.8rem;">
                             <div style="font-weight:700; color:#334155; margin-bottom:4px;">
@@ -11095,7 +11096,7 @@ function updateUI() {
                         <div id="teacher-content-ratings" style="display: none;">
                             <div style="background: #fefce8; border: 1px solid #fef08a; padding: 10px 14px; border-radius: 12px; margin-bottom: 16px; font-size: 0.82rem; color: #854d0e; font-weight: 700; display: flex; align-items: center; gap: 8px; text-align: right;">
                                 <i class="fas fa-eye" style="color: #ca8a04; font-size: 0.95rem;"></i>
-                                <span>تقييمات الأستاذ (للقراءة فقط) - لا يمكن للمعلمين ��قييم بعضهم البعض.</span>
+                                <span>ت��ييمات الأستاذ (للقراءة فقط) - لا يمكن للمعلمين ��قييم بعضهم البعض.</span>
                             </div>
 
                             <!-- Rating Summary Box -->
@@ -11640,7 +11641,7 @@ function updateUI() {
             console.error('Error loading saved posts sidebar:', e);
             container.innerHTML = `
                 <div style="text-align: center; color: #ef4444; padding: 10px; font-size: 0.82rem;">
-                    <span>فشل تحميل المحفوظات</span>
+                    <span>فشل تحميل ال��حفوظات</span>
                 </div>`;
         }
     }
@@ -12853,7 +12854,7 @@ function updateUI() {
                 textArea.select();
                 document.execCommand('copy');
                 document.body.removeChild(textArea);
-                showToast('✅ تم نسخ رابط الإحالة بنجاح!', 'success');
+                showToast('✅ ��م نسخ رابط الإحالة بنجاح!', 'success');
             }
         } else {
             showToast('⚠️ يرجى الانتظار حتى تحميل رابط ا��إحالة', 'warning');
@@ -13178,7 +13179,7 @@ function updateUI() {
             <form id="editGroupForm" onsubmit="handleEditGroup(event)" style="display: flex; flex-direction: column; gap: 18px;">
                 <input type="hidden" id="editGroupId">
                 <div>
-                    <label style="display: block; font-size: 0.9rem; color: #334155; font-weight: 700; margin-bottom: 8px;">اسم المجموعة <span style="color: #ef4444;">*</span></label>
+                    <label style="display: block; font-size: 0.9rem; color: #334155; font-weight: 700; margin-bottom: 8px;">اسم المجموع�� <span style="color: #ef4444;">*</span></label>
                     <input type="text" id="editGroupName" required placeholder="مثال: مادة الرياضيات - السنة الرابعة متوسط" style="width: 100%; padding: 12px 14px; border: 1.5px solid #cbd5e1; border-radius: 10px; font-size: 0.95rem; outline: none; transition: border-color 0.2s;">
                 </div>
                 <div>

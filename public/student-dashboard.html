@@ -3502,7 +3502,7 @@
                     <select id="exerciseLevelFilter" onchange="filterExercises()" style="width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 10px; font-family: 'Cairo', sans-serif; font-size: 0.9rem; background: white;">
                         <option value="my_level">مستواي الدراسي فقط</option>
                         <option value="all">جميع المستويات الدراسية</option>
-                        <optgroup label="التعليم الابتدائ����">
+                        <optgroup label="التعليم الابتدائ������">
                             <option value="primary_all">جميع مستويات الابتدائي</option>
                             <option value="primary_1">السنة الأولى ابتدائي</option>
                             <option value="primary_2">السنة الثانية ابتدائي</option>
@@ -5789,9 +5789,11 @@
                         </div>
 
                         <div class="offer-title">${escapeHtml(offer.subject_name)}</div>
-                        <div class="offer-info"><i class="fas fa-calendar-alt"></i> موعد البداية: ${offerDate.toLocaleDateString('ar-DZ', {timeZone: 'Africa/Algiers'})}</div>
-                        <div class="offer-info"><i class="fas fa-clock"></i> توقيت الحصة: ${offer.offer_date.split('T')[1].substring(0, 5)} (${sessionDuration} دقيقة)</div>
-                        <div class="offer-info"><i class="fas fa-list-ol"></i> الحصة الحالية: ${ (offer.completed_sessions_count || 0) + 1 } من ${totalSessions}</div>
+  <div class="offer-info"><i class="fas fa-calendar-alt"></i> تاريخ الحصة: ${offerDate.toLocaleDateString('ar-DZ', {timeZone: 'Africa/Algiers'})}</div>
+  <div class="offer-info"><i class="fas fa-clock"></i> مدة الحصة: ${offer.duration_minutes || offer.session_duration || sessionDuration} دقيقة</div>
+  <div class="offer-info"><i class="fas fa-layer-group"></i> الخطة: ${escapeHtml(planMap[planType] || planType)} | الإجمالي: ${totalSessions} حصص</div>
+  <div class="offer-info"><i class="fas fa-list-ol"></i> رقم الحصة: ${ (offer.session_number || offer.completed_sessions_count || 0) + 1 } | المكتملة: ${offer.completed_sessions ?? offer.completed_sessions_count ?? 0}</div>
+  <div class="offer-info"><i class="fas fa-circle-info"></i> الحالة: ${escapeHtml(offer.status || rawStatus || 'upcoming')}</div>
                         ${levelDisplay}
 
                         ${!isFree ? `
@@ -6004,7 +6006,7 @@
 - رسوم سيرفر البث للمنصة: ${platformFeePerSession} دج / حصة (50 دج للساعة)
 - المبلغ الإجمالي المطلوب: ${totalCost} دج
 
-🔒 ضمان المنصة (Escrow): سيبقى المبلغ معلقاً بأمان في المنصة، ولن يستلمه الأستاذ إلا بعد إتمام وبث كل حصة من جدول الحصص.
+🔒 ضمان المنصة (Escrow): سيبقى المبلغ معلقاً بأمان في المنصة، ولن يستلمه الأستاذ إلا بعد إتمام وبث كل حصة من جدول الح��ص.
 
 هل توافق على تأكيد الاشتراك وخصم ${totalCost} دج من رصيدك؟`;
             if (!confirm(confirmMsg)) return;

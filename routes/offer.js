@@ -793,9 +793,11 @@ router.get('/live-offers', async (req, res) => {
                 id: offer.id,
                 teacher_id: offer.teacher_id,
                 subject_name: offer.subject_name,
-                duration: offer.duration,
-                offer_date: offer.offer_date,
-                price: offer.price,
+duration: offer.duration,
+  duration_minutes: offer.duration_minutes || offer.session_duration || offer.duration || 60,
+  offer_date: offer.offer_date,
+  session_date: offer.session_date || offer.offer_date || null,
+  price: offer.price,
                 is_free: (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && parseFloat(offer.price || 0) === 0,
                 status: offer.status,
                 education_level: offer.education_level,
@@ -875,8 +877,9 @@ router.get(['/offer/:offer_id', '/teacher/offer/:offer_id'], async (req, res) =>
 
         // ✅ حساب الوقت المتبقي
         const remainingSeconds = calculateOfferRemainingSeconds(offer);
-        const totalSessions = offer.total_sessions || 1;
-        const sessionDuration = offer.session_duration || offer.duration || 60;
+const scheduleLength = Array.isArray(offer.sessions_schedule) ? offer.sessions_schedule.length : 0;
+  const totalSessions = Math.max(1, Number(offer.total_sessions) || 0, scheduleLength);
+  const sessionDuration = offer.session_duration || offer.duration_minutes || offer.duration || 60;
         const pricePerSession = parseFloat(offer.price_per_session || offer.price || 0);
         const isFree = (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && pricePerSession === 0;
         const platformFeePerSession = isFree ? 0 : (offer.platform_fee_per_session || Math.round((sessionDuration / 60) * 50));
@@ -895,7 +898,12 @@ router.get(['/offer/:offer_id', '/teacher/offer/:offer_id'], async (req, res) =>
             price_per_session: pricePerSession,
             is_free: isFree,
             plan_type: offer.plan_type || (totalSessions > 1 ? '1_month' : '1_day'),
+            session_number: offer.session_number || null,
             total_sessions: totalSessions,
+            completed_sessions: offer.completed_sessions ?? offer.completed_sessions_count ?? 0,
+            session_date: offer.session_date || offer.offer_date || null,
+            duration_minutes: offer.duration_minutes || sessionDuration,
+            status: offer.status || 'upcoming',
             platform_fee_per_session: platformFeePerSession,
             total_platform_fee: totalPlatformFee,
             total_teacher_price: totalTeacherPrice,
@@ -903,8 +911,11 @@ router.get(['/offer/:offer_id', '/teacher/offer/:offer_id'], async (req, res) =>
             completed_sessions_count: offer.completed_sessions_count || 0,
             sessions_schedule: offer.sessions_schedule || [],
             total_released_amount: offer.total_released_amount || 0,
-            status: offer.status,
-            education_level: offer.education_level,
+status: offer.status,
+  plan_type: offer.plan_type || '1_day',
+  total_sessions: Math.max(1, Number(offer.total_sessions) || (Array.isArray(offer.sessions_schedule) ? offer.sessions_schedule.length : 0)),
+  completed_sessions: offer.completed_sessions ?? offer.completed_sessions_count ?? 0,
+  education_level: offer.education_level,
             stream_url: offer.stream_url || null,
             stream_platform: offer.stream_platform || 'jitsi',
             room_password: offer.room_password || null,
