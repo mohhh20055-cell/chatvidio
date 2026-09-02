@@ -1942,6 +1942,10 @@ router.post('/teacher/upload-verification-docs', authenticate, authorize(['teach
             return res.status(404).json({ success: false, error: 'الأستاذ غير موجود' });
         }
 
+        if (!teacher.is_vip) {
+            return res.status(403).json({ success: false, error: 'يرجى ترقية حسابك إلى VIP أولاً قبل رفع وثائق التوثيق.' });
+        }
+
         let idCardUrl = teacher.id_card_image || teacher.id_card_image_url || null;
         let diplomaUrl = teacher.diploma_image || teacher.certificate_image_url || null;
 

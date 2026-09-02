@@ -152,7 +152,9 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
                 const timeClean = timePart.replace('Z', '').split('+')[0].split('-')[0];
                 const [hours, minutes] = timeClean.split(':').map(Number);
                 const localDate = new Date(year, (month || 1) - 1, day || 1, hours || 0, minutes || 0);
-                offerDateUTC = new Date(localDate.getTime() - (localDate.getTimezoneOffset() * 60000));
+                // Algeria is UTC+1 (60 minutes)
+                const algeriaOffset = 60 * 60000;
+                offerDateUTC = new Date(localDate.getTime() - algeriaOffset);
             } else if (offer_date) {
                 offerDateUTC = new Date(offer_date);
             } else {
