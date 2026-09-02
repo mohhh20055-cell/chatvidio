@@ -710,7 +710,8 @@ router.get('/offers', async (req, res) => {
                 price: pricePerSession,
                 price_per_session: pricePerSession,
                 is_free: isFree,
-                plan_type: offer.plan_type || (totalSessions > 1 ? '1_month' : '1_day'),
+                plan_type: mergedOffer.plan_type || (totalSessions > 1 ? '1_month' : '1_day'),
+                session_date: mergedOffer.session_date || offer.offer_date,
                 total_sessions: totalSessions,
                 platform_fee_per_session: platformFeePerSession,
                 total_platform_fee: totalPlatformFee,
@@ -908,7 +909,6 @@ const scheduleLength = Array.isArray(offer.sessions_schedule) ? offer.sessions_s
             total_platform_fee: totalPlatformFee,
             total_teacher_price: totalTeacherPrice,
             total_student_price: totalStudentPrice,
-            completed_sessions_count: offer.completed_sessions_count || 0,
             sessions_schedule: offer.sessions_schedule || [],
             total_released_amount: offer.total_released_amount || 0,
 status: offer.status,
@@ -965,13 +965,34 @@ router.get('/teacher/offers/:teacher_id', authenticate, authorize(['teacher']), 
             return res.json([]);
         }
 
+        const offerIds = offers.map(offer => offer.id);
+        const { data: subscriptions, error: subscriptionsError } = await supabase
+            .from('sessions')
+            .select('offer_id, session_number, plan_type, total_sessions, completed_sessions, session_date, duration_minutes, status')
+            .in('offer_id', offerIds)
+            .order('session_number', { ascending: true });
+
+        if (subscriptionsError) {
+            logger.warn('تعذر جلب بيانات اشتراكات الحصص:', subscriptionsError.message);
+        }
+
+        const subscriptionByOffer = new Map();
+        for (const subscription of subscriptions || []) {
+            if (!subscriptionByOffer.has(subscription.offer_id)) {
+                subscriptionByOffer.set(subscription.offer_id, subscription);
+            }
+        }
+
         const formatted = offers.map(offer => {
+            const subscription = subscriptionByOffer.get(offer.id);
+            const mergedOffer = subscription ? { ...offer, ...subscription } : offer;
+            if (subscription) Object.assign(offer, subscription);
             // ✅ حساب الوقت المتبقي
-            const remainingSeconds = calculateOfferRemainingSeconds(offer);
+            const remainingSeconds = calculateOfferRemainingSeconds(mergedOffer);
             const views = getViewCount('offer', offer.id, offer.views_count || offer.views || 0);
-            const scheduleLength = Array.isArray(offer.sessions_schedule) ? offer.sessions_schedule.length : 0;
-            const totalSessions = Math.max(1, Number(offer.total_sessions) || 0, scheduleLength);
-            const sessionDuration = offer.session_duration || offer.duration || 60;
+            const scheduleLength = Array.isArray(mergedOffer.sessions_schedule) ? mergedOffer.sessions_schedule.length : 0;
+            const totalSessions = Math.max(1, Number(mergedOffer.total_sessions) || 0, scheduleLength);
+            const sessionDuration = mergedOffer.duration_minutes || mergedOffer.session_duration || mergedOffer.duration || 60;
             const pricePerSession = parseFloat(offer.price_per_session || offer.price || 0);
             const isFree = (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && pricePerSession === 0;
             const platformFeePerSession = isFree ? 0 : (offer.platform_fee_per_session || Math.round((sessionDuration / 60) * 50));
@@ -989,7 +1010,8 @@ router.get('/teacher/offers/:teacher_id', authenticate, authorize(['teacher']), 
                 price: pricePerSession,
                 price_per_session: pricePerSession,
                 is_free: isFree,
-                plan_type: offer.plan_type || (totalSessions > 1 ? '1_month' : '1_day'),
+                plan_type: mergedOffer.plan_type || (totalSessions > 1 ? '1_month' : '1_day'),
+                session_date: mergedOffer.session_date || offer.offer_date,
                 total_sessions: totalSessions,
                 platform_fee_per_session: platformFeePerSession,
                 total_platform_fee: totalPlatformFee,
@@ -998,7 +1020,9 @@ router.get('/teacher/offers/:teacher_id', authenticate, authorize(['teacher']), 
                 completed_sessions_count: offer.completed_sessions_count || 0,
                 sessions_schedule: offer.sessions_schedule || [],
                 total_released_amount: offer.total_released_amount || 0,
-                status: offer.status,
+                status: mergedOffer.status || offer.status,
+                session_date: mergedOffer.session_date || offer.offer_date,
+                duration_minutes: sessionDuration,
                 education_level: offer.education_level,
                 room_name: offer.room_name || null,
                 room_password: offer.room_password || null,
@@ -1176,7 +1200,7 @@ router.delete('/offer/delete/:offer_id', authenticate, authorize(['teacher']), [
             try {
                 await supabase.from(table).delete().eq('offer_id', offer_id);
             } catch (e) {
-                logger.error(`خطأ في حذف بيانات ${table}:`, e.message);
+                logger.error(`خطأ في حذف بيانا�� ${table}:`, e.message);
             }
         }
 
