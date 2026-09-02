@@ -481,8 +481,143 @@ router.post('/confirm-stream-completion', authenticate, authorize(['teacher']), 
     }
 });
 
+
 // ============================================================
-// ✅ جلب حجوزات الطالب (مع حالة الرصيد المعلق)
+// ✅ تأكيد إتمام حصة واحدة (للاشتراكات متعددة الحصص)
+// ============================================================
+router.post('/confirm-session-completion', authenticate, authorize(['teacher']), [
+    body('subscription_id').isInt().withMessage('معرف الاشتراك غير صالح'),
+    body('session_number').isInt().withMessage('رقم الحصة غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { subscription_id, session_number } = req.body;
+
+        // ✅ جلب الاشتراك
+        const { data: sub, error: subError } = await supabase
+            .from('stream_subscriptions')
+            .select('*')
+            .eq('id', subscription_id)
+            .single();
+        
+        if (subError || !sub) return res.status(404).json({ success: false, error: 'الاشتراك غير موجود' });
+
+        // ✅ التحقق من الصلاحية
+        if (req.user.userId !== sub.teacher_id) return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+
+        if (sub.completed_sessions >= sub.total_sessions) {
+            return res.status(400).json({ success: false, error: 'تم إكمال جميع الحصص بالفعل' });
+        }
+
+        // ✅ حساب المبلغ لكل حصة
+        const amountPerSession = sub.teacher_total_escrow / sub.total_sessions;
+
+        // ✅ تحديث الاشتراك
+        await supabase
+            .from('stream_subscriptions')
+            .update({
+                completed_sessions: sub.completed_sessions + 1,
+                teacher_released_so_far: sub.teacher_released_so_far + amountPerSession
+            })
+            .eq('id', subscription_id);
+
+        // ✅ تحويل الرصيد للأستاذ
+        const teacher = await getOne('teachers', 'id', sub.teacher_id);
+        if (teacher) {
+            await update('teachers', sub.teacher_id, {
+                balance: (teacher.balance || 0) + amountPerSession,
+                pending_withdraw: Math.max(0, (teacher.pending_withdraw || 0) - amountPerSession)
+            });
+        }
+
+        // ✅ تسجيل المعاملة
+        await insert('wallet_transactions', {
+            teacher_id: sub.teacher_id,
+            amount: amountPerSession,
+            type: 'income',
+            status: 'completed',
+            description: `تحرير رصيد حصة رقم ${session_number} من اشتراك رقم ${subscription_id}`,
+            created_at: new Date().toISOString()
+        });
+
+        return res.json({ success: true, message: 'تم تحرير رصيد الحصة بنجاح' });
+    } catch (error) {
+        logger.error('❌ خطأ في تحرير رصيد الحصة:', error.message);
+        return res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
+// ✅ استرداد مبلغ حصة غير مكتملة (للاشتراكات متعددة الحصص)
+// ============================================================
+router.post('/confirm-session-incomplete', authenticate, authorize(['teacher', 'admin']), [
+    body('subscription_id').isInt().withMessage('معرف الاشتراك غير صالح'),
+    body('session_number').isInt().withMessage('رقم الحصة غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { subscription_id, session_number } = req.body;
+
+        // ✅ جلب الاشتراك
+        const { data: sub, error: subError } = await supabase
+            .from('stream_subscriptions')
+            .select('*')
+            .eq('id', subscription_id)
+            .single();
+        
+        if (subError || !sub) return res.status(404).json({ success: false, error: 'الاشتراك غير موجود' });
+
+        // ✅ التحقق من الصلاحية
+        if (req.user.role !== 'admin' && req.user.userId !== sub.teacher_id) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        // ✅ حساب المبلغ لكل حصة
+        const amountPerSession = sub.total_amount_paid / sub.total_sessions;
+
+        // ✅ إعادة المبلغ للطالب
+        const student = await getOne('students', 'id', sub.student_id);
+        if (student) {
+            await update('students', sub.student_id, {
+                wallet_balance: (student.wallet_balance || 0) + amountPerSession
+            });
+        }
+
+        // ✅ خصم المبلغ من الرصيد المعلق للأستاذ
+        const teacher = await getOne('teachers', 'id', sub.teacher_id);
+        if (teacher) {
+            await update('teachers', sub.teacher_id, {
+                pending_withdraw: Math.max(0, (teacher.pending_withdraw || 0) - amountPerSession)
+            });
+        }
+
+        // ✅ تسجيل المعاملة
+        await insert('wallet_transactions', {
+            student_id: sub.student_id,
+            amount: amountPerSession,
+            type: 'refund',
+            status: 'completed',
+            description: `استرداد مبلغ حصة رقم ${session_number} غير مكتملة من اشتراك رقم ${subscription_id}`,
+            created_at: new Date().toISOString()
+        });
+
+        return res.json({ success: true, message: 'تم استرداد مبلغ الحصة بنجاح للطالب' });
+    } catch (error) {
+        logger.error('❌ خطأ في استرداد رصيد الحصة:', error.message);
+        return res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
+// ✅ جلب حجوزات الطالب (مع حالة الرصيد المعلق ومعلومات الاشتراك)
 // ============================================================
 router.get('/student/:student_id', authenticate, authorize(['student']), async (req, res) => {
     try {
@@ -518,6 +653,11 @@ router.get('/student/:student_id', authenticate, authorize(['student']), async (
                         profile_url,
                         specialization
                     )
+                ),
+                stream_subscriptions:offer_id!inner (
+                    id,
+                    total_sessions,
+                    completed_sessions
                 )
             `)
             .eq('student_id', student_id)
@@ -525,14 +665,20 @@ router.get('/student/:student_id', authenticate, authorize(['student']), async (
 
         if (error) throw error;
 
-        // ✅ تنسيق البيانات مع إضافة معلومات الرصيد المعلق
+        // ✅ تنسيق البيانات مع إضافة معلومات الرصيد المعلق والاشتراك
         const formattedBookings = (bookings || []).map(booking => ({
             ...booking,
             is_pending_stream: booking.payment_status === 'pending_stream',
             pending_balance: booking.payment_amount || 0,
             teacher_name: booking.teachers?.[0]?.teacher_id?.full_name || 'غير معروف',
             teacher_profile: booking.teachers?.[0]?.teacher_id?.profile_url || getPublicImageUrl('profiles', 'teachers', booking.teachers?.[0]?.teacher_id?.profile_image),
-            teacher_specialization: booking.teachers?.[0]?.teacher_id?.specialization || ''
+            teacher_specialization: booking.teachers?.[0]?.teacher_id?.specialization || '',
+            session_progress: booking.stream_subscriptions ? {
+                total: booking.stream_subscriptions[0].total_sessions,
+                completed: booking.stream_subscriptions[0].completed_sessions,
+                current: booking.stream_subscriptions[0].completed_sessions + 1,
+                next: booking.stream_subscriptions[0].completed_sessions + 2
+            } : null
         }));
 
         return res.json({

@@ -6968,6 +6968,20 @@
                     ${canJoin ? `<button class="join-stream-btn" style="margin-top: 12px; width: 100%;" onclick="joinLiveStream('${booking.offer_id}')"><i class="fas fa-video"></i> انضم للبث المباشر الان</button>` : ''}
                     ${!canJoin && isLive ? '<div style="color:var(--danger); font-size:0.75rem; margin-top:8px; font-weight:700;">🔴 البث مباشر ا��آن! انتظر فتح الغرفة من الأستاذ...</div>' : ''}
                     ${statusInfo.code === 'ended' ? '<div style="color:var(--gray-600); font-size:0.75rem; margin-top:8px;"><i class="fas fa-check-circle" style="color:var(--secondary);"></i> مكتمل - هذا الدرس منتهي.</div>' : ''}
+                    ${booking.session_progress ? `
+                        <div style="background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 10px; padding: 10px; margin-top: 10px; font-size: 0.8rem; font-weight: 700;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                <span>التقدم في الاشتراك:</span>
+                                <span>${booking.session_progress.completed} / ${booking.session_progress.total} حصص</span>
+                            </div>
+                            <div style="height: 6px; background: var(--gray-200); border-radius: 3px; overflow: hidden; margin-bottom: 5px;">
+                                <div style="height: 100%; width: ${(booking.session_progress.completed / booking.session_progress.total) * 100}%; background: var(--secondary);"></div>
+                            </div>
+                            <div style="font-size: 0.75rem; color: var(--gray-600);">
+                                الحصة التالية: رقم ${booking.session_progress.next}
+                            </div>
+                        </div>
+                    ` : ''}
                 </div>
             `;
         }
