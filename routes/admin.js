@@ -997,6 +997,13 @@ router.post('/cancel-offer/:id', [
                             wallet_balance: (student.wallet_balance || 0) + refundAmount
                         });
                     }
+                    // خصم من الرصيد المعلق للأستاذ
+                    const teacher = await getOne('teachers', 'id', offer.teacher_id);
+                    if (teacher) {
+                        await update('teachers', offer.teacher_id, {
+                            pending_withdraw: Math.max(0, (teacher.pending_withdraw || 0) - refundAmount)
+                        });
+                    }
                 }
 
                 await update('sessions', session.id, {
