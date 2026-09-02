@@ -422,10 +422,14 @@ router.post('/buy/:id', authenticate, authorize(['student']), async (req, res) =
 
             // 1. خصم من محفظة الطالب
             const newStudentBalance = studentBalance - coursePrice;
-            await update('students', studentId, {
+            const { data: updateRes, error: updateErr } = await supabase.from('students').update({
                 wallet_balance: newStudentBalance,
                 updated_at: new Date().toISOString()
-            });
+            }).eq('id', studentId).eq('wallet_balance', student.wallet_balance || 0).select();
+
+            if (updateErr || !updateRes || updateRes.length === 0) {
+                return res.status(409).json({ success: false, error: 'حدث تغيير في الرصيد أثناء المعالجة، يرجى المحاولة مرة أخرى' });
+            }
 
             // 2. إضافة رصيد الأستاذ (80% من المبيعة)
             const teacher = await getOne('teachers', 'id', course.teacher_id);
