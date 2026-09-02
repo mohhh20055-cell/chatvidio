@@ -6967,15 +6967,19 @@
             const res = await fetchWithAuth('/api/teacher/upgrade-vip', { method: 'POST' });
             const data = await res.json();
             if (data.success) {
-                showNotification('✅ تم دفع رسوم الترقية بنجاح! يمكنك الآن رفع وثائقك.', 'success');
+                showToast('✅ تم دفع رسوم الترقية بنجاح! يمكنك الآن رفع وثائقك.', 'success');
                 // Refresh local data and modal
                 if (window.userData) {
                     window.userData.is_vip = true;
+                    if (data.new_balance !== undefined) {
+                        window.userData.balance = data.new_balance;
+                        if (typeof loadBalance === 'function') loadBalance();
+                    }
                     localStorage.setItem('userData', JSON.stringify(window.userData));
                 }
                 openUpgradeModal(); // Re-open to show the form
             } else {
-                showNotification(data.error || 'فشلت عملية الدفع', 'error');
+                showToast(data.error || 'فشلت عملية الدفع', 'error');
                 
                 if (res.status === 400 && data.needed) {
                     if (insufficientSection && insufficientText) {
@@ -6990,7 +6994,7 @@
                 }
             }
         } catch (e) {
-            showNotification('حدث خطأ أثناء الاتصال بالخادم', 'error');
+            showToast('حدث خطأ أثناء الاتصال بالخادم', 'error');
             if (btn) {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-wallet"></i> دفع الرسوم (700 دج)';
