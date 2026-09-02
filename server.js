@@ -325,7 +325,7 @@ const staticOptions = {
     maxAge: '1d',
     etag: true,
     lastModified: true,
-    index: false, // منع تقديم index.html تلقائياً للمسا�� الرئيسي لخدمته عبر الموجه المخصص بالكاش
+    index: 'index.html',
     setHeaders: (res, filePath) => {
         if (filePath.match(/\.(png|jpg|jpeg|gif|webp|svg|ico|woff2|woff|ttf|eot)$/i)) {
             res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
@@ -5412,24 +5412,8 @@ app.get(['/blog', '/blog/*'], (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'blog.html'));
 });
 
-app.get(['/', '/index.html'], async (req, res) => {
-    // تفعيل التخزين المؤقت المحلي وعلى مستوى Vercel Edge CDN لتخطي الكوكيز بالكامل
-    res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=600');
-    res.setHeader('CDN-Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=600');
-    res.setHeader('Vercel-CDN-Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=600');
-    res.setHeader('X-Robots-Tag', 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1');
-    
-    try {
-        const filePath = path.join(__dirname, 'public', 'index.html');
-        let html = await fs.promises.readFile(filePath, 'utf8');
-        if (process.env.GOOGLE_SITE_VERIFICATION) {
-            const verificationMeta = `<meta name="google-site-verification" content="${process.env.GOOGLE_SITE_VERIFICATION}" />`;
-            html = html.replace('<head>', `<head>\n    ${verificationMeta}`);
-        }
-        res.send(html);
-    } catch (err) {
-        res.sendFile(path.join(__dirname, 'public', 'index.html'));
-    }
+app.get(['/', '/index.html'], (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // ============================================================
@@ -6649,6 +6633,8 @@ module.exports = app;
 
 if ((require.main === module || !process.env.IS_TEST) && !process.env.VERCEL) {
     app.listen(PORT, '0.0.0.0', () => {
+        console.log(`Server running on http://localhost:${PORT}`);
+        console.log(`Server running on port ${PORT}`);
         console.log(`🚀 الخادم يعمل على http://localhost:${PORT}`);
         console.log('='.repeat(60));
         console.log('📅 التاريخ:', new Date().toLocaleString('ar-EG'));
