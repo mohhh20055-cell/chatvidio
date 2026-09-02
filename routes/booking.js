@@ -399,7 +399,7 @@ router.post('/confirm-stream-completion', authenticate, authorize(['teacher']), 
 
         // ✅ تحويل كل جلسة من pending_stream إلى paid
         for (const session of sessions) {
-            const earnedAmount = session.payment_amount || 0;
+            const earnedAmount = session.teacher_earned || (session.payment_amount ? Math.max(0, session.payment_amount - 50) : 0);
             
             await supabase
                 .from('sessions')
@@ -430,9 +430,9 @@ router.post('/confirm-stream-completion', authenticate, authorize(['teacher']), 
             const teacher = await getOne('teachers', 'id', teacher_id);
             if (teacher) {
                 await update('teachers', teacher_id, {
-                    balance: (teacher.balance || 0) + totalEarned,
-                    total_earned: (teacher.total_earned || 0) + totalEarned,
-                    pending_withdraw: Math.max(0, (teacher.pending_withdraw || 0) - totalEarned)
+                    balance: (parseFloat(teacher.balance) || 0) + totalEarned,
+                    total_earned: (parseFloat(teacher.total_earned) || 0) + totalEarned,
+                    pending_withdraw: Math.max(0, (parseFloat(teacher.pending_withdraw) || 0) - totalEarned)
                 });
             }
         }
@@ -853,15 +853,16 @@ router.post('/cancel', authenticate, [
                 const student = await getOne('students', 'id', targetStudentId);
                 if (student) {
                     await update('students', targetStudentId, {
-                        wallet_balance: (student.wallet_balance || 0) + refundAmount
+                        wallet_balance: (parseFloat(student.wallet_balance) || 0) + refundAmount
                     });
                 }
 
-                // ✅ إزالة الرصيد المعلق من الأستاذ
+                // ✅ إزالة الرصيد المعلق من الأستاذ (يخصم فقط ما كان سيحصل عليه الأستاذ)
+                const teacherShare = session.teacher_earned || 0;
                 const teacher = await getOne('teachers', 'id', offer?.teacher_id);
                 if (teacher && offer) {
                     await update('teachers', offer.teacher_id, {
-                        pending_withdraw: Math.max(0, (teacher.pending_withdraw || 0) - refundAmount)
+                        pending_withdraw: Math.max(0, (parseFloat(teacher.pending_withdraw) || 0) - teacherShare)
                     });
                 }
 
@@ -985,15 +986,16 @@ router.post('/teacher-cancel', authenticate, authorize(['teacher', 'admin']), [
                 const student = await getOne('students', 'id', student_id);
                 if (student) {
                     await update('students', student_id, {
-                        wallet_balance: (student.wallet_balance || 0) + refundAmount
+                        wallet_balance: (parseFloat(student.wallet_balance) || 0) + refundAmount
                     });
                 }
 
-                // ✅ خصم المبلغ من الرصيد المعلق للأستاذ
+                // ✅ خصم المبلغ من الرصيد المعلق للأستاذ (يخصم فقط ما كان سيحصل عليه الأستاذ)
+                const teacherShare = session.teacher_earned || 0;
                 const teacher = await getOne('teachers', 'id', offer.teacher_id);
                 if (teacher) {
                     await update('teachers', offer.teacher_id, {
-                        pending_withdraw: Math.max(0, (teacher.pending_withdraw || 0) - refundAmount)
+                        pending_withdraw: Math.max(0, (parseFloat(teacher.pending_withdraw) || 0) - teacherShare)
                     });
                 }
 
