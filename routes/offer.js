@@ -690,7 +690,8 @@ router.get('/offers', async (req, res) => {
             const remainingSeconds = calculateOfferRemainingSeconds(offer);
 
             const views = getViewCount('offer', offer.id, offer.views_count || offer.views || 0);
-            const totalSessions = offer.total_sessions || 1;
+            const scheduleLength = Array.isArray(offer.sessions_schedule) ? offer.sessions_schedule.length : 0;
+            const totalSessions = Math.max(1, Number(offer.total_sessions) || 0, scheduleLength);
             const sessionDuration = offer.session_duration || offer.duration || 60;
             const pricePerSession = parseFloat(offer.price_per_session || offer.price || 0);
             const isFree = (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && pricePerSession === 0;
@@ -849,12 +850,13 @@ router.get(['/offer/:offer_id', '/teacher/offer/:offer_id'], async (req, res) =>
         }
 
         // ✅ جلب عدد الطلاب المسجلين
-        const { count: studentsCount, error: countError } = await supabase
+        const { data: studentRows, error: countError } = await supabase
             .from('sessions')
-            .select('*', { count: 'exact', head: true })
+            .select('student_id')
             .eq('offer_id', offer_id)
-            .in('payment_status', ['paid', 'pending_stream']);
+            .in('payment_status', ['paid', 'pending_stream', 'completed']);
 
+        const studentsCount = new Set((studentRows || []).map(row => row.student_id).filter(Boolean)).size;
         if (countError) {
             logger.error('خطأ في جلب عدد الطلاب:', countError.message);
         }
@@ -956,7 +958,8 @@ router.get('/teacher/offers/:teacher_id', authenticate, authorize(['teacher']), 
             // ✅ حساب الوقت المتبقي
             const remainingSeconds = calculateOfferRemainingSeconds(offer);
             const views = getViewCount('offer', offer.id, offer.views_count || offer.views || 0);
-            const totalSessions = offer.total_sessions || 1;
+            const scheduleLength = Array.isArray(offer.sessions_schedule) ? offer.sessions_schedule.length : 0;
+            const totalSessions = Math.max(1, Number(offer.total_sessions) || 0, scheduleLength);
             const sessionDuration = offer.session_duration || offer.duration || 60;
             const pricePerSession = parseFloat(offer.price_per_session || offer.price || 0);
             const isFree = (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && pricePerSession === 0;
@@ -1113,7 +1116,7 @@ router.delete('/offer/delete/:offer_id', authenticate, authorize(['teacher']), [
                         amount: refundAmount,
                         type: 'refund',
                         status: 'completed',
-                        description: `استرداد مبلغ حجز لدرس محذوف "${offer.subject_name || 'غير معروف'}"`,
+                        description: `��سترداد مبلغ حجز لدرس محذوف "${offer.subject_name || 'غير معروف'}"`,
                         created_at: new Date().toISOString()
                     });
                 }

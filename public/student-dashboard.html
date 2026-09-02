@@ -3502,7 +3502,7 @@
                     <select id="exerciseLevelFilter" onchange="filterExercises()" style="width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 10px; font-family: 'Cairo', sans-serif; font-size: 0.9rem; background: white;">
                         <option value="my_level">مستواي الدراسي فقط</option>
                         <option value="all">جميع المستويات الدراسية</option>
-                        <optgroup label="التعليم الابتدائ��">
+                        <optgroup label="التعليم الابتدائ����">
                             <option value="primary_all">جميع مستويات الابتدائي</option>
                             <option value="primary_1">السنة الأولى ابتدائي</option>
                             <option value="primary_2">السنة الثانية ابتدائي</option>
@@ -5543,7 +5543,8 @@
         const offerDate = offer.offer_date ? new Date(offer.offer_date) : null;
         const durationMs = ((offer.duration || 60) * 60 * 1000);
         
-        const totalSessions = offer.total_sessions || 1;
+        const scheduleLength = Array.isArray(offer.sessions_schedule) ? offer.sessions_schedule.length : 0;
+            const totalSessions = Math.max(1, Number(offer.total_sessions) || 0, scheduleLength);
         const completedCount = offer.completed_sessions_count || 0;
         const isMultiSessionRemaining = totalSessions > 1 && completedCount < totalSessions;
 
@@ -5706,7 +5707,8 @@
             const isBooked = !!userBooking && (userBooking.payment_status === 'paid' || userBooking.payment_status === 'pending_stream' || userBooking.is_free === true);
 
             const planType = offer.plan_type || '1_day';
-            const totalSessions = offer.total_sessions || 1;
+            const scheduleLength = Array.isArray(offer.sessions_schedule) ? offer.sessions_schedule.length : 0;
+            const totalSessions = Math.max(1, Number(offer.total_sessions) || 0, scheduleLength);
             const sessionDuration = offer.duration || offer.session_duration || 60;
             const pricePerSession = isFree ? 0 : (offer.price_per_session !== undefined ? offer.price_per_session : (offer.price || 0));
 
@@ -5865,7 +5867,8 @@
             const offer = data.offer || {};
             const sessions = data.sessions || [];
             const planType = offer.plan_type || '1_day';
-            const totalSessions = offer.total_sessions || sessions.length;
+            const scheduleLength = Array.isArray(offer.sessions_schedule) ? offer.sessions_schedule.length : sessions.length;
+            const totalSessions = Math.max(1, Number(offer.total_sessions) || 0, scheduleLength);
 
             const planMap = {
                 '1_day': 'يوم واحد',
@@ -7508,7 +7511,7 @@
                             معرف التلغرام الرقمي (Telegram ID):
                         </label>
                         <p style="margin: 0 0 6px 0; font-size: 0.75rem; color: #64748b; line-height: 1.4;">
-                            احصل على ID الرقمي الخاص بك بإرسال /start إلى البوت <a href="https://t.me/userinfobot" target="_blank" style="color:#0088cc; font-weight: bold; text-decoration: underline;">@userinfobot</a> في التلغرام.
+                            احصل على ID الرقمي الخاص بك ب��رسال /start إلى البوت <a href="https://t.me/userinfobot" target="_blank" style="color:#0088cc; font-weight: bold; text-decoration: underline;">@userinfobot</a> في التلغرام.
                         </p>
                         <input type="text" id="telegramIdInput" placeholder="مثال: 123456789" 
                                style="width: 100%; padding: 10px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; text-align: left; direction: ltr; box-sizing: border-box;">
@@ -8320,7 +8323,7 @@
             });
             const data = await res.json();
             if (data.success) {
-                showToast('تم تحديث الملف الشخصي والمستوى الدراسي بنجاح', 'success');
+                showToast('تم ��حديث الملف الشخصي والمستوى الدراسي بنجاح', 'success');
                 if (data.user) data.user.role = 'student';
                 userData = data.user;
                 localStorage.setItem('userData', JSON.stringify(data.user));
@@ -9026,7 +9029,7 @@
                 const endCardHtml = `
                     <div style="text-align: center; padding: 25px 20px; background: white; border-radius: 16px; border: 1px solid rgba(0,0,0,0.06); box-shadow: 0 4px 18px rgba(0,0,0,0.03); margin-top: 15px; margin-bottom: 25px;">
                         <i class="fas fa-check-circle" style="font-size: 2rem; color: var(--primary); margin-bottom: 8px;"></i>
-                        <h4 style="font-weight: 800; color: #374151; margin-bottom: 4px; font-size: 0.95rem;">${studentPostsFilter === 'saved' ? 'وصلت إلى نهاية منشوراتك المحفوظة' : 'شاهدت جميع المنشورات'}</h4>
+                        <h4 style="font-weight: 800; color: #374151; margin-bottom: 4px; font-size: 0.95rem;">${studentPostsFilter === 'saved' ? 'وصلت إلى نهاية منشوراتك المحفوظة' : 'شاهدت ج��يع المنشورات'}</h4>
                         <button onclick="loadStudentPosts(true)" style="background: #f1f5f9; color: var(--primary); border: 1px solid #cbd5e1; padding: 8px 20px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;">
                             <i class="fas fa-sync-alt"></i> تحديث من البداية
                         </button>
@@ -11164,7 +11167,7 @@
                     </div>
 
                     <div style="display: flex; justify-content: space-around; background: #f8fafc; padding: 10px; border-radius: 14px; border: 1px solid #e2e8f0; margin-bottom: 14px;">
-                        ${['👍', '❤️', '😂', '😮', '😢', '👏', '🔥'].map(emoji => `
+                        ${['👍', '❤️', '😂', '😮', '����', '👏', '🔥'].map(emoji => `
                             <span onclick="sendGroupMsgReaction('${msgId}', '${emoji}'); hideGroupMsgActionSheet();" style="font-size: 1.5rem; cursor: pointer; transition: transform 0.15s;" onmouseenter="this.style.transform='scale(1.3)'" onmouseleave="this.style.transform='scale(1)'">${emoji}</span>
                         `).join('')}
                     </div>

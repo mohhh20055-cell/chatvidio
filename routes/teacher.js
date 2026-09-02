@@ -1389,23 +1389,22 @@ router.get('/stats/:teacher_id', authenticate, authorize(['teacher']), async (re
         if (offers && offers.length > 0) {
             const offerIds = offers.map(o => o.id);
 
-            const { count: studentsCount, error: studentsError } = await supabase
+            const { data: studentRows, error: studentsError } = await supabase
                 .from('sessions')
-                .select('*', { count: 'exact', head: true })
+                .select('student_id')
                 .in('offer_id', offerIds)
-                .eq('payment_status', 'paid');
+                .in('payment_status', ['paid', 'pending_stream', 'completed']);
 
             if (studentsError) {
                 logger.error('خطأ في جلب عدد الطلاب:', studentsError.message);
             } else {
-                totalStudents = studentsCount || 0;
+                totalStudents = new Set((studentRows || []).map(row => row.student_id).filter(Boolean)).size;
             }
 
             const { count: completedCount, error: completedError } = await supabase
                 .from('sessions')
                 .select('*', { count: 'exact', head: true })
                 .in('offer_id', offerIds)
-                .eq('payment_status', 'paid')
                 .eq('payment_status', 'completed');
 
             if (completedError) {
