@@ -998,8 +998,6 @@ router.get('/teacher/offers/:teacher_id', authenticate, authorize(['teacher']), 
             const subscription = subscriptionByOffer.get(offer.id);
             const streamSession = streamByOffer.get(offer.id);
             const mergedOffer = { ...offer, ...(subscription || {}), ...(streamSession || {}) };
-            const mergedOffer = subscription ? { ...offer, ...subscription } : offer;
-            if (subscription) Object.assign(offer, subscription);
             // ✅ حساب الوقت المتبقي
             const remainingSeconds = calculateOfferRemainingSeconds(mergedOffer);
             const views = getViewCount('offer', offer.id, offer.views_count || offer.views || 0);
@@ -1351,7 +1349,7 @@ router.get('/education-levels', async (req, res) => {
 
         const levelMap = {
             'primary_all': 'التعليم الابتدائي',
-            'primary_1': 'السنة الأولى ابتدائي',
+            'primary_1': 'السنة الأولى ابتدا��ي',
             'primary_2': 'السنة الثانية ابتدائي',
             'primary_3': 'السنة الثالثة ابتدائي',
             'primary_4': 'السنة الرابعة ابتدائي',
