@@ -1056,7 +1056,7 @@ router.get('/teacher/offers/:teacher_id', authenticate, authorize(['teacher']), 
                 price_per_session: pricePerSession,
                 is_free: isFree,
                 plan_type: planType,
-                session_number: streamSession?.session_number || (Number(offer.completed_sessions_count || 0) + 1),
+                session_number: offer.session_number || streamSession?.session_number || (Number(offer.completed_sessions_count || 0) + 1),
                 session_date: streamSession?.session_date || offer.session_date || offer.offer_date,
                 total_sessions: totalSessions,
                 platform_fee_per_session: platformFeePerSession,
@@ -1463,4 +1463,6 @@ router.get('/unread-count', async (req, res) => {
     }
 });
 
+router.parseOfferPlanAndSchedule = parseOfferPlanAndSchedule;
+router.calculateOfferRemainingSeconds = calculateOfferRemainingSeconds;
 module.exports = router;

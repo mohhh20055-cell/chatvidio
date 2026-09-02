@@ -8626,8 +8626,6 @@ function updateUI() {
         };
 
         for (const offer of offers) {
-            const offerDate = new Date(offer.offer_date);
-            const durationMs = (offer.duration_minutes || offer.duration || 60) * 60 * 1000;
             let schedule = [];
             if (Array.isArray(offer.sessions_schedule)) {
                 schedule = offer.sessions_schedule;
@@ -8637,6 +8635,16 @@ function updateUI() {
             const scheduleLength = Array.isArray(schedule) ? schedule.length : 0;
             const totalSessions = Math.max(1, Number(offer.total_sessions) || 0, scheduleLength);
             const completedCount = Number(offer.completed_sessions ?? offer.completed_sessions_count ?? 0);
+
+            let targetOfferDate = offer.offer_date;
+            if (Array.isArray(schedule) && schedule.length > 0) {
+                const nextS = schedule.find(s => s.status !== 'completed' && (s.session_date || s.date)) || schedule[0];
+                if (nextS && (nextS.session_date || nextS.date)) {
+                    targetOfferDate = nextS.session_date || nextS.date;
+                }
+            }
+            const offerDate = new Date(targetOfferDate);
+            const durationMs = (offer.duration_minutes || offer.session_duration || offer.duration || 60) * 60 * 1000;
             const isFinished = completedCount >= totalSessions;
             const isMultiSessionRemaining = totalSessions > 1 && completedCount < totalSessions;
 
@@ -8659,7 +8667,6 @@ function updateUI() {
             else { statusText = '⏳ قادم'; statusClass = 'status-upcoming'; }
 
             const levelName = levelMap[offer.education_level] || offer.education_level || 'غير محدد';
-            const formattedDate = offerDate.toLocaleString('ar-DZ', { dateStyle: 'medium', timeStyle: 'short' });
 
             const planType = (offer.plan_type && offer.plan_type !== 'null' && offer.plan_type !== 'undefined')
                 ? String(offer.plan_type)
@@ -8667,8 +8674,8 @@ function updateUI() {
             const completedSessions = completedCount;
 
             const planMap = {
-                '1_day': 'يوم واحد (حصة واحدة)',
-                '1_month': 'اشتراك شهري (شهر)',
+                '1_day': 'حصة واحدة',
+                '1_month': 'اشتراك شهري',
                 '3_months': 'اشتراك 3 أشهر',
                 '6_months': 'اشتراك 6 أشهر'
             };
@@ -8676,20 +8683,26 @@ function updateUI() {
                 ? '<span style="background:#eff6ff; color:#1d4ed8; padding:3px 8px; border-radius:12px; font-size:0.75rem; font-weight:700; border:1px solid #bfdbfe;"><i class="fas fa-sun"></i> حصة واحدة</span>'
                 : `<span style="background:#fdf4ff; color:#9333ea; padding:3px 8px; border-radius:12px; font-size:0.75rem; font-weight:700; border:1px solid #f0abfc;"><i class="fas fa-layer-group"></i> ${planMap[planType] || planType} - ${totalSessions} حصص</span>`;
 
+            const sessionNumberDisplay = (offer.session_number || offer.completed_sessions_count || 0) + 1;
+            const completedDisplay = offer.completed_sessions ?? offer.completed_sessions_count ?? 0;
+
             html += `
                 <div class="offer-card" id="offer-card-${offer.id}" style="background: white; border-radius: 12px; padding: 16px; box-shadow: var(--shadow); border: 1px solid var(--gray-200); display: flex; flex-direction: column; justify-content: space-between;">
                     <div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 4px;">
-                            <span style="font-weight: 700; font-size: 1rem; color: var(--gray-800);">${escapeHtml(offer.subject_name)}</span>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 4px;">
+                            <span style="font-weight: 800; font-size: 1.05rem; color: var(--gray-800);">${escapeHtml(offer.subject_name)}</span>
                             <div>${planBadge} <span class="${statusClass}" style="padding: 4px 8px; border-radius: 20px; font-size: 0.75rem; font-weight: bold;">${statusText}</span></div>
                         </div>
 
-                        <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><strong>المستوى:</strong> ${escapeHtml(levelName)}</p>
-                        <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><strong>تاريخ الحصة:</strong> ${formattedDate}</p>
-                        <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><strong>الخطة:</strong> ${escapeHtml(planMap[planType] || planType)} | <strong>الحصة:</strong> ${completedCount + 1} من ${totalSessions}</p>
-                        <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><strong>المدة:</strong> ${offer.duration_minutes || offer.session_duration || offer.duration || 60} دقيقة | <strong>الحالة:</strong> ${escapeHtml(offer.status || 'upcoming')}</p>
-                        <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><strong>المدة الفعلية:</strong> ${offer.actual_duration || 0} ثانية | <strong>البث:</strong> ${offer.stream_active ? '<span style="color:green">نشط</span>' : '<span style="color:red">غير نشط</span>'}</p>
-                        <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><strong>المكتملة:</strong> ${completedCount} | <strong>السعر:</strong> ${offer.is_free ? 'مجاني' : (offer.price_per_session || offer.price || 0) + ' دج'}</p>
+                        <div class="offer-info" style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><i class="fas fa-calendar-alt"></i> تاريخ الحصة: ${offerDate.toLocaleDateString('ar-DZ', {timeZone: 'Africa/Algiers'})}</div>
+                        <div class="offer-info" style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><i class="fas fa-clock"></i> مدة الحصة: ${offer.duration_minutes || offer.session_duration || offer.duration || 60} دقيقة</div>
+                        <div class="offer-info" style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><i class="fas fa-layer-group"></i> الخطة: ${escapeHtml(planMap[planType] || planType)} | الإجمالي: ${totalSessions} حصص</div>
+                        <div class="offer-info" style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><i class="fas fa-list-ol"></i> رقم الحصة: ${sessionNumberDisplay} | المكتملة: ${completedDisplay}</div>
+                        <div class="offer-info" style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><i class="fas fa-stopwatch"></i> المدة الفعلية: ${offer.actual_duration || 0} ثانية</div>
+                        <div class="offer-info" style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><i class="fas fa-video"></i> حالة البث: ${offer.stream_active ? '<span style="color:green">نشط</span>' : '<span style="color:red">غير نشط</span>'}</div>
+                        <div class="offer-info" style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><i class="fas fa-circle-info"></i> الحالة: ${escapeHtml(offer.status || 'upcoming')}</div>
+                        <div class="offer-info" style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><i class="fas fa-graduation-cap"></i> المستوى: ${escapeHtml(levelName)}</div>
+                        <div class="offer-info" style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><i class="fas fa-money-bill-wave"></i> السعر: ${offer.is_free ? 'مجاني' : (offer.price_per_session || offer.price || 0) + ' دج'}</div>
                         
                         <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 10px; margin: 8px 0; font-size:0.8rem;">
                             <div style="font-weight:700; color:#334155; margin-bottom:4px;">
@@ -8756,15 +8769,21 @@ function updateUI() {
 
             const offer = data.offer || {};
             const sessions = data.sessions || [];
-            const planType = offer.plan_type || '1_day';
+            const planType = (offer.plan_type && offer.plan_type !== 'null' && offer.plan_type !== 'undefined') ? offer.plan_type : (sessions.length > 1 ? '1_month' : '1_day');
             const pricePerSession = offer.price_per_session || offer.price || 0;
             const completedCount = sessions.filter(s => s.status === 'completed' || s.is_completed).length;
+            const planMapModal = {
+                '1_day': 'حصة واحدة',
+                '1_month': 'اشتراك شهري',
+                '3_months': 'اشتراك 3 أشهر',
+                '6_months': 'اشتراك 6 أشهر'
+            };
 
             headerEl.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                     <div>
                         <h4 style="margin:0 0 4px 0; font-size:1.05rem; color:#1e293b; font-weight:800;">${escapeHtml(offer.subject_name)}</h4>
-                        <div style="font-size:0.8rem; color:#64748b;">نوع الخطة: <strong>${planType}</strong> (${sessions.length} حصص) | سعر الحصة: <strong>${pricePerSession} دج</strong></div>
+                        <div style="font-size:0.8rem; color:#64748b;">نوع الخطة: <strong>${escapeHtml(planMapModal[planType] || planType)}</strong> (${sessions.length} حصص) | سعر الحصة: <strong>${pricePerSession} دج</strong></div>
                     </div>
                     <div style="background:#ecfdf5; border:1px solid #a7f3d0; padding:6px 12px; border-radius:8px; text-align:center;">
                         <div style="font-size:0.72rem; color:#065f46;">الحصص المكتملة:</div>
