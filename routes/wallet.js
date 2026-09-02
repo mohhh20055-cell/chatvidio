@@ -551,6 +551,19 @@ router.post('/chargily-webhook', async (req, res) => {
                 return res.json({ success: true, message: 'مكتملة بالفعل' });
             }
 
+            // Atomic update to prevent race conditions from concurrent webhooks
+            const { data: txUpdate, error: txError } = await supabase
+                .from('wallet_transactions')
+                .update({ status: 'completed' })
+                .eq('id', transaction.id)
+                .eq('status', 'pending')
+                .select();
+                
+            if (txError || !txUpdate || txUpdate.length === 0) {
+                console.log(`ℹ️ ويب هوك Chargily: المعاملة رقم ${transactionId} جاري معالجتها حالياً أو مكتملة`);
+                return res.json({ success: true, message: 'جاري المعالجة أو مكتملة' });
+            }
+
             if (transaction.student_id) {
                 // تحديث رصيد الطالب في قاعدة البيانات
                 const student = await getOne('students', 'id', transaction.student_id);
@@ -654,6 +667,18 @@ router.get('/deposit/success/:transaction_id', [
 
         if (transaction.status !== 'pending') {
             return res.status(400).send(renderErrorPage('خطأ', 'هذه المعاملة لا يمكن معالجتها'));
+        }
+
+        // Atomic update to prevent race conditions
+        const { data: txUpdate, error: txError } = await supabase
+            .from('wallet_transactions')
+            .update({ status: 'completed' })
+            .eq('id', transaction.id)
+            .eq('status', 'pending')
+            .select();
+            
+        if (txError || !txUpdate || txUpdate.length === 0) {
+            return res.send(renderSuccessPage('تمت المعاملة', 'تم شحن رصيدك بالفعل', '', 'العودة للوحة', '/student-dashboard.html'));
         }
 
         const amount = transaction.amount;
