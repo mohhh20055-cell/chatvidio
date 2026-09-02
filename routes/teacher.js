@@ -795,8 +795,12 @@ router.get('/balance/:teacher_id', authenticate, authorize(['teacher']), [
             }
         });
 
-        const currentPendingWithdraw = parseFloat(teacher.pending_withdraw || 0);
-        const finalPending = Math.max(currentPendingWithdraw, calculatedPending);
+        // الرصيد المعلق المخزن في teachers هو المصدر المحاسبي المعتمد.
+        // لا نستخدم Math.max مع قيمة محسوبة من sessions لأنها قديمة بعد الاسترداد
+        // وتعيد إظهار مبلغ الحصة المستردة (مثل 1000 بدلاً من 750).
+        const finalPending = Number.isFinite(Number(teacher.pending_withdraw))
+            ? parseFloat(teacher.pending_withdraw)
+            : calculatedPending;
 
         res.json({
             success: true,
