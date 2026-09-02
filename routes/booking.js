@@ -500,37 +500,43 @@ router.post('/confirm-session-completion', authenticate, authorize(['teacher']),
         // ✅ جلب الاشتراك
         const { data: sub, error: subError } = await supabase
             .from('stream_subscriptions')
-            .select('*')
+            .select('*, offers:offer_id(teacher_id)')
             .eq('id', subscription_id)
             .single();
         
         if (subError || !sub) return res.status(404).json({ success: false, error: 'الاشتراك غير موجود' });
 
         // ✅ التحقق من الصلاحية
-        if (req.user.userId !== sub.teacher_id) return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        if (req.user.userId !== sub.offers.teacher_id) return res.status(403).json({ success: false, error: 'غير مصرح لك' });
 
         if (sub.completed_sessions >= sub.total_sessions) {
             return res.status(400).json({ success: false, error: 'تم إكمال جميع الحصص بالفعل' });
         }
 
-        // ✅ حساب المبلغ لكل حصة
-        const amountPerSession = sub.teacher_total_escrow / sub.total_sessions;
+        // ✅ استخدام السعر المخزن في قاعدة البيانات مباشرة (أكثر دقة)
+        const amountPerSession = parseFloat(sub.price_per_session) || 0;
+        const teacherSharePerSession = parseFloat(sub.teacher_total_escrow) / parseFloat(sub.total_sessions);
 
         // ✅ تحديث الاشتراك
         await supabase
             .from('stream_subscriptions')
             .update({
                 completed_sessions: sub.completed_sessions + 1,
-                teacher_released_so_far: sub.teacher_released_so_far + amountPerSession
+                teacher_released_so_far: parseFloat(sub.teacher_released_so_far || 0) + teacherSharePerSession
             })
             .eq('id', subscription_id);
 
         // ✅ تحويل الرصيد للأستاذ
-        const teacher = await getOne('teachers', 'id', sub.teacher_id);
+        const teacher = await getOne('teachers', 'id', sub.offers.teacher_id);
         if (teacher) {
-            await update('teachers', sub.teacher_id, {
-                balance: (teacher.balance || 0) + amountPerSession,
-                pending_withdraw: Math.max(0, (teacher.pending_withdraw || 0) - amountPerSession)
+            const currentPending = parseFloat(teacher.pending_withdraw || 0);
+            const newPending = Math.max(0, currentPending - teacherSharePerSession);
+            
+            logger.info(`🔄 تحرير رصيد حصة: الاشتراك ${subscription_id}. الخصم من المعلق: ${teacherSharePerSession}. الرصيد المعلق الجديد: ${newPending}`);
+            
+            await update('teachers', sub.offers.teacher_id, {
+                balance: (parseFloat(teacher.balance) || 0) + teacherSharePerSession,
+                pending_withdraw: newPending
             });
         }
 
@@ -569,44 +575,49 @@ router.post('/confirm-session-incomplete', authenticate, authorize(['teacher', '
         // ✅ جلب الاشتراك
         const { data: sub, error: subError } = await supabase
             .from('stream_subscriptions')
-            .select('*')
+            .select('*, offers:offer_id(teacher_id)')
             .eq('id', subscription_id)
             .single();
         
         if (subError || !sub) return res.status(404).json({ success: false, error: 'الاشتراك غير موجود' });
 
         // ✅ التحقق من الصلاحية
-        if (req.user.role !== 'admin' && req.user.userId !== sub.teacher_id) {
+        if (req.user.role !== 'admin' && req.user.userId !== sub.offers.teacher_id) {
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
 
-        // ✅ حساب المبلغ لكل حصة
-        const amountPerSession = sub.total_amount_paid / sub.total_sessions;
+        // ✅ حساب المبلغ بدقة (حصة من إجمالي مبلغ الأستاذ المعلق)
+        const teacherSharePerSession = parseFloat(sub.teacher_total_escrow) / parseFloat(sub.total_sessions);
 
-        // ✅ إعادة المبلغ للطالب
+        // ✅ إعادة المبلغ للطالب (إجمالي مبلغ الاشتراك / عدد الحصص)
+        const amountPerSessionForStudent = parseFloat(sub.total_amount_paid) / parseFloat(sub.total_sessions);
+
         const student = await getOne('students', 'id', sub.student_id);
         if (student) {
             await update('students', sub.student_id, {
-                wallet_balance: (student.wallet_balance || 0) + amountPerSession
+                wallet_balance: (parseFloat(student.wallet_balance) || 0) + amountPerSessionForStudent
             });
         }
 
         // ✅ خصم المبلغ من الرصيد المعلق للأستاذ
-        const teacher = await getOne('teachers', 'id', sub.teacher_id);
+        const teacher = await getOne('teachers', 'id', sub.offers.teacher_id);
         if (teacher) {
-            const newPending = Math.max(0, (teacher.pending_withdraw || 0) - amountPerSession);
-            logger.info(`🔄 خصم المبلغ من الرصيد المعلق للأستاذ: ${sub.teacher_id}. القديم: ${teacher.pending_withdraw}, الخصم: ${amountPerSession}, الجديد: ${newPending}`);
-            await update('teachers', sub.teacher_id, {
+            const currentPending = parseFloat(teacher.pending_withdraw || 0);
+            const newPending = Math.max(0, currentPending - teacherSharePerSession);
+            
+            logger.info(`🔄 استرداد حصة: الاشتراك ${subscription_id}. الخصم من المعلق: ${teacherSharePerSession}. الرصيد المعلق الجديد: ${newPending}`);
+            
+            await update('teachers', sub.offers.teacher_id, {
                 pending_withdraw: newPending
             });
         } else {
-            logger.error(`❌ لم يتم العثور على الأستاذ لتحديث الرصيد المعلق: ${sub.teacher_id}`);
+            logger.error(`❌ لم يتم العثور على الأستاذ لتحديث الرصيد المعلق: ${sub.offers.teacher_id}`);
         }
 
         // ✅ تسجيل المعاملة
         await insert('wallet_transactions', {
             student_id: sub.student_id,
-            amount: amountPerSession,
+            amount: amountPerSessionForStudent,
             type: 'refund',
             status: 'completed',
             description: `استرداد مبلغ حصة رقم ${session_number} غير مكتملة من اشتراك رقم ${subscription_id}`,
