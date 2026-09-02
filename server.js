@@ -637,7 +637,7 @@ app.post('/api/mystery-box/verify-telegram', async (req, res) => {
                 } else {
                     return res.status(400).json({
                         success: false,
-                        error: `عذراً، يجب الانضمام لقناة المنصة أولاً (${channelId})`
+                        error: `عذراً، يجب الانضمام لقناة الم��صة أولاً (${channelId})`
                     });
                 }
             } catch (tgErr) {
@@ -1070,7 +1070,7 @@ app.get('/course/:id', async (req, res) => {
             '3eme_as': 'ثالثة ثانوي (BAC)',
             'bac': 'ثالثة ثانوي (BAC)',
             'university': 'تعليم جامعي / عالي',
-            'other': 'مستوى آخر'
+            'other': 'مس��وى آخر'
         };
         const levelText = levelMap[course.education_level] || course.education_level || 'جميع المستويات';
         
@@ -4701,7 +4701,7 @@ app.post('/api/ai/platform-assistant', authenticate, requireRegisteredUser, asyn
         } else if (q.includes('شحن') || q.includes('رصيد') || q.includes('دفع') || q.includes('تعبئة')) {
             fallbackMsg = `💳 **دليل شحن الرصيد في منصة ZoomDz:**
 - يمكنك شحن محفظتك للاشتراك في الحصص والدورات عبر:
-  1. 📱 **بريدي موب (BaridiMob)** أو **البطاقة الذهبية / CIB**.
+  1. 📱 **بريدي موب (BaridiMob)** أو **البطاقة الذه��ية / CIB**.
   2. 🧾 **رفع وصل التحويل (Reçu):** قم بالتحويل ثم ارفع صورة الوصل في قسم المعاملات ليتم اعتماد رصيدك فوراً.
 - كما يمكنك الحصول على رصيد مجاني يومياً عبر **صندوق الهدايا 🎁** و**نظام الإحالة 🏆**.
 
@@ -5004,7 +5004,7 @@ app.get('/api/teacher/me', authenticate, authorize(['teacher']), async (req, res
             .single();
         
         if (error || !teacher) {
-            console.error('❌ خطأ في جلب بيانات الأستاذ:', error);
+            console.error('❌ خطأ في ��لب بيانات الأستاذ:', error);
             return res.status(404).json({ 
                 success: false, 
                 error: 'الأستاذ غير موجود' 
@@ -5235,8 +5235,11 @@ app.get('/api/teacher/balance/:teacherId', authenticate, authorize(['teacher']),
             }
         });
 
-        const currentPendingWithdraw = parseFloat(teacher?.pending_withdraw || 0);
-        const finalPending = Math.max(currentPendingWithdraw, calculatedPending);
+        // pending_withdraw في teachers هو المصدر المحاسبي الحقيقي.
+        // يمنع ذلك إعادة إظهار مبالغ جلسات قديمة بعد الاسترداد.
+        const finalPending = Number.isFinite(Number(teacher?.pending_withdraw))
+            ? parseFloat(teacher.pending_withdraw)
+            : calculatedPending;
         
         res.json({
             success: true,
