@@ -1673,6 +1673,10 @@ router.post('/request-upgrade', authenticate, authorize(['teacher']), upload.fie
             return res.status(400).json({ success: false, error: 'حسابك معتمد بالفعل ومزود بالشارة الذهبية!' });
         }
 
+        if (!teacher.is_vip) {
+            return res.status(403).json({ success: false, error: 'يجب عليك دفع رسوم الترقية أولاً قبل رفع الوثائق.' });
+        }
+
         let diploma_image = teacher.diploma_image;
         let id_image = teacher.id_image;
         let newDocsUploaded = false;

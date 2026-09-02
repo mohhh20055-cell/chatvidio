@@ -40,18 +40,6 @@ router.post('/create', authenticate, authorize(['teacher']), upload.single('thum
             return res.status(404).json({ success: false, error: 'الأستاذ غير موجود' });
         }
 
-        let thumbnailUrl = req.body.thumbnail_url || null;
-        if (req.file) {
-            try {
-                const uploadRes = await uploadToSupabase(req.file, 'thumbnails');
-                if (uploadRes && uploadRes.url) {
-                    thumbnailUrl = uploadRes.url;
-                }
-            } catch (upErr) {
-                logger.warn('⚠️ فشل رفع الصورة المصغرة للدورة:', upErr.message);
-            }
-        }
-
         const coursePrice = is_free === 'true' || is_free === true ? 0 : parseFloat(price);
 
         const courseData = {
@@ -62,8 +50,6 @@ router.post('/create', authenticate, authorize(['teacher']), upload.single('thum
             is_free: coursePrice === 0,
             education_level: education_level.trim(),
             course_url: course_url.trim(),
-            thumbnail_url: thumbnailUrl,
-            image_url: thumbnailUrl,
             status: 'pending'
         };
 
