@@ -723,18 +723,29 @@ async function releasePlanSessionEscrow(offerId, sessionNumber = null) {
 }
 
 async function refundPlanSessionEscrow(offerId, sessionNumber = null) {
-    try {
-        const { data: offer, error: offerError } = await supabase
-            .from('offers')
-            .select('*')
-            .eq('id', offerId)
-            .single();
+  try {
+  const { data: offer, error: offerError } = await supabase
+  .from('offers')
+  .select('*')
+  .eq('id', offerId)
+  .single();
 
-        if (offerError || !offer) return;
+  if (offerError || !offer) return;
 
-        const totalSessions = offer.total_sessions || 1;
-        const pricePerSession = parseFloat(offer.price_per_session || offer.price || 0);
-        const isFree = (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && pricePerSession === 0;
+  const totalSessions = offer.total_sessions || 1;
+  const pricePerSession = parseFloat(offer.price_per_session || offer.price || 0);
+  const { data: subscription } = await supabase
+  .from('stream_subscriptions')
+  .select('id, total_sessions, teacher_total_escrow, completed_sessions, teacher_released_so_far')
+  .eq('offer_id', offerId)
+  .eq('status', 'active')
+  .order('created_at', { ascending: true })
+  .limit(1)
+  .maybeSingle();
+  const teacherSharePerSession = subscription
+  ? parseFloat(subscription.teacher_total_escrow || 0) / Math.max(1, Number(subscription.total_sessions || totalSessions))
+  : pricePerSession;
+  const isFree = (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && pricePerSession === 0;
 
         if (isFree || pricePerSession <= 0) return;
 
@@ -782,15 +793,15 @@ async function refundPlanSessionEscrow(offerId, sessionNumber = null) {
             await supabase
                 .from('students')
                 .update({
-                    wallet_balance: (student?.wallet_balance || 0) + pricePerSession
-                })
-                .eq('id', session.student_id);
+  wallet_balance: (student?.wallet_balance || 0) + parseFloat(session.payment_amount || pricePerSession || 0)
+  })
+  .eq('id', session.student_id);
 
-            await supabase
-                .from('wallet_transactions')
-                .insert({
-                    student_id: session.student_id,
-                    amount: pricePerSession,
+  await supabase
+  .from('wallet_transactions')
+  .insert({
+  student_id: session.student_id,
+  amount: parseFloat(session.payment_amount || pricePerSession || 0),
                     type: 'refund',
                     status: 'completed',
                     description: `استرداد مبلغ الحصة ${currentSessionNum} من خطة "${offer.subject_name || 'غير معروف'}" لعدم اكتمالها`,
@@ -809,29 +820,42 @@ async function refundPlanSessionEscrow(offerId, sessionNumber = null) {
                 });
         }
         
-        const amountToRefundTotal = pricePerSession * (students?.length || 0);
-        const { data: teacher } = await supabase
+  const amountToRefundTotal = teacherSharePerSession * (students?.length || 0);
+  const { data: teacher } = await supabase
             .from('teachers')
             .select('pending_withdraw')
             .eq('id', offer.teacher_id)
             .single();
 
-        if (teacher && amountToRefundTotal > 0) {
-            const newPending = Math.max(0, (parseFloat(teacher.pending_withdraw) || 0) - amountToRefundTotal);
-            await supabase
-                .from('teachers')
-                .update({ pending_withdraw: newPending })
-                .eq('id', offer.teacher_id);
-        }
+  if (teacher && amountToRefundTotal > 0) {
+  const newPending = Math.max(0, (parseFloat(teacher.pending_withdraw) || 0) - amountToRefundTotal);
+  const { error: teacherUpdateError } = await supabase
+  .from('teachers')
+  .update({ pending_withdraw: newPending })
+  .eq('id', offer.teacher_id);
+  if (teacherUpdateError) throw teacherUpdateError;
+  }
 
-        if (targetSession) {
+  if (subscription) {
+  await supabase.from('stream_subscriptions').update({
+  status: 'active',
+  updated_at: new Date().toISOString()
+  }).eq('id', subscription.id);
+  }
+
+  if (targetSession) {
             await supabase
                 .from('stream_sessions')
-                .update({
-                    status: 'refunded',
-                    completed_at: new Date().toISOString()
-                })
-                .eq('id', targetSession.id);
+  .update({
+  status: 'refunded',
+  completed_at: new Date().toISOString(),
+  teacher_released_amount: 0,
+  refund_amount: parseFloat(targetSession.refund_amount || teacherSharePerSession || 0),
+  is_escrow_released: true,
+  updated_at: new Date().toISOString()
+  })
+  .eq('id', targetSession.id)
+  .eq('is_escrow_released', false);
         }
 
         const newCompletedCount = Math.min(totalSessions, (offer.completed_sessions_count || 0) + 1);
