@@ -671,10 +671,14 @@ router.post('/subscribe', authenticate, authorize(['student']), [
 
         // خصم المبلغ من رصيد الطالب
         const newStudentBalance = currentBalance - price;
-        await update('students', studentId, {
+        const { data: updateRes, error: updateErr } = await supabase.from('students').update({
             wallet_balance: newStudentBalance,
             updated_at: new Date().toISOString()
-        });
+        }).eq('id', studentId).eq('wallet_balance', currentBalance).select();
+
+        if (updateErr || !updateRes || updateRes.length === 0) {
+            return res.status(409).json({ success: false, error: 'حدث تغيير في الرصيد أثناء المعالجة، يرجى المحاولة مرة أخرى' });
+        }
 
         // تسجيل المعاملة المالية في wallet_transactions
         const typeLabel = subscription_type === 'term' ? 'فصلي' : 'سنوي';
