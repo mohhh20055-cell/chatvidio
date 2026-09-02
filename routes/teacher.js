@@ -1033,9 +1033,18 @@ router.post('/withdraw-request', authenticate, authorize(['teacher']), [
         const commission_desc = `المبلغ الأصلي: ${requestedAmount} دج | خصم ${commission_rate}% رسوم سحب (${commission_amount} دج) | الصافي: ${payout_amount} دج`;
         const final_desc = `${commission_desc} | طريقة السحب: ${withdrawMethod === 'sofizpay' ? 'SofiZPay (فوري)' : 'CCP (خلال 7 أيام)'}`;
 
+        const { data: updateRes, error: updateErr } = await supabase.from('teachers').update({
+            balance: (teacher.balance || 0) - requestedAmount,
+            pending_withdraw: (teacher.pending_withdraw || 0) + requestedAmount
+        }).eq('id', teacher_id).eq('balance', teacher.balance).select();
+
+        if (updateErr || !updateRes || updateRes.length === 0) {
+            return res.status(409).json({ success: false, error: 'حدث تغيير في الرصيد أثناء المعالجة، يرجى المحاولة مرة أخرى' });
+        }
+
         const withdrawRequest = await insert('withdraw_requests', {
             teacher_id: parseInt(teacher_id),
-            amount: payout_amount, // يصل طلب السحب للآدمن بالمبلغ مخصوماً منه 1%
+            amount: payout_amount,
             original_amount: requestedAmount,
             fee_amount: commission_amount,
             sofizpay_public_key: withdrawMethod === 'sofizpay' ? teacher.sofizpay_public_key : null,
@@ -1045,10 +1054,14 @@ router.post('/withdraw-request', authenticate, authorize(['teacher']), [
             created_at: new Date().toISOString()
         });
 
-        await update('teachers', teacher_id, {
-            balance: (teacher.balance || 0) - requestedAmount,
-            pending_withdraw: (teacher.pending_withdraw || 0) + requestedAmount
-        });
+        if (!withdrawRequest) {
+            // Rollback if insert fails
+            await supabase.from('teachers').update({
+                balance: teacher.balance,
+                pending_withdraw: teacher.pending_withdraw
+            }).eq('id', teacher_id);
+            return res.status(500).json({ success: false, error: 'فشل في إنشاء طلب السحب' });
+        }
 
         await insert('notifications', {
             user_id: teacher_id,
@@ -1080,10 +1093,13 @@ router.post('/withdraw-request', authenticate, authorize(['teacher']), [
                             processed_at: new Date().toISOString()
                         });
                         
-                        await update('teachers', teacher_id, {
-                            total_withdrawn: (teacher.total_withdrawn || 0) + parseFloat(amount),
-                            pending_withdraw: (teacher.pending_withdraw || 0) - parseFloat(amount)
-                        });
+                        const latestTeacher = await getOne('teachers', 'id', teacher_id);
+                        if (latestTeacher) {
+                            await update('teachers', teacher_id, {
+                                total_withdrawn: (latestTeacher.total_withdrawn || 0) + parseFloat(requestedAmount),
+                                pending_withdraw: Math.max(0, (latestTeacher.pending_withdraw || 0) - parseFloat(requestedAmount))
+                            });
+                        }
                         
                         await insert('notifications', {
                             user_id: teacher_id,
@@ -1102,10 +1118,13 @@ router.post('/withdraw-request', authenticate, authorize(['teacher']), [
                         sofizpay_status: 'failed',
                         description: `فشل التحويل التلقائي: ${error.message} (${commission_desc})`
                     });
-                    await update('teachers', teacher_id, {
-                        balance: (teacher.balance || 0) + parseFloat(amount),
-                        pending_withdraw: (teacher.pending_withdraw || 0) - parseFloat(amount)
-                    });
+                    const latestTeacher = await getOne('teachers', 'id', teacher_id);
+                    if (latestTeacher) {
+                        await update('teachers', teacher_id, {
+                            balance: (latestTeacher.balance || 0) + parseFloat(requestedAmount),
+                            pending_withdraw: Math.max(0, (latestTeacher.pending_withdraw || 0) - parseFloat(requestedAmount))
+                        });
+                    }
                 }
             }, 2000);
         } else {
@@ -1880,14 +1899,18 @@ router.post('/upgrade-vip', authenticate, authorize(['teacher']), async (req, re
         const currentVerifyStatus = teacher.verification_status || 'unverified';
         const nextStatus = (currentVerifyStatus === 'approved') ? 'approved' : 'pending_docs';
 
-        await update('teachers', teacherId, {
+        const { data: updateRes, error: updateErr } = await supabase.from('teachers').update({
             balance: newBalance,
             is_vip: true,
             is_certified: nextStatus === 'approved',
             vip_expires_at: expiresAt,
             verification_status: nextStatus,
             updated_at: new Date().toISOString()
-        });
+        }).eq('id', teacherId).eq('balance', teacher.balance).select();
+
+        if (updateErr || !updateRes || updateRes.length === 0) {
+            return res.status(409).json({ success: false, error: 'حدث تغيير في الرصيد أثناء المعالجة، يرجى المحاولة مرة أخرى' });
+        }
 
         await insert('wallet_transactions', {
             teacher_id: teacherId,
