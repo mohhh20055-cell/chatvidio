@@ -183,11 +183,18 @@ router.post('/create', authenticate, authorize(['student']), [
         }
 
         // ✅ خصم المبلغ من محفظة الطالب
-        const newBalance = (student.wallet_balance || 0) - totalCostForStudent;
-        await update('students', student_id, { 
-            wallet_balance: newBalance,
-            updated_at: new Date().toISOString()
-        });
+        if (totalCostForStudent > 0) {
+            const { data: updateRes, error: updateErr } = await supabase.from('students').update({
+                wallet_balance: (student.wallet_balance || 0) - totalCostForStudent,
+                updated_at: new Date().toISOString()
+            }).eq('id', student_id).eq('wallet_balance', student.wallet_balance || 0).select();
+
+            if (updateErr || !updateRes || updateRes.length === 0) {
+                // تراجع عن المعاملات إذا فشل الخصم
+                await supabase.from('sessions').delete().eq('id', session.id);
+                return res.status(409).json({ success: false, error: 'تغير الرصيد أثناء المعالجة، يرجى المحاولة مرة أخرى' });
+            }
+        }
 
         // ✅ تسجيل المعاملة (خصم من المحفظة)
         await insert('wallet_transactions', {
