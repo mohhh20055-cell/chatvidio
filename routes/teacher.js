@@ -724,7 +724,7 @@ router.get('/balance/:teacher_id', authenticate, authorize(['teacher']), [
         // 1. جلب جميع دروس وعروض هذا الأستاذ
         const { data: offers, error: offersError } = await supabase
             .from('offers')
-            .select('id, subject_name, price, offer_date')
+            .select('*')
             .eq('teacher_id', teacher_id);
 
         if (offersError) {
@@ -1407,7 +1407,7 @@ router.get('/stats/:teacher_id', authenticate, authorize(['teacher']), async (re
 
         const { data: offers, error: offersDataError } = await supabase
             .from('offers')
-            .select('id')
+            .select('*')
             .eq('teacher_id', teacher_id);
 
         if (offersDataError) {
@@ -1477,7 +1477,7 @@ router.get('/students/:teacher_id', authenticate, authorize(['teacher']), [
 
         const { data: offers, error: offersError } = await supabase
             .from('offers')
-            .select('id, subject_name')
+            .select('*')
             .eq('teacher_id', teacher_id);
 
         if (offersError) {

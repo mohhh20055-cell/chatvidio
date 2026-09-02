@@ -8680,6 +8680,7 @@ function updateUI() {
                         <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><strong>تاريخ الحصة:</strong> ${formattedDate}</p>
                         <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><strong>الخطة:</strong> ${escapeHtml(planMap[planType] || planType)} | <strong>الحصة:</strong> ${completedCount + 1} من ${totalSessions}</p>
                         <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><strong>المدة:</strong> ${offer.duration_minutes || offer.session_duration || offer.duration || 60} دقيقة | <strong>الحالة:</strong> ${escapeHtml(offer.status || 'upcoming')}</p>
+                        <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><strong>المدة الفعلية:</strong> ${offer.actual_duration || 0} ثانية | <strong>البث:</strong> ${offer.stream_active ? '<span style="color:green">نشط</span>' : '<span style="color:red">غير نشط</span>'}</p>
                         <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><strong>المكتملة:</strong> ${completedCount} | <strong>السعر:</strong> ${offer.is_free ? 'مجاني' : (offer.price_per_session || offer.price || 0) + ' دج'}</p>
                         
                         <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 10px; margin: 8px 0; font-size:0.8rem;">

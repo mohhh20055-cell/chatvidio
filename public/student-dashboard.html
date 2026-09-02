@@ -5793,6 +5793,8 @@
   <div class="offer-info"><i class="fas fa-clock"></i> مدة الحصة: ${offer.duration_minutes || offer.session_duration || sessionDuration} دقيقة</div>
   <div class="offer-info"><i class="fas fa-layer-group"></i> الخطة: ${escapeHtml(planMap[planType] || planType)} | الإجمالي: ${totalSessions} حصص</div>
   <div class="offer-info"><i class="fas fa-list-ol"></i> رقم الحصة: ${ (offer.session_number || offer.completed_sessions_count || 0) + 1 } | المكتملة: ${offer.completed_sessions ?? offer.completed_sessions_count ?? 0}</div>
+  <div class="offer-info"><i class="fas fa-stopwatch"></i> المدة الفعلية: ${offer.actual_duration || 0} ثانية</div>
+  <div class="offer-info"><i class="fas fa-video"></i> حالة البث: ${offer.stream_active ? '<span style="color:green">نشط</span>' : '<span style="color:red">غير نشط</span>'}</div>
   <div class="offer-info"><i class="fas fa-circle-info"></i> الحالة: ${escapeHtml(offer.status || rawStatus || 'upcoming')}</div>
                         ${levelDisplay}
 
