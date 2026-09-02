@@ -3502,7 +3502,7 @@
                     <select id="exerciseLevelFilter" onchange="filterExercises()" style="width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 10px; font-family: 'Cairo', sans-serif; font-size: 0.9rem; background: white;">
                         <option value="my_level">مستواي الدراسي فقط</option>
                         <option value="all">جميع المستويات الدراسية</option>
-                        <optgroup label="التعليم الابتدائ��">
+                        <optgroup label="التعليم الابتدائ����">
                             <option value="primary_all">جميع مستويات الابتدائي</option>
                             <option value="primary_1">السنة الأولى ابتدائي</option>
                             <option value="primary_2">السنة الثانية ابتدائي</option>
@@ -5836,6 +5836,27 @@
         }
     }
 
+    function parseLessonDate(value) {
+        if (!value) return null;
+        const text = String(value).trim();
+        // القيم المرسلة من الخادم تكون UTC، والقيم القديمة بلا منطقة زمنية تعتبر محلية للجزائر.
+        if (!/[zZ]|[+-]\d{2}:?\d{2}$/.test(text)) {
+            const match = text.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):?(\d{2})(?::?(\d{2}))?/);
+            if (match) {
+                const [, y, m, d, h, min, sec = '0'] = match;
+                return new Date(Date.UTC(+y, +m - 1, +d, +h, +min, +sec) - 60 * 60 * 1000);
+            }
+        }
+        return new Date(text);
+    }
+
+    function formatLessonDate(value) {
+        const date = parseLessonDate(value);
+        if (!date || Number.isNaN(date.getTime())) return 'غير محدد';
+        return date.toLocaleDateString('ar-DZ', { timeZone: 'Africa/Algiers' }) + ' - ' +
+            date.toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Africa/Algiers' });
+    }
+
     async function openStudentSessionsModal(offerId) {
         const modal = document.getElementById('studentSessionsScheduleModal');
         const headerEl = document.getElementById('studentSessionsModalHeader');
@@ -5876,8 +5897,8 @@
 
             let sHtml = '';
             sessions.forEach(s => {
-                const sDate = s.session_date ? new Date(s.session_date) : null;
-                const formattedDate = sDate ? (sDate.toLocaleDateString('ar-DZ', { timeZone: 'Africa/Algiers' }) + ' - ' + sDate.toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Africa/Algiers' })) : 'غير محدد';
+                const sDate = s.session_date ? parseLessonDate(s.session_date) : null;
+                const formattedDate = formatLessonDate(s.session_date);
                 const isCompleted = s.status === 'completed' || s.is_completed;
                 const isLive = s.status === 'live';
 
@@ -7252,7 +7273,7 @@
                 });
 
             copyAction.then(() => {
-                showToast('✅ تم نسخ رابط الإحالة بنجاح! شاركه مع أصدقائك', 'success');
+                showToast('✅ تم نسخ رابط الإحالة بنجاح! شاركه م�� أصدقائك', 'success');
                 if (navigator.share) {
                     navigator.share({
                         title: 'انضم إلى ZoomDz',
@@ -10161,7 +10182,7 @@
 
         if (titleEl) titleEl.textContent = ex.title || 'عرض صورة التمرين';
         if (img) img.src = exerciseLightboxImages[exerciseLightboxIndex];
-        if (counter) counter.textContent = `صورة ${exerciseLightboxIndex + 1} من ${exerciseLightboxImages.length}`;
+        if (counter) counter.textContent = `صور�� ${exerciseLightboxIndex + 1} من ${exerciseLightboxImages.length}`;
 
         if (modal) modal.style.display = 'block';
     }

@@ -22,6 +22,17 @@ const { processStreamPayments, archiveStreamLog } = require('../utils/streamVeri
 const { sendPushNotification } = require('../utils/notification');
 
 // ✅ دالة مساعدة لحساب واسترجاع الوقت المتبقي للبث
+// يحوّل وقت الجزائر المحلي إلى UTC مرة واحدة فقط قبل التخزين.
+function parseAlgiersLocalDate(value) {
+    if (!value) return null;
+    const text = String(value).trim();
+    if (/[zZ]|[+-]\d{2}:?\d{2}$/.test(text)) return new Date(text);
+    const match = text.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):?(\d{2})(?::?(\d{2}))?)?$/);
+    if (!match) return new Date(text);
+    const [, year, month, day, hours = '0', minutes = '0', seconds = '0'] = match;
+    return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes), Number(seconds)) - 60 * 60 * 1000);
+}
+
 function calculateOfferRemainingSeconds(offer) {
     if (!offer) return 0;
     let sec = null;
@@ -113,10 +124,10 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
             }
         }
 
-        // 💰 العمولة 20% من سعر البيع وتخصم من حصة الأستاذ فقط.
-        const platformFeePerSession = isFreeOffer ? 0 : Math.round(parsedPrice * 0.20 * 100) / 100;
-        const totalPlatformFee = Math.round(platformFeePerSession * parsedTotalSessions * 100) / 100;
-        const totalTeacherPrice = isFreeOffer ? 0 : Math.round((parsedPrice - platformFeePerSession) * parsedTotalSessions * 100) / 100;
+        // عروض البث والحصص بدون عمولة؛ عمولة 20٪ تطبق في نظام الدورات فقط.
+        const platformFeePerSession = 0;
+        const totalPlatformFee = 0;
+        const totalTeacherPrice = isFreeOffer ? 0 : Math.round(parsedPrice * parsedTotalSessions * 100) / 100;
         const totalStudentPrice = isFreeOffer ? 0 : Math.round(parsedPrice * parsedTotalSessions * 100) / 100;
 
         // 🔥 قيود العرض المجاني: 60 دقيقة كحد أقصى، و20 طالب كحد أقصى
@@ -308,7 +319,7 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
             parsedSchedule = parsedSchedule.map((s, idx) => ({
                 session_number: s.session_number || (idx + 1),
                 title: s.title || `الحصة ${idx + 1}: ${subject_name.trim()}`,
-                session_date: s.session_date ? new Date(s.session_date).toISOString() : new Date(offerDateUTC.getTime() + (idx * 7 * 24 * 60 * 60 * 1000)).toISOString(),
+                session_date: s.session_date ? (parseAlgiersLocalDate(s.session_date) || offerDateUTC).toISOString() : new Date(offerDateUTC.getTime() + (idx * 7 * 24 * 60 * 60 * 1000)).toISOString(),
                 duration: parseInt(s.duration || parsedDuration),
                 status: s.status || 'upcoming',
                 completed_at: s.completed_at || null,
@@ -410,7 +421,8 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
                 session_date: s.session_date,
                 duration_minutes: s.duration || parsedDuration,
                 price_per_session: isFreeOffer ? 0 : parsedPrice,
-                platform_fee: platformFeePerSession,
+                // لا توجد عمولة على البث أو الحصص؛ عمولة 20٪ للدورات فقط.
+                platform_fee: 0,
                 status: 'upcoming',
                 is_escrow_released: false,
                 teacher_released_amount: 0,
@@ -724,7 +736,7 @@ router.get('/offers', async (req, res) => {
             const sessionDuration = offer.session_duration || offer.duration || 60;
             const pricePerSession = parseFloat(offer.price_per_session || offer.price || 0);
             const isFree = (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && pricePerSession === 0;
-            const platformFeePerSession = isFree ? 0 : (offer.platform_fee_per_session || Math.round((sessionDuration / 60) * 50));
+            const platformFeePerSession = 0;
             const totalPlatformFee = isFree ? 0 : (offer.total_platform_fee || (platformFeePerSession * totalSessions));
             const totalTeacherPrice = isFree ? 0 : (offer.total_teacher_price || (pricePerSession * totalSessions));
             const totalStudentPrice = isFree ? 0 : (offer.total_student_price || (totalTeacherPrice + totalPlatformFee));
@@ -907,7 +919,7 @@ router.get(['/offer/:offer_id', '/teacher/offer/:offer_id'], async (req, res) =>
         const sessionDuration = offer.session_duration || offer.duration || 60;
         const pricePerSession = parseFloat(offer.price_per_session || offer.price || 0);
         const isFree = (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && pricePerSession === 0;
-        const platformFeePerSession = isFree ? 0 : (offer.platform_fee_per_session || Math.round((sessionDuration / 60) * 50));
+        const platformFeePerSession = 0;
         const totalPlatformFee = isFree ? 0 : (offer.total_platform_fee || (platformFeePerSession * totalSessions));
         const totalTeacherPrice = isFree ? 0 : (offer.total_teacher_price || (pricePerSession * totalSessions));
         const totalStudentPrice = isFree ? 0 : (offer.total_student_price || (totalTeacherPrice + totalPlatformFee));
@@ -990,7 +1002,7 @@ router.get('/teacher/offers/:teacher_id', authenticate, authorize(['teacher']), 
             const sessionDuration = offer.session_duration || offer.duration || 60;
             const pricePerSession = parseFloat(offer.price_per_session || offer.price || 0);
             const isFree = (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && pricePerSession === 0;
-            const platformFeePerSession = isFree ? 0 : (offer.platform_fee_per_session || Math.round((sessionDuration / 60) * 50));
+            const platformFeePerSession = 0;
             const totalPlatformFee = isFree ? 0 : (offer.total_platform_fee || (platformFeePerSession * totalSessions));
             const totalTeacherPrice = isFree ? 0 : (offer.total_teacher_price || (pricePerSession * totalSessions));
             const totalStudentPrice = isFree ? 0 : (offer.total_student_price || (totalTeacherPrice + totalPlatformFee));
@@ -1363,7 +1375,7 @@ router.get('/education-levels', async (req, res) => {
 
         res.json(formattedLevels);
     } catch (error) {
-        logger.error('خطأ في جلب مستويات التعليم:', error.message);
+        logger.error('خطأ في جلب مستويات التعلي��:', error.message);
         res.status(500).json([]);
     }
 });

@@ -112,9 +112,10 @@ router.post('/create', authenticate, authorize(['student']), [
         const totalSessions = offer.total_sessions || 1;
         const sessionDuration = offer.session_duration || offer.duration || 60;
         const pricePerSession = isFree ? 0 : parseFloat(offer.price_per_session || offer.price || 0);
-        const platformFeePerSession = isFree ? 0 : Math.round(pricePerSession * 0.20 * 100) / 100;
-        const totalPlatformFee = isFree ? 0 : Math.round(platformFeePerSession * totalSessions * 100) / 100;
-        const totalTeacherPrice = isFree ? 0 : Math.round((pricePerSession - platformFeePerSession) * totalSessions * 100) / 100;
+        // البث والحصص لا تفرض عمولة منصة؛ العمولة تطبق على مبيعات الدورات فقط.
+        const platformFeePerSession = 0;
+        const totalPlatformFee = 0;
+        const totalTeacherPrice = isFree ? 0 : Math.round(pricePerSession * totalSessions * 100) / 100;
         const totalCostForStudent = isFree ? 0 : Math.round(pricePerSession * totalSessions * 100) / 100;
         
         let pendingBalance = totalCostForStudent;
@@ -153,7 +154,7 @@ router.post('/create', authenticate, authorize(['student']), [
             logger.error('❌ خطأ في إنشاء الجلسة:', sessionError);
             return res.status(500).json({ 
                 success: false, 
-                error: 'حدث خطأ في قاعدة البيانات: ' + sessionError.message 
+                error: 'حدث خطأ في قاعدة البيان��ت: ' + sessionError.message
             });
         }
 
@@ -320,8 +321,8 @@ router.post('/create', authenticate, authorize(['student']), [
             session_id: session.id,
             is_free: isFree,
             pending_balance: isFree ? 0 : offer.price,
-            platform_fee: isFree ? 0 : (offer.duration <= 120 ? 100 : (offer.duration <= 240 ? 200 : 600)),
-            teacher_amount: isFree ? 0 : Math.max(0, offer.price - (offer.duration <= 120 ? 100 : (offer.duration <= 240 ? 200 : 600))),
+            platform_fee: 0,
+            teacher_amount: isFree ? 0 : Math.round(Number(offer.price || 0) * Number(totalSessions) * 100) / 100,
             message: 'تم حجز هذا الدرس، سيتم إرسال إشعار لك عند بدء البث، انتظر هذا.',
             total_booked: totalBooked,
             room_password: studentPassword,
@@ -392,7 +393,8 @@ router.post('/confirm-stream-completion', authenticate, authorize(['teacher']), 
 
         // ✅ تحويل كل جلسة من pending_stream إلى paid
         for (const session of sessions) {
-            const earnedAmount = session.payment_amount || 0;
+            // تحرير صافي حصة الأستاذ المسجلة للحجز، وليس كامل ما دفعه الطالب.
+            const earnedAmount = Number(session.teacher_earned || 0);
             
             await supabase
                 .from('sessions')
@@ -519,7 +521,7 @@ router.get('/student/:student_id', authenticate, authorize(['student']), async (
 
         if (error) throw error;
 
-        // ✅ تنسيق البيانات مع إضافة معلومات الرصيد المعلق
+        // ✅ تنسيق البيانات مع إضافة معلوم��ت الرصيد المعلق
         const formattedBookings = (bookings || []).map(booking => ({
             ...booking,
             is_pending_stream: booking.payment_status === 'pending_stream',
@@ -693,7 +695,7 @@ router.post('/cancel', authenticate, [
                     amount: refundAmount,
                     type: 'refund',
                     status: 'completed',
-                    description: isTeacherOwner ? `استرداد مبلغ الحجز من قبل الأستاذ لدرس "${offer?.subject_name || 'غير معروف'}"` : `استرداد مبلغ حجز "${offer?.subject_name || 'غير معروف'}"`,
+                    description: isTeacherOwner ? `استرداد مبلغ الحجز من قبل الأستاذ لدرس "${offer?.subject_name || 'غير معروف'}"` : `است��داد مبلغ حجز "${offer?.subject_name || 'غير معروف'}"`,
                     created_at: new Date().toISOString()
                 });
             }
