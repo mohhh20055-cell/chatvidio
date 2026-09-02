@@ -748,6 +748,13 @@ router.get('/balance/:teacher_id', authenticate, authorize(['teacher']), [
                     payment_amount,
                     teacher_earned,
                     created_at,
+                    session_number,
+                    plan_type,
+                    total_sessions,
+                    completed_sessions,
+                    session_date,
+                    duration_minutes,
+                    status,
                     students:student_id (
                         id,
                         full_name,
@@ -755,7 +762,7 @@ router.get('/balance/:teacher_id', authenticate, authorize(['teacher']), [
                     )
                 `)
                 .in('offer_id', offerIds)
-                .in('payment_status', ['paid', 'pending_stream', 'pending', 'completed'])
+                .or('payment_status.in.(paid,pending_stream,pending,completed),status.eq.active')
                 .order('created_at', { ascending: false });
 
             if (sessionsError) {
@@ -776,10 +783,24 @@ router.get('/balance/:teacher_id', authenticate, authorize(['teacher']), [
                         payment_amount: s.payment_amount,
                         teacher_earned: earned,
                         created_at: s.created_at,
+                        session_number: s.session_number || 1,
+                        plan_type: s.plan_type || '1_day',
+                        total_sessions: Number(s.total_sessions) || 1,
+                        completed_sessions: Number(s.completed_sessions) || 0,
+                        session_date: s.session_date || offer?.offer_date,
+                        duration_minutes: Number(s.duration_minutes) || 60,
+                        status: s.status || 'upcoming',
                         offers: {
                             subject_name: offer?.subject_name || 'درس خصوصي',
                             price: offerPrice,
-                            offer_date: offer?.offer_date
+                            offer_date: offer?.offer_date,
+                            session_number: s.session_number || 1,
+                            plan_type: s.plan_type || '1_day',
+                            total_sessions: Number(s.total_sessions) || 1,
+                            completed_sessions: Number(s.completed_sessions) || 0,
+                            session_date: s.session_date || offer?.offer_date,
+                            duration_minutes: Number(s.duration_minutes) || 60,
+                            status: s.status || 'upcoming'
                         },
                         student_name: s.students?.full_name || 'طالب منصة ZoomDz'
                     };
@@ -1484,7 +1505,7 @@ router.get('/students/:teacher_id', authenticate, authorize(['teacher']), [
             .order('created_at', { ascending: false });
 
         if (sessionsError) {
-            logger.error('خطأ في جلب الجلسات:', sessionsError.message);
+            logger.error('خطأ في ��لب الجلسات:', sessionsError.message);
             return res.status(500).json([]);
         }
 
@@ -1837,7 +1858,7 @@ router.get('/teacher/plan-releases/:teacher_id', authenticate, authorize(['teach
 // ✅ تحرير مستحقات حصة مكتملة يدوياً أو بعد انتهاء الجلسة
 // ============================================================
 router.post('/teacher/complete-session-escrow', authenticate, authorize(['teacher']), [
-    body('offer_id').isInt().withMessage('معرف الدرس غير صالح'),
+    body('offer_id').isInt().withMessage('��عرف الدرس غير صالح'),
     body('session_number').optional().isInt().withMessage('رقم الحصة غير صالح')
 ], async (req, res) => {
     try {
@@ -2040,7 +2061,7 @@ router.post('/teacher/upload-verification-docs', authenticate, authorize(['teach
 });
 
 // ============================================================
-// 🚀 طلب ترويج وتواصل مباشر مع مؤسس المنصة (خاص بأساتذة VIP)
+// 🚀 طلب ترويج وتواصل مباشر مع مؤسس المنصة (خا�� بأساتذة VIP)
 // ============================================================
 router.post('/teacher/request-founder-promo', authenticate, authorize(['teacher']), async (req, res) => {
     try {

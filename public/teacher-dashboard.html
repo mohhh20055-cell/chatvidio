@@ -3415,7 +3415,7 @@
                 <div class="nav-search-box" id="navSearchBox">
                     <i class="fas fa-search nav-search-icon"></i>
                     <input type="text" id="navSearchInput" placeholder="بحث عن أستاذ أو طالب..." autocomplete="off" oninput="handleNavUserSearch(this.value)" onfocus="openNavSearchResults()" />
-                    <button type="button" id="navSearchClearBtn" class="nav-search-clear" onclick="clearNavUserSearch()" style="display:none;" title="مس����">
+                    <button type="button" id="navSearchClearBtn" class="nav-search-clear" onclick="clearNavUserSearch()" style="display:none;" title="مس������">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
@@ -4767,7 +4767,7 @@
                             <i class="fas fa-video"></i> تشغيل الكاميرا للهوية
                         </button>
                         <button type="button" onclick="captureUpgradeImage('id')" style="background: #16a34a; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-weight: 700; font-size: 0.82rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                            <i class="fas fa-camera-retro"></i> التقاط وضغط صورة الهوية
+                            <i class="fas fa-camera-retro"></i> التقاط ��ضغط صورة الهوية
                         </button>
                     </div>
                     <div>
@@ -5129,7 +5129,7 @@
             <div style="flex:1; min-width:150px;">
                 <label style="display:block; margin-bottom:6px; font-weight:700; color:var(--gray-800);">المستوى الدراسي <span style="color:red;">*</span></label>
                 <select id="exerciseModalLevel" style="width:100%; padding:10px 14px; border:1px solid #cbd5e1; border-radius:10px; font-family:'Cairo'; font-size:0.9rem; background:white;">
-                    <option value="all">جميع المستويات الدراسي��</option>
+                    <option value="all">جميع المستويات الدر��سي��</option>
                     <optgroup label="التعلي�� الابتدائي">
                         <option value="primary_all">جميع مستويات الابتدائي</option>
                         <option value="primary_1">السنة الأولى ابتدائي</option>
@@ -5299,7 +5299,7 @@
                     <option value="3eme_am">السنة الثالثة متوسط</option>
                     <option value="4eme_am">السنة الرابعة متوسط (شهادة BEM)</option>
                 </optgroup>
-                <optgroup label="التعليم الثانوي">
+                <optgroup label="التعليم الثان��ي">
                     <option value="secondary_all">جم��ع مستويات الثانوي</option>
                     <option value="1ere_as">السنة الأولى ثانوي</option>
                     <option value="2eme_as">السنة الثانية ثانوي</option>
@@ -5946,7 +5946,7 @@
         const userData = JSON.parse(localStorage.getItem('userData') || '{}');
         if (userData.is_guest || userData.id === -1) {
             showToast('⚠️ أنت تتصفح كزائر. يرجى تسجيل الدخول أو إنشاء حساب للقيام بهذا الإجراء.', 'error');
-            if (confirm('أنت تتصفح كزائر حالياً.\nللقيام بالمتابعة، النشر، إنشاء العروض/الدورات أو تعديل الملف الشخصي، يرجى تسجيل الدخول أو إنشاء ح��اب.\n\nهل ترغب في الانتقال لصفحة إنشاء حساب؟')) {
+            if (confirm('أنت تتصفح كزائر حالياً.\nللقيام بالمتابعة، النشر، إنشاء العروض/الدورات أو تعديل الملف الشخصي، يرجى تسجيل ال��خول أو إنشاء ح��اب.\n\nهل ترغب في الانتقال لصفحة إنشاء حساب؟')) {
                 exitGuestAndNavigate('/?register=true');
             }
             return true;
@@ -7630,7 +7630,7 @@ function updateUI() {
                     <!-- Payment Details & Withdrawal Cover -->
                     <div style="border: 1px solid var(--gray-200); padding: 24px; border-radius: var(--radius-md); background: var(--gray-50); margin-bottom: 30px;">
                         <h3 style="font-size: 1.1rem; font-weight: 850; color: var(--gray-800); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-                            <i class="fas fa-wallet" style="color: var(--primary);"></i> تفاصيل سحب المستحقات والأرباح
+                            <i class="fas fa-wallet" style="color: var(--primary);"></i> تفاصيل سحب المستحقات والأرب��ح
                         </h3>
                         
                         <div style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; font-size: 0.82rem; color: #b45309; font-weight: 700; line-height: 1.6;">
@@ -8627,10 +8627,10 @@ function updateUI() {
 
         for (const offer of offers) {
             const offerDate = new Date(offer.offer_date);
-            const durationMs = (offer.duration || 60) * 60 * 1000;
-            const scheduleLength = Array.isArray(offer.sessions_schedule) ? offer.sessions_schedule.length : 0;
-            const totalSessions = Math.max(1, Number(offer.total_sessions) || 0, scheduleLength);
-            const completedCount = offer.completed_sessions_count || 0;
+  const durationMs = (offer.duration_minutes || offer.duration || 60) * 60 * 1000;
+  const scheduleLength = Array.isArray(offer.sessions_schedule) ? offer.sessions_schedule.length : 0;
+  const totalSessions = Math.max(1, Number(offer.total_sessions) || 0, scheduleLength);
+  const completedCount = Number(offer.completed_sessions ?? offer.completed_sessions_count ?? 0);
             const isFinished = completedCount >= totalSessions;
             const isMultiSessionRemaining = totalSessions > 1 && completedCount < totalSessions;
 
