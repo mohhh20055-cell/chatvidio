@@ -39,9 +39,10 @@ async function fetchApprovedTeachers() {
     try {
         const res = await supabase
             .from('teachers')
-            .select('id, full_name, specialization, experience, bio, profile_image, profile_url, teaching_level, facebook_url, instagram_url, linkedin_url, youtube_url, twitter_url, website_url, whatsapp_number, status, is_certified, is_banned')
+            .select('id, full_name, specialization, experience, bio, profile_image, profile_url, teaching_level, facebook_url, instagram_url, linkedin_url, youtube_url, twitter_url, website_url, whatsapp_number, status, is_certified, is_vip, verification_status, is_banned')
             .neq('status', 'rejected')
             .eq('is_banned', false)
+            .order('is_vip', { ascending: false, nullsFirst: false })
             .order('is_certified', { ascending: false, nullsFirst: false })
             .order('created_at', { ascending: false });
         data = res.data;
@@ -53,7 +54,7 @@ async function fetchApprovedTeachers() {
         try {
             const resFallback = await supabase
                 .from('teachers')
-                .select('id, full_name, specialization, experience, bio, profile_image, profile_url, teaching_level, facebook_url, instagram_url, linkedin_url, youtube_url, twitter_url, website_url, whatsapp_number, status, is_certified, is_banned')
+                .select('id, full_name, specialization, experience, bio, profile_image, profile_url, teaching_level, facebook_url, instagram_url, linkedin_url, youtube_url, twitter_url, website_url, whatsapp_number, status, is_certified, is_vip, verification_status, is_banned')
                 .neq('status', 'rejected')
                 .order('created_at', { ascending: false });
             data = resFallback.data || [];
@@ -63,11 +64,11 @@ async function fetchApprovedTeachers() {
         }
     }
     const processed = (data || []).map(t => processUserProfile(t, 'teacher'));
-    // فرز الأساتذة المعتمَدين أولاً بضمان كامل
+    // فرز الأساتذة ترقية VIP المعتمَدين أولاً بضمان كامل
     return processed.sort((a, b) => {
-        const aCert = (a.is_certified === true || a.status === 'certified') ? 1 : 0;
-        const bCert = (b.is_certified === true || b.status === 'certified') ? 1 : 0;
-        return bCert - aCert;
+        const aVip = (a.is_vip === true || (a.is_certified === true && a.verification_status === 'approved')) ? 1 : 0;
+        const bVip = (b.is_vip === true || (b.is_certified === true && b.verification_status === 'approved')) ? 1 : 0;
+        return bVip - aVip;
     });
 }
 
@@ -130,7 +131,8 @@ async function formatOffers(offers) {
     return offers.map(offer => {
         const teacher = teachersMap[offer.teacher_id] || {};
         const views = getViewCount('offer', offer.id, offer.views_count || offer.views || 0);
-        const isCert = Boolean(teacher.is_certified === true || teacher.status === 'certified');
+        const isVip = Boolean(teacher.is_vip === true);
+        const isCert = Boolean(isVip || (teacher.is_certified === true && teacher.verification_status === 'approved'));
         return {
             id: offer.id,
             teacher_id: offer.teacher_id,
@@ -155,6 +157,8 @@ async function formatOffers(offers) {
             teacher_teaching_level: teacher.teaching_level || null,
             is_certified: isCert,
             teacher_is_certified: isCert,
+            is_vip: isVip,
+            teacher_is_vip: isVip,
             teacher_status: teacher.status || 'approved'
         };
     });

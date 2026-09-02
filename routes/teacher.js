@@ -1849,4 +1849,197 @@ router.post('/teacher/complete-session-escrow', authenticate, authorize(['teache
     }
 });
 
+// ============================================================
+// ⭐ ترقية حساب الأستاذ للشارة الذهبية (700 دج / شهر)
+// ============================================================
+router.post('/teacher/upgrade-vip', authenticate, authorize(['teacher']), async (req, res) => {
+    try {
+        const teacherId = req.user.userId;
+        const teacher = await getOne('teachers', 'id', teacherId);
+        if (!teacher) {
+            return res.status(404).json({ success: false, error: 'حساب الأستاذ غير موجود' });
+        }
+
+        const VIP_COST = 700;
+        const currentBalance = parseFloat(teacher.balance || 0);
+
+        if (currentBalance < VIP_COST) {
+            return res.status(400).json({
+                success: false,
+                error: `رصيدك الحالي (${currentBalance} دج) غير كافٍ لترقية الحساب. المبلغ المطلوب هو 700 دج.`,
+                needed: VIP_COST - currentBalance
+            });
+        }
+
+        const newBalance = currentBalance - VIP_COST;
+        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        const currentVerifyStatus = teacher.verification_status || 'unverified';
+        const nextStatus = (currentVerifyStatus === 'approved') ? 'approved' : 'pending_docs';
+
+        await update('teachers', teacherId, {
+            balance: newBalance,
+            is_vip: true,
+            is_certified: nextStatus === 'approved',
+            vip_expires_at: expiresAt,
+            verification_status: nextStatus,
+            updated_at: new Date().toISOString()
+        });
+
+        await insert('wallet_transactions', {
+            teacher_id: teacherId,
+            amount: VIP_COST,
+            type: 'withdraw',
+            status: 'completed',
+            description: 'خصم 700 دج مقابل ترقية الحساب للشارة الذهبية (VIP) لمدة 30 يوماً',
+            created_at: new Date().toISOString()
+        });
+
+        try {
+            await supabase.from('teacher_vip_subscriptions').insert({
+                teacher_id: teacherId,
+                amount: VIP_COST,
+                duration_days: 30,
+                status: 'active',
+                expires_at: expiresAt,
+                created_at: new Date().toISOString()
+            });
+        } catch (subErr) {}
+
+        await supabase.from('notifications').insert({
+            user_id: teacherId,
+            user_type: 'teacher',
+            title: '⭐ تم ترقية حسابك إلى VIP والشارة الذهبية',
+            message: 'تم خصم 700 دج من رصيدك بنجاح. يرجى رفع الوثائق المطلوبة (بطاقة الهوية والدبلوم) لتكتمل الترقية وتفعيل شارتك الذهبية وميزات الكبار!',
+            is_read: false,
+            created_at: new Date().toISOString()
+        });
+
+        res.json({
+            success: true,
+            message: '🎉 تم خصم 700 دج لترقية حسابك بنجاح! يرجى رفع وثائق التوثيق (بطاقة الهوية والدبلوم) لراجعتها واعتماد الشارة الذهبية بالكامل.',
+            vip_expires_at: expiresAt,
+            new_balance: newBalance,
+            verification_status: nextStatus
+        });
+    } catch (error) {
+        logger.error('خطأ في ترقية حساب الأستاذ:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في عملية الترقية' });
+    }
+});
+
+// ============================================================
+// 📄 رفع وثائق التوثيق (بطاقة الهوية والدبلوم)
+// ============================================================
+router.post('/teacher/upload-verification-docs', authenticate, authorize(['teacher']), upload.fields([
+    { name: 'id_card', maxCount: 1 },
+    { name: 'diploma', maxCount: 1 }
+]), async (req, res) => {
+    try {
+        const teacherId = req.user.userId;
+        const teacher = await getOne('teachers', 'id', teacherId);
+
+        if (!teacher) {
+            return res.status(404).json({ success: false, error: 'الأستاذ غير موجود' });
+        }
+
+        let idCardUrl = teacher.id_card_image || teacher.id_card_image_url || null;
+        let diplomaUrl = teacher.diploma_image || teacher.certificate_image_url || null;
+
+        if (req.files) {
+            if (req.files.id_card && req.files.id_card[0]) {
+                const file = req.files.id_card[0];
+                const uploadRes = await uploadToSupabase(file.buffer, file.originalname, 'verifications', 'id_cards');
+                if (uploadRes.success) idCardUrl = uploadRes.publicUrl;
+            }
+            if (req.files.diploma && req.files.diploma[0]) {
+                const file = req.files.diploma[0];
+                const uploadRes = await uploadToSupabase(file.buffer, file.originalname, 'verifications', 'diplomas');
+                if (uploadRes.success) diplomaUrl = uploadRes.publicUrl;
+            }
+        }
+
+        if (!idCardUrl && req.body.id_card_url) idCardUrl = req.body.id_card_url;
+        if (!diplomaUrl && req.body.diploma_url) diplomaUrl = req.body.diploma_url;
+
+        if (!idCardUrl || !diplomaUrl) {
+            return res.status(400).json({
+                success: false,
+                error: 'يرجى إرفاق بطاقة الهوية والشهادة/الدبلوم معاً لإتمام طلب التوثيق'
+            });
+        }
+
+        await update('teachers', teacherId, {
+            id_card_image: idCardUrl,
+            diploma_image: diplomaUrl,
+            verification_status: 'under_review',
+            updated_at: new Date().toISOString()
+        });
+
+        try {
+            await supabase.from('teacher_verification_requests').insert({
+                teacher_id: teacherId,
+                id_card_url: idCardUrl,
+                diploma_url: diplomaUrl,
+                status: 'pending',
+                created_at: new Date().toISOString()
+            });
+        } catch (reqErr) {}
+
+        await supabase.from('notifications').insert({
+            user_id: teacherId,
+            user_type: 'teacher',
+            title: '📄 تم استلام وثائق التوثيق',
+            message: 'تم رفع وثائقك بنجاح وسيقوم فريق المنصة بمراجعتها واعتماد حسابك بالشارة الذهبية في أقرب وقت.',
+            is_read: false,
+            created_at: new Date().toISOString()
+        });
+
+        res.json({
+            success: true,
+            message: '✅ تم رفع وثائق التوثيق بنجاح! وهي الآن قيد المراجعة والتحقق من طرف الإدارة.',
+            verification_status: 'under_review'
+        });
+    } catch (error) {
+        logger.error('خطأ في رفع وثائق التوثيق:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في رفع الوثائق' });
+    }
+});
+
+// ============================================================
+// 🚀 طلب ترويج وتواصل مباشر مع مؤسس المنصة (خاص بأساتذة VIP)
+// ============================================================
+router.post('/teacher/request-founder-promo', authenticate, authorize(['teacher']), async (req, res) => {
+    try {
+        const teacherId = req.user.userId;
+        const { message } = req.body;
+        const teacher = await getOne('teachers', 'id', teacherId);
+
+        if (!teacher) {
+            return res.status(404).json({ success: false, error: 'الأستاذ غير موجود' });
+        }
+
+        if (!teacher.is_vip && !teacher.is_certified) {
+            return res.status(403).json({
+                success: false,
+                error: 'هذه الميزة مخصصة فقط لأساتذة VIP الحاصلين على الشارة الذهبية.'
+            });
+        }
+
+        await update('teachers', teacherId, {
+            founder_promo_requested: true,
+            founder_promo_message: message || 'طلب ترويج وتواصل مباشر مع المؤسس',
+            updated_at: new Date().toISOString()
+        });
+
+        res.json({
+            success: true,
+            message: '🚀 تم إرسال طلب الترويج والتواصل المباشر إلى مؤسس المنصة بنجاح! سيتم التواصل معك قريباً وترويج حسابك.',
+            whatsapp_founder: '+213550000000'
+        });
+    } catch (error) {
+        logger.error('خطأ في طلب ترويج المؤسس:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ أثناء إرسال الطلب' });
+    }
+});
+
 module.exports = router;

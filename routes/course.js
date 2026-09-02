@@ -125,7 +125,7 @@ router.get('/public', async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('courses')
-            .select('*, teachers:teacher_id (full_name, specialization, profile_image, profile_url)')
+            .select('*, teachers:teacher_id (full_name, specialization, profile_image, profile_url, is_certified, is_vip, verification_status)')
             .eq('status', 'published')
             .order('created_at', { ascending: false });
 
@@ -133,14 +133,26 @@ router.get('/public', async (req, res) => {
 
         const formatted = (data || []).map(course => {
             const views = getViewCount('course', course.id, course.views_count || course.views || 0);
+            const isVip = Boolean(course.teachers?.is_vip === true);
+            const isCert = Boolean(isVip || (course.teachers?.is_certified === true && course.teachers?.verification_status === 'approved'));
             return {
                 ...course,
                 views_count: views,
                 views: views,
-                teacher_name: course.teachers?.full_name || 'أستاذ معتمد ZoomDz',
+                teacher_name: course.teachers?.full_name || 'أستاذ',
                 teacher_specialization: course.teachers?.specialization || 'أستاذ متميز',
-                teacher_profile_image: course.teachers?.profile_url || getPublicImageUrl('profiles', 'teachers', course.teachers?.profile_image) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
+                teacher_profile_image: course.teachers?.profile_url || getPublicImageUrl('profiles', 'teachers', course.teachers?.profile_image) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+                teacher_is_vip: isVip,
+                teacher_is_certified: isCert,
+                is_certified: isCert
             };
+        });
+
+        // فرز دورات أساتذة VIP في المقدمة أولاً
+        formatted.sort((a, b) => {
+            const aVip = a.teacher_is_vip ? 1 : 0;
+            const bVip = b.teacher_is_vip ? 1 : 0;
+            return bVip - aVip;
         });
 
         res.json({ success: true, courses: formatted });
