@@ -378,24 +378,18 @@ async function processStreamPayments(offerId, earlyEnd = false) {
             
         const isAllCompleted = updatedOffer && (updatedOffer.completed_sessions_count || 0) >= (updatedOffer.total_sessions || 1);
         
+        // تبقى دفعة حجز الخطة معلقة حتى اكتمال الخطة كاملة؛ تحرير الأستاذ
+        // يتم أدناه لكل حصة مكتملة فقط، لذلك لا نحرر إجمالي الخطة هنا.
         if (isAllCompleted) {
-            const { data: sessions } = await supabase
+            await supabase
                 .from('sessions')
-                .select('id, payment_amount')
+                .update({
+                    payment_status: 'paid',
+                    completed_at: new Date().toISOString(),
+                    partial_payment_note: 'اكتملت جميع حصص الخطة'
+                })
                 .eq('offer_id', offerId)
                 .eq('payment_status', 'pending_stream');
-
-            for (const session of (sessions || [])) {
-                await supabase
-                    .from('sessions')
-                    .update({
-                        payment_status: 'paid',
-                        teacher_earned: session.payment_amount,
-                        completed_at: new Date().toISOString(),
-                        partial_payment_note: `اكتملت جميع حصص الخطة`
-                    })
-                    .eq('id', session.id);
-            }
         }
         
         await supabase
@@ -582,6 +576,16 @@ async function releasePlanSessionEscrow(offerId, sessionNumber = null) {
 
         const currentSessionNum = targetSession ? targetSession.session_number : ((offer.completed_sessions_count || 0) + 1);
 
+        // منع تحرير نفس الحصة أكثر من مرة عند تكرار webhook أو طلب الإنهاء
+        if (targetSession?.is_escrow_released || targetSession?.status === 'completed') {
+            return {
+                success: true,
+                already_processed: true,
+                session_number: currentSessionNum,
+                amount_released: 0
+            };
+        }
+
         // عدد الطلاب المشتركين
         const { count: studentCount } = await supabase
             .from('sessions')
@@ -751,6 +755,16 @@ async function refundPlanSessionEscrow(offerId, sessionNumber = null) {
         }
         
         const currentSessionNum = targetSession ? targetSession.session_number : ((offer.completed_sessions_count || 0) + 1);
+
+        // الاسترداد يكون لحصة واحدة فقط، ولا يتكرر عند إعادة استقبال حدث الإنهاء
+        if (targetSession?.status === 'refunded' || targetSession?.is_escrow_released) {
+            return {
+                success: true,
+                already_processed: true,
+                session_number: currentSessionNum,
+                amount_refunded: 0
+            };
+        }
 
         const { data: students } = await supabase
             .from('sessions')
