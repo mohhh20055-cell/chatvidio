@@ -15,6 +15,54 @@ const { getOne, insert, update } = require('../utils/helpers');
 const { getPublicImageUrl } = require('../utils/upload');
 const { processStudentReferralRewardOnBooking } = require('../utils/referral');
 
+const money = (value) => Math.round((Number(value) || 0) * 100) / 100;
+
+function normalizeSchedule(schedule, totalSessions, offerDate, duration) {
+    const source = Array.isArray(schedule) ? schedule : [];
+    const normalized = [];
+    for (let index = 0; index < totalSessions; index += 1) {
+        const raw = source[index] || {};
+        const sessionNumber = index + 1;
+        const fallbackDate = new Date(new Date(offerDate).getTime() + index * 7 * 24 * 60 * 60 * 1000);
+        normalized.push({
+            session_number: sessionNumber,
+            title: raw.title || `الحصة ${sessionNumber}`,
+            session_date: raw.session_date || raw.date || fallbackDate.toISOString(),
+            duration_minutes: Number(raw.duration_minutes || raw.duration || duration || 60),
+            status: raw.status || 'upcoming',
+            completed_at: raw.completed_at || null,
+            cancelled_at: raw.cancelled_at || null,
+            teacher_released_amount: money(raw.teacher_released_amount),
+            refund_amount: money(raw.refund_amount),
+            is_escrow_released: raw.is_escrow_released === true,
+            resolution: raw.resolution || null
+        });
+    }
+    return normalized;
+}
+
+function getNextSession(schedule) {
+    return schedule.find((session) => !['completed', 'refunded', 'cancelled'].includes(session.status)) || null;
+}
+
+async function updateOfferSchedule(offer, sessionNumber, resolution, amount) {
+    const schedule = normalizeSchedule(offer.sessions_schedule, Number(offer.total_sessions || 1), offer.offer_date, offer.session_duration || offer.duration);
+    const item = schedule.find((session) => session.session_number === Number(sessionNumber));
+    if (!item) return;
+    item.status = resolution === 'completed' ? 'completed' : 'refunded';
+    item.resolution = resolution;
+    item.completed_at = resolution === 'completed' ? new Date().toISOString() : null;
+    item.cancelled_at = resolution === 'refunded' ? new Date().toISOString() : null;
+    item.teacher_released_amount = resolution === 'completed' ? money(amount) : 0;
+    item.refund_amount = resolution === 'refunded' ? money(amount) : 0;
+    await supabase.from('offers').update({
+        sessions_schedule: schedule,
+        completed_sessions_count: schedule.filter((session) => session.status === 'completed').length,
+        total_released_amount: money(schedule.reduce((sum, session) => sum + session.teacher_released_amount, 0)),
+        updated_at: new Date().toISOString()
+    }).eq('id', offer.id);
+}
+
 // ============================================================
 // ✅ إنشاء حجز جديد (مع نظام الرصيد المعلق)
 // ============================================================
@@ -180,6 +228,30 @@ router.post('/create', authenticate, authorize(['student']), [
             });
         } catch (subErr) {
             console.warn('⚠️ تعذر تسجيل stream_subscriptions:', subErr.message);
+        }
+
+        // ✅ إنشاء سجل مستقل لكل حصة لضمان ترتيبها وتسوية مبلغها مرة واحدة فقط
+        const schedule = normalizeSchedule(offer.sessions_schedule, totalSessions, offer.offer_date, sessionDuration);
+        try {
+            const streamSessionRows = schedule.map((item) => ({
+                offer_id,
+                teacher_id: offer.teacher_id,
+                session_number: item.session_number,
+                title: item.title,
+                session_date: item.session_date,
+                duration_minutes: item.duration_minutes,
+                price_per_session: pricePerSession,
+                platform_fee: platformFeePerSession,
+                status: item.status,
+                teacher_released_amount: 0,
+                is_escrow_released: false,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            }));
+            const { error: streamSessionsError } = await supabase.from('stream_sessions').insert(streamSessionRows);
+            if (streamSessionsError) console.warn('⚠️ تعذر إنشاء سجلات الحصص التفصيلية:', streamSessionsError.message);
+        } catch (scheduleError) {
+            console.warn('⚠️ جدول الحصص التفصيلي غير متاح، سيستمر الحجز بالسجل الأساسي:', scheduleError.message);
         }
 
         // ✅ خصم المبلغ من محفظة الطالب
@@ -518,8 +590,29 @@ router.post('/confirm-session-completion', authenticate, authorize(['teacher']),
         const teacherSharePerSession = parseFloat(sub.teacher_total_escrow) / parseFloat(sub.total_sessions);
 
         // ✅ تحويل الرصيد للأستاذ
+        const offer = await getOne('offers', 'id', sub.offer_id);
+        if (!offer) return res.status(404).json({ success: false, error: 'العرض غير موجود' });
         const teacher = await getOne('teachers', 'id', sub.teacher_id);
         if (!teacher) return res.status(404).json({ success: false, error: 'الأستاذ غير موجود' });
+
+        const requestedSessionNumber = Number(session_number);
+        if (requestedSessionNumber < 1 || requestedSessionNumber > Number(sub.total_sessions)) {
+            return res.status(400).json({ success: false, error: 'رقم الحصة خارج نطاق الاشتراك' });
+        }
+        const expectedSessionNumber = Number(sub.completed_sessions || 0) + 1;
+        if (requestedSessionNumber !== expectedSessionNumber) {
+            return res.status(409).json({ success: false, error: `يجب تسوية الحصة رقم ${expectedSessionNumber} أولاً` });
+        }
+
+        const { data: trackedSession } = await supabase
+            .from('stream_sessions')
+            .select('id,status,is_escrow_released')
+            .eq('offer_id', sub.offer_id)
+            .eq('session_number', requestedSessionNumber)
+            .maybeSingle();
+        if (trackedSession && (trackedSession.is_escrow_released || ['completed', 'refunded', 'cancelled'].includes(trackedSession.status))) {
+            return res.status(409).json({ success: false, error: 'تمت تسوية هذه الحصة مسبقاً' });
+        }
 
         // ✅ تحديث الاشتراك
         await supabase
@@ -529,6 +622,17 @@ router.post('/confirm-session-completion', authenticate, authorize(['teacher']),
                 teacher_released_so_far: parseFloat(sub.teacher_released_so_far || 0) + teacherSharePerSession
             })
             .eq('id', subscription_id);
+
+        if (trackedSession?.id) {
+            await supabase.from('stream_sessions').update({
+                status: 'completed',
+                completed_at: new Date().toISOString(),
+                teacher_released_amount: teacherSharePerSession,
+                is_escrow_released: true,
+                updated_at: new Date().toISOString()
+            }).eq('id', trackedSession.id).eq('is_escrow_released', false);
+        }
+        await updateOfferSchedule(offer, requestedSessionNumber, 'completed', teacherSharePerSession);
 
         const currentPending = parseFloat(teacher.pending_withdraw || 0);
         const newPending = Math.max(0, currentPending - teacherSharePerSession);
@@ -580,6 +684,8 @@ router.post('/confirm-session-incomplete', authenticate, authorize(['teacher', '
             .single();
         
         if (subError || !sub) return res.status(404).json({ success: false, error: 'الاشتراك غير موجود' });
+        const offer = await getOne('offers', 'id', sub.offer_id);
+        if (!offer) return res.status(404).json({ success: false, error: 'العرض غير موجود' });
 
         // ✅ التحقق من الصلاحية
         if (req.user.role !== 'admin' && req.user.userId !== sub.teacher_id) {
@@ -599,6 +705,20 @@ router.post('/confirm-session-incomplete', authenticate, authorize(['teacher', '
             return res.status(404).json({ success: false, error: 'تعذر جلب بيانات الطالب أو الأستاذ' });
         }
 
+        const requestedSessionNumber = Number(session_number);
+        if (requestedSessionNumber < 1 || requestedSessionNumber > Number(sub.total_sessions)) {
+            return res.status(400).json({ success: false, error: 'رقم الحصة خارج نطاق الاشتراك' });
+        }
+        const { data: trackedSession } = await supabase
+            .from('stream_sessions')
+            .select('id,status,is_escrow_released')
+            .eq('offer_id', sub.offer_id)
+            .eq('session_number', requestedSessionNumber)
+            .maybeSingle();
+        if (trackedSession && (trackedSession.is_escrow_released || ['completed', 'refunded', 'cancelled'].includes(trackedSession.status))) {
+            return res.status(409).json({ success: false, error: 'تمت تسوية هذه الحصة مسبقاً' });
+        }
+
         // ✅ تحديث محفظة الطالب
         await update('students', sub.student_id, {
             wallet_balance: (parseFloat(student.wallet_balance) || 0) + amountPerSessionForStudent
@@ -613,6 +733,17 @@ router.post('/confirm-session-incomplete', authenticate, authorize(['teacher', '
         await update('teachers', sub.teacher_id, {
             pending_withdraw: newPending
         });
+
+        if (trackedSession?.id) {
+            await supabase.from('stream_sessions').update({
+                status: 'refunded',
+                cancelled_at: new Date().toISOString(),
+                teacher_released_amount: 0,
+                is_escrow_released: true,
+                updated_at: new Date().toISOString()
+            }).eq('id', trackedSession.id).eq('is_escrow_released', false);
+        }
+        await updateOfferSchedule(offer, requestedSessionNumber, 'refunded', amountPerSessionForStudent);
 
         // ✅ تسجيل المعاملة
         await insert('wallet_transactions', {
@@ -658,7 +789,12 @@ router.get('/student/:student_id', authenticate, authorize(['student']), async (
                     stream_url,
                     stream_platform,
                     room_password,
-                    booked_count
+                    booked_count,
+                    total_sessions,
+                    session_duration,
+                    sessions_schedule,
+                    completed_sessions_count,
+                    total_released_amount
                 ),
                 teachers:offers!inner (
                     teacher_id (
@@ -688,12 +824,13 @@ router.get('/student/:student_id', authenticate, authorize(['student']), async (
             teacher_name: booking.teachers?.[0]?.teacher_id?.full_name || 'غير معروف',
             teacher_profile: booking.teachers?.[0]?.teacher_id?.profile_url || getPublicImageUrl('profiles', 'teachers', booking.teachers?.[0]?.teacher_id?.profile_image),
             teacher_specialization: booking.teachers?.[0]?.teacher_id?.specialization || '',
-            session_progress: booking.stream_subscriptions ? {
-                total: booking.stream_subscriptions[0].total_sessions,
-                completed: booking.stream_subscriptions[0].completed_sessions,
-                current: booking.stream_subscriptions[0].completed_sessions + 1,
-                next: booking.stream_subscriptions[0].completed_sessions + 2
-            } : null
+            session_schedule: normalizeSchedule(booking.offers?.sessions_schedule, booking.offers?.total_sessions || 1, booking.offers?.offer_date, booking.offers?.session_duration || booking.offers?.duration),
+            session_progress: (() => {
+                const schedule = normalizeSchedule(booking.offers?.sessions_schedule, booking.offers?.total_sessions || 1, booking.offers?.offer_date, booking.offers?.session_duration || booking.offers?.duration);
+                const completed = schedule.filter((session) => session.status === 'completed').length;
+                const next = getNextSession(schedule);
+                return { total: schedule.length, completed, completed_number: completed || null, next_number: next?.session_number || null, next_date: next?.session_date || null };
+            })()
         }));
 
         return res.json({
@@ -720,7 +857,7 @@ router.get('/teacher/:teacher_id', authenticate, authorize(['teacher']), async (
         // ✅ جلب جميع الدروس الخاصة بالمدرس أولاً
         const { data: offers, error: offersError } = await supabase
             .from('offers')
-            .select('id, subject_name, price, is_free, status, booked_count')
+            .select('id, subject_name, price, is_free, status, booked_count, offer_date, duration, total_sessions, session_duration, sessions_schedule, completed_sessions_count, total_released_amount')
             .eq('teacher_id', teacher_id);
 
         if (offersError) throw offersError;
@@ -743,7 +880,12 @@ router.get('/teacher/:teacher_id', authenticate, authorize(['teacher']), async (
                     is_free,
                     offer_date,
                     duration,
-                    status
+                    status,
+                    total_sessions,
+                    session_duration,
+                    sessions_schedule,
+                    completed_sessions_count,
+                    total_released_amount
                 ),
                 students:student_id (
                     id,
@@ -778,12 +920,13 @@ router.get('/teacher/:teacher_id', authenticate, authorize(['teacher']), async (
                 ...booking,
                 is_pending_stream: isPending,
                 pending_balance: booking.payment_amount || 0,
-                session_progress: booking.stream_subscriptions ? {
-                    total: booking.stream_subscriptions[0].total_sessions,
-                    completed: booking.stream_subscriptions[0].completed_sessions,
-                    current: booking.stream_subscriptions[0].completed_sessions + 1,
-                    next: booking.stream_subscriptions[0].completed_sessions + 2
-                } : null
+                session_schedule: normalizeSchedule(booking.offers?.sessions_schedule, booking.offers?.total_sessions || 1, booking.offers?.offer_date, booking.offers?.session_duration || booking.offers?.duration),
+                session_progress: (() => {
+                    const schedule = normalizeSchedule(booking.offers?.sessions_schedule, booking.offers?.total_sessions || 1, booking.offers?.offer_date, booking.offers?.session_duration || booking.offers?.duration);
+                    const completed = schedule.filter((session) => session.status === 'completed').length;
+                    const next = getNextSession(schedule);
+                    return { total: schedule.length, completed, completed_number: completed || null, next_number: next?.session_number || null, next_date: next?.session_date || null };
+                })()
             };
         });
 
