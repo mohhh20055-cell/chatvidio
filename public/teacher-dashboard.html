@@ -6916,7 +6916,7 @@
         
         // Fetch latest profile to check VIP status
         try {
-            const res = await fetchWithAuth('/api/teacher/profile');
+            const res = await fetchWithAuth('/api/teacher/me');
             const data = await res.json();
             if (data.success && data.teacher) {
                 const teacher = data.teacher;

@@ -1856,7 +1856,7 @@ router.post('/teacher/complete-session-escrow', authenticate, authorize(['teache
 // ============================================================
 // ⭐ ترقية حساب الأستاذ للشارة الذهبية (700 دج / شهر)
 // ============================================================
-router.post('/teacher/upgrade-vip', authenticate, authorize(['teacher']), async (req, res) => {
+router.post('/upgrade-vip', authenticate, authorize(['teacher']), async (req, res) => {
     try {
         const teacherId = req.user.userId;
         const teacher = await getOne('teachers', 'id', teacherId);
