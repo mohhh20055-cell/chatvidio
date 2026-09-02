@@ -32,8 +32,12 @@ const SOFIZPAY_ACCOUNT = process.env.SOFIZPAY_ACCOUNT;
 const SOFIZPAY_SECRET_KEY = process.env.SOFIZPAY_SECRET_KEY;
 const SOFIZPAY_TRANSACTION_CHECK_URL = process.env.SOFIZPAY_TRANSACTION_CHECK_URL || 'https://sofizpay.com/sep24/transaction/check/';
 
-const CHARGILY_SECRET_KEY = process.env.CHARGILY_SECRET_KEY || 'live_sk_0gRmUvd2hCW1x5stuyzmMHhaB274nigiCZdySO9b';
-const CHARGILY_PUBLIC_KEY = process.env.CHARGILY_PUBLIC_KEY || 'live_pk_FeA11LZaYCCFdHGtgfyrq2XcnYEtTba7HoXogcKr';
+const CHARGILY_SECRET_KEY = process.env.CHARGILY_SECRET_KEY || process.env.CHARGILY_API_KEY;
+const CHARGILY_PUBLIC_KEY = process.env.CHARGILY_PUBLIC_KEY || null;
+
+if (!CHARGILY_SECRET_KEY) {
+    console.warn('⚠️ CHARGILY_API_KEY غير مضبوط؛ لن تعمل عمليات الدفع حتى ضبط متغير البيئة.');
+}
 
 if (!SOFIZPAY_ACCOUNT) {
     console.warn('⚠️ SOFIZPAY_ACCOUNT غير مضبوط. تأكد من إعداد متغيرات البيئة الخاصة بـ SofizPay.');
@@ -390,7 +394,7 @@ router.get('/balance/:student_id', authenticate, authorize(['student']), async (
 
         if (!pendingTransError && pendingTransactions) {
             const pendingTransAmount = pendingTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
-            totalPendingBalance += pendingTransAmount;
+            // هذه المعاملات تمثل نفس خصم الجلسات، فلا نضيفها مرة ثانية إلى الرصيد المعلق.
         }
 
         res.json({

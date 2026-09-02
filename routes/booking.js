@@ -112,10 +112,10 @@ router.post('/create', authenticate, authorize(['student']), [
         const totalSessions = offer.total_sessions || 1;
         const sessionDuration = offer.session_duration || offer.duration || 60;
         const pricePerSession = isFree ? 0 : parseFloat(offer.price_per_session || offer.price || 0);
-        const platformFeePerSession = isFree ? 0 : (offer.platform_fee_per_session || Math.round((sessionDuration / 60) * 50));
-        const totalPlatformFee = isFree ? 0 : (offer.total_platform_fee || (platformFeePerSession * totalSessions));
-        const totalTeacherPrice = isFree ? 0 : (offer.total_teacher_price || (pricePerSession * totalSessions));
-        const totalCostForStudent = isFree ? 0 : (offer.total_student_price || (totalTeacherPrice + totalPlatformFee));
+        const platformFeePerSession = isFree ? 0 : Math.round(pricePerSession * 0.20 * 100) / 100;
+        const totalPlatformFee = isFree ? 0 : Math.round(platformFeePerSession * totalSessions * 100) / 100;
+        const totalTeacherPrice = isFree ? 0 : Math.round((pricePerSession - platformFeePerSession) * totalSessions * 100) / 100;
+        const totalCostForStudent = isFree ? 0 : Math.round(pricePerSession * totalSessions * 100) / 100;
         
         let pendingBalance = totalCostForStudent;
 
@@ -294,7 +294,7 @@ router.post('/create', authenticate, authorize(['student']), [
             logger.error('⚠️ خطأ في إرسال إشعار الطالب:', notifStudentErr.message);
         }
 
-        // ✅ تحديث عدد الطلاب في الدرس
+        // ✅ تحديث عدد الطلاب في ��لدرس
         await update('offers', offer_id, {
             booked_count: totalBooked,
             updated_at: new Date().toISOString()
@@ -310,7 +310,7 @@ router.post('/create', authenticate, authorize(['student']), [
                     console.log(`✅ تم منح فرصة صندوق هدايا للمستخدم الذي أحاله الطالب`);
                 }
             } catch (referralError) {
-                logger.error('⚠️ خطأ في معالجة مكافأة الإحالة:', referralError.message);
+                logger.error('⚠️ خطأ في معالجة مكافأ�� الإحالة:', referralError.message);
             }
         }
 
@@ -398,7 +398,8 @@ router.post('/confirm-stream-completion', authenticate, authorize(['teacher']), 
                 .from('sessions')
                 .update({
                     payment_status: 'paid',
-                    teacher_earned: earnedAmount
+                    // لا نحرر للمدرس إلا صافي حصته بعد عمولة 20%.
+                    teacher_earned: Number(session.teacher_earned || 0)
                 })
                 .eq('id', session.id);
 

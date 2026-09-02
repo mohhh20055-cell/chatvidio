@@ -627,15 +627,12 @@ router.post('/subscribe', authenticate, authorize(['student']), [
             daysToAdd = 365;
         }
 
-        // تطبيق إعدادات العوائد المحفوظة: الخصم أولاً ثم نسبة المنصة على السعر الصافي
-        const { data: revenueRow } = await supabase.from('platform_settings').select('value').eq('key', 'revenue_settings').maybeSingle();
-        const revenueSettings = revenueRow?.value || {};
-        const grossPrice = price;
-        const fixedDiscount = Math.min(grossPrice, Math.max(0, Number(revenueSettings.package_fixed_discount) || 0));
-        price = Math.max(0, grossPrice - fixedDiscount);
-        const platformCommissionPercent = Math.min(100, Math.max(0, Number(revenueSettings.package_platform_commission) || 10));
-        const platformFee = Math.round(price * platformCommissionPercent / 100 * 100) / 100;
-        const teacherShare = Math.max(0, price - platformFee);
+        // العمولة تخصم من حصة الأستاذ فقط: الطالب يدفع سعر الدورة المعلن كاملاً.
+        const grossPrice = Math.max(0, Math.round(price * 100) / 100);
+        price = grossPrice;
+        const platformCommissionPercent = 20;
+        const platformFee = Math.round(grossPrice * platformCommissionPercent) / 100;
+        const teacherShare = Math.max(0, Math.round((grossPrice - platformFee) * 100) / 100);
 
         // التحقق من وجود اشتراك ساري بالفعل
         const { data: existingSub } = await supabase
@@ -693,7 +690,8 @@ router.post('/subscribe', authenticate, authorize(['student']), [
             if (teacher) {
                 // النسبة المحفوظة في إعدادات الإدارة، والباقي يذهب للأستاذ
                 await update('teachers', pkg.teacher_id, {
-                    wallet_balance: (teacher.wallet_balance || 0) + teacherShare,
+                    balance: (parseFloat(teacher.balance) || 0) + teacherShare,
+                    total_earned: (parseFloat(teacher.total_earned) || 0) + teacherShare,
                     updated_at: new Date().toISOString()
                 });
                 

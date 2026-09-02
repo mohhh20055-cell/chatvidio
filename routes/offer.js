@@ -113,12 +113,11 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
             }
         }
 
-        // 💰 حسابات الرسوم والمبالغ الإجمالية للخطة
-        // رسوم المنصة = 50 دج لكل ساعة (60 دقيقة)
-        const platformFeePerSession = isFreeOffer ? 0 : Math.round((parsedDuration / 60) * 50);
-        const totalPlatformFee = platformFeePerSession * parsedTotalSessions;
-        const totalTeacherPrice = isFreeOffer ? 0 : Math.round(parsedPrice * parsedTotalSessions);
-        const totalStudentPrice = totalTeacherPrice + totalPlatformFee;
+        // 💰 العمولة 20% من سعر البيع وتخصم من حصة الأستاذ فقط.
+        const platformFeePerSession = isFreeOffer ? 0 : Math.round(parsedPrice * 0.20 * 100) / 100;
+        const totalPlatformFee = Math.round(platformFeePerSession * parsedTotalSessions * 100) / 100;
+        const totalTeacherPrice = isFreeOffer ? 0 : Math.round((parsedPrice - platformFeePerSession) * parsedTotalSessions * 100) / 100;
+        const totalStudentPrice = isFreeOffer ? 0 : Math.round(parsedPrice * parsedTotalSessions * 100) / 100;
 
         // 🔥 قيود العرض المجاني: 60 دقيقة كحد أقصى، و20 طالب كحد أقصى
         if (isFreeOffer) {
@@ -151,8 +150,8 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
                 const [year, month, day] = datePart.split('-').map(Number);
                 const timeClean = timePart.replace('Z', '').split('+')[0].split('-')[0];
                 const [hours, minutes] = timeClean.split(':').map(Number);
-                const localDate = new Date(year, (month || 1) - 1, day || 1, hours || 0, minutes || 0);
-                offerDateUTC = new Date(localDate.getTime() - (localDate.getTimezoneOffset() * 60000));
+                // الإدخال من واجهة الجزائر (UTC+01:00)؛ نحوله مرة واحدة إلى UTC.
+                offerDateUTC = new Date(Date.UTC(year, (month || 1) - 1, day || 1, hours || 0, minutes || 0) - (60 * 60 * 1000));
             } else if (offer_date) {
                 offerDateUTC = new Date(offer_date);
             } else {
@@ -680,7 +679,7 @@ router.get('/offers', async (req, res) => {
 
         if (error) throw error;
 
-        // ✅ إظهار الدروس المتاحة والبث المباشر (المجاني والمدفوع) وإخفاء الدروس المنتهية أو الملغاة فقط
+        // ✅ إظهار الدروس المتا��ة والبث المباشر (المجاني والمدفوع) وإخفاء الدروس المنتهية أو الملغاة فقط
         const offers = (rawOffers || []).filter(offer => {
             if (offer.status === 'cancelled' || offer.status === 'completed' || offer.status === 'ended') {
                 return false;

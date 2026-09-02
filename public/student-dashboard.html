@@ -3502,7 +3502,7 @@
                     <select id="exerciseLevelFilter" onchange="filterExercises()" style="width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 10px; font-family: 'Cairo', sans-serif; font-size: 0.9rem; background: white;">
                         <option value="my_level">مستواي الدراسي فقط</option>
                         <option value="all">جميع المستويات الدراسية</option>
-                        <optgroup label="التعليم الابتدائي">
+                        <optgroup label="التعليم الابتدائ��">
                             <option value="primary_all">جميع مستويات الابتدائي</option>
                             <option value="primary_1">السنة الأولى ابتدائي</option>
                             <option value="primary_2">السنة الثانية ابتدائي</option>
@@ -4844,7 +4844,7 @@
             renderNotifications();
             updateNotifBadge();
         } catch (e) {
-            if (e.message !== 'انتهت صلاحية الجلسة' && e.message !== 'حساب محظور') {
+            if (e.message !== 'انتهت صلاحية ا��جلسة' && e.message !== 'حساب محظور') {
                 console.error('خطأ في جلب الإشعارات:', e);
             }
         }
@@ -5703,8 +5703,8 @@
             const sessionDuration = offer.duration || offer.session_duration || 60;
             const pricePerSession = isFree ? 0 : (offer.price_per_session !== undefined ? offer.price_per_session : (offer.price || 0));
 
-            const feePerSession = isFree ? 0 : Math.round((sessionDuration / 60) * 50);
-            const costPerSessionTotal = isFree ? 0 : (pricePerSession + feePerSession);
+            const feePerSession = isFree ? 0 : Math.round(pricePerSession * 0.20 * 100) / 100;
+            const costPerSessionTotal = isFree ? 0 : pricePerSession;
             const offerTotalCost = isFree ? 0 : (costPerSessionTotal * totalSessions);
             const canBook = (isFree || currentBalance >= offerTotalCost) && statusInfo.code !== 'ended';
 
@@ -5792,8 +5792,8 @@
                                     <strong>${pricePerSession} دج</strong>
                                 </div>
                                 <div style="display:flex; justify-content:space-between; color:#475569;">
-                                    <span>رسوم بث المنصة:</span>
-                                    <strong>${feePerSession} دج (${Math.round((sessionDuration/60)*50)} دج / ساعة)</strong>
+                                    <span>عمولة المنصة من حصة الأستاذ (20%):</span>
+                                    <strong>${feePerSession} دج</strong>
                                 </div>
                                 <div style="display:flex; justify-content:space-between; color:#1e3a8a; font-weight:800; border-top:1px dashed #cbd5e1; margin-top:4px; padding-top:4px;">
                                     <span>المجموع الإجمالي (${totalSessions} ${totalSessions > 1 ? 'حصص' : 'حصة'}):</span>
@@ -6026,7 +6026,7 @@
             }
         } catch(e) { 
             if (e.message !== 'انتهت صلاحية الجلسة') {
-                showToast('حدث خطأ في الاتصال', 'error');
+                showToast('حدث خطأ في ا��اتصال', 'error');
             }
         }
     }
@@ -6597,7 +6597,7 @@
             }
         } catch (e) {
             console.error('Error submitting rating:', e);
-            showToast('حدث خطأ أثناء الاتصال بالخادم', 'error');
+            showToast('حدث خطأ أثناء ال��تصال بالخادم', 'error');
         }
     }
     window.submitTeacherRating = submitTeacherRating;
@@ -6956,7 +6956,7 @@
                     icon = 'fa-gift';
                     color = 'var(--gold-dark)';
                     bg = 'var(--gold-soft)';
-                    label = 'مكافأة إحالة 🎁';
+                    label = 'مكا��أة إحالة 🎁';
                 }
 
                 // تحديد حالة العملية
