@@ -144,6 +144,7 @@ async function update(table, id, data) {
     try {
         const sanitizedData = sanitizeObject(data);
         const { data: result, error } = await supabase.from(table).update(sanitizedData).eq('id', id).select();
+
         if (error) {
             logger.error(`خطأ في update لجدول ${table}`, { 
                 table, 
@@ -168,6 +169,28 @@ async function update(table, id, data) {
             error: error.message,
             stack: error.stack 
         });
+        throw error;
+    }
+}
+
+async function updateWithCondition(table, id, expectedBalanceField, expectedBalanceValue, data) {
+    try {
+        const sanitizedData = sanitizeObject(data);
+        const { data: result, error } = await supabase.from(table).update(sanitizedData).eq('id', id).eq(expectedBalanceField, expectedBalanceValue).select();
+
+        if (error) {
+            logger.error(`خطأ في updateWithCondition لجدول ${table}`, { 
+                table, id, data: sanitizedData, error: error.message 
+            });
+            throw error;
+        }
+
+        if (!result || result.length === 0) {
+            return null; // Condition not met or record not found
+        }
+
+        return result[0];
+    } catch (error) {
         throw error;
     }
 }
@@ -197,4 +220,4 @@ async function remove(table, column, value) {
     }
 }
 
-module.exports = { supabase, getOne, insert, update, remove, sanitizeObject };
+module.exports = { supabase, getOne, insert, update, updateWithCondition, remove, sanitizeObject };
