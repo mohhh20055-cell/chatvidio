@@ -143,17 +143,10 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
             return res.status(403).json({ success: false, error: 'غير مصرح لك بإنشاء درس (حساب زائر)' });
         }
 
-        // ✅ تحويل الوقت من التوقيت المحلي (الجزائر) إلى UTC للتخزين
+        // ✅ أخذ الوقت كما وضعه الأستاذ مباشرة
         let offerDateUTC;
         try {
-            if (offer_date && offer_date.includes('T')) {
-                const [datePart, timePart] = offer_date.split('T');
-                const [year, month, day] = datePart.split('-').map(Number);
-                const timeClean = timePart.replace('Z', '').split('+')[0].split('-')[0];
-                const [hours, minutes] = timeClean.split(':').map(Number);
-                // Algeria is UTC+1. Create Date representing Algeria time, then convert to UTC.
-                offerDateUTC = new Date(Date.UTC(year, month - 1, day, hours - 1, minutes));
-            } else if (offer_date) {
+            if (offer_date) {
                 offerDateUTC = new Date(offer_date);
             } else {
                 offerDateUTC = new Date();
