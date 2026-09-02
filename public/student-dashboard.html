@@ -5706,9 +5706,17 @@
             const userBooking = myBookingsMap[offer.id];
             const isBooked = !!userBooking && (userBooking.payment_status === 'paid' || userBooking.payment_status === 'pending_stream' || userBooking.is_free === true);
 
-            const planType = offer.plan_type || '1_day';
-            const scheduleLength = Array.isArray(offer.sessions_schedule) ? offer.sessions_schedule.length : 0;
+            let schedule = [];
+            if (Array.isArray(offer.sessions_schedule)) {
+                schedule = offer.sessions_schedule;
+            } else if (typeof offer.sessions_schedule === 'string') {
+                try { schedule = JSON.parse(offer.sessions_schedule); } catch(e) { schedule = []; }
+            }
+            const scheduleLength = schedule.length;
             const totalSessions = Math.max(1, Number(offer.total_sessions) || 0, scheduleLength);
+            const planType = (offer.plan_type && offer.plan_type !== 'null' && offer.plan_type !== 'undefined')
+                ? String(offer.plan_type)
+                : (totalSessions > 1 ? '1_month' : '1_day');
             const sessionDuration = offer.duration || offer.session_duration || 60;
             const pricePerSession = isFree ? 0 : (offer.price_per_session !== undefined ? offer.price_per_session : (offer.price || 0));
 
@@ -5870,9 +5878,17 @@
 
             const offer = data.offer || {};
             const sessions = data.sessions || [];
-            const planType = offer.plan_type || '1_day';
-            const scheduleLength = Array.isArray(offer.sessions_schedule) ? offer.sessions_schedule.length : sessions.length;
-            const totalSessions = Math.max(1, Number(offer.total_sessions) || 0, scheduleLength);
+            let schedule = [];
+            if (Array.isArray(offer.sessions_schedule)) {
+                schedule = offer.sessions_schedule;
+            } else if (typeof offer.sessions_schedule === 'string') {
+                try { schedule = JSON.parse(offer.sessions_schedule); } catch(e) { schedule = []; }
+            }
+            const scheduleLength = schedule.length || sessions.length;
+            const totalSessions = Math.max(1, Number(offer.total_sessions || data.total_sessions) || 0, scheduleLength);
+            const planType = (offer.plan_type && offer.plan_type !== 'null' && offer.plan_type !== 'undefined')
+                ? String(offer.plan_type)
+                : ((data.plan_type && data.plan_type !== 'null') ? String(data.plan_type) : (totalSessions > 1 ? '1_month' : '1_day'));
 
             const planMap = {
                 '1_day': 'يوم واحد',

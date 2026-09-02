@@ -46,6 +46,35 @@ function calculateOfferRemainingSeconds(offer) {
     return (offer.duration || offer.duration_minutes || 60) * 60;
 }
 
+function parseOfferPlanAndSchedule(offer) {
+    if (!offer) {
+        return { parsedSchedule: [], scheduleLength: 0, totalSessions: 1, planType: '1_day' };
+    }
+    let parsedSchedule = [];
+    if (Array.isArray(offer.sessions_schedule)) {
+        parsedSchedule = offer.sessions_schedule;
+    } else if (typeof offer.sessions_schedule === 'string') {
+        try {
+            const parsed = JSON.parse(offer.sessions_schedule);
+            if (Array.isArray(parsed)) parsedSchedule = parsed;
+        } catch (e) {
+            parsedSchedule = [];
+        }
+    }
+    const scheduleLength = parsedSchedule.length;
+    const totalSessions = Math.max(1, Number(offer.total_sessions) || 0, scheduleLength);
+    const planType = (offer.plan_type && offer.plan_type !== 'null' && offer.plan_type !== 'undefined')
+        ? String(offer.plan_type)
+        : (totalSessions > 1 ? '1_month' : '1_day');
+
+    return {
+        parsedSchedule,
+        scheduleLength,
+        totalSessions,
+        planType
+    };
+}
+
 // ============================================================
 // ✅ إنشاء درس جديد (مع دعم نظام البث والرصيد المعلق)
 // ============================================================
@@ -690,8 +719,7 @@ router.get('/offers', async (req, res) => {
             const remainingSeconds = calculateOfferRemainingSeconds(offer);
 
             const views = getViewCount('offer', offer.id, offer.views_count || offer.views || 0);
-            const scheduleLength = Array.isArray(offer.sessions_schedule) ? offer.sessions_schedule.length : 0;
-            const totalSessions = Math.max(1, Number(offer.total_sessions) || 0, scheduleLength);
+            const { parsedSchedule, totalSessions, planType } = parseOfferPlanAndSchedule(offer);
             const sessionDuration = offer.session_duration || offer.duration || 60;
             const pricePerSession = parseFloat(offer.price_per_session || offer.price || 0);
             const isFree = (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && pricePerSession === 0;
@@ -705,23 +733,27 @@ router.get('/offers', async (req, res) => {
                 teacher_id: offer.teacher_id,
                 subject_name: offer.subject_name,
                 duration: sessionDuration,
+                duration_minutes: sessionDuration,
                 session_duration: sessionDuration,
-                offer_date: mergedOffer.session_date || offer.offer_date,
+                offer_date: offer.offer_date,
                 price: pricePerSession,
                 price_per_session: pricePerSession,
                 is_free: isFree,
-                plan_type: mergedOffer.plan_type || '1_day',
-                session_number: mergedOffer.session_number || 1,
-                session_date: mergedOffer.session_date || offer.offer_date,
+                plan_type: planType,
+                session_number: offer.session_number || (Number(offer.completed_sessions_count || 0) + 1),
+                session_date: offer.session_date || offer.offer_date,
                 total_sessions: totalSessions,
                 platform_fee_per_session: platformFeePerSession,
                 total_platform_fee: totalPlatformFee,
                 total_teacher_price: totalTeacherPrice,
                 total_student_price: totalStudentPrice,
-                completed_sessions_count: Number(mergedOffer.completed_sessions ?? offer.completed_sessions_count ?? 0),
-                completed_sessions: Number(mergedOffer.completed_sessions ?? offer.completed_sessions_count ?? 0),
-                sessions_schedule: offer.sessions_schedule || [],
+                completed_sessions_count: Number(offer.completed_sessions_count ?? offer.completed_sessions ?? 0),
+                completed_sessions: Number(offer.completed_sessions ?? offer.completed_sessions_count ?? 0),
+                sessions_schedule: parsedSchedule,
                 total_released_amount: offer.total_released_amount || 0,
+                actual_duration: offer.actual_duration || 0,
+                actual_live_seconds: offer.actual_live_seconds || 0,
+                stream_active: Boolean(offer.stream_active),
                 status: offer.status,
                 education_level: offer.education_level,
                 room_password: offer.room_password || null,
@@ -737,6 +769,8 @@ router.get('/offers', async (req, res) => {
                 thumbnail_url: offer.thumbnail_url || offer.image_url || null,
                 image_url: offer.thumbnail_url || offer.image_url || null,
                 created_at: offer.created_at,
+                updated_at: offer.updated_at,
+                stream_started_at: offer.stream_started_at || null,
                 teacher_name: teacher.full_name || 'غير معروف',
                 teacher_specialization: teacher.specialization || '',
                 teacher_profile_image: teacher.profile_url || getPublicImageUrl('profiles', 'teachers', teacher.profile_image),
@@ -880,9 +914,8 @@ router.get(['/offer/:offer_id', '/teacher/offer/:offer_id'], async (req, res) =>
 
         // ✅ حساب الوقت المتبقي
         const remainingSeconds = calculateOfferRemainingSeconds(offer);
-const scheduleLength = Array.isArray(offer.sessions_schedule) ? offer.sessions_schedule.length : 0;
-  const totalSessions = Math.max(1, Number(offer.total_sessions) || 0, scheduleLength);
-  const sessionDuration = offer.session_duration || offer.duration_minutes || offer.duration || 60;
+        const { parsedSchedule, totalSessions, planType } = parseOfferPlanAndSchedule(offer);
+        const sessionDuration = offer.session_duration || offer.duration_minutes || offer.duration || 60;
         const pricePerSession = parseFloat(offer.price_per_session || offer.price || 0);
         const isFree = (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && pricePerSession === 0;
         const platformFeePerSession = isFree ? 0 : (offer.platform_fee_per_session || Math.round((sessionDuration / 60) * 50));
@@ -900,24 +933,24 @@ const scheduleLength = Array.isArray(offer.sessions_schedule) ? offer.sessions_s
             price: pricePerSession,
             price_per_session: pricePerSession,
             is_free: isFree,
-            plan_type: offer.plan_type || (totalSessions > 1 ? '1_month' : '1_day'),
-            session_number: offer.session_number || null,
+            plan_type: planType,
+            session_number: offer.session_number || (Number(offer.completed_sessions_count || 0) + 1),
             total_sessions: totalSessions,
-            completed_sessions: offer.completed_sessions ?? offer.completed_sessions_count ?? 0,
+            completed_sessions: Number(offer.completed_sessions ?? offer.completed_sessions_count ?? 0),
+            completed_sessions_count: Number(offer.completed_sessions_count ?? offer.completed_sessions ?? 0),
             session_date: offer.session_date || offer.offer_date || null,
-            duration_minutes: offer.duration_minutes || sessionDuration,
+            duration_minutes: sessionDuration,
             status: offer.status || 'upcoming',
             platform_fee_per_session: platformFeePerSession,
             total_platform_fee: totalPlatformFee,
             total_teacher_price: totalTeacherPrice,
             total_student_price: totalStudentPrice,
-            sessions_schedule: offer.sessions_schedule || [],
+            sessions_schedule: parsedSchedule,
             total_released_amount: offer.total_released_amount || 0,
-status: offer.status,
-  plan_type: offer.plan_type || '1_day',
-  total_sessions: Math.max(1, Number(offer.total_sessions) || (Array.isArray(offer.sessions_schedule) ? offer.sessions_schedule.length : 0)),
-  completed_sessions: offer.completed_sessions ?? offer.completed_sessions_count ?? 0,
-  education_level: offer.education_level,
+            actual_duration: offer.actual_duration || 0,
+            actual_live_seconds: offer.actual_live_seconds || 0,
+            stream_active: Boolean(offer.stream_active),
+            education_level: offer.education_level,
             stream_url: offer.stream_url || null,
             stream_platform: offer.stream_platform || 'jitsi',
             room_password: offer.room_password || null,
@@ -997,13 +1030,13 @@ router.get('/teacher/offers/:teacher_id', authenticate, authorize(['teacher']), 
         const formatted = offers.map(offer => {
             const subscription = subscriptionByOffer.get(offer.id);
             const streamSession = streamByOffer.get(offer.id);
-            const mergedOffer = { ...offer, ...(subscription || {}), ...(streamSession || {}) };
+            
+            const { parsedSchedule, totalSessions, planType } = parseOfferPlanAndSchedule(offer);
+
             // ✅ حساب الوقت المتبقي
-            const remainingSeconds = calculateOfferRemainingSeconds(mergedOffer);
+            const remainingSeconds = calculateOfferRemainingSeconds(offer);
             const views = getViewCount('offer', offer.id, offer.views_count || offer.views || 0);
-            const scheduleLength = Array.isArray(mergedOffer.sessions_schedule) ? mergedOffer.sessions_schedule.length : 0;
-            const totalSessions = Math.max(1, Number(mergedOffer.total_sessions) || 0, scheduleLength);
-            const sessionDuration = mergedOffer.duration_minutes || mergedOffer.session_duration || mergedOffer.duration || 60;
+            const sessionDuration = offer.session_duration || offer.duration_minutes || offer.duration || 60;
             const pricePerSession = parseFloat(offer.price_per_session || offer.price || 0);
             const isFree = (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && pricePerSession === 0;
             const platformFeePerSession = isFree ? 0 : (offer.platform_fee_per_session || Math.round((sessionDuration / 60) * 50));
@@ -1016,26 +1049,28 @@ router.get('/teacher/offers/:teacher_id', authenticate, authorize(['teacher']), 
                 teacher_id: offer.teacher_id,
                 subject_name: offer.subject_name,
                 duration: sessionDuration,
+                duration_minutes: sessionDuration,
                 session_duration: sessionDuration,
-                offer_date: mergedOffer.session_date || offer.offer_date,
+                offer_date: offer.offer_date,
                 price: pricePerSession,
                 price_per_session: pricePerSession,
                 is_free: isFree,
-                plan_type: mergedOffer.plan_type || '1_day',
-                session_number: mergedOffer.session_number || 1,
-                session_date: mergedOffer.session_date || offer.offer_date,
+                plan_type: planType,
+                session_number: streamSession?.session_number || (Number(offer.completed_sessions_count || 0) + 1),
+                session_date: streamSession?.session_date || offer.session_date || offer.offer_date,
                 total_sessions: totalSessions,
                 platform_fee_per_session: platformFeePerSession,
                 total_platform_fee: totalPlatformFee,
                 total_teacher_price: totalTeacherPrice,
                 total_student_price: totalStudentPrice,
-                completed_sessions_count: Number(mergedOffer.completed_sessions ?? offer.completed_sessions_count ?? 0),
-                completed_sessions: Number(mergedOffer.completed_sessions ?? offer.completed_sessions_count ?? 0),
-                sessions_schedule: offer.sessions_schedule || [],
+                completed_sessions_count: Number(offer.completed_sessions_count ?? 0),
+                completed_sessions: Number(offer.completed_sessions_count ?? 0),
+                sessions_schedule: parsedSchedule,
                 total_released_amount: offer.total_released_amount || 0,
-                status: mergedOffer.status || offer.status,
-                session_date: mergedOffer.session_date || offer.offer_date,
-                duration_minutes: sessionDuration,
+                actual_duration: offer.actual_duration || 0,
+                actual_live_seconds: offer.actual_live_seconds || 0,
+                stream_active: Boolean(offer.stream_active),
+                status: offer.status,
                 education_level: offer.education_level,
                 room_name: offer.room_name || null,
                 room_password: offer.room_password || null,
@@ -1070,13 +1105,15 @@ router.get(['/offer/:offer_id/sessions', '/teacher/offer/:offer_id/sessions'], a
         const offer_id = parseInt(req.params.offer_id);
         const { data: offer, error: offerError } = await supabase
             .from('offers')
-            .select('id, subject_name, plan_type, total_sessions, session_duration, price_per_session, sessions_schedule, completed_sessions_count')
+            .select('id, subject_name, plan_type, total_sessions, session_duration, price_per_session, sessions_schedule, completed_sessions_count, actual_duration, stream_active')
             .eq('id', offer_id)
             .single();
 
         if (offerError || !offer) {
             return res.status(404).json({ success: false, error: 'الدرس غير موجود' });
         }
+
+        const { parsedSchedule, totalSessions, planType } = parseOfferPlanAndSchedule(offer);
 
         // جلب من جدول stream_sessions إن وجد، وإلا إرجاع sessions_schedule المخزن
         const { data: streamSessions, error: ssError } = await supabase
@@ -1087,14 +1124,20 @@ router.get(['/offer/:offer_id/sessions', '/teacher/offer/:offer_id/sessions'], a
 
         const sessions = (streamSessions && streamSessions.length > 0) 
             ? streamSessions 
-            : (offer.sessions_schedule || []);
+            : parsedSchedule;
 
         res.json({
             success: true,
             offer_id: offer.id,
-            plan_type: offer.plan_type || '1_day',
-            total_sessions: offer.total_sessions || 1,
-            completed_sessions_count: offer.completed_sessions_count || 0,
+            offer: {
+                ...offer,
+                plan_type: planType,
+                total_sessions: totalSessions,
+                sessions_schedule: parsedSchedule
+            },
+            plan_type: planType,
+            total_sessions: totalSessions,
+            completed_sessions_count: Number(offer.completed_sessions_count || 0),
             sessions: sessions
         });
     } catch (error) {

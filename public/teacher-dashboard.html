@@ -8627,10 +8627,16 @@ function updateUI() {
 
         for (const offer of offers) {
             const offerDate = new Date(offer.offer_date);
-  const durationMs = (offer.duration_minutes || offer.duration || 60) * 60 * 1000;
-  const scheduleLength = Array.isArray(offer.sessions_schedule) ? offer.sessions_schedule.length : 0;
-  const totalSessions = Math.max(1, Number(offer.total_sessions) || 0, scheduleLength);
-  const completedCount = Number(offer.completed_sessions ?? offer.completed_sessions_count ?? 0);
+            const durationMs = (offer.duration_minutes || offer.duration || 60) * 60 * 1000;
+            let schedule = [];
+            if (Array.isArray(offer.sessions_schedule)) {
+                schedule = offer.sessions_schedule;
+            } else if (typeof offer.sessions_schedule === 'string') {
+                try { schedule = JSON.parse(offer.sessions_schedule); } catch(e) { schedule = []; }
+            }
+            const scheduleLength = Array.isArray(schedule) ? schedule.length : 0;
+            const totalSessions = Math.max(1, Number(offer.total_sessions) || 0, scheduleLength);
+            const completedCount = Number(offer.completed_sessions ?? offer.completed_sessions_count ?? 0);
             const isFinished = completedCount >= totalSessions;
             const isMultiSessionRemaining = totalSessions > 1 && completedCount < totalSessions;
 
@@ -8655,8 +8661,10 @@ function updateUI() {
             const levelName = levelMap[offer.education_level] || offer.education_level || 'غير محدد';
             const formattedDate = offerDate.toLocaleString('ar-DZ', { dateStyle: 'medium', timeStyle: 'short' });
 
-            const planType = offer.plan_type || '1_day';
-            const completedSessions = offer.completed_sessions || 0;
+            const planType = (offer.plan_type && offer.plan_type !== 'null' && offer.plan_type !== 'undefined')
+                ? String(offer.plan_type)
+                : (totalSessions > 1 ? '1_month' : '1_day');
+            const completedSessions = completedCount;
 
             const planMap = {
                 '1_day': 'يوم واحد (حصة واحدة)',

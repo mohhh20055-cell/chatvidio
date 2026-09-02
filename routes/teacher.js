@@ -784,6 +784,11 @@ router.get('/balance/:teacher_id', authenticate, authorize(['teacher']), [
                         ? Number(s.teacher_earned)
                         : (Number(s.payment_amount || 0) > 0 ? Math.max(0, Number(s.payment_amount) - 50) : Math.max(0, offerPrice - 50));
                     
+                    const sessionTotalSessions = Math.max(1, Number(s.total_sessions || offer?.total_sessions || 1));
+                    const sessionPlanType = (offer?.plan_type && offer.plan_type !== 'null')
+                        ? offer.plan_type
+                        : (s.plan_type || (sessionTotalSessions > 1 ? '1_month' : '1_day'));
+
                     return {
                         id: s.id,
                         offer_id: s.offer_id,
@@ -793,8 +798,8 @@ router.get('/balance/:teacher_id', authenticate, authorize(['teacher']), [
                         teacher_earned: Number(s.teacher_total_escrow || 0) || earned,
                         created_at: s.created_at,
                         session_number: s.session_number || 1,
-                        plan_type: s.plan_type || '1_day',
-                        total_sessions: Number(s.total_sessions) || 1,
+                        plan_type: sessionPlanType,
+                        total_sessions: sessionTotalSessions,
                         completed_sessions: Number(s.completed_sessions) || 0,
                         session_date: s.session_date || offer?.offer_date,
                         duration_minutes: Number(s.duration_minutes) || 60,
@@ -805,8 +810,8 @@ router.get('/balance/:teacher_id', authenticate, authorize(['teacher']), [
                             price: offerPrice,
                             offer_date: offer?.offer_date,
                             session_number: s.session_number || 1,
-                            plan_type: s.plan_type || '1_day',
-                            total_sessions: Number(s.total_sessions) || 1,
+                            plan_type: sessionPlanType,
+                            total_sessions: sessionTotalSessions,
                             completed_sessions: Number(s.completed_sessions) || 0,
                             session_date: s.session_date || offer?.offer_date,
                             duration_minutes: Number(s.duration_minutes) || 60,
