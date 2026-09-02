@@ -4729,9 +4729,20 @@
             <div id="upgradePaymentSection" style="display: none; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 18px; text-align: center; margin-bottom: 20px;">
                 <h4 style="margin: 0 0 10px 0; font-size: 1.1rem; color: #b45309;">رسوم الترقية: 700 دج</h4>
                 <p style="font-size: 0.9rem; color: var(--gray-600); margin-bottom: 16px;">للوصول إلى مرحلة رفع الوثائق وتفعيل الشارة الذهبية، يجب دفع رسوم الترقية أولاً من رصيد محفظتك.</p>
-                <button type="button" id="payUpgradeBtn" onclick="payUpgradeFee()" style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; padding: 12px 24px; border-radius: 25px; cursor: pointer; font-weight: 800; font-size: 1rem; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);">
-                    <i class="fas fa-wallet"></i> دفع الرسوم الآن (700 دج)
-                </button>
+                <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                    <button type="button" id="payUpgradeBtn" onclick="payUpgradeFee()" style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; padding: 10px 20px; border-radius: 25px; cursor: pointer; font-weight: 800; font-size: 0.95rem; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);">
+                        <i class="fas fa-wallet"></i> دفع الرسوم (700 دج)
+                    </button>
+                    <button type="button" onclick="closeUpgradeModal()" style="background: #e2e8f0; color: #475569; border: none; padding: 10px 20px; border-radius: 25px; cursor: pointer; font-weight: 800; font-size: 0.95rem; display: inline-flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-times"></i> إغلاق النافذة
+                    </button>
+                </div>
+                <div id="insufficientBalanceSection" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px dashed #cbd5e1;">
+                    <p style="color: #e11d48; font-weight: 700; font-size: 0.9rem; margin-bottom: 10px;" id="insufficientBalanceText">رصيدك غير كافٍ. يرجى شحن محفظتك لإتمام العملية.</p>
+                    <button type="button" onclick="closeUpgradeModal(); showDepositModal();" style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 700; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-plus-circle"></i> شحن المحفظة
+                    </button>
+                </div>
             </div>
 
             <!-- FORM FOR DOCUMENTS WITH CAMERA CAPTURE -->
@@ -6942,10 +6953,16 @@
     async function payUpgradeFee() {
         if (checkGuestAction()) return;
         const btn = document.getElementById('payUpgradeBtn');
+        const insufficientSection = document.getElementById('insufficientBalanceSection');
+        const insufficientText = document.getElementById('insufficientBalanceText');
+        
         if (btn) {
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الدفع...';
         }
+        
+        if (insufficientSection) insufficientSection.style.display = 'none';
+
         try {
             const res = await fetchWithAuth('/api/teacher/upgrade-vip', { method: 'POST' });
             const data = await res.json();
@@ -6959,16 +6976,24 @@
                 openUpgradeModal(); // Re-open to show the form
             } else {
                 showNotification(data.error || 'فشلت عملية الدفع', 'error');
+                
+                if (res.status === 400 && data.needed) {
+                    if (insufficientSection && insufficientText) {
+                        insufficientText.textContent = data.error;
+                        insufficientSection.style.display = 'block';
+                    }
+                }
+                
                 if (btn) {
                     btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-wallet"></i> دفع الرسوم الآن (700 دج)';
+                    btn.innerHTML = '<i class="fas fa-wallet"></i> دفع الرسوم (700 دج)';
                 }
             }
         } catch (e) {
             showNotification('حدث خطأ أثناء الاتصال بالخادم', 'error');
             if (btn) {
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-wallet"></i> دفع الرسوم الآن (700 دج)';
+                btn.innerHTML = '<i class="fas fa-wallet"></i> دفع الرسوم (700 دج)';
             }
         }
     }
