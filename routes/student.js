@@ -11,7 +11,7 @@ const path = require('path');
 
 const { supabase } = require('../config/database');
 const { authenticate, authorize, checkBanned } = require('../middleware/auth');
-const { getOne, insert, update, remove, isNameTaken, autoBookFreeSession } = require('../utils/helpers');
+const { getOne, insert, update, updateWithCondition, remove, isNameTaken, autoBookFreeSession } = require('../utils/helpers');
 const { uploadToSupabase, validateUploadedFiles, getPublicImageUrl, processUserProfile } = require('../utils/upload');
 const { isValidDzPhone } = require('../utils/validation');
 
@@ -1106,12 +1106,28 @@ router.post('/cancel-session/:session_id', authenticate, authorize(['student']),
         let refundAmount = 0;
         const isOfferFree = offer ? ((offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && parseFloat(offer.price || 0) === 0) : false;
 
+        // Atomic conditional update of the session to prevent double-refunds from concurrent cancellation requests
+        const { data: cancelledSession, error: cancelErr } = await supabase
+            .from('sessions')
+            .update({ 
+                payment_status: 'cancelled',
+                cancelled_at: new Date().toISOString(),
+                pending_balance: 0
+            })
+            .eq('id', session_id)
+            .neq('payment_status', 'cancelled')
+            .select();
+
+        if (cancelErr || !cancelledSession || cancelledSession.length === 0) {
+            return res.status(409).json({ success: false, error: 'تم إلغاء هذا الحجز بالفعل أو جاري معالجته' });
+        }
+
         if (session.payment_status === 'pending_stream' && session.payment_amount > 0 && !isOfferFree) {
             refundAmount = session.payment_amount;
             
             const student = await getOne('students', 'id', student_id);
             if (student) {
-                await update('students', student_id, {
+                await updateWithCondition('students', student_id, 'wallet_balance', student.wallet_balance, {
                     wallet_balance: (student.wallet_balance || 0) + refundAmount
                 });
             }
@@ -1119,7 +1135,7 @@ router.post('/cancel-session/:session_id', authenticate, authorize(['student']),
             if (offer) {
                 const teacher = await getOne('teachers', 'id', offer.teacher_id);
                 if (teacher) {
-                    await update('teachers', offer.teacher_id, {
+                    await updateWithCondition('teachers', offer.teacher_id, 'pending_withdraw', teacher.pending_withdraw, {
                         pending_withdraw: Math.max(0, (teacher.pending_withdraw || 0) - refundAmount)
                     });
                 }
@@ -1134,12 +1150,6 @@ router.post('/cancel-session/:session_id', authenticate, authorize(['student']),
                 created_at: new Date().toISOString()
             });
         }
-
-        await update('sessions', session_id, {
-            payment_status: 'cancelled',
-            cancelled_at: new Date().toISOString(),
-            pending_balance: 0
-        });
 
         await supabase
             .from('waiting_room')
