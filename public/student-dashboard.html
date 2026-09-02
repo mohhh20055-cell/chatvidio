@@ -5683,7 +5683,14 @@
         }
         let html = '';
         for (const offer of offers) {
-            const offerDate = new Date(offer.offer_date);
+            let targetOfferDate = offer.offer_date;
+            if (Array.isArray(offer.sessions_schedule) && offer.sessions_schedule.length > 0) {
+                const nextS = offer.sessions_schedule.find(s => s.status !== 'completed' && (s.session_date || s.date)) || offer.sessions_schedule[0];
+                if (nextS && (nextS.session_date || nextS.date)) {
+                    targetOfferDate = nextS.session_date || nextS.date;
+                }
+            }
+            const offerDate = new Date(targetOfferDate);
             const isFree = offer.is_free === true || offer.is_free === 1;
 
             const teacherImage = offer.teacher_profile_image || '/images/default-avatar.svg';
@@ -6739,6 +6746,8 @@
         return false;
     }
 
+    let purchasedCourseIds = new Set();
+
     async function loadStudentCourses() {
         const container = document.getElementById('coursesList');
         container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
@@ -6747,6 +6756,18 @@
             if (!res.ok) throw new Error('HTTP error!');
             const data = await res.json();
             allStudentCourses = data.courses || [];
+
+            // جلب المشتريات الخاصة بالطالب
+            try {
+                const pRes = await fetchWithAuth(`${API_BASE_URL}/api/course/my-purchases`);
+                if (pRes.ok) {
+                    const pData = await pRes.json();
+                    if (pData.success && Array.isArray(pData.purchases)) {
+                        purchasedCourseIds = new Set(pData.purchases);
+                    }
+                }
+            } catch (pErr) {}
+
             const studentLevel = userData && userData.education_level;
             const levelLabel = document.getElementById('studentCourseLevelLabel');
             if (levelLabel) {
@@ -6783,6 +6804,25 @@
         let html = '<div class="courses-grid">';
         for (const c of courses) {
             const levelLabel = levelMap[c.education_level] || c.education_level || 'غير محدد';
+            const isFree = c.is_free || parseFloat(c.price || 0) === 0;
+            const isPurchased = isFree || purchasedCourseIds.has(c.id);
+            const coursePrice = parseFloat(c.price || 0);
+
+            let actionAreaHtml = '';
+            if (isPurchased) {
+                actionAreaHtml = `
+                    <a href="${escapeHtml(c.course_url)}" target="_blank" rel="noopener" style="background:#059669; color:white; padding:7px 12px; border-radius:8px; text-decoration:none; font-weight:800; display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; margin-top:8px;">
+                        <i class="fas fa-play-circle"></i> ${isFree ? 'مشاهدة الدورة (مجانية)' : 'مشاهدة الدورة (تم الشراء)'}
+                    </a>
+                `;
+            } else {
+                actionAreaHtml = `
+                    <button onclick="buyCourse(${c.id}, ${coursePrice}, '${escapeHtml(c.title).replace(/'/g, "\\'")}')" style="background:#2563eb; color:white; border:none; padding:8px 14px; border-radius:8px; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:6px; font-size:0.85rem; margin-top:8px;">
+                        <i class="fas fa-shopping-cart"></i> شراء الدورة (${coursePrice} دج)
+                    </button>
+                `;
+            }
+
             html += `
                 <div class="course-card" id="course-card-${c.id}">
                     ${(c.thumbnail_url || c.image_url) ? `<img src="${escapeHtml(c.thumbnail_url || c.image_url)}" alt="${escapeHtml(c.title)}" style="width:100%; height:140px; object-fit:cover; border-radius:10px; margin-bottom:10px;" onerror="this.style.display='none'">` : ''}
@@ -6792,14 +6832,14 @@
                             <p style="font-size:0.8rem; color:var(--gray-600); margin-bottom:6px;">${parseContentWithLinks(c.description || '')}</p>
                             <p style="font-size:0.8rem; ${c.teacher_id ? 'cursor:pointer; color:var(--primary); font-weight:700;' : ''}" ${c.teacher_id ? `onclick="showTeacherProfile(${c.teacher_id})"` : ''} title="عرض الملف الشخصي للأستاذ"><strong>الأستاذ:</strong> ${escapeHtml(c.teacher_name || 'غير معروف')} ${c.teacher_id ? '<i class="fas fa-id-card" style="font-size: 0.72rem; opacity: 0.8;"></i>' : ''}</p>
                             <p style="font-size:0.8rem;"><strong>المستوى:</strong> ${escapeHtml(levelLabel)}</p>
-                            <p style="font-size:0.8rem;"><strong>السعر:</strong> ${c.is_free ? 'مجاني' : c.price + ' دج'}</p>
-                            <p style="font-size:0.75rem; color:var(--gray-500); word-break: break-all; margin-top:6px; display:flex; align-items:center; gap:12px;">
-                                <a href="${escapeHtml(c.course_url)}" target="_blank" rel="noopener" style="color:var(--primary); text-decoration:none; font-weight:700;">🔗 فتح رابط الدورة</a>
-                                <span style="color:#cbd5e1;">|</span>
-                                <a href="#" onclick="event.preventDefault(); shareCourse(${c.id})" style="color:var(--primary); text-decoration:none; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
-                                    <i class="fas fa-share-alt"></i> مشاركة الدورة
+                            <p style="font-size:0.8rem;"><strong>السعر:</strong> ${isFree ? 'مجاني' : coursePrice + ' دج'}</p>
+                            
+                            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:6px;">
+                                ${actionAreaHtml}
+                                <a href="#" onclick="event.preventDefault(); shareCourse(${c.id})" style="color:var(--primary); text-decoration:none; font-weight:700; display:inline-flex; align-items:center; gap:4px; font-size:0.8rem; margin-top:8px;">
+                                    <i class="fas fa-share-alt"></i> مشاركة
                                 </a>
-                            </p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -6822,6 +6862,40 @@
             }, 200);
         }
     }
+
+    async function buyCourse(courseId, price, title) {
+        if (currentBalance < price) {
+            showToast(`❌ رصيدك الحالي (${currentBalance} دج) غير كافٍ لشراء هذه الدورة (${price} دج)`, 'error');
+            return;
+        }
+
+        if (!confirm(`هل أنت تأكد من إتمام شراء دورة "${title}" بمبلغ ${price} دج؟\n(سيتم خصم المبلغ مباشرة من محفظتك ويتم إضافة الأرباح للأستاذ بعد خصم عمولة المنصة 20%)`)) {
+            return;
+        }
+
+        try {
+            showToast('جاري إتمام عملية شراء الدورة...', 'info');
+            const res = await fetchWithAuth(`/api/course/buy/${courseId}`, {
+                method: 'POST'
+            });
+            const data = await res.json();
+            if (!data.success) {
+                showToast('❌ ' + (data.error || 'فشلت عملية الشراء'), 'error');
+                return;
+            }
+
+            showToast('🎉 ' + data.message, 'success');
+            if (data.course_url) {
+                window.open(data.course_url, '_blank');
+            }
+            await loadUserData();
+            await loadStudentCourses();
+        } catch (err) {
+            console.error('Error buying course:', err);
+            showToast('حدث خطأ في الاتصال بالخادم', 'error');
+        }
+    }
+    window.buyCourse = buyCourse;
 
     function shareCourse(courseId) {
         const shareUrl = `${window.location.origin}/course/${courseId}`;

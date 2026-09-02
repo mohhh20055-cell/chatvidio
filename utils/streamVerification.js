@@ -442,20 +442,21 @@ async function processStreamPayments(offerId, earlyEnd = false) {
             if (teacherAmount > 0) {
                 const { data: teacher } = await supabase
                     .from('teachers')
-                    .select('pending_withdraw, total_earned')
+                    .select('pending_withdraw, total_earned, balance')
                     .eq('id', offer.teacher_id)
                     .single();
 
                 await supabase
                     .from('teachers')
                     .update({
-                        pending_withdraw: Math.max(0, (teacher?.pending_withdraw || 0) - teacherAmount),
-                        total_earned: (teacher?.total_earned || 0) + teacherAmount
+                        pending_withdraw: Math.max(0, (parseFloat(teacher?.pending_withdraw) || 0) - teacherAmount),
+                        total_earned: (parseFloat(teacher?.total_earned) || 0) + teacherAmount,
+                        balance: (parseFloat(teacher?.balance) || 0) + teacherAmount
                     })
                     .eq('id', offer.teacher_id);
             }
         } else {
-            const refundAmount = Math.max(0, session.payment_amount - 100); 
+            const refundAmount = parseFloat(session.payment_amount || pricePerSession || 0);
             await supabase
                 .from('sessions')
                 .update({
@@ -467,6 +468,21 @@ async function processStreamPayments(offerId, earlyEnd = false) {
                     partial_payment_note: `استرداد - البث غير مكتمل (نسبة الإكتمال: ${completionPctRounded}%)`
                 })
                 .eq('id', session.id);
+
+            const { data: teacher } = await supabase
+                .from('teachers')
+                .select('pending_withdraw')
+                .eq('id', offer.teacher_id)
+                .single();
+
+            if (teacher) {
+                await supabase
+                    .from('teachers')
+                    .update({
+                        pending_withdraw: Math.max(0, (parseFloat(teacher.pending_withdraw) || 0) - pricePerSession)
+                    })
+                    .eq('id', offer.teacher_id);
+            }
 
             const { data: student } = await supabase
                 .from('students')

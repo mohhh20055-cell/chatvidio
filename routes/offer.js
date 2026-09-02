@@ -306,16 +306,19 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
             }
         } else {
             // تنسيق الحصص والتأكد من صحتها
-            parsedSchedule = parsedSchedule.map((s, idx) => ({
-                session_number: s.session_number || (idx + 1),
-                title: s.title || `الحصة ${idx + 1}: ${subject_name.trim()}`,
-                session_date: s.session_date ? new Date(s.session_date).toISOString() : new Date(offerDateUTC.getTime() + (idx * 7 * 24 * 60 * 60 * 1000)).toISOString(),
-                duration: parseInt(s.duration || parsedDuration),
-                status: s.status || 'upcoming',
-                completed_at: s.completed_at || null,
-                teacher_released_amount: 0,
-                is_escrow_released: false
-            }));
+            parsedSchedule = parsedSchedule.map((s, idx) => {
+                const rawDate = s.session_date || s.date;
+                return {
+                    session_number: s.session_number || (idx + 1),
+                    title: s.title || `الحصة ${idx + 1}: ${subject_name.trim()}`,
+                    session_date: rawDate ? new Date(rawDate).toISOString() : new Date(offerDateUTC.getTime() + (idx * 7 * 24 * 60 * 60 * 1000)).toISOString(),
+                    duration: parseInt(s.duration || parsedDuration),
+                    status: s.status || 'upcoming',
+                    completed_at: s.completed_at || null,
+                    teacher_released_amount: 0,
+                    is_escrow_released: false
+                };
+            });
         }
 
         // ✅ إدخال الدرس في قاعدة البيانات

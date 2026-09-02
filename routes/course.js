@@ -365,4 +365,172 @@ router.get('/unread-count', async (req, res) => {
     }
 });
 
+// ============================================================
+// ✅ شراء دورة (خصم من رصيد الطالب واقتطاع عمولة المنصة 20% للأستاذ)
+// ============================================================
+router.post('/buy/:id', authenticate, authorize(['student']), async (req, res) => {
+    try {
+        const courseId = parseInt(req.params.id);
+        const studentId = req.user.userId;
+
+        if (!courseId || isNaN(courseId)) {
+            return res.status(400).json({ success: false, error: 'معرف الدورة غير صالح' });
+        }
+
+        const course = await getOne('courses', 'id', courseId);
+        if (!course) {
+            return res.status(404).json({ success: false, error: 'الدورة غير موجودة' });
+        }
+
+        // التحقق مما إذا كان الطالب قد اشترى الدورة سابقاً
+        const { data: existingPurchase } = await supabase
+            .from('course_purchases')
+            .select('*')
+            .eq('course_id', courseId)
+            .eq('student_id', studentId)
+            .maybeSingle();
+
+        if (existingPurchase) {
+            return res.json({
+                success: true,
+                message: 'أنت مشترك بالفعل في هذه الدورة',
+                course_url: course.course_url,
+                already_purchased: true
+            });
+        }
+
+        const coursePrice = parseFloat(course.price || 0);
+        const isFree = course.is_free === true || coursePrice === 0;
+
+        const student = await getOne('students', 'id', studentId);
+        if (!student) {
+            return res.status(404).json({ success: false, error: 'حساب الطالب غير موجود' });
+        }
+
+        if (!isFree) {
+            const studentBalance = parseFloat(student.wallet_balance || 0);
+            if (studentBalance < coursePrice) {
+                return res.status(400).json({
+                    success: false,
+                    error: `رصيدك غير كافٍ لشراء هذه الدورة. رصيدك الحالي: ${studentBalance} دج (سعر الدورة: ${coursePrice} دج)`,
+                    insufficient_balance: true,
+                    needed: coursePrice - studentBalance
+                });
+            }
+
+            // اقتطاع 20% عمولة للمنصة و 80% للأستاذ
+            const platformCommission = Math.round(coursePrice * 0.20);
+            const teacherEarned = coursePrice - platformCommission;
+
+            // 1. خصم من محفظة الطالب
+            const newStudentBalance = studentBalance - coursePrice;
+            await update('students', studentId, {
+                wallet_balance: newStudentBalance,
+                updated_at: new Date().toISOString()
+            });
+
+            // 2. إضافة رصيد الأستاذ (80% من المبيعة)
+            const teacher = await getOne('teachers', 'id', course.teacher_id);
+            if (teacher) {
+                const newTeacherBalance = (parseFloat(teacher.balance) || 0) + teacherEarned;
+                const newTeacherTotalEarned = (parseFloat(teacher.total_earned) || 0) + teacherEarned;
+                await update('teachers', course.teacher_id, {
+                    balance: newTeacherBalance,
+                    total_earned: newTeacherTotalEarned,
+                    updated_at: new Date().toISOString()
+                });
+            }
+
+            // 3. تسجيل معاملة المحفظة للطالب
+            await insert('wallet_transactions', {
+                student_id: studentId,
+                amount: coursePrice,
+                type: 'withdraw',
+                status: 'completed',
+                description: `شراء دورة "${course.title}" (اقتطاع 20% عمولة المنصة)`,
+                created_at: new Date().toISOString()
+            });
+
+            // 4. تسجيل الشراء في جدول course_purchases
+            try {
+                await supabase.from('course_purchases').insert({
+                    course_id: courseId,
+                    student_id: studentId,
+                    teacher_id: course.teacher_id,
+                    price: coursePrice,
+                    platform_commission: platformCommission,
+                    teacher_earned: teacherEarned,
+                    created_at: new Date().toISOString()
+                });
+            } catch (pErr) {
+                console.warn('⚠️ تعذر إدخال course_purchases:', pErr.message);
+            }
+
+            // 5. إشعار الأستاذ
+            await supabase.from('notifications').insert({
+                user_id: course.teacher_id,
+                user_type: 'teacher',
+                title: '💰 مبيعة جديدة لدورة (عمولة 20%)',
+                message: `قام طالب بشراء دورتك "${course.title}". تم إضافة ${teacherEarned} دج لأرباحك بعد اقتطاع عمولة المنصة (20% = ${platformCommission} دج).`,
+                is_read: false,
+                created_at: new Date().toISOString()
+            });
+
+            // 6. إشعار الطالب
+            await supabase.from('notifications').insert({
+                user_id: studentId,
+                user_type: 'student',
+                title: '🎉 تم شراء الدورة بنجاح',
+                message: `لقد قمت بشراء دورة "${course.title}" بمبلغ ${coursePrice} دج. يمكنك الآن الوصول إلى رابط ومحتوى الدورة.`,
+                is_read: false,
+                created_at: new Date().toISOString()
+            });
+        } else {
+            // دورة مجانية
+            try {
+                await supabase.from('course_purchases').insert({
+                    course_id: courseId,
+                    student_id: studentId,
+                    teacher_id: course.teacher_id,
+                    price: 0,
+                    platform_commission: 0,
+                    teacher_earned: 0,
+                    created_at: new Date().toISOString()
+                });
+            } catch (pErr) {}
+        }
+
+        res.json({
+            success: true,
+            message: '🎉 تم الاشتراك في الدورة بنجاح!',
+            course_url: course.course_url
+        });
+    } catch (error) {
+        logger.error('❌ خطأ في شراء الدورة:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في إجراء عملية الشراء' });
+    }
+});
+
+// ============================================================
+// ✅ جلب قائمة الدورات المشتراة للطالب
+// ============================================================
+router.get('/my-purchases', authenticate, authorize(['student']), async (req, res) => {
+    try {
+        const studentId = req.user.userId;
+        const { data, error } = await supabase
+            .from('course_purchases')
+            .select('course_id')
+            .eq('student_id', studentId);
+
+        if (error) {
+            return res.json({ success: true, purchases: [] });
+        }
+
+        const purchasedIds = (data || []).map(p => p.course_id);
+        res.json({ success: true, purchases: purchasedIds });
+    } catch (error) {
+        res.json({ success: true, purchases: [] });
+    }
+});
+
 module.exports = router;
