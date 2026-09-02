@@ -4725,8 +4725,17 @@
                 </ul>
             </div>
 
+            <!-- PAYMENT SECTION (Shown if not VIP) -->
+            <div id="upgradePaymentSection" style="display: none; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 18px; text-align: center; margin-bottom: 20px;">
+                <h4 style="margin: 0 0 10px 0; font-size: 1.1rem; color: #b45309;">رسوم الترقية: 700 دج</h4>
+                <p style="font-size: 0.9rem; color: var(--gray-600); margin-bottom: 16px;">للوصول إلى مرحلة رفع الوثائق وتفعيل الشارة الذهبية، يجب دفع رسوم الترقية أولاً من رصيد محفظتك.</p>
+                <button type="button" id="payUpgradeBtn" onclick="payUpgradeFee()" style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; padding: 12px 24px; border-radius: 25px; cursor: pointer; font-weight: 800; font-size: 1rem; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);">
+                    <i class="fas fa-wallet"></i> دفع الرسوم الآن (700 دج)
+                </button>
+            </div>
+
             <!-- FORM FOR DOCUMENTS WITH CAMERA CAPTURE -->
-            <form id="upgradeForm" onsubmit="submitUpgradeRequest(event)" style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 18px;">
+            <form id="upgradeForm" onsubmit="submitUpgradeRequest(event)" style="display: none; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 18px;">
                 <h4 style="margin: 0 0 14px 0; font-size: 0.95rem; color: var(--gray-800); font-weight: 800; display: flex; align-items: center; gap: 8px;">
                     <i class="fas fa-camera" style="color: var(--primary);"></i> التقاط وثائق الترقية بالكاميرا (مضغوطة تلقائياً):
                 </h4>
@@ -5304,12 +5313,6 @@
                 </optgroup>
             </select>
         </div>
-
-        <label style="display:block; margin-bottom:6px; margin-top:10px; font-weight:700; color:var(--gray-800);">
-            <i class="fas fa-image" style="color:var(--primary); margin-left:6px;"></i> الصورة المصغرة للدورة (Thumbnail)
-        </label>
-        <input type="file" id="courseThumbnail" accept="image/*" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; background: white;">
-        <p style="font-size:0.75rem; color:var(--gray-500); margin-top:4px;">تظهر هذه الصورة عند مشاركة رابط الدورة في وسائل التواصل الاجتماعي</p>
 
         <label style="display:block; margin-bottom:6px; margin-top:10px; font-weight:700; color:var(--gray-800);">
             <i class="fas fa-link" style="color:var(--primary); margin-left:6px;"></i> رابط الدورة
@@ -6907,12 +6910,69 @@
     }
     window.stopUpgradeCamera = stopUpgradeCamera;
 
-    function openUpgradeModal() {
+    async function openUpgradeModal() {
         if (checkGuestAction()) return;
         const modal = document.getElementById('upgradeModal');
+        
+        // Fetch latest profile to check VIP status
+        try {
+            const res = await fetchWithAuth('/api/teacher/profile');
+            const data = await res.json();
+            if (data.success && data.teacher) {
+                const teacher = data.teacher;
+                const paymentSection = document.getElementById('upgradePaymentSection');
+                const docsForm = document.getElementById('upgradeForm');
+                
+                if (!teacher.is_vip) {
+                    paymentSection.style.display = 'block';
+                    docsForm.style.display = 'none';
+                } else {
+                    paymentSection.style.display = 'none';
+                    docsForm.style.display = 'block';
+                }
+            }
+        } catch(e) {
+            console.error('Failed to fetch profile', e);
+        }
+
         if (modal) modal.style.display = 'block';
     }
     window.openUpgradeModal = openUpgradeModal;
+
+    async function payUpgradeFee() {
+        if (checkGuestAction()) return;
+        const btn = document.getElementById('payUpgradeBtn');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الدفع...';
+        }
+        try {
+            const res = await fetchWithAuth('/api/teacher/upgrade-vip', { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                showNotification('✅ تم دفع رسوم الترقية بنجاح! يمكنك الآن رفع وثائقك.', 'success');
+                // Refresh local data and modal
+                if (window.userData) {
+                    window.userData.is_vip = true;
+                    localStorage.setItem('userData', JSON.stringify(window.userData));
+                }
+                openUpgradeModal(); // Re-open to show the form
+            } else {
+                showNotification(data.error || 'فشلت عملية الدفع', 'error');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-wallet"></i> دفع الرسوم الآن (700 دج)';
+                }
+            }
+        } catch (e) {
+            showNotification('حدث خطأ أثناء الاتصال بالخادم', 'error');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-wallet"></i> دفع الرسوم الآن (700 دج)';
+            }
+        }
+    }
+    window.payUpgradeFee = payUpgradeFee;
 
     function closeUpgradeModal() {
         stopUpgradeCamera();
@@ -10076,7 +10136,7 @@ function updateUI() {
 
             html += `
                 <div class="course-card">
-                    ${(c.thumbnail_url || c.image_url) ? `<img src="${escapeHtml(c.thumbnail_url || c.image_url)}" alt="${escapeHtml(c.title)}" style="width:100%; height:140px; object-fit:cover; border-radius:10px; margin-bottom:10px;" onerror="this.style.display='none'">` : ''}
+
                     <div style="display:flex; justify-content:space-between; align-items:start; gap:10px;">
                         <div style="flex:1; min-width:0;">
                             ${statusBadge}
@@ -10186,28 +10246,14 @@ function updateUI() {
             }
         }
 
-        const thumbnailFile = document.getElementById('courseThumbnail')?.files[0];
-        let reqBody;
-        if (thumbnailFile) {
-            const formData = new FormData();
-            formData.append('title', title);
-            formData.append('description', description || '');
-            formData.append('price', parseFloat(price) || 0);
-            formData.append('is_free', (parseFloat(price) || 0) === 0);
-            formData.append('education_level', educationLevel);
-            formData.append('course_url', courseUrl);
-            formData.append('thumbnail', thumbnailFile);
-            reqBody = formData;
-        } else {
-            reqBody = JSON.stringify({
-                title,
-                description: description || null,
-                price: parseFloat(price) || 0,
-                is_free: (parseFloat(price) || 0) === 0,
-                education_level: educationLevel,
-                course_url: courseUrl
-            });
-        }
+        let reqBody = JSON.stringify({
+            title,
+            description: description || null,
+            price: parseFloat(price) || 0,
+            is_free: (parseFloat(price) || 0) === 0,
+            education_level: educationLevel,
+            course_url: courseUrl
+        });
 
         try {
             const endpoint = editingId ? `/api/course/update/${editingId}` : '/api/course/create';
