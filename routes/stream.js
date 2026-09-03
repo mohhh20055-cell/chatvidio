@@ -792,7 +792,7 @@ router.get('/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                     };
 
                     async function endStream() {
-                        if (!confirm('⏹ هل تريد إنهاء البث؟ سيتم تنزيل فيديو البث على جهازك وتوزيع المبالغ.')) return;
+                        if (!confirm('⚠️ تأكد انك اكملت مده الحصه المحدده للدرس لهذه الحصه لتتلقى العائد الخاص بك.\nإذا لم يتم اكمال الحصه وتم انهاء البث فلن تتلقى اي عوائد وسيعاد الرصيد الخاص بهذه الحصه الى الطالب.\n\nهل أنت متأكد من إنهاء البث؟')) return;
                         manualClose = true;
                         try {
                             const iframe = document.getElementById('streamIframe');

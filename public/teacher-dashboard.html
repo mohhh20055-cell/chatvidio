@@ -9070,7 +9070,7 @@ function updateUI() {
 
     async function endStreamManual(offerId) {
         if (checkGuestAction()) return;
-        if (!confirm('⏹ هل تريد إنهاء البث؟ سيتم إغلاق البث وتغيير حالته إلى منتهي.')) return;
+        if (!confirm('⚠️ تأكد انك اكملت مده الحصه المحدده للدرس لهذه الحصه لتتلقى العائد الخاص بك.\nإذا لم يتم اكمال الحصه وتم انهاء البث فلن تتلقى اي عوائد وسيعاد الرصيد الخاص بهذه الحصه الى الطالب.\n\nهل أنت متأكد من إنهاء البث؟')) return;
         try {
             const res = await fetchWithAuth(`/api/stream/end/${offerId}`, {
                 method: 'POST'
