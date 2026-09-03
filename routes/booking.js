@@ -349,7 +349,7 @@ router.post('/create', authenticate, authorize(['student']), [
                     user_id: offer.teacher_id,
                     user_type: 'teacher',
                     title: `📊 طالب جديد حجز حصتك "${offer.subject_name}"`,
-                    message: `قام الطالب ${student.full_name} بحجز حصتك "${offer.subject_name}". إجمالي الطلاب المسجلين الآن: ${totalBooked} طالب.\n💰 المبلغ المعلق: ${isFree ? 0 : offer.price} دج`,
+                    message: `قام الطالب ${student.full_name} بحجز حصتك "${offer.subject_name}". إجمالي الطلاب المسجلين الآن: ${totalBooked} طالب.\n💰 إجمالي رصيدك المعلق لهذا الاشتراك: ${isFree ? 0 : totalTeacherPrice} دج (سعر الحصة الصافي: ${isFree ? 0 : pricePerSession} دج × ${totalSessions} حصص).`,
                     offer_id: offer_id,
                     is_read: false,
                     created_at: new Date().toISOString()

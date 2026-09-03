@@ -8800,7 +8800,7 @@ function updateUI() {
             let sHtml = '';
             sessions.forEach(s => {
                 const sDate = s.session_date ? new Date(s.session_date) : null;
-                const formattedDate = sDate ? sDate.toLocaleString('ar-DZ', { dateStyle: 'medium', timeStyle: 'short' }) : 'غير محدد';
+                const formattedDate = sDate ? sDate.toLocaleString('ar-DZ', { timeZone: 'Africa/Algiers', dateStyle: 'medium', timeStyle: 'short' }) : 'غير محدد';
                 const isCompleted = s.status === 'completed' || s.is_completed;
                 const isLive = s.status === 'live';
 
@@ -9469,7 +9469,16 @@ function updateUI() {
             finalLevel = otherText;
         }
 
-        // جمع جدول الحصص المحدد
+        // دالة لتحويل التواريخ المدخلة محلياً إلى صيغة ISO متوافقة مع التوقيت العالمي بدقة لمنع تقدم الوقت ساعة
+        const toISO = (dateStr) => {
+            if (!dateStr) return null;
+            const d = new Date(dateStr);
+            return isNaN(d.getTime()) ? dateStr : d.toISOString();
+        };
+
+        const offer_date_iso = toISO(offer_date);
+
+        // جمع جدول الحصص المحدد وتحويل التواريخ بدقة لمنع إزاحة التوقيت
         let sessionsSchedule = [];
         if (plan_type !== '1_day' && total_sessions > 1) {
             const schedInputs = document.querySelectorAll('.session-schedule-input');
@@ -9478,14 +9487,14 @@ function updateUI() {
                 const sDate = inp.value || offer_date;
                 sessionsSchedule.push({
                     session_number: sNum,
-                    date: sDate,
+                    date: toISO(sDate),
                     duration: durationVal
                 });
             });
         } else {
             sessionsSchedule.push({
                 session_number: 1,
-                date: offer_date,
+                date: offer_date_iso,
                 duration: durationVal
             });
         }
@@ -9495,7 +9504,7 @@ function updateUI() {
             subject_name: subject_name,
             duration: durationVal,
             max_students: isFree ? Math.min(20, maxStudentsVal) : maxStudentsVal,
-            offer_date: offer_date,
+            offer_date: offer_date_iso,
             is_free: isFree,
             price: isFree ? 0 : priceVal,
             education_level: finalLevel,

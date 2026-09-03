@@ -1171,7 +1171,7 @@ router.delete('/offer/delete/:offer_id', authenticate, authorize(['teacher']), [
             return res.status(403).json({ success: false, error: 'غير مصرح لك بحذف هذا الدرس' });
         }
 
-        // ✅ معالجة استرداد أي حجوزات نشطة إن وجدت قبل الحذف (بدون رسوم المنصة ومخصوماً منها أي حصص مستردة)
+        // ✅ منع حذف الدرس إذا كان هناك طلاب مشتركين فيه
         const { data: activeSessions } = await supabase
             .from('sessions')
             .select('id, student_id, payment_amount, teacher_earned, refunded_amount, payment_status')
@@ -1179,67 +1179,10 @@ router.delete('/offer/delete/:offer_id', authenticate, authorize(['teacher']), [
             .in('payment_status', ['paid', 'pending_stream']);
 
         if (activeSessions && activeSessions.length > 0) {
-            console.log(`⚠️ حذف درس يحتوي على ${activeSessions.length} حجز نشط - البدء في إعادة المبالغ للطلاب`);
-
-            for (const session of activeSessions) {
-                const refundDetails = await calculateBookingRefundDetails({
-                    session,
-                    offer,
-                    studentId: session.student_id
-                });
-                const refundAmount = refundDetails.netRefundAmount;
-                const teacherDeduction = refundDetails.teacherDeduction;
-
-                if (refundAmount > 0) {
-                    // إعادة المبلغ للطالب
-                    const student = await getOne('students', 'id', session.student_id);
-                    if (student) {
-                        await update('students', session.student_id, {
-                            wallet_balance: (parseFloat(student.wallet_balance) || 0) + refundAmount
-                        });
-                    }
-
-                    // خصم من الرصيد المعلق للأستاذ
-                    const teacher = await getOne('teachers', 'id', offer.teacher_id);
-                    if (teacher && teacherDeduction > 0) {
-                        await update('teachers', offer.teacher_id, {
-                            pending_withdraw: Math.max(0, (parseFloat(teacher.pending_withdraw) || 0) - teacherDeduction)
-                        });
-                    }
-
-                    // تسجيل المعاملة
-                    let refundDesc = `استرداد مبلغ حجز لدرس محذوف "${offer.subject_name || 'غير معروف'}" (بدون رسوم المنصة)`;
-                    if (refundDetails.previouslyRefunded > 0) {
-                        refundDesc += ` بعد خصم ${refundDetails.previouslyRefunded} دج مستردة سابقاً`;
-                    }
-                    await insert('wallet_transactions', {
-                        student_id: session.student_id,
-                        amount: refundAmount,
-                        type: 'refund',
-                        status: 'completed',
-                        description: refundDesc,
-                        created_at: new Date().toISOString()
-                    });
-                }
-
-                // إرسال إشعار للطالب
-                try {
-                    let notifMsg = `قام الأستاذ بحذف درس "${offer.subject_name || 'غير معروف'}" وتمت إعادة مبلغ ${refundAmount} دج إلى محفظتك (بدون رسوم المنصة).`;
-                    if (refundDetails.previouslyRefunded > 0) {
-                        notifMsg = `قام الأستاذ بحذف درس "${offer.subject_name || 'غير معروف'}" وتمت إعادة مبلغ ${refundAmount} دج إلى محفظتك (بدون رسوم المنصة وبعد خصم ${refundDetails.previouslyRefunded} دج مستردة مسبقاً عن حصص الخطة).`;
-                    }
-                    await supabase.from('notifications').insert({
-                        user_id: session.student_id,
-                        title: 'إلغاء حجز واسترداد مبلغ (حذف الدرس)',
-                        message: notifMsg,
-                        type: 'refund',
-                        is_read: false,
-                        created_at: new Date().toISOString()
-                    });
-                } catch (notifErr) {
-                    console.warn('⚠️ تعذر إرسال إشعار الإلغاء للطالب:', notifErr.message);
-                }
-            }
+            return res.status(400).json({
+                success: false,
+                error: 'لا يمكن حذف الدرس لوجود طلاب مشتركين فيه. يرجى إلغاء حجز جميع الطلاب المشتركين أولاً من قائمة الطلاب قبل حذف الدرس.'
+            });
         }
 
         try {
