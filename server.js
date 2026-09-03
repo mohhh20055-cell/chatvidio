@@ -1958,11 +1958,11 @@ const handleTeacherZoomView = async (req, res) => {
             if (timeStr) actualStartTime = new Date(timeStr).getTime();
         }
 
-        // حساب الوقت المتبقي (استرجاع الوقت المحفوظ في قاعدة البيانات أولاً إذا وُجد)
+        // حساب الوقت المتبقي (استرجاع الوقت المحفوظ في قاعدة البيانات أولاً إذا وُجد وكان أكبر من الصفر)
         let savedSeconds = null;
-        if (offer.remaining_seconds !== undefined && offer.remaining_seconds !== null && !isNaN(Number(offer.remaining_seconds))) {
+        if (offer.remaining_seconds !== undefined && offer.remaining_seconds !== null && !isNaN(Number(offer.remaining_seconds)) && Number(offer.remaining_seconds) > 0) {
             savedSeconds = Number(offer.remaining_seconds);
-        } else if (offer.remaining_time !== undefined && offer.remaining_time !== null && !isNaN(Number(offer.remaining_time))) {
+        } else if (offer.remaining_time !== undefined && offer.remaining_time !== null && !isNaN(Number(offer.remaining_time)) && Number(offer.remaining_time) > 0) {
             savedSeconds = Number(offer.remaining_time);
         }
 
@@ -2228,6 +2228,9 @@ function generateTeacherZoomPage(offer, teacher, token) {
         let streamRemainingSeconds = ${offer.remaining_time || 0};
         let streamTotalSeconds = ${offer.total_time || (offer.duration_minutes ? offer.duration_minutes * 60 : (offer.duration ? offer.duration * 60 : 3600))};
         if (!streamTotalSeconds || streamTotalSeconds <= 0) streamTotalSeconds = 3600;
+        if (!streamRemainingSeconds || streamRemainingSeconds <= 0) {
+            streamRemainingSeconds = streamTotalSeconds;
+        }
         if (streamRemainingSeconds > streamTotalSeconds) streamTotalSeconds = streamRemainingSeconds;
 
         let isTimerPaused = true; // لا يبدأ الموقت تلقائياً حتى يضيف الأستاذ الطلبة
@@ -3328,9 +3331,9 @@ const handleStudentZoomView = async (req, res) => {
         
         // حساب الوقت المتبقي للبث
         let savedSeconds = null;
-        if (offer.remaining_seconds !== undefined && offer.remaining_seconds !== null && !isNaN(Number(offer.remaining_seconds))) {
+        if (offer.remaining_seconds !== undefined && offer.remaining_seconds !== null && !isNaN(Number(offer.remaining_seconds)) && Number(offer.remaining_seconds) > 0) {
             savedSeconds = Number(offer.remaining_seconds);
-        } else if (offer.remaining_time !== undefined && offer.remaining_time !== null && !isNaN(Number(offer.remaining_time))) {
+        } else if (offer.remaining_time !== undefined && offer.remaining_time !== null && !isNaN(Number(offer.remaining_time)) && Number(offer.remaining_time) > 0) {
             savedSeconds = Number(offer.remaining_time);
         }
 
@@ -3918,6 +3921,9 @@ function generateStudentZoomPage(offer, student) {
         let studentRemainingSeconds = ${offer.remaining_time || 0};
         let studentTotalSeconds = ${offer.total_time || (offer.duration_minutes ? offer.duration_minutes * 60 : (offer.duration ? offer.duration * 60 : 3600))};
         if (!studentTotalSeconds || studentTotalSeconds <= 0) studentTotalSeconds = 3600;
+        if (!studentRemainingSeconds || studentRemainingSeconds <= 0) {
+            studentRemainingSeconds = studentTotalSeconds;
+        }
         if (studentRemainingSeconds > studentTotalSeconds) studentTotalSeconds = studentRemainingSeconds;
 
         let isStreamPaused = ${offer.status === 'paused' ? 'true' : 'false'};
