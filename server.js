@@ -2301,12 +2301,28 @@ function generateTeacherZoomPage(offer, teacher, token) {
                     const blob = new Blob([payload], { type: 'application/json' });
                     navigator.sendBeacon(url, blob);
                 } else {
-                    fetch(url, {
+                    const res = await fetch(url, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
                         body: payload,
                         keepalive: true
-                    }).catch(() => {});
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        // إذا تم تعديل الثواني في قاعدة البيانات خارجياً، نعتمدها فوراً
+                        if (data && data.db_remaining_seconds !== null && data.db_remaining_seconds !== undefined) {
+                            if (Math.abs(data.db_remaining_seconds - streamRemainingSeconds) > 3) {
+                                streamRemainingSeconds = Number(data.db_remaining_seconds);
+                                updateTimerDisplay();
+                                if (streamRemainingSeconds <= 0) {
+                                    isTimerPaused = true;
+                                    try { stopStreamRecordingAndDownload(); } catch(e){}
+                                    alert('🎉 تهانينا تم اكتمال البث وحصلت على عوائدك، جاري تنزيل فيديو التسجيل على جهازك...');
+                                    window.location.href = '/teacher-dashboard.html';
+                                }
+                            }
+                        }
+                    }
                 }
             } catch(e) {}
         }

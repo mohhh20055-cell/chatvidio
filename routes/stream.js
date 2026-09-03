@@ -2311,7 +2311,43 @@ router.post('/sync-timer/:offer_id', async (req, res) => {
             await saveOfferRemainingTime(offerId, Number(remaining_seconds), is_paused === true);
         }
 
-        res.json({ success: true, remaining_seconds: Number(remaining_seconds) });
+        // جلب أحدث قيمة من قاعدة البيانات للتحقق
+        const { data: offer } = await supabase
+            .from('offers')
+            .select('remaining_seconds, status')
+            .eq('id', offerId)
+            .maybeSingle();
+
+        res.json({ 
+            success: true, 
+            remaining_seconds: Number(remaining_seconds),
+            db_remaining_seconds: offer?.remaining_seconds != null ? Number(offer.remaining_seconds) : null,
+            status: offer?.status
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// ✅ مسار لجلب حالة الموقت من قاعدة البيانات مباشرة (للمزامنة الفورية والتصحيح)
+router.get('/timer-status/:offer_id', async (req, res) => {
+    try {
+        const offerId = parseInt(req.params.offer_id);
+        const { data: offer, error } = await supabase
+            .from('offers')
+            .select('id, status, remaining_seconds')
+            .eq('id', offerId)
+            .maybeSingle();
+
+        if (error || !offer) {
+            return res.status(404).json({ success: false, error: 'الدرس غير موجود' });
+        }
+
+        res.json({
+            success: true,
+            remaining_seconds: offer.remaining_seconds != null ? Number(offer.remaining_seconds) : null,
+            status: offer.status
+        });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
