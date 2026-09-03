@@ -14,6 +14,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { getOne, insert, update } = require('../utils/helpers');
 const { getPublicImageUrl } = require('../utils/upload');
 const { processStudentReferralRewardOnBooking } = require('../utils/referral');
+const { calculateBookingRefundDetails } = require('../utils/refundCalculator');
 
 const money = (value) => Math.round((Number(value) || 0) * 100) / 100;
 
@@ -739,11 +740,41 @@ router.post('/confirm-session-incomplete', authenticate, authorize(['teacher', '
                 status: 'refunded',
                 cancelled_at: new Date().toISOString(),
                 teacher_released_amount: 0,
+                refund_amount: amountPerSessionForStudent,
                 is_escrow_released: true,
                 updated_at: new Date().toISOString()
             }).eq('id', trackedSession.id).eq('is_escrow_released', false);
         }
         await updateOfferSchedule(offer, requestedSessionNumber, 'refunded', amountPerSessionForStudent);
+
+        // ✅ تحديث سجل المبالغ المستردة في الاشتراك وجلسة الحجز
+        try {
+            await supabase
+                .from('stream_subscriptions')
+                .update({
+                    refunded_amount: (parseFloat(sub.refunded_amount) || 0) + amountPerSessionForStudent,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', sub.id);
+        } catch (subErr) {
+            // ignore
+        }
+
+        try {
+            const { data: matchedSession } = await supabase
+                .from('sessions')
+                .select('id, refunded_amount')
+                .eq('offer_id', sub.offer_id)
+                .eq('student_id', sub.student_id)
+                .maybeSingle();
+            if (matchedSession) {
+                await update('sessions', matchedSession.id, {
+                    refunded_amount: (parseFloat(matchedSession.refunded_amount) || 0) + amountPerSessionForStudent
+                });
+            }
+        } catch (sessErr) {
+            // ignore
+        }
 
         // ✅ تسجيل المعاملة
         await insert('wallet_transactions', {
@@ -984,41 +1015,50 @@ router.post('/cancel', authenticate, [
             });
         }
 
-        // ✅ استرداد الرصيد المعلق إذا كان موجوداً
-        let refundAmount = 0;
-        const isOfferFree = offer ? ((offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && parseFloat(offer.price || 0) === 0) : false;
+        // ✅ استرداد الرصيد المعلق بدقة: بدون رسوم المنصة ومخصوماً منه أي مبالغ حصص تم استردادها سابقاً
+        const refundDetails = await calculateBookingRefundDetails({
+            session,
+            offer,
+            studentId: targetStudentId
+        });
 
-        if ((session.payment_status === 'pending_stream' || session.payment_status === 'paid') && !isOfferFree) {
-            refundAmount = session.payment_amount || 0;
-            
-            if (refundAmount > 0) {
-                // ✅ إعادة المبلغ للطالب
-                const student = await getOne('students', 'id', targetStudentId);
-                if (student) {
-                    await update('students', targetStudentId, {
-                        wallet_balance: (parseFloat(student.wallet_balance) || 0) + refundAmount
-                    });
-                }
+        const refundAmount = refundDetails.netRefundAmount;
+        const teacherDeduction = refundDetails.teacherDeduction;
 
-                // ✅ إزالة الرصيد المعلق من الأستاذ (يخصم فقط ما كان سيحصل عليه الأستاذ)
-                const teacherShare = session.teacher_earned || 0;
-                const teacher = await getOne('teachers', 'id', offer?.teacher_id);
-                if (teacher && offer) {
-                    await update('teachers', offer.teacher_id, {
-                        pending_withdraw: Math.max(0, (parseFloat(teacher.pending_withdraw) || 0) - teacherShare)
-                    });
-                }
-
-                // ✅ تسجيل معاملة الاسترداد
-                await insert('wallet_transactions', {
-                    student_id: targetStudentId,
-                    amount: refundAmount,
-                    type: 'refund',
-                    status: 'completed',
-                    description: isTeacherOwner ? `استرداد مبلغ الحجز من قبل الأستاذ لدرس "${offer?.subject_name || 'غير معروف'}"` : `استرداد مبلغ حجز "${offer?.subject_name || 'غير معروف'}"`,
-                    created_at: new Date().toISOString()
+        if (refundAmount > 0) {
+            // ✅ إعادة المبلغ للطالب
+            const student = await getOne('students', 'id', targetStudentId);
+            if (student) {
+                await update('students', targetStudentId, {
+                    wallet_balance: (parseFloat(student.wallet_balance) || 0) + refundAmount
                 });
             }
+
+            // ✅ إزالة الرصيد المعلق من الأستاذ (يخصم فقط ما تبقى من نصيب الأستاذ)
+            const teacher = await getOne('teachers', 'id', offer?.teacher_id);
+            if (teacher && offer && teacherDeduction > 0) {
+                await update('teachers', offer.teacher_id, {
+                    pending_withdraw: Math.max(0, (parseFloat(teacher.pending_withdraw) || 0) - teacherDeduction)
+                });
+            }
+
+            // ✅ تسجيل معاملة الاسترداد
+            let refundDescription = isTeacherOwner
+                ? `استرداد مبلغ الحجز من قبل الأستاذ لدرس "${offer?.subject_name || 'غير معروف'}" (بدون رسوم المنصة)`
+                : `استرداد مبلغ حجز "${offer?.subject_name || 'غير معروف'}" (بدون رسوم المنصة)`;
+
+            if (refundDetails.previouslyRefunded > 0) {
+                refundDescription += ` بعد خصم ${refundDetails.previouslyRefunded} دج مستردة مسبقاً عن حصص الخطة`;
+            }
+
+            await insert('wallet_transactions', {
+                student_id: targetStudentId,
+                amount: refundAmount,
+                type: 'refund',
+                status: 'completed',
+                description: refundDescription,
+                created_at: new Date().toISOString()
+            });
         }
 
         // ✅ إلغاء الحجز
@@ -1117,46 +1157,55 @@ router.post('/teacher-cancel', authenticate, authorize(['teacher', 'admin']), [
 
         const student_id = session.student_id;
 
-        // ✅ استرداد الرصيد المعلق للطالب
-        let refundAmount = 0;
-        const isOfferFree = (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && parseFloat(offer.price || 0) === 0;
+        // ✅ استرداد الرصيد المعلق للطالب بدقة متناهية:
+        // 1. يسترد الطالب المبلغ بدون رسوم المنصة.
+        // 2. إذا كان قد استرد له سابقاً مبلغ حصة ضمن الخطة، يخصم ذلك المبلغ من الرصيد الحالي لمنع أخذ أكثر من قيمة الاشتراك.
+        const refundDetails = await calculateBookingRefundDetails({
+            session,
+            offer,
+            studentId: student_id
+        });
 
-        if ((session.payment_status === 'pending_stream' || session.payment_status === 'paid') && !isOfferFree) {
-            refundAmount = session.payment_amount || 0;
-            
-            if (refundAmount > 0) {
-                // ✅ إعادة المبلغ لمحفظة الطالب
-                const student = await getOne('students', 'id', student_id);
-                if (student) {
-                    await update('students', student_id, {
-                        wallet_balance: (parseFloat(student.wallet_balance) || 0) + refundAmount
-                    });
-                }
+        const refundAmount = refundDetails.netRefundAmount;
+        const teacherDeduction = refundDetails.teacherDeduction;
 
-                // ✅ خصم المبلغ من الرصيد المعلق للأستاذ (يخصم فقط ما كان سيحصل عليه الأستاذ)
-                const teacherShare = session.teacher_earned || 0;
-                const teacher = await getOne('teachers', 'id', offer.teacher_id);
-                if (teacher) {
-                    await update('teachers', offer.teacher_id, {
-                        pending_withdraw: Math.max(0, (parseFloat(teacher.pending_withdraw) || 0) - teacherShare)
-                    });
-                }
-
-                // ✅ تسجيل معاملة استرداد
-                await insert('wallet_transactions', {
-                    student_id: student_id,
-                    amount: refundAmount,
-                    type: 'refund',
-                    status: 'completed',
-                    description: `استرداد مبلغ الحجز من قبل الأستاذ لدرس "${offer.subject_name}"`,
-                    created_at: new Date().toISOString()
+        if (refundAmount > 0) {
+            // ✅ إعادة المبلغ لمحفظة الطالب
+            const student = await getOne('students', 'id', student_id);
+            if (student) {
+                await update('students', student_id, {
+                    wallet_balance: (parseFloat(student.wallet_balance) || 0) + refundAmount
                 });
             }
+
+            // ✅ خصم المبلغ من الرصيد المعلق للأستاذ (يخصم فقط ما تبقى من نصيب الأستاذ ولم يخصم مسبقاً)
+            const teacher = await getOne('teachers', 'id', offer.teacher_id);
+            if (teacher && teacherDeduction > 0) {
+                await update('teachers', offer.teacher_id, {
+                    pending_withdraw: Math.max(0, (parseFloat(teacher.pending_withdraw) || 0) - teacherDeduction)
+                });
+            }
+
+            // ✅ تسجيل معاملة استرداد دقيقة
+            let refundDesc = `استرداد مبلغ الحجز من قبل الأستاذ لدرس "${offer.subject_name}" (بدون رسوم المنصة)`;
+            if (refundDetails.previouslyRefunded > 0) {
+                refundDesc += ` بعد خصم ${refundDetails.previouslyRefunded} دج تم استردادها سابقاً عن حصص الخطة`;
+            }
+
+            await insert('wallet_transactions', {
+                student_id: student_id,
+                amount: refundAmount,
+                type: 'refund',
+                status: 'completed',
+                description: refundDesc,
+                created_at: new Date().toISOString()
+            });
         }
 
-        // ✅ تحديث حالة الجلسة إلى "ملغى"
+        // ✅ تحديث حالة الجلسة إلى "ملغى" مع توثيق المبلغ المسترد
         await update('sessions', session_id, {
             payment_status: 'cancelled',
+            refund_amount: refundAmount,
             cancelled_at: new Date().toISOString()
         });
 
@@ -1173,12 +1222,16 @@ router.post('/teacher-cancel', authenticate, authorize(['teacher', 'admin']), [
             .eq('offer_id', session.offer_id)
             .eq('student_id', student_id);
 
-        // ✅ إرسال إشعار للطالب
+        // ✅ إرسال إشعار مفصل للطالب
         try {
+            let notifMsg = `قام الأستاذ بإلغاء حجزك لدرس "${offer.subject_name}". تمت إعادة مبلغ ${refundAmount} دج إلى محفظتك (بدون رسوم المنصة).`;
+            if (refundDetails.previouslyRefunded > 0) {
+                notifMsg = `قام الأستاذ بإلغاء حجزك لدرس "${offer.subject_name}". تمت إعادة مبلغ ${refundAmount} دج إلى محفظتك (بدون رسوم المنصة، وبعد خصم ${refundDetails.previouslyRefunded} دج التي تم استردادها لك سابقاً عن حصص الخطة).`;
+            }
             await supabase.from('notifications').insert({
                 user_id: student_id,
                 title: 'إلغاء حجز واسترداد مبلغ',
-                message: `قام الأستاذ بإلغاء حجزك لدرس "${offer.subject_name}" وتمت إعادة مبلغ ${refundAmount} دج إلى محفظتك.`,
+                message: notifMsg,
                 type: 'refund',
                 is_read: false,
                 created_at: new Date().toISOString()
@@ -1201,8 +1254,13 @@ router.post('/teacher-cancel', authenticate, authorize(['teacher', 'admin']), [
 
         return res.json({
             success: true,
-            message: 'تم إلغاء حجز الطالب وإعادة المبلغ لحسابه بنجاح',
-            refund_amount: refundAmount
+            message: refundDetails.previouslyRefunded > 0
+                ? `تم إلغاء حجز الطالب بنجاح واسترداد مبلغ ${refundAmount} دج لحسابه (بدون رسوم المنصة وبعد خصم ${refundDetails.previouslyRefunded} دج المستردة سابقاً)`
+                : `تم إلغاء حجز الطالب وإعادة مبلغ ${refundAmount} دج لحسابه بنجاح (بدون رسوم المنصة)`,
+            refund_amount: refundAmount,
+            base_refundable: refundDetails.baseRefundableWithoutFee,
+            previously_refunded: refundDetails.previouslyRefunded,
+            platform_fee: refundDetails.platformFee
         });
     } catch (error) {
         logger.error('خطأ في إلغاء حجز الطالب من قبل الأستاذ:', error.message);

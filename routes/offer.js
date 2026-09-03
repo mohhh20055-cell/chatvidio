@@ -20,6 +20,7 @@ const upload = multer({
 });
 const { processStreamPayments, archiveStreamLog } = require('../utils/streamVerification');
 const { sendPushNotification } = require('../utils/notification');
+const { calculateBookingRefundDetails } = require('../utils/refundCalculator');
 
 // ✅ دالة مساعدة لحساب واسترجاع الوقت المتبقي للبث
 function calculateOfferRemainingSeconds(offer) {
@@ -1170,60 +1171,73 @@ router.delete('/offer/delete/:offer_id', authenticate, authorize(['teacher']), [
             return res.status(403).json({ success: false, error: 'غير مصرح لك بحذف هذا الدرس' });
         }
 
-        // ✅ معالجة استرداد أي حجوزات نشطة إن وجدت قبل الحذف
+        // ✅ معالجة استرداد أي حجوزات نشطة إن وجدت قبل الحذف (بدون رسوم المنصة ومخصوماً منها أي حصص مستردة)
         const { data: activeSessions } = await supabase
             .from('sessions')
-            .select('id, student_id, payment_amount, payment_status')
+            .select('id, student_id, payment_amount, teacher_earned, refunded_amount, payment_status')
             .eq('offer_id', offer_id)
             .in('payment_status', ['paid', 'pending_stream']);
 
         if (activeSessions && activeSessions.length > 0) {
             console.log(`⚠️ حذف درس يحتوي على ${activeSessions.length} حجز نشط - البدء في إعادة المبالغ للطلاب`);
-            const isOfferFree = (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && parseFloat(offer.price || 0) === 0;
 
             for (const session of activeSessions) {
-                const refundAmount = (!isOfferFree && session.payment_amount > 0) ? session.payment_amount : 0;
+                const refundDetails = await calculateBookingRefundDetails({
+                    session,
+                    offer,
+                    studentId: session.student_id
+                });
+                const refundAmount = refundDetails.netRefundAmount;
+                const teacherDeduction = refundDetails.teacherDeduction;
 
                 if (refundAmount > 0) {
                     // إعادة المبلغ للطالب
                     const student = await getOne('students', 'id', session.student_id);
                     if (student) {
                         await update('students', session.student_id, {
-                            wallet_balance: (student.wallet_balance || 0) + refundAmount
+                            wallet_balance: (parseFloat(student.wallet_balance) || 0) + refundAmount
                         });
                     }
 
                     // خصم من الرصيد المعلق للأستاذ
                     const teacher = await getOne('teachers', 'id', offer.teacher_id);
-                    if (teacher) {
+                    if (teacher && teacherDeduction > 0) {
                         await update('teachers', offer.teacher_id, {
-                            pending_withdraw: Math.max(0, (teacher.pending_withdraw || 0) - refundAmount)
+                            pending_withdraw: Math.max(0, (parseFloat(teacher.pending_withdraw) || 0) - teacherDeduction)
                         });
                     }
 
                     // تسجيل المعاملة
+                    let refundDesc = `استرداد مبلغ حجز لدرس محذوف "${offer.subject_name || 'غير معروف'}" (بدون رسوم المنصة)`;
+                    if (refundDetails.previouslyRefunded > 0) {
+                        refundDesc += ` بعد خصم ${refundDetails.previouslyRefunded} دج مستردة سابقاً`;
+                    }
                     await insert('wallet_transactions', {
                         student_id: session.student_id,
                         amount: refundAmount,
                         type: 'refund',
                         status: 'completed',
-                        description: `��سترداد مبلغ حجز لدرس محذوف "${offer.subject_name || 'غير معروف'}"`,
+                        description: refundDesc,
                         created_at: new Date().toISOString()
                     });
                 }
 
                 // إرسال إشعار للطالب
                 try {
+                    let notifMsg = `قام الأستاذ بحذف درس "${offer.subject_name || 'غير معروف'}" وتمت إعادة مبلغ ${refundAmount} دج إلى محفظتك (بدون رسوم المنصة).`;
+                    if (refundDetails.previouslyRefunded > 0) {
+                        notifMsg = `قام الأستاذ بحذف درس "${offer.subject_name || 'غير معروف'}" وتمت إعادة مبلغ ${refundAmount} دج إلى محفظتك (بدون رسوم المنصة وبعد خصم ${refundDetails.previouslyRefunded} دج مستردة مسبقاً عن حصص الخطة).`;
+                    }
                     await supabase.from('notifications').insert({
                         user_id: session.student_id,
                         title: 'إلغاء حجز واسترداد مبلغ (حذف الدرس)',
-                        message: `قام الأستاذ بحذف درس "${offer.subject_name || 'غير معروف'}" وتمت إعادة مبلغ ${refundAmount} دج إلى محفظتك.`,
+                        message: notifMsg,
                         type: 'refund',
                         is_read: false,
                         created_at: new Date().toISOString()
                     });
                 } catch (notifErr) {
-                    console.warn('⚠️ تعذر إرسال إشعار ��لإلغاء للطالب:', notifErr.message);
+                    console.warn('⚠️ تعذر إرسال إشعار الإلغاء للطالب:', notifErr.message);
                 }
             }
         }
@@ -1340,12 +1354,20 @@ router.get(['/offer/:offer_id/students', '/teacher/offer/:offer_id/students'], a
             return res.status(500).json({ success: false, error: 'حدث خطأ في قاعدة البيانات' });
         }
 
-        const students = (sessions || []).map(s => {
+        const students = await Promise.all((sessions || []).map(async (s) => {
             const studentInfo = s.students || {};
             let profileImg = studentInfo.profile_url || studentInfo.profile_image;
             if (profileImg && !profileImg.startsWith('http')) {
                 profileImg = getPublicImageUrl('profiles', 'students', profileImg);
             }
+
+            // حساب المبلغ المسترد الصافي بدقة لكل طالب
+            const refundDetails = await calculateBookingRefundDetails({
+                session: s,
+                offer,
+                studentId: s.student_id
+            });
+
             return {
                 session_id: s.id,
                 student_id: s.student_id,
@@ -1356,9 +1378,14 @@ router.get(['/offer/:offer_id/students', '/teacher/offer/:offer_id/students'], a
                 profile_image: profileImg,
                 payment_status: s.payment_status,
                 payment_amount: s.payment_amount || 0,
+                refundable_amount: refundDetails.netRefundAmount,
+                base_amount: refundDetails.baseRefundableWithoutFee,
+                platform_fee: refundDetails.platformFee,
+                previously_refunded: refundDetails.previouslyRefunded,
+                refund_details: refundDetails.details,
                 booked_at: s.created_at
             };
-        });
+        }));
 
         return res.json({
             success: true,

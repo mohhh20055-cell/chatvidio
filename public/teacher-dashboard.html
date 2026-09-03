@@ -8910,17 +8910,27 @@ function updateUI() {
                                     </div>
                                 </div>
                             </div>
-                            <div style="text-align:left;">
+                            <div style="text-align:left; display:flex; flex-direction:column; align-items:flex-end; gap:3px;">
                                 <span style="background:#dcfce7; color:#166534; padding:4px 8px; border-radius:6px; font-size:0.75rem; font-weight:700;">
-                                    <i class="fas fa-check-circle"></i> ${s.payment_amount > 0 ? `${s.payment_amount} دج` : 'مجاني'}
+                                    <i class="fas fa-check-circle"></i> ${s.payment_amount > 0 ? `المدفوع: ${s.payment_amount} دج` : 'مجاني'}
                                 </span>
+                                ${s.payment_amount > 0 ? `
+                                    <span style="background:#eff6ff; color:#1e40af; padding:2px 6px; border-radius:4px; font-size:0.72rem; font-weight:700;" title="المبلغ المسترد بدون رسوم المنصة وبعد خصم أي حصص مستردة سابقاً">
+                                        <i class="fas fa-wallet"></i> المسترد الصافي: ${s.refundable_amount !== undefined ? s.refundable_amount : s.payment_amount} دج
+                                    </span>
+                                    ${(s.previously_refunded > 0) ? `
+                                        <span style="background:#fef3c7; color:#92400e; padding:2px 6px; border-radius:4px; font-size:0.68rem; font-weight:600;">
+                                            <i class="fas fa-history"></i> خصم ${s.previously_refunded} دج مستردة سابقاً
+                                        </span>
+                                    ` : ''}
+                                ` : ''}
                             </div>
                         </div>
 
                         <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; padding:8px 12px; border-radius:8px; font-size:0.8rem; color:#475569; flex-wrap:wrap; gap:8px;">
                             <span><i class="fas fa-clock"></i> تاريخ الحجز: ${bookedDate}</span>
-                            <button onclick="cancelStudentBookingByTeacher(${s.session_id}, ${offerId}, '${escapeHtml(s.student_name)}', ${s.payment_amount})" style="background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; padding:5px 10px; border-radius:6px; font-size:0.78rem; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:4px; transition:all 0.2s;">
-                                <i class="fas fa-user-xmark"></i> إلغاء الحجز واسترداد المبلغ
+                            <button onclick="cancelStudentBookingByTeacher(${s.session_id}, ${offerId}, '${escapeHtml(s.student_name)}', ${s.refundable_amount !== undefined ? s.refundable_amount : s.payment_amount}, ${s.previously_refunded || 0}, ${s.platform_fee || 0})" style="background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; padding:5px 10px; border-radius:6px; font-size:0.78rem; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:4px; transition:all 0.2s;">
+                                <i class="fas fa-user-xmark"></i> إلغاء الحجز واسترداد (${s.refundable_amount !== undefined ? s.refundable_amount : s.payment_amount} دج)
                             </button>
                         </div>
                     </div>
@@ -8941,9 +8951,15 @@ function updateUI() {
     }
     window.closeOfferStudentsModal = closeOfferStudentsModal;
 
-    async function cancelStudentBookingByTeacher(sessionId, offerId, studentName, amount) {
+    async function cancelStudentBookingByTeacher(sessionId, offerId, studentName, refundableAmount, previouslyRefunded = 0, platformFee = 0) {
         if (checkGuestAction()) return;
-        const confirmMsg = `هل أنت متأكد من إلغاء حجز الطالب "${studentName}"؟\n\nسيتم استرداد مبلغ ${amount} دج تلقائياً لحسابه وإلغاء تسجيله من هذا الدرس.`;
+        
+        let refundMsg = `سيتم استرداد مبلغ ${refundableAmount} دج تلقائياً لحساب الطالب (بدون رسوم المنصة).`;
+        if (previouslyRefunded && Number(previouslyRefunded) > 0) {
+            refundMsg += `\n\n⚠️ ملاحظة: تم خصم مبلغ ${previouslyRefunded} دج لأن الطالب قد استرد سابقاً مبلغ حصة/حصص ضمن هذه الخطة، وذلك لضمان عدم تجاوز المبلغ الأصلي للاشتراك.`;
+        }
+        
+        const confirmMsg = `هل أنت متأكد من إلغاء حجز الطالب "${studentName}"؟\n\n${refundMsg}\n\nهل تريد تأكيد الإلغاء؟`;
         if (!confirm(confirmMsg)) return;
 
         try {
