@@ -248,20 +248,36 @@ router.post('/end/:offer_id', authenticate, authorize(['teacher']), validateOffe
             }
         }
 
-        // ✅ تحديث حالة الدرس بدلاً من حذفه
-        const isAllCompleted = (currentOffer.completed_sessions_count || 0) >= (currentOffer.total_sessions || 1);
+        // ✅ جلب بيانات الدرس المحدثة من قاعدة البيانات بعد معالجة المدفوعات وتحديث العدادات
+        const freshOffer = await getOne('offers', 'id', offer_id) || currentOffer;
+        const isAllCompleted = (freshOffer.completed_sessions_count || 0) >= (freshOffer.total_sessions || 1);
         
+        // حساب مدة الحصة الافتراضية بالثواني للحصة التالية
+        const defaultDurationMinutes = freshOffer.duration_minutes || freshOffer.duration || 60;
+        const defaultDurationSeconds = defaultDurationMinutes * 60;
+
+        const updateData = {
+            status: isAllCompleted ? 'completed' : 'upcoming',
+            completed_at: isAllCompleted ? new Date().toISOString() : null,
+            stream_active: false,
+            stream_url: null,
+            stream_started_at: null,
+            room_name: null,
+            room_password: null
+        };
+
+        // إذا لم تكتمل جميع الحصص، يتم إعادة ضبط الوقت المتبقي في العرض للحصة القادمة
+        if (!isAllCompleted) {
+            updateData.remaining_seconds = defaultDurationSeconds;
+            updateData.remaining_time = defaultDurationSeconds;
+        } else {
+            updateData.remaining_seconds = 0;
+            updateData.remaining_time = 0;
+        }
+
         const { error: updateError } = await supabase
             .from('offers')
-            .update({
-                status: isAllCompleted ? 'completed' : 'upcoming',
-                completed_at: isAllCompleted ? new Date().toISOString() : null,
-                stream_active: false,
-                stream_url: null,
-                stream_started_at: null,
-                room_name: null,
-                room_password: null
-            })
+            .update(updateData)
             .eq('id', offer_id);
 
         if (updateError) {
