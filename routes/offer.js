@@ -28,8 +28,6 @@ function calculateOfferRemainingSeconds(offer) {
     let sec = null;
     if (offer.remaining_seconds !== undefined && offer.remaining_seconds !== null && !isNaN(Number(offer.remaining_seconds))) {
         sec = Number(offer.remaining_seconds);
-    } else if (offer.remaining_time !== undefined && offer.remaining_time !== null && !isNaN(Number(offer.remaining_time))) {
-        sec = Number(offer.remaining_time);
     }
 
     if (sec !== null) {

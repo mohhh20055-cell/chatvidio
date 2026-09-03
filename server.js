@@ -1962,19 +1962,17 @@ const handleTeacherZoomView = async (req, res) => {
         let savedSeconds = null;
         if (offer.remaining_seconds !== undefined && offer.remaining_seconds !== null && !isNaN(Number(offer.remaining_seconds)) && Number(offer.remaining_seconds) > 0) {
             savedSeconds = Number(offer.remaining_seconds);
-        } else if (offer.remaining_time !== undefined && offer.remaining_time !== null && !isNaN(Number(offer.remaining_time)) && Number(offer.remaining_time) > 0) {
-            savedSeconds = Number(offer.remaining_time);
         }
 
         if (savedSeconds !== null) {
-            offer.remaining_time = savedSeconds;
+            offer.remaining_seconds = savedSeconds;
         } else if (actualStartTime) {
             const now = new Date().getTime();
             const elapsed = Math.floor((now - actualStartTime) / 1000);
             const duration = (offer.duration_minutes || offer.duration || 60) * 60;
-            offer.remaining_time = Math.max(0, duration - elapsed);
+            offer.remaining_seconds = Math.max(0, duration - elapsed);
         } else {
-            offer.remaining_time = (offer.duration_minutes || offer.duration || 60) * 60;
+            offer.remaining_seconds = (offer.duration_minutes || offer.duration || 60) * 60;
         }
         
         offer.studentsAdded = studentsAdded;
@@ -2225,7 +2223,7 @@ function generateTeacherZoomPage(offer, teacher, token) {
         let isCamOn = true;
         let isSharing = false;
 
-        let streamRemainingSeconds = ${offer.remaining_time || 0};
+        let streamRemainingSeconds = ${offer.remaining_seconds || 0};
         let streamTotalSeconds = ${offer.total_time || (offer.duration_minutes ? offer.duration_minutes * 60 : (offer.duration ? offer.duration * 60 : 3600))};
         if (!streamTotalSeconds || streamTotalSeconds <= 0) streamTotalSeconds = 3600;
         if (!streamRemainingSeconds || streamRemainingSeconds <= 0) {
@@ -3333,14 +3331,12 @@ const handleStudentZoomView = async (req, res) => {
         let savedSeconds = null;
         if (offer.remaining_seconds !== undefined && offer.remaining_seconds !== null && !isNaN(Number(offer.remaining_seconds)) && Number(offer.remaining_seconds) > 0) {
             savedSeconds = Number(offer.remaining_seconds);
-        } else if (offer.remaining_time !== undefined && offer.remaining_time !== null && !isNaN(Number(offer.remaining_time)) && Number(offer.remaining_time) > 0) {
-            savedSeconds = Number(offer.remaining_time);
         }
 
         if (savedSeconds !== null) {
-            offer.remaining_time = savedSeconds;
+            offer.remaining_seconds = savedSeconds;
         } else {
-            offer.remaining_time = (offer.duration_minutes || offer.duration || 60) * 60;
+            offer.remaining_seconds = (offer.duration_minutes || offer.duration || 60) * 60;
         }
 
         res.send(generateStudentZoomPage(offer, student));
@@ -3918,7 +3914,7 @@ function generateStudentZoomPage(offer, student) {
         }
 
         let isStudentMuted = false;
-        let studentRemainingSeconds = ${offer.remaining_time || 0};
+        let studentRemainingSeconds = ${offer.remaining_seconds || 0};
         let studentTotalSeconds = ${offer.total_time || (offer.duration_minutes ? offer.duration_minutes * 60 : (offer.duration ? offer.duration * 60 : 3600))};
         if (!studentTotalSeconds || studentTotalSeconds <= 0) studentTotalSeconds = 3600;
         if (!studentRemainingSeconds || studentRemainingSeconds <= 0) {

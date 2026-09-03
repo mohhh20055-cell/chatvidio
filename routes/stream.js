@@ -269,10 +269,8 @@ router.post('/end/:offer_id', authenticate, authorize(['teacher']), validateOffe
         // إذا لم تكتمل جميع الحصص، يتم إعادة ضبط الوقت المتبقي في العرض للحصة القادمة
         if (!isAllCompleted) {
             updateData.remaining_seconds = defaultDurationSeconds;
-            updateData.remaining_time = defaultDurationSeconds;
         } else {
             updateData.remaining_seconds = 0;
-            updateData.remaining_time = 0;
         }
 
         const { error: updateError } = await supabase
@@ -2230,14 +2228,6 @@ async function saveOfferRemainingTime(offerId, remainingSeconds, isPaused = fals
             .eq('id', offerId);
     } catch(e) {}
 
-    // محاولة التحديث باستخدام remaining_time
-    try {
-        await supabase
-            .from('offers')
-            .update({ ...updateObj, remaining_time: sec })
-            .eq('id', offerId);
-    } catch(e) {}
-
     // تحديث جدول التحقق من البث (stream_verification)
     try {
         const { data: verification } = await supabase
@@ -2357,10 +2347,10 @@ router.all('/teacher-leave/:offer_id', async (req, res) => {
         try {
             const { data: offer } = await supabase
                 .from('offers')
-                .select('remaining_seconds, remaining_time')
+                .select('remaining_seconds')
                 .eq('id', offerId)
                 .maybeSingle();
-            const sec = offer ? (offer.remaining_seconds ?? offer.remaining_time ?? 0) : 0;
+            const sec = offer ? (offer.remaining_seconds ?? 0) : 0;
             await saveOfferRemainingTime(offerId, sec, true);
         } catch(e) {
             console.error('Error in teacher-leave update:', e.message);
@@ -2377,7 +2367,7 @@ router.get('/timer/:offer_id', async (req, res) => {
         const offerId = parseInt(req.params.offer_id);
         const { data: offer, error } = await supabase
             .from('offers')
-            .select('id, status, duration_minutes, duration, remaining_seconds, remaining_time, stream_started_at')
+            .select('id, status, duration_minutes, duration, remaining_seconds, stream_started_at')
             .eq('id', offerId)
             .single();
 
@@ -2388,8 +2378,6 @@ router.get('/timer/:offer_id', async (req, res) => {
         let remainingSec = null;
         if (offer.remaining_seconds != null && !isNaN(Number(offer.remaining_seconds))) {
             remainingSec = Number(offer.remaining_seconds);
-        } else if (offer.remaining_time != null && !isNaN(Number(offer.remaining_time))) {
-            remainingSec = Number(offer.remaining_time);
         } else {
             remainingSec = (offer.duration_minutes || offer.duration || 60) * 60;
         }
