@@ -2063,9 +2063,25 @@ function generateTeacherZoomPage(offer, teacher, token) {
             .chat-input-box input { padding: 8px 12px; font-size: 13px; border-radius: 8px; }
             .chat-input-box button { padding: 0 12px; border-radius: 8px; }
             
-            .controls-bar { height: auto; min-height: 44px; gap: 6px; padding: 4px 8px; flex-wrap: wrap; }
-            .ctrl-btn { width: 36px; height: 36px; font-size: 14px; }
-            .ctrl-btn.end { width: auto; height: 32px; border-radius: 6px; font-size: 11px; padding: 0 10px; margin-top: 0; }
+            .controls-bar { height: auto; min-height: 50px; gap: 6px; padding: 6px 8px; flex-wrap: wrap; justify-content: center; }
+            .ctrl-btn { width: 36px; height: 36px; font-size: 14px; flex-shrink: 0; }
+            .ctrl-btn.end { width: auto; height: 32px; border-radius: 6px; font-size: 11px; padding: 0 10px; margin-top: 0; flex-shrink: 0; }
+            #qualityBtn {
+                display: inline-flex !important;
+                visibility: visible !important;
+                height: 36px !important;
+                font-size: 11px !important;
+                padding: 0 10px !important;
+                flex-shrink: 0;
+            }
+            #downloadRecBtn {
+                display: inline-flex !important;
+                visibility: visible !important;
+                height: 36px !important;
+                font-size: 11px !important;
+                padding: 0 10px !important;
+                flex-shrink: 0;
+            }
             #addStudentsBtn { padding: 4px 8px !important; font-size: 11px !important; height: 32px !important; }
         }
 
@@ -2179,12 +2195,12 @@ function generateTeacherZoomPage(offer, teacher, token) {
             <!-- زر التحكم بجودة البث والتكيف مع الإنترنت -->
             <div style="position: relative; display: inline-block;">
                 <button class="ctrl-btn" id="qualityBtn" onclick="toggleQualityMenu()" title="ضبط جودة البث والتكيف مع الإنترنت" style="width: auto; padding: 0 14px; border-radius: 20px; font-size: 12px; font-weight: 700; gap: 6px; background: #2563eb; border-color: #3b82f6;">
-                    <i class="fas fa-sliders-h"></i> <span id="currentQualityLabel">الجودة: تلقائي (متكيف)</span>
+                    <i class="fas fa-sliders-h"></i> <span id="currentQualityLabel">الجودة: 360p اقتصادي</span>
                 </button>
                 <div id="qualityMenu" style="display: none; position: absolute; bottom: 52px; right: 0; background: #1f2937; border: 1px solid #374151; border-radius: 10px; padding: 6px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 100; min-width: 190px; text-align: right;">
                     <div style="font-size: 11px; color: #9ca3af; padding: 4px 8px; border-bottom: 1px solid #374151; margin-bottom: 4px; font-weight: 700;">جودة البث وتكيف الإنترنت:</div>
                     <button onclick="changeVideoQuality('auto', 'تلقائي (متكيف)')" style="width: 100%; text-align: right; background: transparent; border: none; color: #fff; padding: 8px 10px; border-radius: 6px; font-family: Cairo; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: space-between;">
-                        <span>⚡ تلقائي (يتكيف مع النت)</span> <i class="fas fa-check quality-check" id="check-auto" style="color: #10b981;"></i>
+                        <span>⚡ تلقائي (يتكيف مع النت)</span> <i class="fas fa-check quality-check" id="check-auto" style="display:none; color: #10b981;"></i>
                     </button>
                     <button onclick="changeVideoQuality('720p_1', '720p HD')" style="width: 100%; text-align: right; background: transparent; border: none; color: #fff; padding: 8px 10px; border-radius: 6px; font-family: Cairo; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: space-between;">
                         <span>720p HD عالي</span> <i class="fas fa-check quality-check" id="check-720p_1" style="display:none; color: #10b981;"></i>
@@ -2193,7 +2209,7 @@ function generateTeacherZoomPage(offer, teacher, token) {
                         <span>480p SD متوازن</span> <i class="fas fa-check quality-check" id="check-480p_1" style="display:none; color: #10b981;"></i>
                     </button>
                     <button onclick="changeVideoQuality('360p_1', '360p اقتصادي')" style="width: 100%; text-align: right; background: transparent; border: none; color: #fff; padding: 8px 10px; border-radius: 6px; font-family: Cairo; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: space-between;">
-                        <span>360p اقتصادي (نت متوسط)</span> <i class="fas fa-check quality-check" id="check-360p_1" style="display:none; color: #10b981;"></i>
+                        <span>360p اقتصادي (نت متوسط)</span> <i class="fas fa-check quality-check" id="check-360p_1" style="display:inline; color: #10b981;"></i>
                     </button>
                     <button onclick="changeVideoQuality('240p_1', '240p منخفض جداً')" style="width: 100%; text-align: right; background: transparent; border: none; color: #fff; padding: 8px 10px; border-radius: 6px; font-family: Cairo; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: space-between;">
                         <span>240p منخفض (نت ضعيف)</span> <i class="fas fa-check quality-check" id="check-240p_1" style="display:none; color: #10b981;"></i>
@@ -2478,22 +2494,21 @@ function generateTeacherZoomPage(offer, teacher, token) {
                         localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack();
                     }
 
-                    // 📹 إعداد فيديو متكيف فائق السلاسة وموفر جداً للإنترنت الضعيف لمنع التقطيع
+                    // 📹 إعداد فيديو بجودة 360p الافتراضية
                     try {
                         localVideoTrack = await AgoraRTC.createCameraVideoTrack({
-                            encoderConfig: {
-                                width: 480,
-                                height: 360,
-                                frameRate: 15,
-                                bitrateMax: 280,
-                                bitrateMin: 70
-                            },
-                            optimizationMode: 'detail'
+                            encoderConfig: '360p_1'
                         });
                     } catch (e) {
                         try {
                             localVideoTrack = await AgoraRTC.createCameraVideoTrack({
-                                encoderConfig: '360p_1'
+                                encoderConfig: {
+                                    width: 480,
+                                    height: 360,
+                                    frameRate: 15,
+                                    bitrateMax: 280,
+                                    bitrateMin: 70
+                                }
                             });
                         } catch(err) {
                             console.warn('Camera config fallback:', err);
