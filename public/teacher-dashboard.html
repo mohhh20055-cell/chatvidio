@@ -9266,7 +9266,7 @@ function updateUI() {
         let totalSessions = planType === '1_day' ? 1 : (parseInt(document.getElementById('totalSessions')?.value) || 1);
         if (totalSessions < 1) totalSessions = 1;
 
-        const feePerSession = isFree ? 0 : Math.round((durationVal / 60) * 50);
+        const feePerSession = isFree ? 0 : Math.round((durationVal / 45) * 50);
         const totalPlatformFee = feePerSession * totalSessions;
         const totalTeacherEarnings = pricePerSession * totalSessions;
         const totalStudentCost = (pricePerSession + feePerSession) * totalSessions;

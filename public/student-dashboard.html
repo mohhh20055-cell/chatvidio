@@ -5544,9 +5544,11 @@
         const durationMs = ((offer.duration || 60) * 60 * 1000);
         
         const scheduleLength = Array.isArray(offer.sessions_schedule) ? offer.sessions_schedule.length : 0;
-            const totalSessions = Math.max(1, Number(offer.total_sessions) || 0, scheduleLength);
-        const completedCount = offer.completed_sessions_count || 0;
+        const totalSessions = Math.max(1, Number(offer.total_sessions) || 0, scheduleLength);
+        const completedCount = Number(offer.completed_sessions_count ?? offer.completed_sessions ?? 0);
         const isMultiSessionRemaining = totalSessions > 1 && completedCount < totalSessions;
+
+        const isAllSessionsCompleted = completedCount >= totalSessions;
 
         const isExpired = offerDate ? ((offerDate.getTime() + durationMs) < now.getTime() && 
                           rawStatus !== 'live' && 
@@ -5554,10 +5556,19 @@
                           rawStatus !== 'paused' &&
                           !isMultiSessionRemaining) : false;
 
-        const isExplicitlyTerminated = ['completed', 'cancelled', 'ended'].includes(rawStatus) || (!!offer.completed_at && !isMultiSessionRemaining) || !!offer.force_ended_at || offer.terminated === true || offer.completed === true;
+        const isExplicitlyTerminated = ['completed', 'cancelled', 'ended'].includes(rawStatus) || (!!offer.completed_at && !isMultiSessionRemaining) || !!offer.force_ended_at || offer.terminated === true || offer.completed === true || isAllSessionsCompleted;
         const isTerminated = isExplicitlyTerminated || isExpired;
 
-        if (offer.stream_active === true || rawStatus === 'live' || (!!offer.stream_url && !isTerminated)) {
+        if (isTerminated) {
+            return {
+                text: '✅ منتهي',
+                code: 'ended',
+                color: '#475569',
+                bg: '#f1f5f9',
+                border: '#cbd5e1',
+                badgeHtml: '<span style="padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 800; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; display: inline-flex; align-items: center; gap: 4px;"><i class="fas fa-check-circle" style="color:#64748b;"></i> منتهي</span>'
+            };
+        } else if (offer.stream_active === true || rawStatus === 'live' || (!!offer.stream_url && !isTerminated)) {
             return {
                 text: '🔴 بث مباشر',
                 code: 'live',
@@ -5574,15 +5585,6 @@
                 bg: '#f0f9ff',
                 border: '#bae6fd',
                 badgeHtml: '<span style="padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 800; background: #f0f9ff; color: #0284c7; border: 1px solid #bae6fd; display: inline-flex; align-items: center; gap: 4px;"><i class="fas fa-video"></i> جاهز للبث</span>'
-            };
-        } else if (isTerminated) {
-            return {
-                text: '✅ منتهي',
-                code: 'ended',
-                color: '#475569',
-                bg: '#f1f5f9',
-                border: '#cbd5e1',
-                badgeHtml: '<span style="padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 800; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; display: inline-flex; align-items: center; gap: 4px;"><i class="fas fa-check-circle" style="color:#64748b;"></i> منتهي</span>'
             };
         } else {
             return {
@@ -5720,7 +5722,7 @@
             const sessionDuration = offer.duration || offer.session_duration || 60;
             const pricePerSession = isFree ? 0 : (offer.price_per_session !== undefined ? offer.price_per_session : (offer.price || 0));
 
-            const feePerSession = isFree ? 0 : Math.round((sessionDuration / 60) * 50);
+            const feePerSession = isFree ? 0 : Math.round((sessionDuration / 45) * 50);
             const costPerSessionTotal = isFree ? 0 : (pricePerSession + feePerSession);
             const offerTotalCost = isFree ? 0 : (costPerSessionTotal * totalSessions);
             const canBook = (isFree || currentBalance >= offerTotalCost) && statusInfo.code !== 'ended';
@@ -5733,8 +5735,9 @@
             };
 
             let actionBtnHtml = '';
+            const isCancelled = !!userBooking && userBooking.payment_status === 'cancelled';
 
-            if (isBooked || userBooking) {
+            if (isBooked && !isCancelled) {
                 if (statusInfo.code === 'ended') {
                     actionBtnHtml = `<button class="book-btn" style="flex: 1; background: #64748b; color: white;" disabled><i class="fas fa-flag-checkered"></i> الدرس منتهي</button>`;
                 } else if (statusInfo.code === 'live' || statusInfo.code === 'ready') {
@@ -5742,6 +5745,8 @@
                 } else {
                     actionBtnHtml = `<button class="book-btn" style="flex: 1; background: #2563eb; color: white; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="enterOrCheckStream(${offer.id})"><i class="fas fa-check-circle"></i> تم الاشتراك - دخول البث</button>`;
                 }
+            } else if (isCancelled) {
+                actionBtnHtml = `<button class="book-btn" style="flex: 1; background: #dc2626; color: white; font-weight: 800;" onclick="bookOffer(${offer.id}, ${isFree}, ${pricePerSession}, ${sessionDuration}, '${planType}', ${totalSessions})"><i class="fas fa-ticket-alt"></i> قم بالاشتراك (${offerTotalCost} دج)</button>`;
             } else {
                 if (statusInfo.code === 'ended') {
                     actionBtnHtml = `<button class="book-btn" style="flex: 1; background: #64748b; color: white;" disabled>الدرس منتهي</button>`;
@@ -6016,7 +6021,7 @@
         if (checkGuestAction()) return;
         if (!studentId) { showToast('الرجاء تسجيل الدخول أولاً', 'error'); return; }
         
-        const platformFeePerSession = isFree ? 0 : Math.round((duration / 60) * 50);
+        const platformFeePerSession = isFree ? 0 : Math.round((duration / 45) * 50);
         const costPerSession = isFree ? 0 : (pricePerSession + platformFeePerSession);
         const totalCost = isFree ? 0 : (costPerSession * totalSessions);
 

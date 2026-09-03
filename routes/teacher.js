@@ -1288,7 +1288,7 @@ router.get('/offers/:teacher_id', authenticate, authorize(['teacher']), [
             const sessionDuration = offer.session_duration || offer.duration_minutes || offer.duration || 60;
             const pricePerSession = parseFloat(offer.price_per_session || offer.price || 0);
             const isFree = (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && pricePerSession === 0;
-            const platformFeePerSession = isFree ? 0 : (offer.platform_fee_per_session || Math.round((sessionDuration / 60) * 50));
+            const platformFeePerSession = isFree ? 0 : (offer.platform_fee_per_session || Math.round((sessionDuration / 45) * 50));
             const totalPlatformFee = isFree ? 0 : (offer.total_platform_fee || (platformFeePerSession * totalSessions));
             const totalTeacherPrice = isFree ? 0 : (offer.total_teacher_price || (pricePerSession * totalSessions));
             const totalStudentPrice = isFree ? 0 : (offer.total_student_price || (totalTeacherPrice + totalPlatformFee));

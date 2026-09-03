@@ -161,7 +161,7 @@ router.post('/create', authenticate, authorize(['student']), [
         const totalSessions = offer.total_sessions || 1;
         const sessionDuration = offer.session_duration || offer.duration || 60;
         const pricePerSession = isFree ? 0 : parseFloat(offer.price_per_session || offer.price || 0);
-        const platformFeePerSession = isFree ? 0 : (offer.platform_fee_per_session || Math.round((sessionDuration / 60) * 50));
+        const platformFeePerSession = isFree ? 0 : (offer.platform_fee_per_session || Math.round((sessionDuration / 45) * 50));
         const totalPlatformFee = isFree ? 0 : (offer.total_platform_fee || (platformFeePerSession * totalSessions));
         const totalTeacherPrice = isFree ? 0 : (offer.total_teacher_price || (pricePerSession * totalSessions));
         const totalCostForStudent = isFree ? 0 : (offer.total_student_price || (totalTeacherPrice + totalPlatformFee));
@@ -1087,20 +1087,19 @@ router.post('/cancel', authenticate, [
             .eq('offer_id', session.offer_id)
             .eq('student_id', targetStudentId);
 
-        // ✅ إرسال إشعار للطالب إذا تم الإلغاء من الأستاذ
-        if (isTeacherOwner || isAdmin) {
-            try {
-                await supabase.from('notifications').insert({
-                    user_id: targetStudentId,
-                    title: 'إلغاء حجز واسترداد مبلغ',
-                    message: `تم إلغاء حجزك في درس "${offer?.subject_name || 'غير معروف'}" من قبل الأستاذ وإعادة مبلغ ${refundAmount} دج إلى محفظتك.`,
-                    type: 'refund',
-                    is_read: false,
-                    created_at: new Date().toISOString()
-                });
-            } catch (notifErr) {
-                console.warn('⚠️ تعذر إرسال إشعار الإلغاء للطالب:', notifErr.message);
-            }
+        // ✅ إرسال إشعار للطالب عند إلغاء الاشتراك
+        try {
+            const cancellerText = isTeacherOwner ? 'من قبل الأستاذ' : 'بناءً على طلبك';
+            await supabase.from('notifications').insert({
+                user_id: targetStudentId,
+                title: 'إلغاء حجز واسترداد مبلغ',
+                message: `تم إلغاء حجزك في درس "${offer?.subject_name || 'غير معروف'}" ${cancellerText} وإعادة مبلغ ${refundAmount} دج إلى محفظتك.`,
+                type: 'refund',
+                is_read: false,
+                created_at: new Date().toISOString()
+            });
+        } catch (notifErr) {
+            console.warn('⚠️ تعذر إرسال إشعار الإلغاء للطالب:', notifErr.message);
         }
 
         // ✅ تحديث عدد الطلاب في الدرس
