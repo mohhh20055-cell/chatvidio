@@ -114,7 +114,7 @@ async function formatOffers(offers) {
     const teacherIds = [...new Set(offers.map(o => o.teacher_id))];
     const { data: teachers, error: teachersError } = await supabase
         .from('teachers')
-        .select('id, full_name, specialization, profile_image, profile_url, teaching_level, is_certified, status')
+        .select('id, full_name, specialization, profile_image, profile_url, teaching_level, is_certified, is_vip, verification_status, status')
         .in('id', teacherIds);
 
     if (teachersError) {
@@ -181,6 +181,7 @@ router.get(['/teachers', '/public/teachers'], async (req, res) => {
             const universityLevels = ['1ere_uni', '2eme_uni', '3eme_uni', 'master', 'doctorat'];
 
             teachers = teachers.filter(t => {
+                if (t.is_vip === true) return true; // ⭐ يظهر لجميع المستويات إذا كان الأستاذ مرقى VIP
                 if (!t.teaching_level || t.teaching_level === '' || t.teaching_level === 'other') return true;
                 if (t.teaching_level === level) return true;
 
@@ -338,9 +339,22 @@ router.get('/public/offers', async (req, res) => {
             .eq('status', 'upcoming')
             .is('stream_url', null)
             .order('offer_date', { ascending: true })
-            .limit(100);
+            .limit(150);
 
-        // ✅ فلتر حسب المستوى التعليمي مع دعم المجموعات العامة
+        const { data: offers, error } = await query;
+
+        if (error) {
+            logger.error('خطأ في جلب الدروس العامة:', error.message);
+            return res.json([]);
+        }
+
+        const filtered = (offers || []).filter(offer => {
+            return offer.status === 'upcoming' && !offer.stream_url && !offer.stream_started_at && !offer.completed_at && new Date(offer.offer_date) >= now;
+        });
+
+        let formatted = await formatOffers(filtered);
+
+        // ✅ فلتر حسب المستوى التعليمي مع دعم المجموعات العامة (إلا إذا كان الأستاذ مرقى VIP)
         if (level && level !== 'all') {
             const middleLevels = ['1ere_am', '2eme_am', '3eme_am', '4eme_am', 'bem'];
             const primaryLevels = ['primary_1', 'primary_2', 'primary_3', 'primary_4', 'primary_5', '5eme_pri'];
@@ -366,21 +380,12 @@ router.get('/public/offers', async (req, res) => {
                 levelsToCheck = [...universityLevels, 'university'];
             }
 
-            query = query.in('education_level', levelsToCheck);
+            formatted = formatted.filter(offer => {
+                if (offer.is_vip === true || offer.teacher_is_vip === true) return true; // ⭐ يظهر لجميع المستويات إذا كان الأستاذ VIP
+                return levelsToCheck.includes(offer.education_level);
+            });
         }
 
-        const { data: offers, error } = await query;
-
-        if (error) {
-            logger.error('خطأ في جلب الدروس العامة:', error.message);
-            return res.json([]);
-        }
-
-        const filtered = (offers || []).filter(offer => {
-            return offer.status === 'upcoming' && !offer.stream_url && !offer.stream_started_at && !offer.completed_at && new Date(offer.offer_date) >= now;
-        });
-
-        const formatted = await formatOffers(filtered);
         res.json(formatted);
     } catch (error) {
         logger.error('خطأ في جلب الدروس العامة:', error.message);

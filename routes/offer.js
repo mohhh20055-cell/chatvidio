@@ -1186,34 +1186,46 @@ router.delete('/offer/delete/:offer_id', authenticate, authorize(['teacher']), [
             return res.status(403).json({ success: false, error: 'غير مصرح لك بحذف هذا الدرس' });
         }
 
-        // ✅ منع حذف الدرس إذا كان هناك طلاب مشتركين فيه
-        const { data: activeSessions } = await supabase
-            .from('sessions')
-            .select('id, student_id, payment_amount, teacher_earned, refunded_amount, payment_status')
-            .eq('offer_id', offer_id)
-            .in('payment_status', ['paid', 'pending_stream']);
+        // ✅ التحقق مما إذا كان العرض منتهياً بالكامل لجميع الحصص
+        const isEnded = Boolean(
+            offer.status === 'ended' || 
+            (offer.completed_sessions_count !== null && 
+             offer.completed_sessions_count !== undefined && 
+             offer.total_sessions !== null && 
+             offer.total_sessions !== undefined && 
+             offer.completed_sessions_count >= offer.total_sessions)
+        );
 
-        const { data: activeSubs } = await supabase
-            .from('stream_subscriptions')
-            .select('id')
-            .eq('offer_id', offer_id)
-            .eq('status', 'active');
+        if (!isEnded) {
+            // ✅ منع حذف الدرس إذا كان هناك طلاب مشتركين فيه (للدروس غير المنتهية فقط)
+            const { data: activeSessions } = await supabase
+                .from('sessions')
+                .select('id, student_id, payment_amount, teacher_earned, refunded_amount, payment_status')
+                .eq('offer_id', offer_id)
+                .in('payment_status', ['paid', 'pending_stream']);
 
-        if ((activeSessions && activeSessions.length > 0) || (activeSubs && activeSubs.length > 0)) {
-            return res.status(400).json({
-                success: false,
-                error: 'لا يمكن حذف الدرس لوجود طلاب مشتركين فيه. يرجى إلغاء حجز جميع الطلاب المشتركين أولاً من قائمة الطلاب قبل حذف الدرس.'
-            });
-        }
+            const { data: activeSubs } = await supabase
+                .from('stream_subscriptions')
+                .select('id')
+                .eq('offer_id', offer_id)
+                .eq('status', 'active');
 
-        // ✅ منع حذف الدرس إذا بدأت الحصة الأولى بالفعل أو تم إتمامها
-        const { hasOfferSessionsStarted } = require('../utils/refundCalculator');
-        const { hasStarted, reason } = await hasOfferSessionsStarted({ offer });
-        if (hasStarted) {
-            return res.status(400).json({
-                success: false,
-                error: `لا يمكن حذف الدرس لأن الحصة الأولى قد بدأت بالفعل أو انتهت. (${reason})`
-            });
+            if ((activeSessions && activeSessions.length > 0) || (activeSubs && activeSubs.length > 0)) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'لا يمكن حذف الدرس لوجود طلاب مشتركين فيه. يرجى إلغاء حجز جميع الطلاب المشتركين أولاً من قائمة الطلاب قبل حذف الدرس.'
+                });
+            }
+
+            // ✅ منع حذف الدرس إذا بدأت الحصة الأولى بالفعل أو تم إتمامها (للدروس غير المنتهية فقط)
+            const { hasOfferSessionsStarted } = require('../utils/refundCalculator');
+            const { hasStarted, reason } = await hasOfferSessionsStarted({ offer });
+            if (hasStarted) {
+                return res.status(400).json({
+                    success: false,
+                    error: `لا يمكن حذف الدرس لأن الحصة الأولى قد بدأت بالفعل أو انتهت. (${reason})`
+                });
+            }
         }
 
         try {

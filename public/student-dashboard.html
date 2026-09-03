@@ -5767,23 +5767,34 @@
             }
 
             const isOfferCert = Boolean(offer.is_certified === true || offer.teacher_is_certified === true || offer.status === 'certified');
-            const offerBadgeOverlay = isOfferCert
-                ? '<span title="أستاذ معتمد - شارة ذهبية 👑" style="position: absolute; bottom: -2px; right: -2px; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.55rem; border: 1.5px solid white; box-shadow: 0 1px 4px rgba(217,119,6,0.4); z-index: 2;"><i class="fas fa-crown"></i></span>'
-                : '<span title="أستاذ موثق - شارة زرقاء 🔵" style="position: absolute; bottom: -2px; right: -2px; background: #2563eb; color: white; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.5rem; border: 1.5px solid white; box-shadow: 0 1px 3px rgba(37,99,235,0.4); z-index: 2;"><i class="fas fa-check"></i></span>';
-            const offerNameIcon = isOfferCert
-                ? '<i class="fas fa-crown" style="font-size: 0.8rem; color: #f59e0b;" title="أستاذ معتمد 👑"></i>'
-                : '<i class="fas fa-check-circle" style="font-size: 0.8rem; color: #2563eb;" title="أستاذ موثق 🔵"></i>';
+            const isVipTeacher = Boolean(offer.is_vip === true || offer.teacher_is_vip === true);
+
+            let offerBadgeOverlay = '<span title="أستاذ موثق - شارة زرقاء 🔵" style="position: absolute; bottom: -2px; right: -2px; background: #2563eb; color: white; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.5rem; border: 1.5px solid white; box-shadow: 0 1px 3px rgba(37,99,235,0.4); z-index: 2;"><i class="fas fa-check"></i></span>';
+            let offerNameIcon = '<i class="fas fa-check-circle" style="font-size: 0.8rem; color: #2563eb;" title="أستاذ موثق 🔵"></i>';
+
+            if (isVipTeacher) {
+                offerBadgeOverlay = '<span title="أستاذ مرقى - التاج الذهبي 👑" style="position: absolute; bottom: -2px; right: -2px; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.55rem; border: 1.5px solid white; box-shadow: 0 1px 4px rgba(217,119,6,0.4); z-index: 2;"><i class="fas fa-crown"></i></span>';
+                offerNameIcon = '<i class="fas fa-crown" style="font-size: 0.8rem; color: #f59e0b;" title="التاج الذهبي 👑"></i>';
+            } else if (isOfferCert) {
+                offerBadgeOverlay = '<span title="أستاذ معتمد - شارة ذهبية 👑" style="position: absolute; bottom: -2px; right: -2px; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.55rem; border: 1.5px solid white; box-shadow: 0 1px 4px rgba(217,119,6,0.4); z-index: 2;"><i class="fas fa-crown"></i></span>';
+                offerNameIcon = '<i class="fas fa-crown" style="font-size: 0.8rem; color: #f59e0b;" title="أستاذ معتمد 👑"></i>';
+            }
+
             const teacherOnClickAttr = offer.teacher_id ? "showTeacherProfile(" + offer.teacher_id + ")" : "";
 
             const planBadge = planType === '1_day'
                 ? '<span style="background:#eff6ff; color:#1d4ed8; padding:3px 8px; border-radius:12px; font-size:0.72rem; font-weight:700; border:1px solid #bfdbfe;"><i class="fas fa-sun"></i> حصة واحدة</span>'
                 : `<span style="background:#fdf4ff; color:#9333ea; padding:3px 8px; border-radius:12px; font-size:0.72rem; font-weight:700; border:1px solid #f0abfc;"><i class="fas fa-layer-group"></i> ${planMap[planType] || planType} (${totalSessions} حصص)</span>`;
 
+            const vipBadgeHtml = isVipTeacher 
+                ? '<span style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 800; border: 1px solid #d97706; margin-right: 4px; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 1px 4px rgba(217,119,6,0.3);"><i class="fas fa-crown"></i> التاج الذهبي</span>'
+                : '';
+
             html += `
-                <div class="offer-card" id="offer-card-${offer.id}">
+                <div class="offer-card" id="offer-card-${offer.id}" style="${isVipTeacher ? 'border: 2px solid #f59e0b; box-shadow: 0 4px 14px rgba(245, 158, 11, 0.12);' : ''}">
                     <div>
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 4px;">
-                            <div>${statusInfo.badgeHtml} ${planBadge} ${userBooking ? '<span style="padding: 3px 8px; border-radius: 20px; font-size: 0.72rem; font-weight: 800; background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; margin-right: 4px; display: inline-flex; align-items: center; gap: 4px;"><i class="fas fa-check"></i> تم الاشتراك</span>' : ''}</div>
+                            <div>${statusInfo.badgeHtml} ${planBadge} ${vipBadgeHtml} ${userBooking ? '<span style="padding: 3px 8px; border-radius: 20px; font-size: 0.72rem; font-weight: 800; background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; margin-right: 4px; display: inline-flex; align-items: center; gap: 4px;"><i class="fas fa-check"></i> تم الاشتراك</span>' : ''}</div>
                             <div>${isFree ? '<span class="free-badge"><i class="fas fa-gift"></i> مجانية</span>' : `<span class="paid-badge"><i class="fas fa-money-bill"></i> ${offerTotalCost} دج</span>`}</div>
                         </div>
 
@@ -6156,6 +6167,7 @@
             const universityLevels = ['1ere_uni', '2eme_uni', '3eme_uni', 'master', 'doctorat'];
 
             const filtered = teachers.filter(teacher => {
+                if (teacher.is_vip === true || teacher.teacher_is_vip === true) return true; // ⭐ يظهر لجميع المستويات إذا كان الأستاذ مرقى VIP
                 if (!teacher.teaching_level || teacher.teaching_level === '' || teacher.teaching_level === 'other' || teacher.teaching_level === 'all') return true;
                 const tLevel = teacher.teaching_level;
 
@@ -6233,24 +6245,35 @@
                 `;
             }
             
+            const isTeacherCert = Boolean(teacher.is_certified === true || teacher.status === 'certified');
+            const isTeacherVip = Boolean(teacher.is_vip === true);
+
+            let tAvatarOverlay = '<span title="أستاذ موثق - شارة زرقاء 🔵" style="position: absolute; bottom: 0; right: 0; background: #2563eb; color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; border: 2px solid white; box-shadow: 0 2px 5px rgba(37,99,235,0.4); z-index: 2;"><i class="fas fa-check"></i></span>';
+            let tNameBadge = '<i class="fas fa-check-circle" style="font-size: 0.85rem; color: #2563eb;" title="أستاذ موثق 🔵"></i>';
+
+            if (isTeacherVip) {
+                tAvatarOverlay = '<span title="أستاذ مرقى - التاج الذهبي 👑" style="position: absolute; bottom: 0; right: 0; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; border: 2px solid white; box-shadow: 0 2px 6px rgba(217, 119, 6, 0.4); z-index: 2;"><i class="fas fa-crown"></i></span>';
+                tNameBadge = '<i class="fas fa-crown" style="font-size: 0.85rem; color: #f59e0b;" title="التاج الذهبي 👑"></i>';
+            } else if (isTeacherCert) {
+                tAvatarOverlay = '<span title="أستاذ معتمد - شارة ذهبية 👑" style="position: absolute; bottom: 0; right: 0; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; border: 2px solid white; box-shadow: 0 2px 6px rgba(217, 119, 6, 0.4); z-index: 2;"><i class="fas fa-crown"></i></span>';
+                tNameBadge = '<i class="fas fa-crown" style="font-size: 0.85rem; color: #f59e0b;" title="أستاذ معتمد 👑"></i>';
+            }
+
+            const vipTagHtml = isTeacherVip 
+                ? '<div style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 800; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 5px rgba(217,119,6,0.3); margin-bottom: 12px;"><i class="fas fa-crown"></i> التاج الذهبي VIP</div>'
+                : '';
+
             html += `
-                <div class="teacher-card" onclick="showTeacherProfile(${teacher.id})" style="background: white; border-radius: 16px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.03); transition: transform 0.2s; display: flex; flex-direction: column; justify-content: space-between;">
+                <div class="teacher-card" onclick="showTeacherProfile(${teacher.id})" style="background: white; border-radius: 16px; padding: 20px; border: ${isTeacherVip ? '2.5px solid #f59e0b' : '1px solid #e2e8f0'}; box-shadow: ${isTeacherVip ? '0 6px 16px rgba(245, 158, 11, 0.15)' : '0 4px 12px rgba(0,0,0,0.03)'}; transition: transform 0.2s; display: flex; flex-direction: column; justify-content: space-between;">
                     <div style="text-align: center;">
-                        ${(() => {
-                            const isTeacherCert = Boolean(teacher.is_certified === true || teacher.status === 'certified');
-                            const tAvatarOverlay = isTeacherCert
-                                ? '<span title="أستاذ معتمد - شارة ذهبية 👑" style="position: absolute; bottom: 0; right: 0; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; border: 2px solid white; box-shadow: 0 2px 6px rgba(217, 119, 6, 0.4); z-index: 2;"><i class="fas fa-crown"></i></span>'
-                                : '<span title="أستاذ موثق - شارة زرقاء 🔵" style="position: absolute; bottom: 0; right: 0; background: #2563eb; color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; border: 2px solid white; box-shadow: 0 2px 5px rgba(37,99,235,0.4); z-index: 2;"><i class="fas fa-check"></i></span>';
-                            const tNameBadge = isTeacherCert
-                                ? '<i class="fas fa-crown" style="font-size: 0.85rem; color: #f59e0b;" title="أستاذ معتمد 👑"></i>'
-                                : '<i class="fas fa-check-circle" style="font-size: 0.85rem; color: #2563eb;" title="أستاذ موثق 🔵"></i>';
-                            return `<div style="position: relative; display: inline-block; margin-bottom: 8px;">
-                                <img src="${teacherImage}" data-original-url="${teacherImage}" class="teacher-avatar" referrerpolicy="no-referrer" onerror="handleImageFallback(this)" style="width: 68px; height: 68px; border-radius: 50%; object-fit: cover; border: ${isTeacherCert ? '3px solid #f59e0b' : '2px solid #2563eb'}; box-shadow: ${isTeacherCert ? '0 0 12px rgba(245, 158, 11, 0.4)' : '0 2px 8px rgba(37,99,235,0.2)'};">
-                                ${tAvatarOverlay}
-                            </div>
-                            <div class="teacher-name" style="font-weight: 800; font-size: 1rem; color: #1e293b; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                                <span>${escapeHtml(teacher.full_name || 'أستاذ')}</span>
-                                ${tNameBadge}
+                        ${vipTagHtml}
+                        <div style="position: relative; display: inline-block; margin-bottom: 8px;">
+                            <img src="${teacherImage}" data-original-url="${teacherImage}" class="teacher-avatar" referrerpolicy="no-referrer" onerror="handleImageFallback(this)" style="width: 68px; height: 68px; border-radius: 50%; object-fit: cover; border: ${isTeacherVip ? '3px solid #f59e0b' : isTeacherCert ? '3px solid #f59e0b' : '2px solid #2563eb'}; box-shadow: ${isTeacherVip || isTeacherCert ? '0 0 12px rgba(245, 158, 11, 0.4)' : '0 2px 8px rgba(37,99,235,0.2)'};">
+                            ${tAvatarOverlay}
+                        </div>
+                        <div class="teacher-name" style="font-weight: 800; font-size: 1rem; color: #1e293b; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                            <span>${escapeHtml(teacher.full_name || 'أستاذ')}</span>
+                            ${tNameBadge}
                             </div>`;
                         })()}
                         ${starsHtml}
@@ -6355,20 +6378,31 @@
                         <div style="position:relative; background:linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%); height:110px;">
                             ${(() => {
                             const isCertModal = Boolean(t.is_certified === true || t.status === 'certified');
-                            const modalBadgeOverlay = isCertModal
-                                ? '<span title="أستاذ معتمد - شارة ذهبية 👑" style="position: absolute; bottom: 0; right: 0; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; border: 3px solid white; box-shadow: 0 2px 6px rgba(217, 119, 6, 0.5); z-index: 2;"><i class="fas fa-crown"></i></span>'
-                                : '<span title="أستاذ موثق - شارة زرقاء 🔵" style="position: absolute; bottom: 0; right: 0; background: #2563eb; color: white; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; border: 3px solid white; box-shadow: 0 2px 5px rgba(37, 99, 235, 0.4); z-index: 2;"><i class="fas fa-check"></i></span>';
-                            const modalNameIcon = isCertModal
-                                ? '<i class="fas fa-crown" style="font-size: 1.1rem; color: #f59e0b;" title="أستاذ معتمد (شارة ذهبية) 👑"></i>'
-                                : '<i class="fas fa-check-circle" style="font-size: 1.1rem; color: #2563eb;" title="أستاذ موثق (شارة زرقاء) 🔵"></i>';
+                            const isVipModal = Boolean(t.is_vip === true || t.teacher_is_vip === true);
+
+                            let modalBadgeOverlay = '<span title="أستاذ موثق - شارة زرقاء 🔵" style="position: absolute; bottom: 0; right: 0; background: #2563eb; color: white; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; border: 3px solid white; box-shadow: 0 2px 5px rgba(37, 99, 235, 0.4); z-index: 2;"><i class="fas fa-check"></i></span>';
+                            let modalNameIcon = '<i class="fas fa-check-circle" style="font-size: 1.1rem; color: #2563eb;" title="أستاذ موثق (شارة زرقاء) 🔵"></i>';
+
+                            if (isVipModal) {
+                                modalBadgeOverlay = '<span title="أستاذ مرقى - التاج الذهبي 👑" style="position: absolute; bottom: 0; right: 0; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; border: 3px solid white; box-shadow: 0 2px 6px rgba(217, 119, 6, 0.5); z-index: 2;"><i class="fas fa-crown"></i></span>';
+                                modalNameIcon = '<i class="fas fa-crown" style="font-size: 1.1rem; color: #f59e0b;" title="التاج الذهبي 👑"></i>';
+                            } else if (isCertModal) {
+                                modalBadgeOverlay = '<span title="أستاذ معتمد - شارة ذهبية 👑" style="position: absolute; bottom: 0; right: 0; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; border: 3px solid white; box-shadow: 0 2px 6px rgba(217, 119, 6, 0.5); z-index: 2;"><i class="fas fa-crown"></i></span>';
+                                modalNameIcon = '<i class="fas fa-crown" style="font-size: 1.1rem; color: #f59e0b;" title="أستاذ معتمد (شارة ذهبية) 👑"></i>';
+                            }
+
+                            const borderStyle = isVipModal || isCertModal ? '4px solid #f59e0b' : '4px solid #2563eb';
+                            const shadowStyle = isVipModal || isCertModal ? '0 4px 15px rgba(245, 158, 11, 0.4)' : '0 4px 15px rgba(0,0,0,0.15)';
+
                             return `<div style="position:absolute; bottom:-45px; left:50%; transform:translateX(-50%);">
                                 <div style="position: relative; display: inline-block;">
-                                    <img src="${escapeHtml(img)}" alt="avatar" style="width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: ${isCertModal ? '4px solid #f59e0b' : '4px solid #2563eb'}; box-shadow: 0 4px 15px rgba(0,0,0,0.15);" referrerpolicy="no-referrer" onerror="this.src='/images/default-avatar.svg'">
+                                    <img src="${escapeHtml(img)}" alt="avatar" style="width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: ${borderStyle}; box-shadow: ${shadowStyle};" referrerpolicy="no-referrer" onerror="this.src='/images/default-avatar.svg'">
                                     ${modalBadgeOverlay}
                                 </div>
                             </div>
                         </div>
                         <div style="padding: 52px 20px 0 20px;">
+                            ${isVipModal ? '<div style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 800; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 5px rgba(217,119,6,0.3); margin-bottom: 8px;"><i class="fas fa-crown"></i> التاج الذهبي VIP</div>' : ''}
                             <h3 style="font-weight: 850; color: #1e293b; font-size: 1.35rem; margin-bottom: 4px; display: flex; align-items: center; justify-content: center; gap: 8px;">
                                 <span>${escapeHtml(t.full_name)}</span>
                                 ${modalNameIcon}
@@ -6835,7 +6869,10 @@
             target = studentLevel || 'all';
         }
 
-        const filtered = allStudentCourses.filter(c => isCourseLevelMatch(c.education_level, target));
+        const filtered = allStudentCourses.filter(c => {
+            if (c.teacher_is_vip === true || c.is_vip === true) return true; // ⭐ يظهر لجميع المستويات إذا كان الأستاذ مرقى VIP
+            return isCourseLevelMatch(c.education_level, target);
+        });
         renderStudentCourses(filtered);
     }
 

@@ -41,6 +41,8 @@ router.post('/create', authenticate, authorize(['teacher']), upload.single('thum
         }
 
         const coursePrice = is_free === 'true' || is_free === true ? 0 : parseFloat(price);
+        const isVip = Boolean(teacher.is_vip === true);
+        const courseStatus = isVip ? 'published' : 'pending';
 
         const courseData = {
             teacher_id: teacherId,
@@ -50,14 +52,16 @@ router.post('/create', authenticate, authorize(['teacher']), upload.single('thum
             is_free: coursePrice === 0,
             education_level: education_level.trim(),
             course_url: course_url.trim(),
-            status: 'pending'
+            status: courseStatus
         };
 
         const course = await insert('courses', courseData);
 
         res.json({
             success: true,
-            message: '✅ تم إرسال الدورة بنجاح، وتوجد حالياً قيد المراجعة من قبل الإدارة.',
+            message: isVip 
+                ? '✅ تم إضافة ونشر دورتك تلقائياً وبنجاح دون مراجعة لأن حسابك مرقى ومميز (VIP)!'
+                : '✅ تم إرسال الدورة بنجاح، وتوجد حالياً قيد المراجعة من قبل الإدارة.',
             course
         });
     } catch (error) {
