@@ -4366,15 +4366,15 @@
 
             <div>
                 <label style="font-weight: 700; color: var(--gray-800); display: block; margin-bottom: 6px;">
-                    <i class="fas fa-camera" style="color: var(--primary);"></i> الصورة الشخصية <span style="font-size:0.75rem; color:#0284c7; font-weight:normal;">(الحد الأقصى للصورة: 50MB)</span>
+                    <i class="fas fa-camera" style="color: var(--primary);"></i> الصورة الشخصية <span style="font-size:0.75rem; color:#0284c7; font-weight:normal;">(التقاط بالكاميرا فقط)</span>
                 </label>
-                <input type="file" id="editProfileImage" accept="image/*" onchange="showImageSize(this)">
-                <button type="button" onclick="startCamera()" style="margin-top: 5px; padding: 5px 10px; border-radius: var(--radius-sm); background: var(--primary); color: white; border: none; cursor: pointer;">
-                    <i class="fas fa-camera"></i> افتح الكاميرا
+                <input type="file" id="editProfileImage" accept="image/*" style="display: none;">
+                <button type="button" onclick="startCamera()" style="width: 100%; margin-top: 5px; padding: 10px 16px; border-radius: var(--radius-sm); background: var(--primary); color: white; border: none; cursor: pointer; display: inline-flex; justify-content: center; align-items: center; gap: 8px; font-weight: 700;">
+                    <i class="fas fa-camera"></i> التقاط صورة بالكاميرا
                 </button>
                 <div id="cameraContainer" style="display:none; margin-top: 10px;">
                     <video id="cameraStream" width="100%" height="auto" autoplay playsinline></video>
-                    <button type="button" onclick="capturePhoto()" style="margin-top: 5px; padding: 5px 10px; border-radius: var(--radius-sm); background: var(--secondary); color: white; border: none; cursor: pointer;">التقاط الصورة</button>
+                    <button type="button" onclick="capturePhoto()" style="margin-top: 5px; width: 100%; padding: 10px 16px; border-radius: var(--radius-sm); background: var(--secondary); color: white; border: none; cursor: pointer; font-weight: 700;">التقاط الصورة الآن</button>
                     <canvas id="cameraCanvas" style="display:none;"></canvas>
                 </div>
             </div>
