@@ -8685,6 +8685,8 @@ function updateUI() {
 
             const sessionNumberDisplay = (offer.session_number || offer.completed_sessions_count || 0) + 1;
             const completedDisplay = offer.completed_sessions ?? offer.completed_sessions_count ?? 0;
+            const currentSessionNum = Math.min(completedCount + 1, totalSessions);
+            const currentSessionBadge = totalSessions > 1 ? `الحصة ${currentSessionNum} من ${totalSessions}` : `الحصة ${currentSessionNum}`;
 
             html += `
                 <div class="offer-card" id="offer-card-${offer.id}" style="background: white; border-radius: 12px; padding: 16px; box-shadow: var(--shadow); border: 1px solid var(--gray-200); display: flex; flex-direction: column; justify-content: space-between;">
@@ -8730,10 +8732,18 @@ function updateUI() {
                                 <span style="flex: 1; text-align: center; font-size: 0.78rem; color: var(--gray-500); padding: 6px; background: var(--gray-50); border-radius: 6px;"><i class="fas fa-lock"></i> عرض فقط (حساب زائر)</span>
                             ` : `
                                 ${!isTerminated && offer.status !== 'live' && offer.status !== 'teacher_ready' && offer.status !== 'paused' ? `
-                                    <button onclick="startStreamNow(${offer.id}, ${completedCount + 1})" style="flex: 1; background: var(--primary); color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; font-weight: bold;"><i class="fas fa-video"></i> بدء البث</button>
+                                    <button onclick="startStreamNow(${offer.id}, ${currentSessionNum})" style="flex: 1; min-width: 140px; background: var(--primary); color: white; border: none; padding: 7px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; font-weight: bold; display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 5px rgba(37,99,235,0.25);" title="بدء بث ${currentSessionBadge}">
+                                        <i class="fas fa-video"></i>
+                                        <span>بدء البث</span>
+                                        <span style="background: rgba(255, 255, 255, 0.22); padding: 1px 7px; border-radius: 10px; font-size: 0.73rem; font-weight: 800; border: 1px solid rgba(255,255,255,0.35); white-space: nowrap;">${currentSessionBadge}</span>
+                                    </button>
                                 ` : ''}
                                 ${!isTerminated && (['live', 'teacher_ready', 'paused'].includes(offer.status) || offer.stream_url) ? `
-                                    <button onclick="joinTeacherStream(${offer.id})" style="flex: 1; background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; font-weight: bold;"><i class="fas fa-play"></i> فتح البث</button>
+                                    <button onclick="joinTeacherStream(${offer.id})" style="flex: 1; min-width: 140px; background: #10b981; color: white; border: none; padding: 7px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; font-weight: bold; display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 5px rgba(16,185,129,0.25);" title="فتح بث ${currentSessionBadge}">
+                                        <i class="fas fa-play"></i>
+                                        <span>فتح البث</span>
+                                        <span style="background: rgba(255, 255, 255, 0.22); padding: 1px 7px; border-radius: 10px; font-size: 0.73rem; font-weight: 800; border: 1px solid rgba(255,255,255,0.35); white-space: nowrap;">${currentSessionBadge}</span>
+                                    </button>
                                     <button onclick="endStreamManual(${offer.id})" style="flex: 1; background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; font-weight: bold;"><i class="fas fa-stop"></i> إنهاء البث المباشر</button>
                                 ` : ''}
                                 <button onclick="deleteOffer(${offer.id})" style="background: #ef4444; color: white; border: none; padding: 6px 10px; border-radius: 6px; font-size: 0.8rem; cursor: pointer;" title="حذف الدرس"><i class="fas fa-trash"></i></button>
@@ -9016,7 +9026,7 @@ function updateUI() {
         
         let confirmMsg = "⚠️ هل تريد بدء البث المباشر لهذه الغرفة الآن؟";
         if (sessionNumber) {
-            confirmMsg = `⚠️ أنت على وشك فتح الحصة رقم ${sessionNumber}.\nهل أنت متأكد من بدء البث المباشر لهذه الحصة الآن؟`;
+            confirmMsg = `⚠️ أنت على وشك بدء البث المباشر للحصة الحالية (رقم ${sessionNumber}).\nهل أنت متأكد من بدء البث المباشر لهذه الحصة الآن؟`;
         }
         
         const shouldStart = confirm(confirmMsg);
@@ -9029,7 +9039,7 @@ function updateUI() {
             });
             const data = await res.json();
             if (data.success) {
-                showToast('✅ تم فتح شاشة البث بنجاح! اضغط على "👈 انقر هنا لإدخال الطلاب وبدء البث" لإتاحة الحضور للطلاب.', 'success');
+                showToast(`✅ تم فتح شاشة البث (الحصة رقم ${sessionNumber || 1}) بنجاح! اضغط على "👈 انقر هنا لإدخال الطلاب وبدء البث" لإتاحة الحضور للطلاب.`, 'success');
                 
                 const token = localStorage.getItem('token');
                 const teacherAgoraUrl = `/api/teacher-agora/${offerId}?token=${encodeURIComponent(token)}`;

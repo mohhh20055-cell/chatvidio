@@ -1997,13 +1997,18 @@ function generateTeacherZoomPage(offer, teacher, token) {
     const appId = (process.env.AGORA_APP_ID && process.env.AGORA_APP_ID.trim()) || 'a5571809de0c4678bb4b134adfdc48a3';
     const agoraToken = generateAgoraToken(roomName, 'teacher', teacherUid);
 
+    const completedSessions = Number(offer.completed_sessions ?? offer.completed_sessions_count ?? 0);
+    const totalSessions = Math.max(1, Number(offer.total_sessions) || 1);
+    const currentSession = Math.min(completedSessions + 1, totalSessions);
+    const sessionBadgeText = totalSessions > 1 ? `الحصة ${currentSession} من ${totalSessions}` : `الحصة ${currentSession}`;
+
     return `
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>بث الأستاذ المباشر - ${escapeHtml(subjectName)}</title>
+    <title>بث الأستاذ المباشر (${sessionBadgeText}) - ${escapeHtml(subjectName)}</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="/js/agora-rtc-sdk.js"></script>
@@ -2112,6 +2117,7 @@ function generateTeacherZoomPage(offer, teacher, token) {
                 <i class="fas fa-video"></i>
                 <span style="font-size: 14px;">بث الأستاذ: ${escapeHtml(subjectName)}</span>
                 <span class="badge" style="font-size: 10px; padding: 1px 6px;">مباشر</span>
+                <span style="background: rgba(59, 130, 246, 0.25); border: 1px solid rgba(59, 130, 246, 0.6); color: #93c5fd; font-size: 11px; padding: 1px 8px; border-radius: 12px; font-weight: 700;">${escapeHtml(sessionBadgeText)}</span>
                 <div id="teacherNetBadge" style="display: none; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 16px; font-size: 11px; font-weight: 700; border: 1px solid #f59e0b; background: rgba(245, 158, 11, 0.2); color: #fcd34d;">
                     <i class="fas fa-wifi"></i> <span id="teacherNetText">جودة الاتصال</span>
                 </div>
