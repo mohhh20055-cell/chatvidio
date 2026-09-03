@@ -1151,7 +1151,7 @@
             <div style="background: #ffffff; border-radius: 16px; padding: 20px; margin-top: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04);">
                 <h4 style="margin-bottom: 15px; color: #1e3c72;"><i class="fas fa-bullhorn"></i> إرسال إشعار للجميع</h4>
                 <input type="text" id="notificationTitle" placeholder="عنوان الإشعار" style="width:100%; padding:12px; border:1px solid #e4e6eb; border-radius:8px; margin-bottom:10px;">
-                <textarea id="notificationMessage" placeholder="محت����ى الإشعار" style="width:100%; padding:12px; border:1px solid #e4e6eb; border-radius:8px; min-height:100px; margin-bottom:10px; font-family:'Cairo',sans-serif;"></textarea>
+                <textarea id="notificationMessage" placeholder="محتى الإشعار" style="width:100%; padding:12px; border:1px solid #e4e6eb; border-radius:8px; min-height:100px; margin-bottom:10px; font-family:'Cairo',sans-serif;"></textarea>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                     <button class="btn-save" onclick="sendNotificationToAllStudents()" style="padding: 12px 20px;">
                         <i class="fas fa-paper-plane"></i> إرسال للطلاب
@@ -1433,7 +1433,7 @@
                         </label>
                         <input type="text" id="appApkUrlInput" style="width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: 'Cairo'; font-size: 0.9rem;" placeholder="https://your-supabase-project.supabase.co/storage/v1/object/public/apps/zoomdz.apk أو أي رابط تحميل مباشر">
                         <p style="font-size: 0.8rem; color: #64748b; margin-top: 4px; margin-bottom: 0;">
-                            ضع هنا رابط التخزين السحابي لملف الـ APK (سواء من Supabase Storage أو Google Drive أو أي خادم تخزين سحابي مباشر). عند ضغط أي مستخدم على زر "تحميل التطبيق"، سيتم توجيهه وتحميله مباشرة ��ن هذا الرابط.
+                            ضع هنا رابط التخزين السحابي لملف الـ APK (سواء من Supabase Storage أو Google Drive أو أي خادم تخزين سحابي مباشر). عند ضغط أي مستخدم على زر "تحميل التطبيق"، سيتم توجيهه وتحميله مباشرة ن هذا الرابط.
                         </p>
                     </div>
 
@@ -4321,7 +4321,7 @@ async function sendNotificationToAllStudents() {
                         <i class="fas fa-users-slash" style="font-size: 2rem; margin-bottom: 10px; color: #94a3b8; display: block;"></i>
                         <p style="font-weight: 600; margin-bottom: 10px;">لا يوجد مطورين حالياً</p>
                         <button onclick="openAddDeveloperModal()" class="btn-primary" style="padding: 8px 16px; border-radius: 8px; font-size: 0.9rem;">
-                            <i class="fas fa-plus"></i> إضافة عضو ج��يد
+                            <i class="fas fa-plus"></i> إضافة عضو جيد
                         </button>
                     </div>
                 `;
@@ -4916,7 +4916,7 @@ async function sendNotificationToAllStudents() {
 
         async function toggleTeacherCertify(id, certState) {
     const actionText = certState ? "منح الشارة الذهبية وتصنيف الأستاذ كـ \"أستاذ معتمد\"" : "إلغاء شارة الاعتماد للأستاذ";
-    if (!confirm("هل أنت متأك�� من " + actionText + "؟")) return;
+    if (!confirm("هل أنت متأك من " + actionText + "؟")) return;
     try {
         const token = localStorage.getItem("token");
         const res = await fetch("/api/admin/toggle-certify-teacher/" + id, {
