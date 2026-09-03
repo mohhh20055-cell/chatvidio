@@ -2393,7 +2393,7 @@ function generateTeacherZoomPage(offer, teacher, token) {
                 const s = document.createElement('script');
                 s.src = url;
                 
-                let done = false; const finish = (res) => { if (!done) { done = true; resolve(res); } }; s.onload = () => finish(typeof AgoraRTC !== 'undefined'); s.onerror = () => finish(false); setTimeout(() => finish(false), 1200);
+                let done = false; const finish = (res) => { if (!done) { done = true; resolve(res); } }; s.onload = () => finish(typeof AgoraRTC !== 'undefined'); s.onerror = () => finish(false); setTimeout(() => finish(false), 10000);
                 document.head.appendChild(s);
             });
         }
@@ -2412,7 +2412,7 @@ function generateTeacherZoomPage(offer, teacher, token) {
                 const ok = await loadSingleScript(url);
                 if (ok) return true;
             }
-            return false;
+            return typeof AgoraRTC !== 'undefined';
         }
 
         async function initAgora() {
@@ -2480,53 +2480,67 @@ function generateTeacherZoomPage(offer, teacher, token) {
                 client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
                 setupTeacherClient(client);
 
+                if (statusElem) statusElem.innerHTML = "جاري الاتصال بالأجهزة (الكاميرا والميكروفون)...";
+                
+                // 🎙 إعداد الصوت مع المعالجة المرنة للأخطاء
                 try {
-                    if (statusElem) statusElem.innerHTML = "يرجى الموافقة على صلاحيات الكاميرا والميكروفون من متصفحك...";
-                    // 🎙 إعداد صوت احترافي
+                    localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack({
+                        AEC: true,
+                        ANS: true,
+                        AGC: true
+                    });
+                } catch(e) {
                     try {
-                        localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack({
-                            AEC: true,
-                            ANS: true,
-                            AGC: true
-                        });
-                    } catch(e) {
-                        console.warn('Microphone config fallback:', e);
                         localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+                    } catch(micErr) {
+                        console.warn('Microphone initialization warning:', micErr);
+                        localAudioTrack = null;
                     }
+                }
 
-                    // 📹 إعداد فيديو بجودة 360p الافتراضية
+                // 📹 إعداد الفيديو مع المعالجة المرنة للأخطاء
+                try {
+                    localVideoTrack = await AgoraRTC.createCameraVideoTrack({
+                        encoderConfig: '360p_1'
+                    });
+                } catch (e) {
                     try {
                         localVideoTrack = await AgoraRTC.createCameraVideoTrack({
-                            encoderConfig: '360p_1'
+                            encoderConfig: {
+                                width: 480,
+                                height: 360,
+                                frameRate: 15,
+                                bitrateMax: 280,
+                                bitrateMin: 70
+                            }
                         });
-                    } catch (e) {
+                    } catch(err) {
                         try {
-                            localVideoTrack = await AgoraRTC.createCameraVideoTrack({
-                                encoderConfig: {
-                                    width: 480,
-                                    height: 360,
-                                    frameRate: 15,
-                                    bitrateMax: 280,
-                                    bitrateMin: 70
-                                }
-                            });
-                        } catch(err) {
-                            console.warn('Camera config fallback:', err);
                             localVideoTrack = await AgoraRTC.createCameraVideoTrack();
+                        } catch(camErr) {
+                            console.warn('Camera initialization warning:', camErr);
+                            localVideoTrack = null;
                         }
-                    }
-                } catch (mediaErr) {
-                    console.warn('فشل فتح الكاميرا والميكروفون معاً، جاري تجربة الميكروفون فقط...', mediaErr);
-                    try {
-                        localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack();
-                    } catch (micErr) {
-                        console.warn('فشل فتح الميكروفون أيضاً:', micErr);
-                        throw mediaErr;
                     }
                 }
 
                 if (localVideoTrack) {
-                    localVideoTrack.play('localVideo', { fit: 'contain' });
+                    try {
+                        localVideoTrack.play('localVideo', { fit: 'contain' });
+                        isCamOn = true;
+                        updateBtnState('camBtn', true);
+                    } catch(e) { console.warn('Play video track error:', e); }
+                } else {
+                    isCamOn = false;
+                    updateBtnState('camBtn', false);
+                }
+
+                if (localAudioTrack) {
+                    isMicOn = true;
+                    updateBtnState('micBtn', true);
+                } else {
+                    isMicOn = false;
+                    updateBtnState('micBtn', false);
                 }
 
                 const tokenToUse = (agoraToken && agoraToken !== 'null' && agoraToken !== 'undefined' && agoraToken.trim() !== '') ? agoraToken.trim() : null;
@@ -2536,27 +2550,28 @@ function generateTeacherZoomPage(offer, teacher, token) {
                     await client.join(APP_ID, channelName, tokenToUse, teacherUid);
                 } catch (joinErr) {
                     console.warn('فشل الانضمام بالمحاولة الأولى (قد يكون التوكن غير مطلوب أو غير متطابق):', joinErr);
-                    if (tokenToUse) {
-                        try {
-                            try { await client.leave(); } catch(e){}
-                            client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
-                            setupTeacherClient(client);
-                            await client.join(APP_ID, channelName, null, teacherUid);
-                        } catch (noTokenErr) {
-                            throw joinErr;
-                        }
-                    } else {
+                    try {
+                        try { await client.leave(); } catch(e){}
+                        client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+                        setupTeacherClient(client);
+                        await client.join(APP_ID, channelName, null, teacherUid);
+                    } catch (noTokenErr) {
+                        console.error('Join failed:', noTokenErr);
                         throw joinErr;
                     }
                 }
 
-                if (localVideoTrack && localAudioTrack) {
-                    await client.publish([localAudioTrack, localVideoTrack]);
-                } else if (localVideoTrack) {
-                    await client.publish([localVideoTrack]);
-                } else if (localAudioTrack) {
-                    await client.publish([localAudioTrack]);
+                const tracksToPublish = [];
+                if (localAudioTrack) tracksToPublish.push(localAudioTrack);
+                if (localVideoTrack) tracksToPublish.push(localVideoTrack);
+                if (tracksToPublish.length > 0) {
+                    try {
+                        await client.publish(tracksToPublish);
+                    } catch(pubErr) {
+                        console.warn('Publish tracks warning:', pubErr);
+                    }
                 }
+
                 try { startStreamRecording(); } catch(recErr) { console.error("Recording init error:", recErr); }
 
                 const ov = document.getElementById('statusOverlay');
@@ -2564,7 +2579,7 @@ function generateTeacherZoomPage(offer, teacher, token) {
                 setTimeout(() => {
                     const ov2 = document.getElementById('statusOverlay');
                     if (ov2) ov2.style.display = 'none';
-                }, 1000);
+                }, 800);
             } catch (err) {
                 if (isLeaving) return;
                 console.error('Stream Init Error:', err);
@@ -2604,6 +2619,7 @@ function generateTeacherZoomPage(offer, teacher, token) {
                 if (statusElem) statusElem.innerHTML = debugDetails +
                 '<div style="margin-top:14px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">' +
                     '<button onclick="location.reload()" style="background:#2563eb; color:#fff; border:none; padding:10px 20px; border-radius:8px; font-family:Cairo; font-weight:bold; cursor:pointer; font-size:14px;">🔄 إعادة المحاولة</button>' +
+                    '<button onclick="document.getElementById(\'statusOverlay\').style.display=\'none\';" style="background:#059669; color:#fff; border:none; padding:10px 20px; border-radius:8px; font-family:Cairo; font-weight:bold; cursor:pointer; font-size:14px;">👈 متابعة لوحة البث على كل حال</button>' +
                     '<a href="/teacher-dashboard.html" style="color:#e5e7eb; text-decoration:none; padding:10px 20px; background:#374151; border-radius:8px; font-weight:bold; font-size:14px;">العودة للوحة التحكم</a>' +
                 '</div>';
             }
@@ -2645,7 +2661,28 @@ function generateTeacherZoomPage(offer, teacher, token) {
         }
 
         async function toggleMic() {
-            if (!localAudioTrack) return;
+            const micBtn = document.getElementById('micBtn');
+            if (!localAudioTrack) {
+                try {
+                    localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack({ AEC: true, ANS: true, AGC: true });
+                } catch(e1) {
+                    try {
+                        localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+                    } catch(e2) {
+                        alert('⚠️ تعذر تشغيل الميكروفون: ' + (e2.message || 'تأكد من منح صلاحية استخدام الميكروفون للمتصفح'));
+                        return;
+                    }
+                }
+                if (localAudioTrack) {
+                    if (client) {
+                        try { await client.publish([localAudioTrack]); } catch(pubErr){ console.warn('Publish audio error:', pubErr); }
+                    }
+                    isMicOn = true;
+                    updateBtnState('micBtn', true);
+                    return;
+                }
+            }
+
             if (isMicOn) {
                 localAudioTrack.setMuted(true);
                 isMicOn = false;
@@ -2657,7 +2694,32 @@ function generateTeacherZoomPage(offer, teacher, token) {
         }
 
         async function toggleCam() {
-            if (!localVideoTrack) return;
+            const camBtn = document.getElementById('camBtn');
+            if (!localVideoTrack) {
+                try {
+                    if (camBtn) camBtn.style.opacity = '0.5';
+                    localVideoTrack = await AgoraRTC.createCameraVideoTrack({ encoderConfig: '360p_1' });
+                } catch(e1) {
+                    try {
+                        localVideoTrack = await AgoraRTC.createCameraVideoTrack();
+                    } catch(e2) {
+                        alert('⚠️ تعذر تشغيل الكاميرا: ' + (e2.message || 'تأكد من إعطاء الصلاحية للكاميرا أو توصيل جهاز كاميرا'));
+                        if (camBtn) camBtn.style.opacity = '1';
+                        return;
+                    }
+                }
+                if (localVideoTrack) {
+                    try { localVideoTrack.play('localVideo', { fit: 'contain' }); } catch(e){}
+                    if (client) {
+                        try { await client.publish([localVideoTrack]); } catch(pubErr){ console.warn('Publish video error:', pubErr); }
+                    }
+                    isCamOn = true;
+                    if (camBtn) camBtn.style.opacity = '1';
+                    updateBtnState('camBtn', true);
+                    return;
+                }
+            }
+
             if (isCamOn) {
                 localVideoTrack.setMuted(true);
                 isCamOn = false;
@@ -3658,7 +3720,7 @@ function generateStudentZoomPage(offer, student) {
                 const s = document.createElement('script');
                 s.src = url;
                 
-                let done = false; const finish = (res) => { if (!done) { done = true; resolve(res); } }; s.onload = () => finish(typeof AgoraRTC !== 'undefined'); s.onerror = () => finish(false); setTimeout(() => finish(false), 1200);
+                let done = false; const finish = (res) => { if (!done) { done = true; resolve(res); } }; s.onload = () => finish(typeof AgoraRTC !== 'undefined'); s.onerror = () => finish(false); setTimeout(() => finish(false), 10000);
                 document.head.appendChild(s);
             });
         }

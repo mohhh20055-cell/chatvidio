@@ -9032,10 +9032,14 @@ function updateUI() {
                 showToast('✅ تم فتح شاشة البث بنجاح! اضغط على "👈 انقر هنا لإدخال الطلاب وبدء البث" لإتاحة الحضور للطلاب.', 'success');
                 
                 const token = localStorage.getItem('token');
-                const teacherAgoraUrl = `/api/teacher-agora/${offerId}?token=${token}`;
-                const newWindow = window.open(teacherAgoraUrl, '_blank');
-                if (!newWindow) {
-                    showToast('⚠️ يرجى السماح بفتح النوافذ المنبثقة', 'warning');
+                const teacherAgoraUrl = `/api/teacher-agora/${offerId}?token=${encodeURIComponent(token)}`;
+                try {
+                    const newWindow = window.open(teacherAgoraUrl, '_blank');
+                    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                        window.location.href = teacherAgoraUrl;
+                    }
+                } catch(e) {
+                    window.location.href = teacherAgoraUrl;
                 }
                 setTimeout(() => loadOffers(), 1500);
             } else {
@@ -9057,9 +9061,13 @@ function updateUI() {
                 return;
             }
             const agoraUrl = `/api/teacher-agora/${offerId}?token=${encodeURIComponent(token)}`;
-            const newWindow = window.open(agoraUrl, '_blank');
-            if (!newWindow) {
-                showToast('⚠️ يرجى السماح بفتح النوافذ المنبثقة من إعدادات المتصفح', 'warning');
+            try {
+                const newWindow = window.open(agoraUrl, '_blank');
+                if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                    window.location.href = agoraUrl;
+                }
+            } catch(e) {
+                window.location.href = agoraUrl;
             }
         } catch (e) {
             if (e.message !== 'انتهت صلاحية الجلسة') {

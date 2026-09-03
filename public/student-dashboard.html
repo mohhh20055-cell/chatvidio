@@ -5097,8 +5097,15 @@
             const data = await res.json();
             if (data.can_join && data.stream_url) {
                 const token = localStorage.getItem('token');
-                const agoraUrl = `/api/join-agora/${offerId}/${studentId}?token=${token}`;
-                const newWindow = window.open(agoraUrl, '_blank');
+                const agoraUrl = `/api/join-agora/${offerId}/${studentId}?token=${encodeURIComponent(token)}`;
+                try {
+                    const newWindow = window.open(agoraUrl, '_blank');
+                    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                        window.location.href = agoraUrl;
+                    }
+                } catch(e) {
+                    window.location.href = agoraUrl;
+                }
             } else if (data.is_waiting) {
                 showToast('⏳ جاري التحضير للبث، انتظر قليلاً...', 'warning');
             } else {
@@ -7093,8 +7100,15 @@
             return;
         }
         const token = localStorage.getItem('token');
-        const agoraUrl = `/api/join-agora/${offerId}/${studentId}?token=${token}`;
-        const newWindow = window.open(agoraUrl, '_blank');
+        const agoraUrl = `/api/join-agora/${offerId}/${studentId}?token=${encodeURIComponent(token)}`;
+        try {
+            const newWindow = window.open(agoraUrl, '_blank');
+            if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                window.location.href = agoraUrl;
+            }
+        } catch(e) {
+            window.location.href = agoraUrl;
+        }
     }
 
     // ================================================================
