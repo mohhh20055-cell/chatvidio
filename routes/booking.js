@@ -231,26 +231,33 @@ router.post('/create', authenticate, authorize(['student']), [
             console.warn('⚠️ تعذر تسجيل stream_subscriptions:', subErr.message);
         }
 
-        // ✅ إنشاء سجل مستقل لكل حصة لضمان ترتيبها وتسوية مبلغها مرة واحدة فقط
-        const schedule = normalizeSchedule(offer.sessions_schedule, totalSessions, offer.offer_date, sessionDuration);
+        // ✅ إنشاء سجل مستقل لكل حصة لضمان ترتيبها وتسوية مبلغها مرة واحدة فقط إذا لم يكن قد تم إنشاؤها بالفعل
         try {
-            const streamSessionRows = schedule.map((item) => ({
-                offer_id,
-                teacher_id: offer.teacher_id,
-                session_number: item.session_number,
-                title: item.title,
-                session_date: item.session_date,
-                duration_minutes: item.duration_minutes,
-                price_per_session: pricePerSession,
-                platform_fee: platformFeePerSession,
-                status: item.status,
-                teacher_released_amount: 0,
-                is_escrow_released: false,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            }));
-            const { error: streamSessionsError } = await supabase.from('stream_sessions').insert(streamSessionRows);
-            if (streamSessionsError) console.warn('⚠️ تعذر إنشاء سجلات الحصص التفصيلية:', streamSessionsError.message);
+            const { data: existingSessions } = await supabase
+                .from('stream_sessions')
+                .select('id')
+                .eq('offer_id', offer_id);
+
+            if (!existingSessions || existingSessions.length === 0) {
+                const schedule = normalizeSchedule(offer.sessions_schedule, totalSessions, offer.offer_date, sessionDuration);
+                const streamSessionRows = schedule.map((item) => ({
+                    offer_id,
+                    teacher_id: offer.teacher_id,
+                    session_number: item.session_number,
+                    title: item.title,
+                    session_date: item.session_date,
+                    duration_minutes: item.duration_minutes,
+                    price_per_session: pricePerSession,
+                    platform_fee: platformFeePerSession,
+                    status: item.status,
+                    teacher_released_amount: 0,
+                    is_escrow_released: false,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }));
+                const { error: streamSessionsError } = await supabase.from('stream_sessions').insert(streamSessionRows);
+                if (streamSessionsError) console.warn('⚠️ تعذر إنشاء سجلات الحصص التفصيلية:', streamSessionsError.message);
+            }
         } catch (scheduleError) {
             console.warn('⚠️ جدول الحصص التفصيلي غير متاح، سيستمر الحجز بالسجل الأساسي:', scheduleError.message);
         }

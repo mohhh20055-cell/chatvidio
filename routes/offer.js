@@ -1123,8 +1123,23 @@ router.get(['/offer/:offer_id/sessions', '/teacher/offer/:offer_id/sessions'], a
             .eq('offer_id', offer_id)
             .order('session_number', { ascending: true });
 
-        const sessions = (streamSessions && streamSessions.length > 0) 
-            ? streamSessions 
+        // تصفية وتفادي تكرار الحصص (Deduplicate streamSessions by session_number)
+        const uniqueSessionsMap = new Map();
+        if (streamSessions && streamSessions.length > 0) {
+            streamSessions.forEach(s => {
+                if (!uniqueSessionsMap.has(s.session_number)) {
+                    uniqueSessionsMap.set(s.session_number, s);
+                } else {
+                    const existing = uniqueSessionsMap.get(s.session_number);
+                    if (s.status === 'completed' || s.is_escrow_released) {
+                        uniqueSessionsMap.set(s.session_number, s);
+                    }
+                }
+            });
+        }
+
+        const sessions = uniqueSessionsMap.size > 0 
+            ? Array.from(uniqueSessionsMap.values()).sort((a, b) => a.session_number - b.session_number)
             : parsedSchedule;
 
         res.json({
@@ -1178,10 +1193,26 @@ router.delete('/offer/delete/:offer_id', authenticate, authorize(['teacher']), [
             .eq('offer_id', offer_id)
             .in('payment_status', ['paid', 'pending_stream']);
 
-        if (activeSessions && activeSessions.length > 0) {
+        const { data: activeSubs } = await supabase
+            .from('stream_subscriptions')
+            .select('id')
+            .eq('offer_id', offer_id)
+            .eq('status', 'active');
+
+        if ((activeSessions && activeSessions.length > 0) || (activeSubs && activeSubs.length > 0)) {
             return res.status(400).json({
                 success: false,
                 error: 'لا يمكن حذف الدرس لوجود طلاب مشتركين فيه. يرجى إلغاء حجز جميع الطلاب المشتركين أولاً من قائمة الطلاب قبل حذف الدرس.'
+            });
+        }
+
+        // ✅ منع حذف الدرس إذا بدأت الحصة الأولى بالفعل أو تم إتمامها
+        const { hasOfferSessionsStarted } = require('../utils/refundCalculator');
+        const { hasStarted, reason } = await hasOfferSessionsStarted({ offer });
+        if (hasStarted) {
+            return res.status(400).json({
+                success: false,
+                error: `لا يمكن حذف الدرس لأن الحصة الأولى قد بدأت بالفعل أو انتهت. (${reason})`
             });
         }
 

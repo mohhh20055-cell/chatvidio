@@ -5877,7 +5877,21 @@
             }
 
             const offer = data.offer || {};
-            const sessions = data.sessions || [];
+            
+            // تصفية وتفادي تكرار الحصص (Deduplicate)
+            const uniqueSessionsMap = new Map();
+            (data.sessions || []).forEach(s => {
+                if (!uniqueSessionsMap.has(s.session_number)) {
+                    uniqueSessionsMap.set(s.session_number, s);
+                } else {
+                    const existing = uniqueSessionsMap.get(s.session_number);
+                    if (s.status === 'completed' || s.is_completed) {
+                        uniqueSessionsMap.set(s.session_number, s);
+                    }
+                }
+            });
+            const sessions = Array.from(uniqueSessionsMap.values()).sort((a, b) => a.session_number - b.session_number);
+
             let schedule = [];
             if (Array.isArray(offer.sessions_schedule)) {
                 schedule = offer.sessions_schedule;
@@ -5897,6 +5911,8 @@
                 '6_months': 'اشتراك 6 أشهر'
             };
 
+            const completedSessionsCount = Number(offer.completed_sessions_count || data.completed_sessions_count || 0);
+
             headerEl.innerHTML = `
                 <h4 style="margin:0 0 4px 0; font-size:1.05rem; color:#1e293b; font-weight:800;">${escapeHtml(offer.subject_name)}</h4>
                 <div style="font-size:0.82rem; color:#64748b;">
@@ -5908,7 +5924,7 @@
             sessions.forEach(s => {
                 const sDate = s.session_date ? new Date(s.session_date) : null;
                 const formattedDate = sDate ? (sDate.toLocaleDateString('ar-DZ', { timeZone: 'Africa/Algiers' }) + ' - ' + sDate.toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Africa/Algiers' })) : 'غير محدد';
-                const isCompleted = s.status === 'completed' || s.is_completed;
+                const isCompleted = s.status === 'completed' || s.is_completed || s.session_number <= completedSessionsCount;
                 const isLive = s.status === 'live';
 
                 sHtml += `

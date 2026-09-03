@@ -8768,10 +8768,24 @@ function updateUI() {
             }
 
             const offer = data.offer || {};
-            const sessions = data.sessions || [];
+            
+            // تصفية وتفادي تكرار الحصص (Deduplicate)
+            const uniqueSessionsMap = new Map();
+            (data.sessions || []).forEach(s => {
+                if (!uniqueSessionsMap.has(s.session_number)) {
+                    uniqueSessionsMap.set(s.session_number, s);
+                } else {
+                    const existing = uniqueSessionsMap.get(s.session_number);
+                    if (s.status === 'completed' || s.is_completed) {
+                        uniqueSessionsMap.set(s.session_number, s);
+                    }
+                }
+            });
+            const sessions = Array.from(uniqueSessionsMap.values()).sort((a, b) => a.session_number - b.session_number);
+
             const planType = (offer.plan_type && offer.plan_type !== 'null' && offer.plan_type !== 'undefined') ? offer.plan_type : (sessions.length > 1 ? '1_month' : '1_day');
             const pricePerSession = offer.price_per_session || offer.price || 0;
-            const completedCount = sessions.filter(s => s.status === 'completed' || s.is_completed).length;
+            const completedCount = Number(offer.completed_sessions_count ?? offer.completed_sessions ?? 0);
             const planMapModal = {
                 '1_day': 'حصة واحدة',
                 '1_month': 'اشتراك شهري',
@@ -8801,7 +8815,7 @@ function updateUI() {
             sessions.forEach(s => {
                 const sDate = s.session_date ? new Date(s.session_date) : null;
                 const formattedDate = sDate ? sDate.toLocaleString('ar-DZ', { timeZone: 'Africa/Algiers', dateStyle: 'medium', timeStyle: 'short' }) : 'غير محدد';
-                const isCompleted = s.status === 'completed' || s.is_completed;
+                const isCompleted = s.status === 'completed' || s.is_completed || s.session_number <= completedCount;
                 const isLive = s.status === 'live';
 
                 sHtml += `
@@ -8824,9 +8838,6 @@ function updateUI() {
                                 <span style="background:#eff6ff; color:#1e40af; font-weight:700; padding:4px 10px; border-radius:6px; font-size:0.75rem; border:1px solid #bfdbfe;">
                                     <i class="fas fa-clock"></i> في الانتظار (معلقة)
                                 </span>
-                                <button onclick="completeSessionEscrow(${offerId}, ${s.session_number})" style="background:#059669; color:white; border:none; padding:5px 12px; border-radius:6px; font-size:0.75rem; font-weight:800; cursor:pointer;" title="تحرير مستحقات هذه الحصة الآن">
-                                    <i class="fas fa-unlock"></i> إتمام وتحرير
-                                </button>
                             `}
                         </div>
                     </div>
