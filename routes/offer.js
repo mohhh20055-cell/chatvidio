@@ -287,7 +287,7 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
                     amount: sessionCost,
                     type: 'fees',
                     status: 'completed',
-                    description: `خصم رسوم السيرفر لإنشاء حصة مجانية لمادة "${subject_name.trim()}" لمدة ${duration} دقيقة (200 دج/ساعة)`,
+                    description: `خصم رسوم السيرفر لإنشاء حصة مجانية لمادة "${subject_name.trim()}" لمدة ${duration} دقيقة (50 دج لكل 45 دقيقة)`,
                     created_at: new Date().toISOString()
                 });
             } catch (txnError) {

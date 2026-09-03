@@ -5837,7 +5837,7 @@
                                 </div>
                                 <div style="display:flex; justify-content:space-between; color:#475569;">
                                     <span>رسوم بث المنصة:</span>
-                                    <strong>${feePerSession} دج (${Math.round((sessionDuration/60)*50)} دج / ساعة)</strong>
+                                    <strong>${feePerSession} دج (50 دج لكل 45 دقيقة)</strong>
                                 </div>
                                 <div style="display:flex; justify-content:space-between; color:#1e3a8a; font-weight:800; border-top:1px dashed #cbd5e1; margin-top:4px; padding-top:4px;">
                                     <span>المجموع الإجمالي (${totalSessions} ${totalSessions > 1 ? 'حصص' : 'حصة'}):</span>
@@ -6060,7 +6060,7 @@
             const confirmMsg = `تفاصيل الاشتراك في البث:
 - الخطة: ${planName} (${totalSessions} ${totalSessions > 1 ? 'حصص' : 'حصة'})
 - سعر الحصة للأستاذ: ${pricePerSession} دج
-- رسوم سيرفر البث للمنصة: ${platformFeePerSession} دج / حصة (50 دج للساعة)
+- رسوم سيرفر البث للمنصة: ${platformFeePerSession} دج / حصة (50 دج لكل 45 دقيقة)
 - المبلغ الإجمالي المطلوب: ${totalCost} دج
 
 🔒 ضمان المنصة (Escrow): سيبقى المبلغ معلقاً بأمان في المنصة، ولن يستلمه الأستاذ إلا بعد إتمام وبث كل حصة من جدول الح��ص.
