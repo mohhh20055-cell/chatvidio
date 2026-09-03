@@ -2373,7 +2373,7 @@ function generateTeacherZoomPage(offer, teacher, token) {
 
         // بدء الموقت فقط بعد إضافة الطلبة (هنا يبدأ في حالة التوقف مؤقتاً بانتظار إضافة الطلاب)
         if (streamRemainingSeconds <= 0) {
-            alert('��� ته����ن��نا تم اكتمال البث وحصلت على عوائدك');
+            alert('🎉 تهانينا تم اكتمال البث وحصلت على عوائدك');
             window.location.href = '/teacher-dashboard.html';
         } else {
             isTimerPaused = true;
@@ -3249,7 +3249,7 @@ function generateTeacherZoomPage(offer, teacher, token) {
 
         let isLeaving = false;
         async function leaveSession() {
-            if (!confirm('⚠️ تأكد انك اكملت مده الحصه المحدده للدرس لهذه الحصه لتتلقى العائد الخاص بك.\nإذا لم يتم اكمال الحصه وتم انهاء البث فلن تتلقى اي عوائد وسيعاد الرصيد الخاص بهذه الحصه الى الطالب.\n\nهل أنت متأكد من إنهاء البث؟')) return;
+            if (!confirm('⚠️ تأكد انك اكملت مده الحصه المحدده للدرس لهذه الحصه لتتلقى العائد الخاص بك.\\nإذا لم يتم اكمال الحصه وتم انهاء البث فلن تتلقى اي عوائد وسيعاد الرصيد الخاص بهذه الحصه الى الطالب.\\n\\nهل أنت متأكد من إنهاء البث؟')) return;
             isLeaving = true;
             
             // 🎥 إيقاف تسجيل البث المباشر وتنزيله تلقائياً على جهاز الأستاذ
