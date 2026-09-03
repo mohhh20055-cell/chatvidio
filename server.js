@@ -2224,12 +2224,12 @@ function generateTeacherZoomPage(offer, teacher, token) {
     </div>
 
     <script>
-        const APP_ID = "${appId}";
-        const channelName = "${escapeHtml(roomName)}";
-        const teacherUid = ${teacherUid};
-        const agoraToken = "${agoraToken || ''}";
-        const userName = ${JSON.stringify(teacherName + ' (الأستاذ)')};
-        const authToken = ${JSON.stringify(token)};
+        const APP_ID = ${JSON.stringify(appId || '')};
+        const channelName = ${JSON.stringify(roomName || '')};
+        const teacherUid = ${Number(teacherUid) || 0};
+        const agoraToken = ${JSON.stringify(agoraToken || '')};
+        const userName = ${JSON.stringify((teacherName || 'الأستاذ') + ' (الأستاذ)')};
+        const authToken = ${JSON.stringify(token || '')};
 
         let client = null;
         let localAudioTrack = null;
@@ -3621,11 +3621,11 @@ function generateStudentZoomPage(offer, student) {
     </div>
 
     <script>
-        const APP_ID = "${appId}";
-        const channelName = "${escapeHtml(roomName)}";
-        const studentUid = ${studentUid};
-        const agoraToken = "${agoraToken || ''}";
-        const userName = "${escapeHtml(studentName)}";
+        const APP_ID = ${JSON.stringify(appId || '')};
+        const channelName = ${JSON.stringify(roomName || '')};
+        const studentUid = ${Number(studentUid) || 0};
+        const agoraToken = ${JSON.stringify(agoraToken || '')};
+        const userName = ${JSON.stringify(studentName || 'طالب')};
 
         let client = null;
         let localAudioTrack = null;
