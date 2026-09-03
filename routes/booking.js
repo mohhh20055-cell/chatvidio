@@ -1159,12 +1159,19 @@ router.post('/teacher-cancel', authenticate, authorize(['teacher', 'admin']), [
 
         // ✅ استرداد الرصيد المعلق للطالب بدقة متناهية:
         // 1. يسترد الطالب المبلغ بدون رسوم المنصة.
-        // 2. إذا كان قد استرد له سابقاً مبلغ حصة ضمن الخطة، يخصم ذلك المبلغ من الرصيد الحالي لمنع أخذ أكثر من قيمة الاشتراك.
+        // 2. الاسترداد مسموح فقط قبل بدء الحصص تماماً.
         const refundDetails = await calculateBookingRefundDetails({
             session,
             offer,
             studentId: student_id
         });
+
+        if (!refundDetails.canCancel) {
+            return res.status(400).json({
+                success: false,
+                error: refundDetails.reason || 'لا يمكن إلغاء حجز الطالب بعد بدء الحصص أو حضور أي حصة ضمن الخطة'
+            });
+        }
 
         const refundAmount = refundDetails.netRefundAmount;
         const teacherDeduction = refundDetails.teacherDeduction;

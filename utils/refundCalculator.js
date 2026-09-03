@@ -1,11 +1,13 @@
 // ============================================================
-// دالة موحدة لحساب مبالغ استرداد الحجوزات بدقة تامة
+// نظام التحقق الموحد وإلغاء حجز الطالب واسترداد المبالغ بدقة
 // ============================================================
-// 1. استبعاد رسوم المنصة: يسترد الطالب المبلغ بدون رسوم المنصة.
-// 2. خصم الحصص المستردة سابقاً: إذا كان قد استرد له مبلغ حصة ضمن خطة،
-//    يتم حساب هذا المبلغ ويخصم من الرصيد المسترد الآن لمنع أن يأخذ مبالغ
-//    أكبر من القيمة الأصلية لاشتراك العرض.
-// 3. حساب المبلغ الفعلي الواجب خصمه من الرصيد المعلق للأستاذ بدقة.
+// القواعد المعتمدة:
+// 1. يظهر ويُحتسب المبلغ المدفوع بدون رسوم المنصة (مثلاً 1000 دج بدلاً من 1200 دج).
+// 2. إذا لم يدرس الطالب أي حصة وقام الأستاذ بإلغاء حجزه، يسترد الطالب المبلغ الإجمالي
+//    للاشتراك بدون رسوم المنصة (1000 دج)، ويُخصم من الرصيد المعلق للأستاذ.
+// 3. الاسترداد والإلغاء من قبل الأستاذ يكون فقط *قبل بدء الحصص*.
+//    إذا بدأت الحصة أو درس الطالب حصة أو أكثر ضمن الخطة (حتى وإن لم تكتمل)،
+//    فلن يتمكن الأستاذ نهائياً من إلغاء حجز الطالب.
 // ============================================================
 
 const { supabase } = require('../config/database');
@@ -14,169 +16,195 @@ const logger = require('./logger');
 const money = (val) => Math.round((Number(val) || 0) * 100) / 100;
 
 /**
+ * التحقق مما إذا كانت حصص الدرس قد بدأت أو عُقدت/دُرست أي حصة ضمن الخطة
  * @param {Object} params
- * @param {Object} params.session - سجل الجلسة من جدول sessions
- * @param {Object} params.offer - سجل العرض من جدول offers
+ * @param {Object} params.offer - سجل الدرس
+ * @param {Object} [params.session] - سجل جلسة الطالب
  * @param {number|string} [params.studentId] - معرف الطالب
- * @returns {Promise<Object>} تفاصيل الاسترداد المالية الدقيقة
+ * @returns {Promise<{ hasStarted: boolean, reason: string }>}
+ */
+async function hasOfferSessionsStarted({ offer, session, studentId }) {
+    if (!offer) return { hasStarted: false, reason: '' };
+
+    // 1. التحقق من حالة الدرس العامة إذا كان جارياً أو مكتملاً أو منتهياً
+    if (['live', 'completed', 'ended'].includes(offer.status)) {
+        return { hasStarted: true, reason: 'الدرس جارٍ حالياً أو مكتمل' };
+    }
+
+    if (offer.stream_active === true || offer.is_live === true || Boolean(offer.stream_started_at)) {
+        return { hasStarted: true, reason: 'البث المباشر للدرس قد بدأ بالفعل' };
+    }
+
+    // 2. التحقق من عداد الحصص المكتملة
+    const completedCount = Number(offer.completed_sessions_count ?? offer.completed_sessions ?? 0);
+    if (completedCount > 0) {
+        return { hasStarted: true, reason: `تم إكمال ${completedCount} حصة من الدرس` };
+    }
+
+    // 3. التحقق من جدول الحصص الفردية stream_sessions
+    try {
+        const { data: streamSessions } = await supabase
+            .from('stream_sessions')
+            .select('id, session_number, status, is_escrow_released, refund_amount')
+            .eq('offer_id', offer.id);
+
+        if (streamSessions && streamSessions.length > 0) {
+            const startedSession = streamSessions.find(s =>
+                ['in_progress', 'live', 'completed', 'ended', 'refunded'].includes(s.status) ||
+                s.is_escrow_released === true ||
+                parseFloat(s.refund_amount || 0) > 0
+            );
+            if (startedSession) {
+                return { hasStarted: true, reason: `الحصة رقم ${startedSession.session_number || ''} قد بدأت أو تمت تسويتها` };
+            }
+        }
+    } catch (err) {
+        // ignore error in mock mode
+    }
+
+    // 4. التحقق من جدول المواعيد في offer.sessions_schedule
+    if (Array.isArray(offer.sessions_schedule)) {
+        const startedSched = offer.sessions_schedule.find(s =>
+            ['completed', 'in_progress', 'refunded', 'ended'].includes(s.status) ||
+            s.is_completed === true
+        );
+        if (startedSched) {
+            return { hasStarted: true, reason: `الحصة (${startedSched.title || startedSched.session_number || ''}) قد بدأت أو اكتملت` };
+        }
+    }
+
+    // 5. التحقق من جلسة الطالب ذاتها إذا كان قد تم تحرير جزء من مستحقاتها أو استرداد حصة منها
+    if (session) {
+        if (parseFloat(session.refunded_amount || 0) > 0) {
+            return { hasStarted: true, reason: 'تمت معالجة استرداد لحصة سابقة للطالب ضمن هذا الاشتراك' };
+        }
+        if (session.is_escrow_released === true) {
+            return { hasStarted: true, reason: 'تم تحرير مستحقات حصة من هذا الحجز مسبقاً' };
+        }
+    }
+
+    // 6. التحقق من سجل اشتراك الطالب في جدول stream_subscriptions
+    const targetStudentId = studentId ? parseInt(studentId) : (session?.student_id ? parseInt(session.student_id) : null);
+    if (targetStudentId) {
+        try {
+            const { data: sub } = await supabase
+                .from('stream_subscriptions')
+                .select('id, completed_sessions, refunded_amount, teacher_released_so_far')
+                .eq('offer_id', offer.id)
+                .eq('student_id', targetStudentId)
+                .maybeSingle();
+
+            if (sub) {
+                if (Number(sub.completed_sessions || 0) > 0) {
+                    return { hasStarted: true, reason: 'الطالب درس حصة أو أكثر ضمن الخطة' };
+                }
+                if (parseFloat(sub.refunded_amount || 0) > 0) {
+                    return { hasStarted: true, reason: 'تم تسجيل استرداد لحصة سابقة لهذا الطالب' };
+                }
+                if (parseFloat(sub.teacher_released_so_far || 0) > 0) {
+                    return { hasStarted: true, reason: 'تم تحرير مستحقات حصص سابقة للأستاذ' };
+                }
+            }
+        } catch (err) {
+            // ignore
+        }
+    }
+
+    // 7. التحقق من سجلات التحقق من البث stream_verification
+    try {
+        const { data: verifs } = await supabase
+            .from('stream_verification')
+            .select('id, status')
+            .eq('offer_id', offer.id)
+            .limit(1);
+
+        if (verifs && verifs.length > 0) {
+            return { hasStarted: true, reason: 'تم تسجيل بدء بث للدرس مسبقاً' };
+        }
+    } catch (err) {
+        // ignore
+    }
+
+    return { hasStarted: false, reason: '' };
+}
+
+/**
+ * حساب تفاصيل إلغاء حجز الطالب والمبلغ المسترد بدون رسوم المنصة
+ * @param {Object} params
+ * @param {Object} params.session - سجل الجلسة من sessions
+ * @param {Object} params.offer - سجل الدرس من offers
+ * @param {number|string} [params.studentId] - معرف الطالب
+ * @returns {Promise<Object>} تفاصيل الإلغاء والاسترداد
  */
 async function calculateBookingRefundDetails({ session, offer, studentId }) {
     if (!session || !offer) {
         return {
             totalPaid: 0,
             platformFee: 0,
-            baseRefundableWithoutFee: 0,
-            previouslyRefunded: 0,
+            amountWithoutFee: 0,
             netRefundAmount: 0,
             teacherDeduction: 0,
             isFree: true,
-            subscription: null,
-            details: 'بيانات غير كافية'
+            hasStarted: false,
+            canCancel: false,
+            previouslyRefunded: 0,
+            baseRefundableWithoutFee: 0,
+            reason: 'بيانات غير كافية'
         };
     }
 
     const isFree = (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && parseFloat(offer.price || 0) === 0;
-    if (isFree) {
-        return {
-            totalPaid: 0,
-            platformFee: 0,
-            baseRefundableWithoutFee: 0,
-            previouslyRefunded: 0,
-            netRefundAmount: 0,
-            teacherDeduction: 0,
-            isFree: true,
-            subscription: null,
-            details: 'العرض مجاني'
-        };
-    }
-
-    const targetStudentId = studentId ? parseInt(studentId) : parseInt(session.student_id);
     const totalPaid = money(session.payment_amount || 0);
 
-    // جلب اشتراك الطالب في خطة البث إن وجد
-    let subscription = null;
-    try {
-        const { data: sub } = await supabase
-            .from('stream_subscriptions')
-            .select('*')
-            .eq('offer_id', offer.id)
-            .eq('student_id', targetStudentId)
-            .maybeSingle();
-        subscription = sub || null;
-    } catch (err) {
-        // تجاهل أخطاء Supabase في وضع Mock
-    }
+    // حساب المبلغ بدون رسوم المنصة (نصيب الأستاذ)
+    let amountWithoutFee = 0;
+    let totalPlatformFee = 0;
 
-    // 1️⃣ حساب رسوم المنصة والمبلغ الأساسي بدون رسوم المنصة
-    const totalSessions = parseInt(offer.total_sessions || subscription?.total_sessions) || 1;
-    const sessionDuration = parseInt(offer.session_duration || offer.duration) || 60;
-    const defaultPlatformFeePerSession = Math.round((sessionDuration / 60) * 50);
-    const platformFeePerSession = parseFloat(offer.platform_fee_per_session || subscription?.platform_fee_per_session || defaultPlatformFeePerSession);
-    const totalPlatformFee = money(offer.total_platform_fee || (platformFeePerSession * totalSessions));
-
-    let baseRefundableWithoutFee = 0;
-    if (session.teacher_earned && parseFloat(session.teacher_earned) > 0) {
-        baseRefundableWithoutFee = money(session.teacher_earned);
-    } else if (subscription && subscription.teacher_total_escrow && parseFloat(subscription.teacher_total_escrow) > 0) {
-        baseRefundableWithoutFee = money(subscription.teacher_total_escrow);
-    } else if (offer.total_teacher_price && parseFloat(offer.total_teacher_price) > 0) {
-        baseRefundableWithoutFee = money(offer.total_teacher_price);
+    if (isFree) {
+        amountWithoutFee = 0;
+        totalPlatformFee = 0;
     } else {
-        // إذا لم تكن مسجلة صراحة، نخصم رسوم المنصة من إجمالي ما دفعه الطالب
-        baseRefundableWithoutFee = Math.max(0, money(totalPaid - totalPlatformFee));
-    }
+        const totalSessions = parseInt(offer.total_sessions) || 1;
+        const sessionDuration = parseInt(offer.session_duration || offer.duration) || 60;
+        const defaultPlatformFeePerSession = Math.round((sessionDuration / 60) * 50);
+        const platformFeePerSession = parseFloat(offer.platform_fee_per_session || defaultPlatformFeePerSession);
+        totalPlatformFee = money(offer.total_platform_fee || (platformFeePerSession * totalSessions));
 
-    // 2️⃣ حساب المبالغ التي استردها الطالب سابقاً عن أي حصة في هذا العرض / الخطة
-    let previouslyRefunded = 0;
-
-    // أ) فحص سجل معاملات المحفظة للطالب (wallet_transactions)
-    try {
-        const { data: txns } = await supabase
-            .from('wallet_transactions')
-            .select('amount, description')
-            .eq('student_id', targetStudentId)
-            .eq('type', 'refund')
-            .eq('status', 'completed');
-
-        if (txns && txns.length > 0) {
-            const subIdStr = subscription?.id ? `اشتراك رقم ${subscription.id}` : null;
-            const offerName = offer?.subject_name ? offer.subject_name.trim() : null;
-
-            for (const t of txns) {
-                const desc = t.description || '';
-                const matchSub = subIdStr && desc.includes(subIdStr);
-                const matchOffer = offerName && desc.includes(offerName);
-                const isSessionRefund = desc.includes('حصة') || desc.includes('غير مكتملة') || desc.includes('لعدم اكتمالها');
-
-                // احتساب استردادات الحصص فقط مع تجنب عد معاملات الإلغاء الشامل
-                if ((matchSub || (matchOffer && isSessionRefund)) && !desc.includes('إلغاء حجز من قبل الأستاذ') && !desc.includes('حذف درس')) {
-                    previouslyRefunded += parseFloat(t.amount || 0);
-                }
-            }
-        }
-    } catch (err) {
-        // تجاهل
-    }
-
-    // ب) إذا لم نجد في المحفظة، نتحقق من الحصص المستردة في جدول stream_sessions
-    if (previouslyRefunded === 0) {
-        try {
-            const { data: refundedStreamSessions } = await supabase
-                .from('stream_sessions')
-                .select('session_number, refund_amount, price_per_session')
-                .eq('offer_id', offer.id)
-                .eq('status', 'refunded');
-
-            if (refundedStreamSessions && refundedStreamSessions.length > 0) {
-                const pricePerSession = parseFloat(offer.price_per_session || subscription?.price_per_session || (baseRefundableWithoutFee / totalSessions));
-                previouslyRefunded = refundedStreamSessions.length * pricePerSession;
-            } else if (Array.isArray(offer.sessions_schedule)) {
-                const refundedSchedule = offer.sessions_schedule.filter(s => s.status === 'refunded');
-                if (refundedSchedule.length > 0) {
-                    const pricePerSession = parseFloat(offer.price_per_session || subscription?.price_per_session || (baseRefundableWithoutFee / totalSessions));
-                    previouslyRefunded = refundedSchedule.length * pricePerSession;
-                }
-            }
-        } catch (err) {
-            // تجاهل
+        if (session.teacher_earned && parseFloat(session.teacher_earned) > 0) {
+            amountWithoutFee = money(session.teacher_earned);
+        } else if (offer.total_teacher_price && parseFloat(offer.total_teacher_price) > 0) {
+            amountWithoutFee = money(offer.total_teacher_price);
+        } else if (offer.price && parseFloat(offer.price) > 0) {
+            amountWithoutFee = money(offer.price);
+        } else {
+            amountWithoutFee = Math.max(0, money(totalPaid - totalPlatformFee));
         }
     }
 
-    // ج) إذا كانت مسجلة في حقل refunded_amount في session أو subscription
-    if (session.refunded_amount && parseFloat(session.refunded_amount) > previouslyRefunded) {
-        previouslyRefunded = parseFloat(session.refunded_amount);
-    }
-    if (subscription?.refunded_amount && parseFloat(subscription.refunded_amount) > previouslyRefunded) {
-        previouslyRefunded = parseFloat(subscription.refunded_amount);
-    }
-
-    previouslyRefunded = money(previouslyRefunded);
-
-    // 3️⃣ حساب صافي المبلغ المسترد للطالب الآن:
-    // المبلغ بدون رسوم المنصة ناقص أي مبالغ حصص تم استردادها سابقاً.
-    // يضمن عدم تجاوز المبلغ الأصلي الذي دفعه الطالب بدون رسوم المنصة.
-    const netRefundAmount = Math.max(0, money(baseRefundableWithoutFee - previouslyRefunded));
-
-    // 4️⃣ المبلغ الواجب خصمه من الرصيد المعلق للأستاذ:
-    // يخصم فقط المبلغ الصافي المسترد حتى لا يتكرر خصم ما تم خصمه سابقاً
-    const teacherDeduction = netRefundAmount;
+    // التحقق هل بدأت الحصص أو درس الطالب أي حصة
+    const { hasStarted, reason } = await hasOfferSessionsStarted({ offer, session, studentId });
+    const canCancel = !hasStarted;
 
     return {
         totalPaid,
         platformFee: totalPlatformFee,
-        baseRefundableWithoutFee,
-        previouslyRefunded,
-        netRefundAmount,
-        teacherDeduction,
-        isFree: false,
-        subscription,
-        details: previouslyRefunded > 0 
-            ? `المبلغ الأساسي: ${baseRefundableWithoutFee} دج (بدون رسوم منصة ${totalPlatformFee} دج) - خصم حصص مستردة سابقاً: ${previouslyRefunded} دج = الصافي: ${netRefundAmount} دج`
-            : `المبلغ الأساسي: ${baseRefundableWithoutFee} دج (بدون رسوم منصة ${totalPlatformFee} دج)`
+        amountWithoutFee,
+        baseRefundableWithoutFee: amountWithoutFee,
+        // الاسترداد متاح فقط قبل بدء الحصص وبالمبلغ الإجمالي بدون رسوم المنصة
+        netRefundAmount: canCancel ? amountWithoutFee : 0,
+        teacherDeduction: canCancel ? amountWithoutFee : 0,
+        previouslyRefunded: 0, // دائماً صفر لعدم وجود حصص قد عُقدت قبل بدء الدرس!
+        isFree,
+        hasStarted,
+        canCancel,
+        reason: hasStarted
+            ? (reason || 'لا يمكن إلغاء حجز الطالب بعد بدء الحصص أو حضور أي حصة ضمن الخطة')
+            : 'يمكن إلغاء الحجز واسترداد المبلغ كاملاً بدون رسوم المنصة'
     };
 }
 
 module.exports = {
+    hasOfferSessionsStarted,
     calculateBookingRefundDetails,
     money
 };
