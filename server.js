@@ -2615,11 +2615,17 @@ function generateTeacherZoomPage(offer, teacher, token) {
                     errStack +
                 '</div>';
                 
+                function dismissStatusOverlay() {
+                    const ov = document.getElementById('statusOverlay');
+                    if (ov) ov.style.display = 'none';
+                }
+                window.dismissStatusOverlay = dismissStatusOverlay;
+
                 const statusElem = document.getElementById('statusText');
                 if (statusElem) statusElem.innerHTML = debugDetails +
                 '<div style="margin-top:14px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">' +
                     '<button onclick="location.reload()" style="background:#2563eb; color:#fff; border:none; padding:10px 20px; border-radius:8px; font-family:Cairo; font-weight:bold; cursor:pointer; font-size:14px;">🔄 إعادة المحاولة</button>' +
-                    '<button onclick="document.getElementById(\'statusOverlay\').style.display=\'none\';" style="background:#059669; color:#fff; border:none; padding:10px 20px; border-radius:8px; font-family:Cairo; font-weight:bold; cursor:pointer; font-size:14px;">👈 متابعة لوحة البث على كل حال</button>' +
+                    '<button onclick="dismissStatusOverlay()" style="background:#059669; color:#fff; border:none; padding:10px 20px; border-radius:8px; font-family:Cairo; font-weight:bold; cursor:pointer; font-size:14px;">👈 متابعة لوحة البث على كل حال</button>' +
                     '<a href="/teacher-dashboard.html" style="color:#e5e7eb; text-decoration:none; padding:10px 20px; background:#374151; border-radius:8px; font-weight:bold; font-size:14px;">العودة للوحة التحكم</a>' +
                 '</div>';
             }
@@ -3827,10 +3833,17 @@ function generateStudentZoomPage(offer, student) {
                     errStack +
                 '</div>';
                 
+                function dismissStatusOverlay() {
+                    const ov = document.getElementById('statusOverlay');
+                    if (ov) ov.style.display = 'none';
+                }
+                window.dismissStatusOverlay = dismissStatusOverlay;
+
                 const statusElem = document.getElementById('statusText');
                 if (statusElem) statusElem.innerHTML = debugDetails +
                 '<div style="margin-top:14px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">' +
                     '<button onclick="location.reload()" style="background:#10b981; color:#fff; border:none; padding:10px 20px; border-radius:8px; font-family:Cairo; font-weight:bold; cursor:pointer; font-size:14px;">🔄 إعادة المحاولة</button>' +
+                    '<button onclick="dismissStatusOverlay()" style="background:#059669; color:#fff; border:none; padding:10px 20px; border-radius:8px; font-family:Cairo; font-weight:bold; cursor:pointer; font-size:14px;">👈 متابعة لوحة البث على كل حال</button>' +
                     '<a href="/student-dashboard.html" style="color:#e5e7eb; text-decoration:none; padding:10px 20px; background:#374151; border-radius:8px; font-weight:bold; font-size:14px;">العودة للوحة التحكم</a>' +
                 '</div>';
             }
