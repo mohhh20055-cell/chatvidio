@@ -2222,6 +2222,71 @@ async function saveOfferRemainingTime(offerId, remainingSeconds, isPaused = fals
             .eq('id', offerId);
     } catch(e) {}
 
+    // تحديث جدول التحقق من البث (stream_verification)
+    try {
+        const { data: verification } = await supabase
+            .from('stream_verification')
+            .select('*')
+            .eq('offer_id', offerId)
+            .maybeSingle();
+
+        const { data: offer } = await supabase
+            .from('offers')
+            .select('duration, total_seconds, teacher_id')
+            .eq('id', offerId)
+            .maybeSingle();
+
+        const durationMins = offer?.duration || 60;
+        const expectedDuration = Number(offer?.total_seconds || (durationMins * 60)) || 3600;
+        const actualLiveSeconds = Math.max(0, expectedDuration - sec);
+
+        if (verification) {
+            let lastPauseTime = verification.last_pause_time;
+            let totalPausedSeconds = verification.total_paused_seconds || 0;
+
+            if (isPaused) {
+                if (!lastPauseTime) {
+                    lastPauseTime = new Date().toISOString();
+                }
+            } else {
+                if (lastPauseTime) {
+                    const pauseStart = new Date(lastPauseTime);
+                    const now = new Date();
+                    const elapsedPaused = Math.max(0, Math.floor((now - pauseStart) / 1000));
+                    totalPausedSeconds += elapsedPaused;
+                    lastPauseTime = null;
+                }
+            }
+
+            await supabase
+                .from('stream_verification')
+                .update({
+                    last_pause_time: lastPauseTime,
+                    total_paused_seconds: totalPausedSeconds,
+                    total_duration_seconds: expectedDuration,
+                    actual_live_seconds: actualLiveSeconds
+                })
+                .eq('offer_id', offerId);
+        } else {
+            const serverTimestamp = new Date().toISOString();
+            await supabase
+                .from('stream_verification')
+                .insert({
+                    offer_id: offerId,
+                    teacher_id: offer?.teacher_id || null,
+                    server_start_time: serverTimestamp,
+                    last_pause_time: isPaused ? serverTimestamp : null,
+                    total_paused_seconds: 0,
+                    total_duration_seconds: expectedDuration,
+                    actual_live_seconds: actualLiveSeconds,
+                    status: isPaused ? 'paused' : 'started',
+                    created_at: serverTimestamp
+                });
+        }
+    } catch (e) {
+        console.error('Error updating stream_verification in saveOfferRemainingTime:', e.message);
+    }
+
     return true;
 }
 
@@ -2274,8 +2339,16 @@ router.all('/teacher-leave/:offer_id', async (req, res) => {
         const offerId = parseInt(req.params.offer_id);
         teacherPingStore.delete(offerId);
         try {
-            await supabase.from('offers').update({ status: 'paused' }).eq('id', offerId);
-        } catch(e) {}
+            const { data: offer } = await supabase
+                .from('offers')
+                .select('remaining_seconds, remaining_time')
+                .eq('id', offerId)
+                .maybeSingle();
+            const sec = offer ? (offer.remaining_seconds ?? offer.remaining_time ?? 0) : 0;
+            await saveOfferRemainingTime(offerId, sec, true);
+        } catch(e) {
+            console.error('Error in teacher-leave update:', e.message);
+        }
         res.json({ success: true, is_paused: true });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
