@@ -158,10 +158,25 @@ router.post('/create', authenticate, authorize(['student']), [
         isFree = (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && parseFloat(offer.price || 0) === 0;
         let session = null;
         
+        let streamFeePer45Min = 50;
+        try {
+            const { data: revSettings } = await supabase
+                .from('platform_settings')
+                .select('value')
+                .eq('key', 'revenue_settings')
+                .maybeSingle();
+            if (revSettings && revSettings.value) {
+                const val = parseFloat(revSettings.value.stream_platform_fee_per_45_min);
+                if (!isNaN(val)) streamFeePer45Min = val;
+            }
+        } catch (e) {
+            console.error('Error fetching stream platform fee from settings:', e.message);
+        }
+
         const totalSessions = offer.total_sessions || 1;
         const sessionDuration = offer.session_duration || offer.duration || 60;
         const pricePerSession = isFree ? 0 : parseFloat(offer.price_per_session || offer.price || 0);
-        const platformFeePerSession = isFree ? 0 : (offer.platform_fee_per_session || Math.round((sessionDuration / 45) * 50));
+        const platformFeePerSession = isFree ? 0 : (offer.platform_fee_per_session || Math.round((sessionDuration / 45) * streamFeePer45Min));
         const totalPlatformFee = isFree ? 0 : (offer.total_platform_fee || (platformFeePerSession * totalSessions));
         const totalTeacherPrice = isFree ? 0 : (offer.total_teacher_price || (pricePerSession * totalSessions));
         const totalCostForStudent = isFree ? 0 : (offer.total_student_price || (totalTeacherPrice + totalPlatformFee));

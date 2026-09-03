@@ -145,7 +145,22 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
 
         // 💰 حسابات الرسوم والمبالغ الإجمالية للخطة
         // رسوم المنصة = 50 دج لكل 45 دقيقة
-        const platformFeePerSession = isFreeOffer ? 0 : Math.round((parsedDuration / 45) * 50);
+        let streamFeePer45Min = 50;
+        try {
+            const { data: revSettings } = await supabase
+                .from('platform_settings')
+                .select('value')
+                .eq('key', 'revenue_settings')
+                .maybeSingle();
+            if (revSettings && revSettings.value) {
+                const val = parseFloat(revSettings.value.stream_platform_fee_per_45_min);
+                if (!isNaN(val)) streamFeePer45Min = val;
+            }
+        } catch (e) {
+            console.error('Error fetching stream platform fee:', e.message);
+        }
+
+        const platformFeePerSession = isFreeOffer ? 0 : Math.round((parsedDuration / 45) * streamFeePer45Min);
         const totalPlatformFee = platformFeePerSession * parsedTotalSessions;
         const totalTeacherPrice = isFreeOffer ? 0 : Math.round(parsedPrice * parsedTotalSessions);
         const totalStudentPrice = totalTeacherPrice + totalPlatformFee;
@@ -695,6 +710,21 @@ router.get('/offers', async (req, res) => {
         }
 
         // ✅ جلب معلومات المعلمين
+        let streamFeePer45Min = 50;
+        try {
+            const { data: revSettings } = await supabase
+                .from('platform_settings')
+                .select('value')
+                .eq('key', 'revenue_settings')
+                .maybeSingle();
+            if (revSettings && revSettings.value) {
+                const val = parseFloat(revSettings.value.stream_platform_fee_per_45_min);
+                if (!isNaN(val)) streamFeePer45Min = val;
+            }
+        } catch (e) {
+            console.error('Error fetching stream platform fee in list route:', e.message);
+        }
+
         const teacherIds = [...new Set(offers.map(o => o.teacher_id))];
         const { data: teachers, error: teachersError } = await supabase
             .from('teachers')
@@ -724,7 +754,7 @@ router.get('/offers', async (req, res) => {
             const sessionDuration = offer.session_duration || offer.duration || 60;
             const pricePerSession = parseFloat(offer.price_per_session || offer.price || 0);
             const isFree = (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && pricePerSession === 0;
-            const platformFeePerSession = isFree ? 0 : (offer.platform_fee_per_session || Math.round((sessionDuration / 45) * 50));
+            const platformFeePerSession = isFree ? 0 : (offer.platform_fee_per_session || Math.round((sessionDuration / 45) * streamFeePer45Min));
             const totalPlatformFee = isFree ? 0 : (offer.total_platform_fee || (platformFeePerSession * totalSessions));
             const totalTeacherPrice = isFree ? 0 : (offer.total_teacher_price || (pricePerSession * totalSessions));
             const totalStudentPrice = isFree ? 0 : (offer.total_student_price || (totalTeacherPrice + totalPlatformFee));
@@ -878,6 +908,21 @@ router.get(['/offer/:offer_id', '/teacher/offer/:offer_id'], async (req, res) =>
             return res.status(404).json({ success: false, error: 'الدرس غير موجود' });
         }
 
+        let streamFeePer45Min = 50;
+        try {
+            const { data: revSettings } = await supabase
+                .from('platform_settings')
+                .select('value')
+                .eq('key', 'revenue_settings')
+                .maybeSingle();
+            if (revSettings && revSettings.value) {
+                const val = parseFloat(revSettings.value.stream_platform_fee_per_45_min);
+                if (!isNaN(val)) streamFeePer45Min = val;
+            }
+        } catch (e) {
+            console.error('Error fetching stream platform fee in details route:', e.message);
+        }
+
         // ✅ جلب معلومات المعلم
         const { data: teacher, error: teacherError } = await supabase
             .from('teachers')
@@ -919,7 +964,7 @@ router.get(['/offer/:offer_id', '/teacher/offer/:offer_id'], async (req, res) =>
         const sessionDuration = offer.session_duration || offer.duration_minutes || offer.duration || 60;
         const pricePerSession = parseFloat(offer.price_per_session || offer.price || 0);
         const isFree = (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && pricePerSession === 0;
-        const platformFeePerSession = isFree ? 0 : (offer.platform_fee_per_session || Math.round((sessionDuration / 45) * 50));
+        const platformFeePerSession = isFree ? 0 : (offer.platform_fee_per_session || Math.round((sessionDuration / 45) * streamFeePer45Min));
         const totalPlatformFee = isFree ? 0 : (offer.total_platform_fee || (platformFeePerSession * totalSessions));
         const totalTeacherPrice = isFree ? 0 : (offer.total_teacher_price || (pricePerSession * totalSessions));
         const totalStudentPrice = isFree ? 0 : (offer.total_student_price || (totalTeacherPrice + totalPlatformFee));
@@ -989,6 +1034,21 @@ router.get('/teacher/offers/:teacher_id', authenticate, authorize(['teacher']), 
             return res.status(403).json({ success: false, error: 'غير مصرح لك' });
         }
 
+        let streamFeePer45Min = 50;
+        try {
+            const { data: revSettings } = await supabase
+                .from('platform_settings')
+                .select('value')
+                .eq('key', 'revenue_settings')
+                .maybeSingle();
+            if (revSettings && revSettings.value) {
+                const val = parseFloat(revSettings.value.stream_platform_fee_per_45_min);
+                if (!isNaN(val)) streamFeePer45Min = val;
+            }
+        } catch (e) {
+            console.error('Error fetching stream platform fee in teacher offers route:', e.message);
+        }
+
         const { data: offers, error: offersError } = await supabase
             .from('offers')
             .select('*')
@@ -1040,7 +1100,7 @@ router.get('/teacher/offers/:teacher_id', authenticate, authorize(['teacher']), 
             const sessionDuration = offer.session_duration || offer.duration_minutes || offer.duration || 60;
             const pricePerSession = parseFloat(offer.price_per_session || offer.price || 0);
             const isFree = (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && pricePerSession === 0;
-            const platformFeePerSession = isFree ? 0 : (offer.platform_fee_per_session || Math.round((sessionDuration / 45) * 50));
+            const platformFeePerSession = isFree ? 0 : (offer.platform_fee_per_session || Math.round((sessionDuration / 45) * streamFeePer45Min));
             const totalPlatformFee = isFree ? 0 : (offer.total_platform_fee || (platformFeePerSession * totalSessions));
             const totalTeacherPrice = isFree ? 0 : (offer.total_teacher_price || (pricePerSession * totalSessions));
             const totalStudentPrice = isFree ? 0 : (offer.total_student_price || (totalTeacherPrice + totalPlatformFee));

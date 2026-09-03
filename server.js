@@ -5927,6 +5927,7 @@ let inMemoryRevenueSettings = {
 
     // 5. البث المباشر والحصص
     live_stream_platform_commission: 10,
+    stream_platform_fee_per_45_min: 50,
     student_booking_fee: 100,
     student_commission: 100,
     live_room_creation_fee: 0,
@@ -6160,6 +6161,7 @@ app.post('/api/admin/settings/revenue_settings', authenticate, authorize(['admin
             deposit_fee_fixed,
             min_deposit_amount,
             live_stream_platform_commission,
+            stream_platform_fee_per_45_min,
             student_booking_fee,
             student_commission,
             live_room_creation_fee,
@@ -6190,6 +6192,7 @@ app.post('/api/admin/settings/revenue_settings', authenticate, authorize(['admin
             min_deposit_amount: parseFloat(min_deposit_amount) >= 0 ? parseFloat(min_deposit_amount) : 100,
 
             live_stream_platform_commission: parseFloat(live_stream_platform_commission) >= 0 ? parseFloat(live_stream_platform_commission) : 10,
+            stream_platform_fee_per_45_min: parseFloat(stream_platform_fee_per_45_min) >= 0 ? parseFloat(stream_platform_fee_per_45_min) : 50,
             student_booking_fee: bookingFee,
             student_commission: bookingFee,
             live_room_creation_fee: parseFloat(live_room_creation_fee) >= 0 ? parseFloat(live_room_creation_fee) : 0,
