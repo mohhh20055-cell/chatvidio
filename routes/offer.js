@@ -671,6 +671,114 @@ router.put('/offer/update/:offer_id', authenticate, authorize(['teacher']), uplo
 });
 
 // ============================================================
+// ✅ تعديل موعد حصة معينة في جدول الدروس (أو تعديل الموعد الرئيسي)
+// ============================================================
+router.put('/offer/:offer_id/session/:session_number/date', authenticate, authorize(['teacher']), async (req, res) => {
+    try {
+        const offer_id = parseInt(req.params.offer_id);
+        const session_number = parseInt(req.params.session_number) || 1;
+        const { session_date } = req.body;
+        const teacher_id = req.user.userId;
+
+        if (!session_date) {
+            return res.status(400).json({ success: false, error: 'تاريخ موعد الحصة مطلوب' });
+        }
+
+        // ✅ التحقق من وجود الدرس وتأكيد الملكية للأستاذ
+        const offer = await getOne('offers', 'id', offer_id);
+        if (!offer) {
+            return res.status(404).json({ success: false, error: 'الدرس غير موجود' });
+        }
+
+        if (teacher_id === -1 || teacher_id === '-1' || req.user.is_guest || offer.teacher_id !== teacher_id) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك بتعديل موعد هذا الدرس' });
+        }
+
+        const formattedDate = formatOfferDateForDB(session_date);
+
+        // ✅ 1. تحديث حقل offer_date إذا كانت الحصة الأولى (أو إذا كان عرضاً من حصة واحدة)
+        const updateData = {};
+        if (session_number === 1) {
+            updateData.offer_date = formattedDate;
+        }
+
+        // ✅ 2. تحديث جدول الحصص المخزن في sessions_schedule
+        const { parsedSchedule, totalSessions } = parseOfferPlanAndSchedule(offer);
+        let scheduleUpdated = false;
+
+        const updatedSchedule = parsedSchedule.map(s => {
+            if (s.session_number === session_number) {
+                scheduleUpdated = true;
+                return {
+                    ...s,
+                    session_date: formattedDate,
+                    date: formattedDate // للحفاظ على التوافق التام مع الصيغتين
+                };
+            }
+            return s;
+        });
+
+        // إذا لم يكن هناك جدول بعد أو لم نجد الرقم، نقوم بالتحديث أو الإضافة
+        if (!scheduleUpdated) {
+            // إضافة الحصة كاحتياط
+            updatedSchedule.push({
+                session_number: session_number,
+                title: `الحصة ${session_number}: ${offer.subject_name}`,
+                session_date: formattedDate,
+                date: formattedDate,
+                duration: offer.duration || 60,
+                status: 'upcoming',
+                completed_at: null,
+                teacher_released_amount: 0,
+                is_escrow_released: false
+            });
+        }
+
+        updateData.sessions_schedule = updatedSchedule;
+        updateData.updated_at = new Date().toISOString();
+
+        // تحديث في جدول offers
+        const { error: offerUpdateErr } = await supabase
+            .from('offers')
+            .update(updateData)
+            .eq('id', offer_id);
+
+        if (offerUpdateErr) {
+            logger.error('❌ خطأ في تحديث جدول الحصص:', offerUpdateErr);
+            return res.status(500).json({ success: false, error: 'فشل في تحديث موعد الحصة: ' + offerUpdateErr.message });
+        }
+
+        // ✅ 3. تحديث موعد الحصة في جدول stream_sessions إن وجد لمنع التناقض
+        try {
+            const { error: ssUpdateErr } = await supabase
+                .from('stream_sessions')
+                .update({ 
+                    session_date: formattedDate,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('offer_id', offer_id)
+                .eq('session_number', session_number);
+
+            if (ssUpdateErr) {
+                logger.warn('⚠️ تنبيه: لم يتم العثور أو فشل تحديث stream_sessions:', ssUpdateErr.message);
+            }
+        } catch (ssErr) {
+            logger.warn('⚠️ تنبيه: خطأ أثناء تحديث جدول stream_sessions:', ssErr.message);
+        }
+
+        res.json({
+            success: true,
+            message: 'تم تحديث موعد الحصة بنجاح',
+            offer_date: session_number === 1 ? formattedDate : offer.offer_date
+        });
+
+    } catch (error) {
+        logger.error('❌ خطأ في تعديل موعد الحصة:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
 // ✅ جلب جميع الدروس القادمة (مع فلتر المستوى التعليمي)
 // ============================================================
 router.get('/offers', async (req, res) => {

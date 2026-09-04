@@ -5087,6 +5087,39 @@
     </div>
 </div>
 
+<!-- EDIT OFFER DATE MODAL -->
+<div id="editOfferDateModal" class="modal" style="display: none; max-width: 450px;">
+    <div class="modal-header" style="background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%); color: white; border-radius: 12px 12px 0 0; padding: 16px 20px;">
+        <h3 style="color: white; margin: 0; display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-calendar-alt"></i> تعديل موعد البث / الحصة
+        </h3>
+        <button class="close-modal" onclick="closeEditOfferDateModal()" style="color: white; font-size: 1.5rem;">&times;</button>
+    </div>
+    <div class="modal-body" style="padding: 20px;">
+        <form id="editOfferDateForm" onsubmit="submitEditOfferDate(event)">
+            <input type="hidden" id="editOfferId" name="offer_id">
+            <input type="hidden" id="editSessionNumber" name="session_number" value="1">
+            
+            <div style="margin-bottom: 16px;">
+                <label for="editOfferDateInput" style="display: block; font-weight: 700; color: #1e293b; margin-bottom: 8px;">اختر الموعد الجديد للدرس (توقيت الجزائر):</label>
+                <input type="datetime-local" id="editOfferDateInput" required style="width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: 'Cairo'; font-size: 0.95rem;">
+                <p style="font-size: 0.78rem; color: #64748b; margin-top: 6px; line-height: 1.4;">
+                    <i class="fas fa-info-circle"></i> سيقوم النظام بتحديث وقت الدرس وتنبيه المشتركين بالموعد الجديد.
+                </p>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="submit" class="btn-primary" style="flex: 2; padding: 10px; border-radius: 8px; font-weight: 700; font-family: 'Cairo'; background: var(--gradient-primary); color: white; border: none; cursor: pointer;">
+                    <i class="fas fa-save"></i> حفظ الموعد الجديد
+                </button>
+                <button type="button" class="cancel-btn" onclick="closeEditOfferDateModal()" style="flex: 1; padding: 10px; border-radius: 8px; font-weight: 700; font-family: 'Cairo'; margin: 0; border: 1px solid #cbd5e1; background: #f1f5f9; cursor: pointer;">
+                    إلغاء
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- VIEW OFFER STUDENTS MODAL -->
 <div id="viewOfferStudentsModal" class="modal" style="display: none; max-width: 700px;">
     <div class="modal-header" style="background: linear-gradient(135deg, #3730a3 0%, #4f46e5 100%); color: white; border-radius: 12px 12px 0 0; padding: 16px 20px;">
@@ -8767,6 +8800,9 @@ function updateUI() {
                                     </button>
                                     <button onclick="endStreamManual(${offer.id})" style="flex: 1; background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; font-weight: bold;"><i class="fas fa-stop"></i> إنهاء البث المباشر</button>
                                 ` : ''}
+                                ${!isTerminated && offer.status !== 'completed' ? `
+                                    <button onclick="openEditOfferDateModal(${offer.id}, 1, '${offer.offer_date || ''}')" style="background: #0d9488; color: white; border: none; padding: 6px 10px; border-radius: 6px; font-size: 0.8rem; cursor: pointer;" title="تعديل موعد البث"><i class="fas fa-calendar-days"></i> تعديل</button>
+                                ` : ''}
                                 <button onclick="deleteOffer(${offer.id})" style="background: #ef4444; color: white; border: none; padding: 6px 10px; border-radius: 6px; font-size: 0.8rem; cursor: pointer;" title="حذف الدرس"><i class="fas fa-trash"></i></button>
                             `}
                         </div>
@@ -8860,6 +8896,11 @@ function updateUI() {
                             </div>
                         </div>
                         <div style="display:flex; align-items:center; gap:8px;">
+                            ${!isCompleted ? `
+                                <button onclick="openEditOfferDateModal(${offer.id}, ${s.session_number}, '${s.session_date || ''}')" style="background:#0d9488; color:white; border:none; padding:5px 10px; border-radius:6px; font-size:0.75rem; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:4px; margin-left: 8px;">
+                                    <i class="fas fa-calendar-days"></i> تعديل الموعد
+                                </button>
+                            ` : ''}
                             ${isCompleted ? `
                                 <span style="background:#dcfce7; color:#166534; font-weight:700; padding:4px 10px; border-radius:6px; font-size:0.75rem; border:1px solid #86efac;">
                                     <i class="fas fa-check-double"></i> مكتملة ومحررة
@@ -8886,6 +8927,100 @@ function updateUI() {
         document.getElementById('modalOverlay').style.display = 'none';
     }
     window.closeOfferSessionsModal = closeOfferSessionsModal;
+
+    function openEditOfferDateModal(offerId, sessionNumber, currentDateStr) {
+        if (checkGuestAction()) return;
+        const modal = document.getElementById('editOfferDateModal');
+        const offerIdInput = document.getElementById('editOfferId');
+        const sessionNumberInput = document.getElementById('editSessionNumber');
+        const dateInput = document.getElementById('editOfferDateInput');
+        
+        if (!modal || !offerIdInput || !sessionNumberInput || !dateInput) return;
+        
+        offerIdInput.value = offerId;
+        sessionNumberInput.value = sessionNumber || 1;
+        
+        // تحضير قيمة التاريخ والوقت لـ datetime-local
+        let dtVal = '';
+        if (currentDateStr) {
+            const d = new Date(currentDateStr);
+            if (!isNaN(d.getTime())) {
+                // ضبط التوقيت المحلي ليتطابق مع حقل الإدخال بدقة
+                const tzOffset = d.getTimezoneOffset() * 60000; // بالفارق الميلي ثانية
+                const localISOTime = (new Date(d.getTime() - tzOffset)).toISOString().slice(0, 16);
+                dtVal = localISOTime;
+            }
+        }
+        dateInput.value = dtVal;
+        
+        modal.style.display = 'block';
+        document.getElementById('modalOverlay').style.display = 'block';
+    }
+    window.openEditOfferDateModal = openEditOfferDateModal;
+
+    function closeEditOfferDateModal() {
+        const modal = document.getElementById('editOfferDateModal');
+        if (modal) modal.style.display = 'none';
+        
+        // لا نريد إخفاء الـ overlay إذا كان مودال الحصص لا يزال مفتوحاً
+        const sessionsModal = document.getElementById('viewOfferSessionsModal');
+        if (!sessionsModal || sessionsModal.style.display !== 'block') {
+            document.getElementById('modalOverlay').style.display = 'none';
+        }
+    }
+    window.closeEditOfferDateModal = closeEditOfferDateModal;
+
+    async function submitEditOfferDate(event) {
+        event.preventDefault();
+        const offerId = document.getElementById('editOfferId').value;
+        const sessionNumber = document.getElementById('editSessionNumber').value || 1;
+        const sessionDate = document.getElementById('editOfferDateInput').value;
+        
+        if (!offerId || !sessionDate) {
+            showToast('الرجاء إدخال موعد صحيح', 'danger');
+            return;
+        }
+        
+        try {
+            const btn = event.target.querySelector('button[type="submit"]');
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
+            btn.disabled = true;
+            
+            const res = await fetchWithAuth(`/api/offer/${offerId}/session/${sessionNumber}/date`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ session_date: sessionDate })
+            });
+            
+            const data = await res.json();
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
+            
+            if (data.success) {
+                showToast(data.message || 'تم تحديث موعد الحصة بنجاح!', 'success');
+                closeEditOfferDateModal();
+                
+                // إذا كان مودال الحصص مفتوحاً، نعيد تحميله لتحديث المواعيد بداخله
+                const sessionsModal = document.getElementById('viewOfferSessionsModal');
+                if (sessionsModal && sessionsModal.style.display === 'block') {
+                    openOfferSessionsModal(offerId);
+                }
+                
+                // إعادة تحميل الدروس على الصفحة الرئيسية
+                if (typeof loadTeacherOffers === 'function') {
+                    loadTeacherOffers();
+                }
+            } else {
+                showToast(data.error || 'فشل تحديث موعد الحصة', 'danger');
+            }
+        } catch (err) {
+            showToast('حدث خطأ في الاتصال بالخادم: ' + err.message, 'danger');
+        }
+    }
+    window.submitEditOfferDate = submitEditOfferDate;
 
     async function viewOfferStudents(offerId, subjectName) {
         if (checkGuestAction()) return;
