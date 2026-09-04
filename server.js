@@ -2108,6 +2108,7 @@ function generateTeacherZoomPage(offer, teacher, token) {
         .agora-container.theater-mode .video-area { width: 100vw !important; height: 100% !important; max-height: 100% !important; padding: 0 !important; position: relative !important; background: #000 !important; }
         .agora-container.theater-mode #mediaContainer { border-radius: 0 !important; width: 100% !important; height: 100% !important; }
         .agora-container.theater-mode .controls-bar { position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important; width: 100vw !important; z-index: 100 !important; background: rgba(17, 24, 39, 0.92) !important; backdrop-filter: blur(8px) !important; border-top: 1px solid rgba(255, 255, 255, 0.1) !important; }
+        .mirror-active video { transform: scaleX(-1) !important; }
     </style>
 </head>
 <body>
@@ -2189,6 +2190,9 @@ function generateTeacherZoomPage(offer, teacher, token) {
             </button>
             <button class="ctrl-btn" id="flipCamBtn" onclick="switchCamera()" title="قلب الكاميرا (التبديل بين الأمامية والخلفية)">
                 <i class="fas fa-camera-rotate"></i>
+            </button>
+            <button class="ctrl-btn" id="mirrorBtn" onclick="toggleMirror()" title="قلب الصورة مرآتياً (تشغيل/إيقاف الانعكاس)">
+                <i class="fas fa-arrows-alt-h"></i>
             </button>
             <button class="ctrl-btn" id="theaterBtn" onclick="toggleTheaterMode()" title="وضع المسرح (توسيع الشاشة بالكامل)">
                 <i class="fas fa-expand"></i>
@@ -2532,7 +2536,7 @@ function generateTeacherZoomPage(offer, teacher, token) {
 
                 if (localVideoTrack) {
                     try {
-                        localVideoTrack.play('localVideo', { fit: 'contain', mirror: currentFacingMode !== 'environment' });
+                        localVideoTrack.play('localVideo', { fit: 'contain', mirror: false });
                         isCamOn = true;
                         updateBtnState('camBtn', true);
                     } catch(e) { console.warn('Play video track error:', e); }
@@ -2721,7 +2725,7 @@ function generateTeacherZoomPage(offer, teacher, token) {
                     }
                 }
                 if (localVideoTrack) {
-                    try { localVideoTrack.play('localVideo', { fit: 'contain', mirror: currentFacingMode !== 'environment' }); } catch(e){}
+                    try { localVideoTrack.play('localVideo', { fit: 'contain', mirror: false }); } catch(e){}
                     if (client) {
                         try { await client.publish([localVideoTrack]); } catch(pubErr){ console.warn('Publish video error:', pubErr); }
                     }
@@ -2740,6 +2744,22 @@ function generateTeacherZoomPage(offer, teacher, token) {
                 isCamOn = true;
             }
             updateBtnState('camBtn', isCamOn);
+        }
+
+        let isLocalMirrored = false;
+        function toggleMirror() {
+            const container = document.getElementById('mediaContainer');
+            if (container) {
+                isLocalMirrored = !isLocalMirrored;
+                if (isLocalMirrored) {
+                    container.classList.add('mirror-active');
+                    updateBtnState('mirrorBtn', false); // active (mirrored)
+                } else {
+                    container.classList.remove('mirror-active');
+                    updateBtnState('mirrorBtn', true); // inactive
+                }
+                console.log('📸 Teacher preview mirroring toggled to:', isLocalMirrored);
+            }
         }
 
         let isTheaterMode = false;
@@ -2821,7 +2841,7 @@ function generateTeacherZoomPage(offer, teacher, token) {
                         const label = (targetCam.label || '').toLowerCase();
                         const isBack = label.includes('back') || label.includes('rear') || label.includes('خلف') || label.includes('environment');
                         currentFacingMode = isBack ? 'environment' : 'user';
-                        localVideoTrack.play('localVideo', { fit: 'contain', mirror: currentFacingMode !== 'environment' });
+                        localVideoTrack.play('localVideo', { fit: 'contain', mirror: false });
                     } else {
                         await recreateVideoTrackWithFacingMode();
                     }
@@ -2872,7 +2892,7 @@ function generateTeacherZoomPage(offer, teacher, token) {
                     }
                 }
 
-                localVideoTrack.play('localVideo', { fit: 'contain', mirror: currentFacingMode !== 'environment' });
+                localVideoTrack.play('localVideo', { fit: 'contain', mirror: false });
 
                 if (client) {
                     await client.publish(localVideoTrack);
@@ -3554,6 +3574,7 @@ function generateStudentZoomPage(offer, student) {
             .ctrl-btn { width: 36px; height: 36px; font-size: 14px; }
             .ctrl-btn.end { width: auto; height: 32px; border-radius: 6px; font-size: 11px; padding: 0 10px; margin-top: 0; }
         }
+        .mirror-active video { transform: scaleX(-1) !important; }
     </style>
 </head>
 <body>
@@ -3621,6 +3642,9 @@ function generateStudentZoomPage(offer, student) {
             <button class="ctrl-btn" id="audioBoostBtn" onclick="toggleAudioBoost()" title="تقوية الصوت (100%)" style="position: relative;">
                 <i class="fas fa-volume-up"></i>
             </button>
+            <button class="ctrl-btn" id="mirrorBtn" onclick="toggleMirror()" title="قلب الصورة مرآتياً (لقراءة السبورة والكتابة بشكل صحيح)">
+                <i class="fas fa-arrows-alt-h"></i>
+            </button>
             <button class="ctrl-btn" id="fullscreenBtn" onclick="toggleFullscreen()" title="ملء الشاشة">
                 <i class="fas fa-expand"></i>
             </button>
@@ -3640,6 +3664,29 @@ function generateStudentZoomPage(offer, student) {
         let client = null;
         let localAudioTrack = null;
         let isMicOn = false;
+
+        let isRemoteMirrored = false;
+        function toggleMirror() {
+            const container = document.getElementById('mediaContainer');
+            if (container) {
+                isRemoteMirrored = !isRemoteMirrored;
+                if (isRemoteMirrored) {
+                    container.classList.add('mirror-active');
+                    updateBtnState('mirrorBtn', false); // active (mirrored)
+                } else {
+                    container.classList.remove('mirror-active');
+                    updateBtnState('mirrorBtn', true); // inactive
+                }
+                console.log('📸 Student stream mirroring toggled to:', isRemoteMirrored);
+            }
+        }
+
+        function updateBtnState(id, active) {
+            const btn = document.getElementById(id);
+            if (!btn) return;
+            if (active) btn.classList.remove('active');
+            else btn.classList.add('active');
+        }
 
         function setupStudentClient(c) {
             function updateViewersCount() {
