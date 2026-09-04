@@ -2532,7 +2532,7 @@ function generateTeacherZoomPage(offer, teacher, token) {
 
                 if (localVideoTrack) {
                     try {
-                        localVideoTrack.play('localVideo', { fit: 'contain' });
+                        localVideoTrack.play('localVideo', { fit: 'contain', mirror: currentFacingMode !== 'environment' });
                         isCamOn = true;
                         updateBtnState('camBtn', true);
                     } catch(e) { console.warn('Play video track error:', e); }
@@ -2721,7 +2721,7 @@ function generateTeacherZoomPage(offer, teacher, token) {
                     }
                 }
                 if (localVideoTrack) {
-                    try { localVideoTrack.play('localVideo', { fit: 'contain' }); } catch(e){}
+                    try { localVideoTrack.play('localVideo', { fit: 'contain', mirror: currentFacingMode !== 'environment' }); } catch(e){}
                     if (client) {
                         try { await client.publish([localVideoTrack]); } catch(pubErr){ console.warn('Publish video error:', pubErr); }
                     }
@@ -2818,6 +2818,10 @@ function generateTeacherZoomPage(offer, teacher, token) {
                     if (typeof localVideoTrack.setDevice === 'function') {
                         await localVideoTrack.setDevice(targetCam.deviceId);
                         console.log('✅ Switched camera device to:', targetCam.label || targetCam.deviceId);
+                        const label = (targetCam.label || '').toLowerCase();
+                        const isBack = label.includes('back') || label.includes('rear') || label.includes('خلف') || label.includes('environment');
+                        currentFacingMode = isBack ? 'environment' : 'user';
+                        localVideoTrack.play('localVideo', { fit: 'contain', mirror: currentFacingMode !== 'environment' });
                     } else {
                         await recreateVideoTrackWithFacingMode();
                     }
@@ -2868,7 +2872,7 @@ function generateTeacherZoomPage(offer, teacher, token) {
                     }
                 }
 
-                localVideoTrack.play('localVideo');
+                localVideoTrack.play('localVideo', { fit: 'contain', mirror: currentFacingMode !== 'environment' });
 
                 if (client) {
                     await client.publish(localVideoTrack);
