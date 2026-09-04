@@ -31,6 +31,20 @@ function escapeHtml(text) {
     return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+// دالة تحليل ومعالجة وقت بدء الحصة بدقة مع مراعاة توقيت الجزائر (UTC+1)
+function parseOfferStartDate(dateStr) {
+    if (!dateStr) return new Date();
+    if (typeof dateStr === 'string') {
+        const trimmed = dateStr.trim();
+        if (!trimmed.endsWith('Z') && !/[+-]\d{2}(:\d{2})?$/.test(trimmed)) {
+            const normalized = trimmed.replace(' ', 'T');
+            return new Date(`${normalized}+01:00`);
+        }
+        return new Date(trimmed);
+    }
+    return new Date(dateStr);
+}
+
 // ============================================================
 // ✅ بدء البث باستخدام Jitsi Meet (مع نظام التحقق المستقل)
 // ============================================================
@@ -1734,7 +1748,7 @@ router.post('/stream/heartbeat/:offer_id', authenticate, authorize(['teacher']),
         }
 
         const now = new Date();
-        const offerStart = new Date(offer.offer_date);
+        const offerStart = parseOfferStartDate(offer.offer_date);
         const offerEnd = new Date(offerStart.getTime() + offer.duration * 60 * 1000);
         const GRACE_MS = 10 * 60 * 1000;
         const graceEnd = new Date(offerEnd.getTime() + GRACE_MS);
@@ -1834,7 +1848,7 @@ router.get('/stream/status/:offer_id', authenticate, async (req, res) => {
         }
 
         const now = new Date();
-        const offerStart = new Date(offer.offer_date);
+        const offerStart = parseOfferStartDate(offer.offer_date);
         const offerEnd = new Date(offerStart.getTime() + offer.duration * 60 * 1000);
         const graceEnd = new Date(offerEnd.getTime() + 10 * 60 * 1000);
         const remainingSeconds = Math.max(0, Math.floor((offerEnd - now) / 1000));

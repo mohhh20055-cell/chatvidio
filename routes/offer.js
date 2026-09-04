@@ -45,6 +45,34 @@ function calculateOfferRemainingSeconds(offer) {
     return (offer.duration || offer.duration_minutes || 60) * 60;
 }
 
+// ✅ دالة لمعالجة وتنسيق موعد الحصة للحفظ في قاعدة البيانات بدقة مع منع إنقاص ساعة
+function formatOfferDateForDB(inputDate) {
+    if (!inputDate) return new Date().toISOString();
+    if (typeof inputDate === 'string') {
+        const trimmed = inputDate.trim();
+        const match = trimmed.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}(?::\d{2})?)/);
+        if (match) {
+            const timePart = match[2].length === 5 ? `${match[2]}:00` : match[2];
+            return `${match[1]}T${timePart}`;
+        }
+    }
+    const d = new Date(inputDate);
+    return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+}
+
+function parseOfferStartDate(dateStr) {
+    if (!dateStr) return new Date();
+    if (typeof dateStr === 'string') {
+        const trimmed = dateStr.trim();
+        if (!trimmed.endsWith('Z') && !/[+-]\d{2}(:\d{2})?$/.test(trimmed)) {
+            const normalized = trimmed.replace(' ', 'T');
+            return new Date(`${normalized}+01:00`);
+        }
+        return new Date(trimmed);
+    }
+    return new Date(dateStr);
+}
+
 function parseOfferPlanAndSchedule(offer) {
     if (!offer) {
         return { parsedSchedule: [], scheduleLength: 0, totalSessions: 1, planType: '1_day' };
@@ -186,19 +214,16 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
             return res.status(403).json({ success: false, error: 'غير مصرح لك بإنشاء درس (حساب زائر)' });
         }
 
-        // ✅ أخذ الوقت كما وضعه الأستاذ مباشرة
-        let offerDateUTC;
+        // ✅ معالجة موعد الحصة بدقة مع الحفاظ على التوقيت الفعلي بالجزائر ومنع إنقاص ساعة
+        let offerDateFormatted;
         try {
             if (offer_date) {
-                offerDateUTC = new Date(offer_date);
+                offerDateFormatted = formatOfferDateForDB(offer_date);
             } else {
-                offerDateUTC = new Date();
-            }
-            if (isNaN(offerDateUTC.getTime())) {
-                offerDateUTC = new Date();
+                offerDateFormatted = formatOfferDateForDB(new Date().toISOString());
             }
         } catch (e) {
-            offerDateUTC = new Date();
+            offerDateFormatted = formatOfferDateForDB(new Date().toISOString());
         }
 
         const { data: recentOffer, error: recentOfferError } = await supabase
@@ -206,7 +231,7 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
             .select('id')
             .eq('teacher_id', teacher_id)
             .eq('subject_name', subject_name?.trim())
-            .eq('offer_date', offerDateUTC.toISOString())
+            .eq('offer_date', offerDateFormatted)
             .limit(1)
             .maybeSingle();
 
@@ -347,7 +372,7 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
                 return {
                     session_number: s.session_number || (idx + 1),
                     title: s.title || `الحصة ${idx + 1}: ${subject_name.trim()}`,
-                    session_date: rawDate ? new Date(rawDate).toISOString() : new Date(offerDateUTC.getTime() + (idx * 7 * 24 * 60 * 60 * 1000)).toISOString(),
+                    session_date: rawDate ? formatOfferDateForDB(rawDate) : formatOfferDateForDB(new Date(Date.now() + (idx * 7 * 24 * 60 * 60 * 1000)).toISOString()),
                     duration: parseInt(s.duration || parsedDuration),
                     status: s.status || 'upcoming',
                     completed_at: s.completed_at || null,
@@ -362,7 +387,7 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
             teacher_id: teacher_id,
             subject_name: subject_name.trim(),
             duration: parsedDuration,
-            offer_date: offerDateUTC.toISOString(),
+            offer_date: offerDateFormatted,
             price: isFreeOffer ? 0 : parsedPrice,
             is_free: isFreeOffer,
             room_name: room_name,
@@ -567,6 +592,8 @@ router.put('/offer/update/:offer_id', authenticate, authorize(['teacher']), uplo
                     updateData[field] = parseFloat(req.body[field]);
                 } else if (field === 'is_free') {
                     updateData[field] = req.body[field] === true || req.body[field] === 'true';
+                } else if (field === 'offer_date') {
+                    updateData[field] = formatOfferDateForDB(req.body[field]);
                 } else {
                     updateData[field] = req.body[field];
                 }

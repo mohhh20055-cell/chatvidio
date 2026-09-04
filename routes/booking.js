@@ -18,13 +18,26 @@ const { calculateBookingRefundDetails } = require('../utils/refundCalculator');
 
 const money = (value) => Math.round((Number(value) || 0) * 100) / 100;
 
+function parseOfferStartDate(dateStr) {
+    if (!dateStr) return new Date();
+    if (typeof dateStr === 'string') {
+        const trimmed = dateStr.trim();
+        if (!trimmed.endsWith('Z') && !/[+-]\d{2}(:\d{2})?$/.test(trimmed)) {
+            const normalized = trimmed.replace(' ', 'T');
+            return new Date(`${normalized}+01:00`);
+        }
+        return new Date(trimmed);
+    }
+    return new Date(dateStr);
+}
+
 function normalizeSchedule(schedule, totalSessions, offerDate, duration) {
     const source = Array.isArray(schedule) ? schedule : [];
     const normalized = [];
     for (let index = 0; index < totalSessions; index += 1) {
         const raw = source[index] || {};
         const sessionNumber = index + 1;
-        const fallbackDate = new Date(new Date(offerDate).getTime() + index * 7 * 24 * 60 * 60 * 1000);
+        const fallbackDate = new Date(parseOfferStartDate(offerDate).getTime() + index * 7 * 24 * 60 * 60 * 1000);
         normalized.push({
             session_number: sessionNumber,
             title: raw.title || `الحصة ${sessionNumber}`,
@@ -120,7 +133,7 @@ router.post('/create', authenticate, authorize(['student']), [
         }
 
         const now = new Date();
-        const offerDate = new Date(offer.offer_date);
+        const offerDate = parseOfferStartDate(offer.offer_date);
         const durationMs = ((offer.duration || 60) * 60 * 1000);
         if (!isFree && (offerDate.getTime() + durationMs < now.getTime())) {
             return res.status(400).json({ success: false, error: 'هذا الدرس قد انتهى موعده' });

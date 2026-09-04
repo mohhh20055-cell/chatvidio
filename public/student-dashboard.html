@@ -5543,11 +5543,32 @@
     // ✅ OFFERS & LESSON STATUS HELPER
     // ================================================================
 
+    function parseAlgeriaDate(dateStr) {
+        if (!dateStr) return null;
+        if (typeof dateStr === 'string') {
+            const trimmed = dateStr.trim();
+            if (trimmed.endsWith('Z') || /[+-]\d{2}(:\d{2})?$/.test(trimmed)) {
+                return new Date(trimmed);
+            }
+            const iso = trimmed.replace(' ', 'T');
+            return new Date(`${iso}+01:00`);
+        }
+        return new Date(dateStr);
+    }
+
+    function formatOfferDateTime(dateObjOrStr) {
+        const d = parseAlgeriaDate(dateObjOrStr);
+        if (!d || isNaN(d.getTime())) return 'غير محدد';
+        const datePart = d.toLocaleDateString('ar-DZ', { timeZone: 'Africa/Algiers' });
+        const timePart = d.toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Africa/Algiers' });
+        return `${datePart} - الساعة ${timePart}`;
+    }
+
     function getOfferStatus(offer) {
         const now = new Date();
         const rawStatus = (offer.offer_status || offer.status || 'upcoming').toLowerCase();
         
-        const offerDate = offer.offer_date ? new Date(offer.offer_date) : null;
+        const offerDate = offer.offer_date ? parseAlgeriaDate(offer.offer_date) : null;
         const durationMs = ((offer.duration || 60) * 60 * 1000);
         
         const scheduleLength = Array.isArray(offer.sessions_schedule) ? offer.sessions_schedule.length : 0;
@@ -5700,7 +5721,7 @@
                     targetOfferDate = nextS.session_date || nextS.date;
                 }
             }
-            const offerDate = new Date(targetOfferDate);
+            const offerDate = parseAlgeriaDate(targetOfferDate) || new Date();
             const isFree = offer.is_free === true || offer.is_free === 1;
 
             const teacherImage = offer.teacher_profile_image || '/images/default-avatar.svg';
@@ -5820,7 +5841,7 @@
                         </div>
 
                         <div class="offer-title">${escapeHtml(offer.subject_name)}</div>
-  <div class="offer-info"><i class="fas fa-calendar-alt"></i> تاريخ الحصة: ${offerDate.toLocaleDateString('ar-DZ', {timeZone: 'Africa/Algiers'})}</div>
+  <div class="offer-info"><i class="fas fa-calendar-alt"></i> موعد الحصة: ${formatOfferDateTime(targetOfferDate)}</div>
   <div class="offer-info"><i class="fas fa-clock"></i> مدة الحصة: ${offer.duration_minutes || offer.session_duration || sessionDuration} دقيقة</div>
   <div class="offer-info"><i class="fas fa-layer-group"></i> الخطة: ${escapeHtml(planMap[planType] || planType)} | الإجمالي: ${totalSessions} حصص</div>
   <div class="offer-info"><i class="fas fa-list-ol"></i> رقم الحصة: ${ (offer.session_number || offer.completed_sessions_count || 0) + 1 } | المكتملة: ${offer.completed_sessions ?? offer.completed_sessions_count ?? 0}</div>
@@ -7053,7 +7074,7 @@
                             <div style="font-size: 0.82rem; font-weight: 800; color: var(--gray-900); margin-top:2px;">${escapeHtml(booking.subject_name || '')}</div>
                         </div>
                     </div>
-                    <div style="font-size: 0.85rem; margin: 6px 0; color: var(--gray-700);"><i class="fas fa-calendar-alt" style="color:var(--gray-400); margin-left: 8px;"></i> ${offerDate ? offerDate.toLocaleString('ar-DZ', {timeZone: 'Africa/Algiers', hour12: false}) : 'غير محدد'}</div>
+                    <div style="font-size: 0.85rem; margin: 6px 0; color: var(--gray-700);"><i class="fas fa-calendar-alt" style="color:var(--gray-400); margin-left: 8px;"></i> موعد الحصة: ${formatOfferDateTime(booking.offer_date)}</div>
                     <div style="font-size: 0.85rem; margin: 6px 0; color: var(--gray-700);"><i class="fas fa-clock" style="color:var(--gray-400); margin-left: 8px;"></i> ${booking.duration || '0'} دقيقة</div>
                     ${canJoin ? `<button class="join-stream-btn" style="margin-top: 12px; width: 100%;" onclick="joinLiveStream('${booking.offer_id}')"><i class="fas fa-video"></i> انضم للبث المباشر الان</button>` : ''}
                     ${!canJoin && isLive ? '<div style="color:var(--danger); font-size:0.75rem; margin-top:8px; font-weight:700;">🔴 البث مباشر ا آن! انتظر فتح الغرفة من الأستاذ...</div>' : ''}
@@ -7236,7 +7257,7 @@
             html += `
                 <div style="padding: 10px 0; border-bottom: 1px solid var(--gray-100); display: flex; flex-direction: column; gap:4px;">
                     <div style="font-weight: 700; font-size: 0.8rem; color:var(--gray-900);">${escapeHtml(offer.subject_name)}</div>
-                    <div style="font-size: 0.7rem; color: var(--gray-500);"><i class="fas fa-clock" style="margin-left: 4px;"></i>${offerDate ? offerDate.toLocaleDateString('ar') : 'غير محدد'}</div>
+                    <div style="font-size: 0.7rem; color: var(--gray-500);"><i class="fas fa-clock" style="margin-left: 4px;"></i>${formatOfferDateTime(offer.offer_date)}</div>
                     <button style="background:var(--gradient-secondary); color:white; border:none; padding:4px 12px; border-radius:20px; font-size:0.7rem; margin-top:4px; cursor:pointer; font-weight:700; font-family:'Cairo'; transition:var(--transition); align-self: flex-start;" onclick="quickBookFree(${offer.id})">حجز مجاني</button>
                 </div>
             `;
@@ -7260,13 +7281,12 @@
         }
         let html = '';
         for (const b of upcoming) {
-            const offerDate = new Date(b.offer_date);
             const statusInfo = getOfferStatus(b);
             html += `
                 <div style="padding: 10px 0; border-bottom: 1px solid var(--gray-100); display: flex; justify-content: space-between; align-items: center;">
                     <div>
                         <div style="font-weight: 700; font-size: 0.8rem; color:var(--gray-900);">${escapeHtml(b.subject_name || '')}</div>
-                        <div style="font-size: 0.7rem; color: var(--gray-500);"><i class="fas fa-calendar-alt" style="margin-left:4px;"></i>${offerDate ? offerDate.toLocaleDateString('ar') : 'غير محدد'}</div>
+                        <div style="font-size: 0.7rem; color: var(--gray-500);"><i class="fas fa-calendar-alt" style="margin-left:4px;"></i>${formatOfferDateTime(b.offer_date)}</div>
                     </div>
                     <div style="text-align: left;">
                         ${statusInfo.badgeHtml}

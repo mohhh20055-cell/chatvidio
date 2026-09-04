@@ -14,6 +14,19 @@ const { getViewCount } = require('../utils/viewsTracker');
 const { verifyToken, generateToken } = require('../utils/jwt');
 const { authenticate } = require('../middleware/auth');
 
+function parseOfferStartDate(dateStr) {
+    if (!dateStr) return new Date();
+    if (typeof dateStr === 'string') {
+        const trimmed = dateStr.trim();
+        if (!trimmed.endsWith('Z') && !/[+-]\d{2}(:\d{2})?$/.test(trimmed)) {
+            const normalized = trimmed.replace(' ', 'T');
+            return new Date(`${normalized}+01:00`);
+        }
+        return new Date(trimmed);
+    }
+    return new Date(dateStr);
+}
+
 // ============================================================
 // توليد توكن زائر
 // ============================================================
@@ -349,7 +362,7 @@ router.get('/public/offers', async (req, res) => {
         }
 
         const filtered = (offers || []).filter(offer => {
-            return offer.status === 'upcoming' && !offer.stream_url && !offer.stream_started_at && !offer.completed_at && new Date(offer.offer_date) >= now;
+            return offer.status === 'upcoming' && !offer.stream_url && !offer.stream_started_at && !offer.completed_at && parseOfferStartDate(offer.offer_date) >= now;
         });
 
         let formatted = await formatOffers(filtered);
@@ -467,7 +480,7 @@ router.get('/public/teacher/:teacherId', [
 
         const filteredOffers = (offers || []).filter(offer => {
             if (offer.status === 'live' || offer.status === 'teacher_ready') return true;
-            return new Date(offer.offer_date) >= now;
+            return parseOfferStartDate(offer.offer_date) >= now;
         });
 
         // ✅ تنسيق الدروس مع الوقت المتبقي

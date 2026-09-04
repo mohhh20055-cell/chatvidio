@@ -8625,6 +8625,27 @@ function updateUI() {
             'other': 'مستوى آخر / عام'
         };
 
+        function parseAlgeriaDate(dateStr) {
+            if (!dateStr) return null;
+            if (typeof dateStr === 'string') {
+                const trimmed = dateStr.trim();
+                if (trimmed.endsWith('Z') || /[+-]\d{2}(:\d{2})?$/.test(trimmed)) {
+                    return new Date(trimmed);
+                }
+                const iso = trimmed.replace(' ', 'T');
+                return new Date(`${iso}+01:00`);
+            }
+            return new Date(dateStr);
+        }
+
+        function formatOfferDateTime(dateObjOrStr) {
+            const d = parseAlgeriaDate(dateObjOrStr);
+            if (!d || isNaN(d.getTime())) return 'غير محدد';
+            const datePart = d.toLocaleDateString('ar-DZ', { timeZone: 'Africa/Algiers' });
+            const timePart = d.toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Africa/Algiers' });
+            return `${datePart} - الساعة ${timePart}`;
+        }
+
         for (const offer of offers) {
             let schedule = [];
             if (Array.isArray(offer.sessions_schedule)) {
@@ -8643,7 +8664,7 @@ function updateUI() {
                     targetOfferDate = nextS.session_date || nextS.date;
                 }
             }
-            const offerDate = new Date(targetOfferDate);
+            const offerDate = parseAlgeriaDate(targetOfferDate) || new Date();
             const durationMs = (offer.duration_minutes || offer.session_duration || offer.duration || 60) * 60 * 1000;
             const isFinished = completedCount >= totalSessions;
             const isMultiSessionRemaining = totalSessions > 1 && completedCount < totalSessions;
@@ -8696,7 +8717,7 @@ function updateUI() {
                             <div>${planBadge} <span class="${statusClass}" style="padding: 4px 8px; border-radius: 20px; font-size: 0.75rem; font-weight: bold;">${statusText}</span></div>
                         </div>
 
-                        <div class="offer-info" style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><i class="fas fa-calendar-alt"></i> تاريخ الحصة: ${offerDate.toLocaleDateString('ar-DZ', {timeZone: 'Africa/Algiers'})}</div>
+                        <div class="offer-info" style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><i class="fas fa-calendar-alt"></i> موعد الحصة: ${formatOfferDateTime(targetOfferDate)}</div>
                         <div class="offer-info" style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><i class="fas fa-clock"></i> مدة الحصة: ${offer.duration_minutes || offer.session_duration || offer.duration || 60} دقيقة</div>
                         <div class="offer-info" style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><i class="fas fa-layer-group"></i> الخطة: ${escapeHtml(planMap[planType] || planType)} | الإجمالي: ${totalSessions} حصص</div>
                         <div class="offer-info" style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><i class="fas fa-list-ol"></i> رقم الحصة: ${sessionNumberDisplay} | المكتملة: ${completedDisplay}</div>
@@ -8823,8 +8844,7 @@ function updateUI() {
 
             let sHtml = '';
             sessions.forEach(s => {
-                const sDate = s.session_date ? new Date(s.session_date) : null;
-                const formattedDate = sDate ? sDate.toLocaleString('ar-DZ', { timeZone: 'Africa/Algiers', dateStyle: 'medium', timeStyle: 'short' }) : 'غير محدد';
+                const formattedDate = formatOfferDateTime(s.session_date);
                 const isCompleted = s.status === 'completed' || s.is_completed || s.session_number <= completedCount;
                 const isLive = s.status === 'live';
 
@@ -9114,7 +9134,7 @@ function updateUI() {
         // المتصفح يستخدم توقيت الجزائر تلقائياً
         const now = new Date();
         const expiredOffers = offers.filter(o => {
-            const offerDate = new Date(o.offer_date);
+            const offerDate = parseAlgeriaDate(o.offer_date) || new Date(o.offer_date);
             const durationMs = (o.duration || 60) * 60 * 1000;
             return (offerDate.getTime() + durationMs) < now.getTime() && 
                    o.status !== 'live' && 
@@ -9498,14 +9518,22 @@ function updateUI() {
             finalLevel = otherText;
         }
 
-        // دالة لتحويل التواريخ المدخلة محلياً إلى صيغة ISO متوافقة مع التوقيت العالمي بدقة لمنع تقدم الوقت ساعة
-        const toISO = (dateStr) => {
+        // دالة لتنسيق التاريخ والوقت المدخل محلياً بدقة مع الحفاظ على موعد البث الفعلي بالجزائر دون إنقاص ساعة
+        const formatLocalDateTime = (dateStr) => {
             if (!dateStr) return null;
+            if (typeof dateStr === 'string') {
+                const trimmed = dateStr.trim();
+                if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(trimmed)) {
+                    return trimmed.length === 16 ? `${trimmed}:00` : trimmed;
+                }
+            }
             const d = new Date(dateStr);
-            return isNaN(d.getTime()) ? dateStr : d.toISOString();
+            if (isNaN(d.getTime())) return dateStr;
+            const pad = (n) => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
         };
 
-        const offer_date_iso = toISO(offer_date);
+        const offer_date_formatted = formatLocalDateTime(offer_date);
 
         // جمع جدول الحصص المحدد وتحويل التواريخ بدقة لمنع إزاحة التوقيت
         let sessionsSchedule = [];
@@ -9516,14 +9544,14 @@ function updateUI() {
                 const sDate = inp.value || offer_date;
                 sessionsSchedule.push({
                     session_number: sNum,
-                    date: toISO(sDate),
+                    date: formatLocalDateTime(sDate),
                     duration: durationVal
                 });
             });
         } else {
             sessionsSchedule.push({
                 session_number: 1,
-                date: offer_date_iso,
+                date: offer_date_formatted,
                 duration: durationVal
             });
         }
@@ -9533,7 +9561,7 @@ function updateUI() {
             subject_name: subject_name,
             duration: durationVal,
             max_students: isFree ? Math.min(20, maxStudentsVal) : maxStudentsVal,
-            offer_date: offer_date_iso,
+            offer_date: offer_date_formatted,
             is_free: isFree,
             price: isFree ? 0 : priceVal,
             education_level: finalLevel,
