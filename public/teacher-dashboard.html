@@ -4197,32 +4197,182 @@
 <div class="modal-overlay" id="modalOverlay" onclick="closeModal(); closeWithdrawModal(); closeDepositModal(); closeTransactionModal();"></div>
 
 <!-- DEPOSIT MODAL -->
-<div id="depositModal" class="modal" style="display: none;">
-    <div class="modal-header">
-        <h3><i class="fas fa-plus-circle"></i> شحن الرصيد</h3>
-        <button class="close-modal" onclick="closeDepositModal()">&times;</button>
+<div id="depositModal" class="modal" style="display: none; max-width: 520px; width: 92%; border-radius: 20px; padding: 0; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
+    <div class="modal-header" style="background: linear-gradient(135deg, #065f46 0%, #059669 100%); color: white; padding: 18px 22px; display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin: 0; font-size: 1.25rem; font-weight: 800; display: flex; align-items: center; gap: 8px; color: white;">
+            <i class="fas fa-wallet" style="color: #6ee7b7;"></i> شحن رصيد المحفظة
+        </h3>
+        <button class="close-modal" onclick="closeDepositModal()" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center;">&times;</button>
     </div>
-    <div class="modal-body">
-        <p style="font-size:0.85rem; color:var(--gray-500); margin-bottom: 4px;">الحد الأدنى للشحن: 100 دج</p>
-        <input type="number" id="depositAmount" placeholder="المبلغ" min="100" oninput="updateTeacherDepositFee()">
-        <div id="teacherDepositFeeBox" style="margin-top: 10px; padding: 10px 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; font-size: 0.82rem; color: #166534; font-weight: 700; display: none;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                <span>مبلغ الشحن المضاف للرصيد:</span>
-                <span id="teacherDepositNetDisplay" style="font-weight: 800; color: #15803d;">0 دج</span>
+
+    <div class="modal-body" style="padding: 22px; max-height: 80vh; overflow-y: auto;">
+        <!-- Payment Method Selector Tabs -->
+        <label style="font-weight: 800; color: #1e293b; font-size: 0.95rem; margin-bottom: 10px; display: block;">
+            اختر طريقة الشحن المناسبة لك:
+        </label>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
+            <!-- Gold Card Option -->
+            <div id="methodGoldCard" onclick="selectDepositMethod('gold_card')" style="border: 2px solid #2563eb; background: #eff6ff; padding: 14px 12px; border-radius: 14px; cursor: pointer; text-align: center; transition: all 0.2s; position: relative;">
+                <div style="position: absolute; top: -9px; right: 10px; background: #2563eb; color: white; font-size: 0.68rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">
+                    شحن فوري ⚡
+                </div>
+                <div style="font-size: 1.8rem; color: #d97706; margin-bottom: 4px;">
+                    <i class="fas fa-credit-card"></i>
+                </div>
+                <div style="font-weight: 800; font-size: 0.92rem; color: #1e3a8a;">البطاقة الذهبية / CIB</div>
+                <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">بوابة الدفع Chargily</div>
             </div>
-            <div style="display: flex; justify-content: space-between; margin-bottom: 4px; color: #047857;">
-                <span>رسوم الدفع (1%):</span>
-                <span id="teacherDepositFeeDisplay" style="font-weight: 800;">0 دج</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; border-top: 1px dashed #a7f3d0; padding-top: 4px; font-size: 0.88rem; color: #065f46;">
-                <span>إجمالي التسديد المطلوب:</span>
-                <span id="teacherDepositTotalDisplay" style="font-weight: 900; color: #047857;">0 دج</span>
+
+            <!-- BaridiMob / CCP Option -->
+            <div id="methodBaridiMob" onclick="selectDepositMethod('baridimob')" style="border: 2px solid #e2e8f0; background: #f8fafc; padding: 14px 12px; border-radius: 14px; cursor: pointer; text-align: center; transition: all 0.2s; position: relative;">
+                <div style="position: absolute; top: -9px; right: 10px; background: #16a34a; color: white; font-size: 0.68rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">
+                    تحويل يدوي 📮
+                </div>
+                <div style="font-size: 1.8rem; color: #16a34a; margin-bottom: 4px;">
+                    <i class="fas fa-money-bill-transfer"></i>
+                </div>
+                <div style="font-weight: 800; font-size: 0.92rem; color: #065f46;">بريدي موب / CCP</div>
+                <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">رفع وصل المعاملة</div>
             </div>
         </div>
-    </div>
-    <div class="modal-footer">
-        <button class="cancel-btn" onclick="closeDepositModal()">إلغاء</button>
-        <button class="save-btn" onclick="depositWallet()">شحن</button>
+
+        <!-- 1. Gold Card (Chargily) View -->
+        <div id="goldCardSection" style="display: block;">
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; margin-bottom: 14px;">
+                <div style="font-size: 0.85rem; color: #475569; display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+                    <i class="fas fa-shield-alt" style="color: #2563eb;"></i> الدفع الآمن والمباشر عبر بطاقتك الذهبية أو بطاقة بنكية CIB
+                </div>
+                <div style="font-size: 0.78rem; color: #64748b;">
+                    يتم تزويد رصيدك في المنصة بشكل فوري وتلقائي فور إتمام عملية الدفع.
+                </div>
+            </div>
+
+            <label style="font-size: 0.88rem; font-weight: 700; color: #334155; margin-bottom: 6px; display: block;">المبلغ المراد شحنه (دج):</label>
+            <div style="position: relative; margin-bottom: 8px;">
+                <input type="number" id="depositAmount" placeholder="أدخل المبلغ (مثلاً: 1000)" min="100" oninput="updateTeacherDepositFee()" style="width: 100%; padding: 12px 14px; border: 1.5px solid #cbd5e1; border-radius: 10px; font-size: 1rem; font-family: 'Cairo'; font-weight: 700;">
+                <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #64748b; font-weight: 800; font-size: 0.9rem;">دج</span>
+            </div>
+            <p style="font-size:0.78rem; color:#64748b; margin: 0 0 10px 0;">الحد الأدنى للشحن: 100 دج</p>
+
+            <div id="teacherDepositFeeBox" style="margin-top: 10px; padding: 12px 14px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; font-size: 0.85rem; color: #166534; font-weight: 700; display: none;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                    <span>مبلغ الشحن المضاف للرصيد:</span>
+                    <span id="teacherDepositNetDisplay" style="font-weight: 800; color: #15803d;">0 دج</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px; color: #047857;">
+                    <span>رسوم الدفع (1%):</span>
+                    <span id="teacherDepositFeeDisplay" style="font-weight: 800;">0 دج</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; border-top: 1px dashed #a7f3d0; padding-top: 6px; font-size: 0.92rem; color: #065f46;">
+                    <span>إجمالي المبلغ المستحق:</span>
+                    <span id="teacherDepositTotalDisplay" style="font-weight: 900; color: #047857;">0 دج</span>
+                </div>
+            </div>
+
+            <button type="button" class="save-btn" onclick="depositWallet()" style="width: 100%; margin-top: 16px; padding: 14px; background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%); color: white; border: none; border-radius: 12px; font-size: 1rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: 'Cairo'; box-shadow: 0 4px 12px rgba(37,99,235,0.3);">
+                <i class="fas fa-credit-card"></i> الانتقال للدفع عبر شارجيلي Chargily
+            </button>
+        </div>
+
+        <!-- 2. BaridiMob / CCP View -->
+        <div id="baridiMobSection" style="display: none;">
+            <!-- Account Info Box -->
+            <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 14px; padding: 16px; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                    <div style="font-weight: 800; color: #166534; font-size: 0.95rem; display: flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-university"></i> معلومات حساب الدفع للمنصة:
+                    </div>
+                    <span style="background: #dcfce7; color: #15803d; font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 6px;">بريد الجزائر</span>
+                </div>
+
+                <!-- CCP Number -->
+                <div style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 8px 12px; border-radius: 8px; border: 1px solid #bbf7d0; margin-bottom: 8px;">
+                    <div>
+                        <div style="font-size: 0.75rem; color: #64748b;">رقم الحساب الجاري CCP والمفتاح:</div>
+                        <div style="font-weight: 900; font-family: monospace; font-size: 1.05rem; color: #0f172a; direction: ltr; text-align: right;">
+                            <span id="ccpAccountDisplay">0022334455</span> / <span id="ccpKeyDisplay">45</span>
+                        </div>
+                    </div>
+                    <button type="button" onclick="copyTextValue(document.getElementById('ccpAccountDisplay').innerText, this)" style="background: #2563eb; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px; font-family: 'Cairo';">
+                        <i class="fas fa-copy"></i> نسخ
+                    </button>
+                </div>
+
+                <!-- RIP Number -->
+                <div style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 8px 12px; border-radius: 8px; border: 1px solid #bbf7d0; margin-bottom: 8px;">
+                    <div>
+                        <div style="font-size: 0.75rem; color: #64748b;">رقم الـ RIP (لتحويل بريدي موب):</div>
+                        <div style="font-weight: 900; font-family: monospace; font-size: 0.92rem; color: #0f172a; direction: ltr; text-align: right;">
+                            <span id="ccpRipDisplay">00799999002233445545</span>
+                        </div>
+                    </div>
+                    <button type="button" onclick="copyTextValue(document.getElementById('ccpRipDisplay').innerText, this)" style="background: #16a34a; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px; font-family: 'Cairo';">
+                        <i class="fas fa-copy"></i> نسخ
+                    </button>
+                </div>
+
+                <!-- Account Holder -->
+                <div style="font-size: 0.8rem; color: #166534; font-weight: 700; display: flex; justify-content: space-between;">
+                    <span>اسم صاحب الحساب:</span>
+                    <span id="ccpHolderDisplay" style="color: #0f172a; font-weight: 800;">منصة ZoomDz التعليمية</span>
+                </div>
+            </div>
+
+            <!-- Manual Deposit Form -->
+            <form id="manualDepositForm" onsubmit="submitManualDeposit(event)">
+                <div style="margin-bottom: 12px;">
+                    <label style="font-size: 0.88rem; font-weight: 700; color: #334155; margin-bottom: 6px; display: block;">
+                        المبلغ الذي قمت بتحويله (دج): <span style="color: #dc2626;">*</span>
+                    </label>
+                    <div style="position: relative;">
+                        <input type="number" id="manualDepositAmount" placeholder="المبلغ بالدينار الجزائري (مثال: 2000)" min="100" required style="width: 100%; padding: 12px 14px; border: 1.5px solid #cbd5e1; border-radius: 10px; font-size: 1rem; font-family: 'Cairo'; font-weight: 700;">
+                        <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #64748b; font-weight: 800; font-size: 0.9rem;">دج</span>
+                    </div>
+                </div>
+
+                <!-- Receipt Upload Box -->
+                <div style="margin-bottom: 14px;">
+                    <label style="font-size: 0.88rem; font-weight: 700; color: #334155; margin-bottom: 6px; display: block;">
+                        صورة وصل الدفع أو لقطة شاشة التحويل: <span style="color: #dc2626;">*</span>
+                    </label>
+                    <div id="receiptDropzone" onclick="document.getElementById('receiptFileInput').click()" style="border: 2px dashed #94a3b8; border-radius: 12px; padding: 18px 12px; text-align: center; cursor: pointer; background: #f8fafc; transition: all 0.2s;">
+                        <input type="file" id="receiptFileInput" accept="image/*" style="display: none;" onchange="previewDepositReceipt(this)">
+                        <div id="receiptUploadPlaceholder">
+                            <i class="fas fa-cloud-arrow-up" style="font-size: 2rem; color: #16a34a; margin-bottom: 6px;"></i>
+                            <div style="font-weight: 700; font-size: 0.9rem; color: #1e293b;">انقر لرفع صورة الوصل أو لقطة الشاشة</div>
+                            <div style="font-size: 0.75rem; color: #64748b; margin-top: 3px;">JPG, PNG, WebP (الحد الأقصى 25 ميغابايت)</div>
+                        </div>
+                        <div id="receiptPreviewBox" style="display: none; align-items: center; justify-content: center; gap: 10px;">
+                            <img id="receiptPreviewImg" src="" alt="وصل الدفع" style="max-height: 90px; max-width: 120px; border-radius: 8px; border: 1px solid #cbd5e1; object-fit: contain;">
+                            <div style="text-align: right;">
+                                <div id="receiptFileName" style="font-weight: 700; font-size: 0.82rem; color: #1e293b; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></div>
+                                <span style="color: #16a34a; font-size: 0.75rem; font-weight: 700;"><i class="fas fa-check-circle"></i> تم تحديد الوصل</span>
+                                <div style="margin-top: 4px;">
+                                    <button type="button" onclick="event.stopPropagation(); removeDepositReceipt();" style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; cursor: pointer; font-family: 'Cairo';">
+                                        <i class="fas fa-times"></i> تغيير الصورة
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notes / Optional input -->
+                <div style="margin-bottom: 16px;">
+                    <label style="font-size: 0.82rem; font-weight: 600; color: #64748b; margin-bottom: 4px; display: block;">ملاحظات إضافية أو رقم المعاملة (اختياري):</label>
+                    <input type="text" id="manualDepositNotes" placeholder="مثال: تم التحويل من حساب بريدي موب باسم..." style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem; font-family: 'Cairo';">
+                </div>
+
+                <div style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px; padding: 10px; font-size: 0.78rem; color: #92400e; margin-bottom: 16px; display: flex; align-items: flex-start; gap: 6px;">
+                    <i class="fas fa-info-circle" style="color: #d97706; margin-top: 2px;"></i>
+                    <span>سيصل طلبك مباشرة إلى لوحة المدير مع اسمك، بريدك، المبلغ، وصورة الوصل للتحقق وشحن الرصيد فوراً.</span>
+                </div>
+
+                <button type="submit" id="submitManualDepositBtn" style="width: 100%; padding: 14px; background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; border: none; border-radius: 12px; font-size: 1rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: 'Cairo'; box-shadow: 0 4px 12px rgba(16,185,129,0.3);">
+                    <i class="fas fa-paper-plane"></i> إرسال طلب الشحن للتحقق
+                </button>
+            </form>
+        </div>
     </div>
 </div>
 
@@ -7829,15 +7979,192 @@ function updateUI() {
     }
 
     // ================================================================
-    // ✅ DEPOSIT & TRANSACTIONS
+    // ✅ DEPOSIT & TRANSACTIONS (Gold Card & BaridiMob / CCP)
     // ================================================================
+
+    let currentDepositMethod = 'gold_card';
+    let selectedDepositReceiptFile = null;
 
     function showDepositModal() {
         if (checkGuestAction()) return;
         document.getElementById('modalOverlay').style.display = 'block';
         document.getElementById('depositModal').style.display = 'block';
         document.getElementById('depositAmount').value = '';
+        const manualAmt = document.getElementById('manualDepositAmount');
+        if (manualAmt) manualAmt.value = '';
+        const manualNotes = document.getElementById('manualDepositNotes');
+        if (manualNotes) manualNotes.value = '';
+        removeDepositReceipt();
+        selectDepositMethod('gold_card');
+        loadCcpInfoForUser();
         updateTeacherDepositFee();
+    }
+
+    function selectDepositMethod(method) {
+        currentDepositMethod = method;
+        const goldBtn = document.getElementById('methodGoldCard');
+        const baridiBtn = document.getElementById('methodBaridiMob');
+        const goldSec = document.getElementById('goldCardSection');
+        const baridiSec = document.getElementById('baridiMobSection');
+
+        if (method === 'gold_card') {
+            if (goldBtn) {
+                goldBtn.style.border = '2px solid #2563eb';
+                goldBtn.style.background = '#eff6ff';
+            }
+            if (baridiBtn) {
+                baridiBtn.style.border = '2px solid #e2e8f0';
+                baridiBtn.style.background = '#f8fafc';
+            }
+            if (goldSec) goldSec.style.display = 'block';
+            if (baridiSec) baridiSec.style.display = 'none';
+        } else {
+            if (goldBtn) {
+                goldBtn.style.border = '2px solid #e2e8f0';
+                goldBtn.style.background = '#f8fafc';
+            }
+            if (baridiBtn) {
+                baridiBtn.style.border = '2px solid #16a34a';
+                baridiBtn.style.background = '#f0fdf4';
+            }
+            if (goldSec) goldSec.style.display = 'none';
+            if (baridiSec) baridiSec.style.display = 'block';
+        }
+    }
+
+    async function loadCcpInfoForUser() {
+        try {
+            const res = await fetch('/api/wallet/ccp-info');
+            const data = await res.json();
+            if (data.success && data.settings) {
+                const s = data.settings;
+                if (document.getElementById('ccpAccountDisplay')) {
+                    document.getElementById('ccpAccountDisplay').innerText = s.ccp_account_number || '0022334455';
+                }
+                if (document.getElementById('ccpKeyDisplay')) {
+                    document.getElementById('ccpKeyDisplay').innerText = s.ccp_key || '45';
+                }
+                if (document.getElementById('ccpRipDisplay')) {
+                    document.getElementById('ccpRipDisplay').innerText = s.ccp_rip || '00799999002233445545';
+                }
+                if (document.getElementById('ccpHolderDisplay')) {
+                    document.getElementById('ccpHolderDisplay').innerText = s.ccp_account_holder || 'منصة ZoomDz التعليمية';
+                }
+            }
+        } catch (e) {
+            console.warn('⚠️ تعذر جلب معلومات CCP:', e.message);
+        }
+    }
+
+    function previewDepositReceipt(input) {
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            selectedDepositReceiptFile = file;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const previewImg = document.getElementById('receiptPreviewImg');
+                const previewBox = document.getElementById('receiptPreviewBox');
+                const placeholder = document.getElementById('receiptUploadPlaceholder');
+                const fileName = document.getElementById('receiptFileName');
+
+                if (previewImg) previewImg.src = e.target.result;
+                if (fileName) fileName.innerText = file.name;
+                if (placeholder) placeholder.style.display = 'none';
+                if (previewBox) previewBox.style.display = 'flex';
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function removeDepositReceipt() {
+        selectedDepositReceiptFile = null;
+        const fileInput = document.getElementById('receiptFileInput');
+        if (fileInput) fileInput.value = '';
+        const previewImg = document.getElementById('receiptPreviewImg');
+        const previewBox = document.getElementById('receiptPreviewBox');
+        const placeholder = document.getElementById('receiptUploadPlaceholder');
+
+        if (previewImg) previewImg.src = '';
+        if (previewBox) previewBox.style.display = 'none';
+        if (placeholder) placeholder.style.display = 'block';
+    }
+
+    function copyTextValue(text, btnElement) {
+        if (!text) return;
+        navigator.clipboard.writeText(text.trim()).then(() => {
+            if (btnElement) {
+                const originalHtml = btnElement.innerHTML;
+                btnElement.innerHTML = '<i class="fas fa-check"></i> تم النسخ!';
+                btnElement.style.background = '#10b981';
+                setTimeout(() => {
+                    btnElement.innerHTML = originalHtml;
+                    btnElement.style.background = '';
+                }, 2000);
+            }
+            showToast('✅ تم نسخ الرقم إلى الحافظة بنجاح', 'success');
+        }).catch(() => {
+            showToast('رقم الحساب: ' + text, 'info');
+        });
+    }
+
+    async function submitManualDeposit(e) {
+        if (e) e.preventDefault();
+        if (checkGuestAction()) return;
+
+        const amountInput = document.getElementById('manualDepositAmount');
+        const amount = parseFloat(amountInput ? amountInput.value : 0);
+        const notes = document.getElementById('manualDepositNotes')?.value || '';
+
+        if (!amount || isNaN(amount) || amount < 100) {
+            showToast('يرجى كتابة مبلغ صحيح لا يقل عن 100 دج', 'error');
+            return;
+        }
+
+        if (!selectedDepositReceiptFile) {
+            showToast('يرجى إرفاق صورة واضحة لوصل الدفع أو لقطة شاشة التحويل', 'error');
+            return;
+        }
+
+        const btn = document.getElementById('submitManualDepositBtn');
+        const originalText = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري رفع الوصل وإرسال الطلب...';
+        }
+
+        try {
+            const formData = new FormData();
+            formData.append('amount', amount);
+            formData.append('notes', notes);
+            formData.append('receipt', selectedDepositReceiptFile);
+
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/wallet/manual-deposit', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.message || 'تم إرسال طلب الشحن بنجاح!', 'success');
+                closeDepositModal();
+                if (typeof loadTeacherBalance === 'function') loadTeacherBalance();
+                if (typeof loadTransactions === 'function') loadTransactions();
+            } else {
+                showToast(data.error || 'فشل في إرسال طلب الشحن', 'error');
+            }
+        } catch (err) {
+            console.error('Manual deposit error:', err);
+            showToast('حدث خطأ أثناء إرسال طلب الشحن. يرجى المحاولة لاحقاً.', 'error');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
     }
 
     function updateTeacherDepositFee() {
@@ -7867,9 +8194,11 @@ function updateUI() {
             showToast('المبلغ يجب أن لا يقل عن 100 دج', 'error');
             return;
         }
-        const btn = document.querySelector('#depositModal .save-btn');
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري...';
+        const btn = document.querySelector('#goldCardSection .save-btn') || document.querySelector('#depositModal .save-btn');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التحويل إلى بوابة الدفع...';
+        }
         try {
             const res = await fetchWithAuth('/api/wallet/deposit-teacher', {
                 method: 'POST',
@@ -7879,16 +8208,20 @@ function updateUI() {
             if (data.success && data.checkout_url) {
                 window.location.href = data.checkout_url;
             } else {
-                showToast(data.error || 'حدث خطأ', 'error');
-                btn.disabled = false;
-                btn.innerHTML = 'شحن';
+                showToast(data.error || 'فشل الاتصال ببوابة الدفع', 'error');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-credit-card"></i> الانتقال للدفع عبر شارجيلي Chargily';
+                }
             }
         } catch(e) {
             if (e.message !== 'انتهت صلاحية الجلسة') {
-                showToast('حدث خطأ', 'error');
+                showToast('حدث خطأ أثناء الانتقال لبوابة الدفع', 'error');
             }
-            btn.disabled = false;
-            btn.innerHTML = 'شحن';
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-credit-card"></i> الانتقال للدفع عبر شارجيلي Chargily';
+            }
         }
     }
 

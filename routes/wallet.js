@@ -13,6 +13,22 @@ const https = require('https');
 const { supabase } = require('../config/database');
 const { authenticate, checkBanned } = require('../middleware/auth');
 const { getOne, insert, update } = require('../utils/helpers');
+const { uploadToSupabase } = require('../utils/upload');
+const multer = require('multer');
+
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 25 * 1024 * 1024 } // 25MB limit for receipt images
+});
+
+const defaultCcpSettings = {
+    ccp_account_number: "0022334455",
+    ccp_key: "45",
+    ccp_rip: "00799999002233445545",
+    ccp_account_holder: "منصة ZoomDz التعليمية",
+    baridimob_phone: "0555001122",
+    instructions: "يرجى تحويل المبلغ بدقة عبر تطبيق BaridiMob أو مكتب البريد، ثم إرفاق صورة واضحة لوصل المعاملة ليتم تزويدك بالرصيد فور التأكد من التحويل."
+};
 
 // ✅ تعريف authorize محلياً
 function authorize(roles = []) {
@@ -279,6 +295,157 @@ router.post('/deposit-teacher', authenticate, authorize(['teacher']), [
     } catch (error) {
         logger.error('❌ خطأ في شحن رصيد الأستاذ:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// 🏦 جلب معلومات حساب بريدي موب و CCP للمنصة (لإظهارها للمستخدم)
+// ============================================================
+router.get('/ccp-info', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('platform_settings')
+            .select('value')
+            .eq('key', 'ccp_settings')
+            .maybeSingle();
+
+        if (!error && data && data.value) {
+            return res.json({ 
+                success: true, 
+                settings: { ...defaultCcpSettings, ...data.value } 
+            });
+        }
+    } catch (e) {
+        logger.warn('⚠️ تعذر جلب ccp_settings من قاعدة البيانات:', e.message);
+    }
+    return res.json({ success: true, settings: defaultCcpSettings });
+});
+
+// ============================================================
+// 📝 تقديم طلب شحن يدوي عبر بريدي موب / CCP مع رفع وصل المعاملة
+// ============================================================
+router.post('/manual-deposit', authenticate, upload.single('receipt'), async (req, res) => {
+    try {
+        const userId = Number(req.user.userId);
+        const userType = req.user.role === 'teacher' ? 'teacher' : 'student';
+        const amount = parseFloat(req.body.amount);
+        const notes = req.body.notes || '';
+        let receiptUrl = req.body.receipt_url || '';
+
+        if (!amount || isNaN(amount) || amount < 100) {
+            return res.status(400).json({ success: false, error: 'المبلغ المطلوب شحنه يجب أن لا يقل عن 100 دج' });
+        }
+
+        // معالجة رفع صورة الوصل
+        if (req.file) {
+            const uploadRes = await uploadToSupabase(req.file, 'deposit_receipts');
+            if (uploadRes && uploadRes.url) {
+                receiptUrl = uploadRes.url;
+            } else {
+                return res.status(400).json({ success: false, error: 'فشل في رفع صورة وصل الدفع. يرجى المحاولة مرة أخرى بصورة واضحة.' });
+            }
+        }
+
+        if (!receiptUrl) {
+            return res.status(400).json({ success: false, error: 'يرجى إرفاق صورة واضحة لوصل الدفع أو لقطة شاشة المعاملة' });
+        }
+
+        // جلب معلومات المستخدم لتوثيقها في الطلب
+        let userName = '';
+        let userEmail = '';
+        let userPhone = '';
+
+        if (userType === 'student') {
+            const student = await getOne('students', 'id', userId);
+            if (student) {
+                userName = student.full_name || '';
+                userEmail = student.email || '';
+                userPhone = student.phone || '';
+            }
+        } else {
+            const teacher = await getOne('teachers', 'id', userId);
+            if (teacher) {
+                userName = teacher.full_name || '';
+                userEmail = teacher.email || '';
+                userPhone = teacher.phone || '';
+            }
+        }
+
+        // 1. تسجيل الطلب في جدول manual_deposit_requests
+        let depositRequest = null;
+        try {
+            const { data, error } = await supabase
+                .from('manual_deposit_requests')
+                .insert({
+                    user_id: userId,
+                    user_type: userType,
+                    user_name: userName,
+                    user_email: userEmail,
+                    user_phone: userPhone,
+                    amount: amount,
+                    receipt_url: receiptUrl,
+                    notes: notes,
+                    status: 'pending',
+                    created_at: new Date().toISOString()
+                })
+                .select();
+
+            if (!error && data && data.length > 0) {
+                depositRequest = data[0];
+            } else if (error) {
+                logger.warn('⚠️ تنبيه: تعذر إدراج الطلب في manual_deposit_requests:', error.message);
+            }
+        } catch (dbErr) {
+            logger.error('❌ خطأ في إدراج طلب الشحن اليدوي:', dbErr.message);
+        }
+
+        // 2. تسجيل معاملة معلقة في جدول wallet_transactions
+        try {
+            await insert('wallet_transactions', {
+                [userType === 'teacher' ? 'teacher_id' : 'student_id']: userId,
+                amount: amount,
+                type: 'deposit_manual',
+                status: 'pending',
+                description: `طلب شحن يدوي (بريدي موب / CCP) بقيمة ${amount} دج - في انتظار مراجعة الإدارة`,
+                created_at: new Date().toISOString()
+            });
+        } catch (txErr) {
+            logger.warn('⚠️ تنبيه: تعذر إدراج المعاملة في wallet_transactions:', txErr.message);
+        }
+
+        // 3. إرسال إشعار للمستخدم
+        try {
+            await insert('notifications', {
+                user_id: userId,
+                user_type: userType,
+                title: 'تم استلام طلب الشحن بنجاح ⏳',
+                content: `تم استلام طلب شحن رصيدك عبر بريدي موب بمبلغ ${amount} دج وهو الآن قيد مراجعة الإدارة وسيتم إضافة الرصيد إلى حسابك فور التحقق.`,
+                type: 'wallet',
+                is_read: false,
+                created_at: new Date().toISOString()
+            });
+        } catch (notifErr) {}
+
+        // 4. إشعار للمدير في admin_notifications
+        try {
+            await supabase.from('admin_notifications').insert({
+                title: '📥 طلب شحن رصيد جديد (بريدي موب / CCP)',
+                message: `قام ${userType === 'teacher' ? 'الأستاذ' : 'الطالب'} ${userName || `#${userId}`} بطلب شحن رصيد بمبلغ ${amount} دج مع إرفاق وصل التحويل.`,
+                type: 'deposit_request',
+                reference_id: depositRequest?.id || userId,
+                is_read: false,
+                created_at: new Date().toISOString()
+            });
+        } catch (adminNotifErr) {}
+
+        return res.json({
+            success: true,
+            message: 'تم إرسال طلب الشحن بنجاح! سيتم التحقق من الوصل وإضافة الرصيد إلى حسابك قريباً.',
+            request: depositRequest
+        });
+    } catch (error) {
+        logger.error('❌ خطأ غير متوقع في معالجة طلب الشحن اليدوي:', error.message);
+        return res.status(500).json({ success: false, error: 'حدث خطأ في الخادم أثناء إرسال طلب الشحن' });
     }
 });
 

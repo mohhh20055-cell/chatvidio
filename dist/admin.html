@@ -909,6 +909,7 @@
             <button class="nav-tab" onclick="showTab('students')"><i class="fas fa-user-graduate"></i> الطلاب</button>
             <button class="nav-tab" onclick="showTab('banned')" id="bannedTab"><i class="fas fa-ban"></i> المحظورون</button>
             <button class="nav-tab" onclick="showTab('withdrawals')"><i class="fas fa-money-bill-wave"></i> طلبات السحب <span id="withdrawalsCount" class="badge-count" style="display:none"></span></button>
+            <button class="nav-tab" onclick="showTab('manual-deposits')" id="manualDepositsNavBtn" style="background: #ecfdf5; color: #065f46; border: 1.5px solid #86efac;"><i class="fas fa-money-bill-transfer" style="color: #10b981;"></i> شحن بريدي موب / CCP <span id="manualDepositsCount" class="badge-count" style="display:none"></span></button>
             <button class="nav-tab" onclick="showTab('courses-review')" id="coursesReviewNavBtn" style="background: #fef3c7; color: #92400e;"><i class="fas fa-play-circle" style="color: #d97706;"></i> مراجعة الدورات <span id="pendingCoursesCount" class="badge-count" style="display:none"></span></button>
             <button class="nav-tab" onclick="showTab('packages-admin')" style="background: #ecfdf5; color: #047857; border: 1.5px solid #a7f3d0;"><i class="fas fa-cubes" style="color: #059669;"></i> إدارة الباقات التعليمية <span id="packagesAdminCount" class="badge-count" style="display:none"></span></button>
             <button class="nav-tab" onclick="showTab('support')"><i class="fas fa-envelope"></i> رسائل الدعم <span id="supportCount" class="badge-count" style="display:none"></span></button>
@@ -1139,6 +1140,72 @@
         <div id="withdrawalsTab" style="display: none;">
             <div id="withdrawalsList"></div>
         </div>
+
+        <!-- ============================================================ -->
+        <!-- ✅ MANUAL DEPOSITS TAB (BaridiMob & CCP Requests) -->
+        <!-- ============================================================ -->
+        <div id="manual-depositsTab" style="display: none;">
+            <!-- Header Stats & Controls -->
+            <div style="background: white; padding: 22px 24px; border-radius: 16px; margin-bottom: 22px; box-shadow: 0 4px 14px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                <div>
+                    <h3 style="color: #065f46; font-size: 1.35rem; font-weight: 800; margin: 0 0 6px 0; display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-money-bill-transfer" style="color: #10b981;"></i> طلبات الشحن اليدوي (بريدي موب / CCP)
+                    </h3>
+                    <p style="color: #64748b; font-size: 0.85rem; margin: 0;">
+                        مراجعة وصولات الدفع وتأكيد إضافة الرصيد لحسابات الطلاب والأساتذة فور التحقق
+                    </p>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <button onclick="openCcpSettingsModal()" style="background: #1e3a8a; color: white; border: none; padding: 10px 18px; border-radius: 10px; font-family: 'Cairo'; font-weight: 700; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 8px rgba(30,58,138,0.25);">
+                        <i class="fas fa-cog"></i> إعدادات حساب CCP للمنصة
+                    </button>
+                    <button onclick="loadManualDeposits()" style="background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; padding: 10px 16px; border-radius: 10px; font-family: 'Cairo'; font-weight: 700; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-sync-alt"></i> تحديث
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Bar -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 22px;">
+                <div style="background: white; padding: 16px 20px; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                    <div style="font-size: 0.8rem; color: #64748b; font-weight: 700;">طلبات قيد المراجعة</div>
+                    <div id="manualDepPendingCount" style="font-size: 1.8rem; font-weight: 900; color: #d97706; margin-top: 4px;">0</div>
+                </div>
+                <div style="background: white; padding: 16px 20px; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                    <div style="font-size: 0.8rem; color: #64748b; font-weight: 700;">طلبات مقبولة ومكتملة</div>
+                    <div id="manualDepApprovedCount" style="font-size: 1.8rem; font-weight: 900; color: #16a34a; margin-top: 4px;">0</div>
+                </div>
+                <div style="background: white; padding: 16px 20px; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                    <div style="font-size: 0.8rem; color: #64748b; font-weight: 700;">طلبات مرفوضة</div>
+                    <div id="manualDepRejectedCount" style="font-size: 1.8rem; font-weight: 900; color: #dc2626; margin-top: 4px;">0</div>
+                </div>
+                <div style="background: white; padding: 16px 20px; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                    <div style="font-size: 0.8rem; color: #64748b; font-weight: 700;">إجمالي المبالغ المشحونة</div>
+                    <div id="manualDepTotalAmount" style="font-size: 1.8rem; font-weight: 900; color: #0284c7; margin-top: 4px;">0 دج</div>
+                </div>
+            </div>
+
+            <!-- Filter Tabs -->
+            <div style="display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap;">
+                <button onclick="filterManualDeposits('all', this)" class="manual-filter-btn" style="background: #065f46; color: white; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 800; font-size: 0.85rem; cursor: pointer; font-family: 'Cairo';">
+                    الكل (<span id="filterAllCount">0</span>)
+                </button>
+                <button onclick="filterManualDeposits('pending', this)" class="manual-filter-btn" style="background: #f8fafc; color: #475569; border: 1px solid #cbd5e1; padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; cursor: pointer; font-family: 'Cairo';">
+                    قيد المراجعة (<span id="filterPendingCount">0</span>)
+                </button>
+                <button onclick="filterManualDeposits('approved', this)" class="manual-filter-btn" style="background: #f8fafc; color: #475569; border: 1px solid #cbd5e1; padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; cursor: pointer; font-family: 'Cairo';">
+                    المقبولة (<span id="filterApprovedCount">0</span>)
+                </button>
+                <button onclick="filterManualDeposits('rejected', this)" class="manual-filter-btn" style="background: #f8fafc; color: #475569; border: 1px solid #cbd5e1; padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; cursor: pointer; font-family: 'Cairo';">
+                    المرفوضة (<span id="filterRejectedCount">0</span>)
+                </button>
+            </div>
+
+            <!-- List Container -->
+            <div id="manualDepositsList">
+                <div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري تحميل الطلبات...</div>
+            </div>
+        </div>
         <div id="supportTab" style="display: none;">
             <div id="supportMessagesList"></div>
         </div>
@@ -1151,7 +1218,7 @@
             <div style="background: #ffffff; border-radius: 16px; padding: 20px; margin-top: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04);">
                 <h4 style="margin-bottom: 15px; color: #1e3c72;"><i class="fas fa-bullhorn"></i> إرسال إشعار للجميع</h4>
                 <input type="text" id="notificationTitle" placeholder="عنوان الإشعار" style="width:100%; padding:12px; border:1px solid #e4e6eb; border-radius:8px; margin-bottom:10px;">
-                <textarea id="notificationMessage" placeholder="محت����ى الإشعار" style="width:100%; padding:12px; border:1px solid #e4e6eb; border-radius:8px; min-height:100px; margin-bottom:10px; font-family:'Cairo',sans-serif;"></textarea>
+                <textarea id="notificationMessage" placeholder="محتى الإشعار" style="width:100%; padding:12px; border:1px solid #e4e6eb; border-radius:8px; min-height:100px; margin-bottom:10px; font-family:'Cairo',sans-serif;"></textarea>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                     <button class="btn-save" onclick="sendNotificationToAllStudents()" style="padding: 12px 20px;">
                         <i class="fas fa-paper-plane"></i> إرسال للطلاب
@@ -1433,7 +1500,7 @@
                         </label>
                         <input type="text" id="appApkUrlInput" style="width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: 'Cairo'; font-size: 0.9rem;" placeholder="https://your-supabase-project.supabase.co/storage/v1/object/public/apps/zoomdz.apk أو أي رابط تحميل مباشر">
                         <p style="font-size: 0.8rem; color: #64748b; margin-top: 4px; margin-bottom: 0;">
-                            ضع هنا رابط التخزين السحابي لملف الـ APK (سواء من Supabase Storage أو Google Drive أو أي خادم تخزين سحابي مباشر). عند ضغط أي مستخدم على زر "تحميل التطبيق"، سيتم توجيهه وتحميله مباشرة ��ن هذا الرابط.
+                            ضع هنا رابط التخزين السحابي لملف الـ APK (سواء من Supabase Storage أو Google Drive أو أي خادم تخزين سحابي مباشر). عند ضغط أي مستخدم على زر "تحميل التطبيق"، سيتم توجيهه وتحميله مباشرة ن هذا الرابط.
                         </p>
                     </div>
 
@@ -1474,6 +1541,63 @@
                             <i class="fas fa-external-link-alt"></i> تجربة فتح الرابط
                         </button>
                     </div>
+                </div>
+            </div>
+
+            <!-- بطاقة إعدادات حساب بريد الجزائر / CCP للمنصة للشحن اليدوي -->
+            <div style="background: #ffffff; border-radius: 16px; padding: 24px; margin-top: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 6px 18px rgba(0,0,0,0.05); border: 1.5px solid #bbf7d0;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <h3 style="color: #065f46; font-size: 1.25rem; font-weight: 800; display: flex; align-items: center; gap: 10px; margin: 0 0 4px 0;">
+                            <i class="fas fa-university" style="color: #10b981;"></i> إعدادات حساب بريد الجزائر / CCP للشحن عبر بريدي موب
+                        </h3>
+                        <p style="font-size: 0.82rem; color: #64748b; margin: 0;">
+                            هذه المعلومات تظهر للطلاب والأساتذة عند اختيار الشحن عبر "بريدي موب / CCP" ليقوموا بالتحويل إليها ورفع الوصل
+                        </p>
+                    </div>
+                    <button onclick="loadCcpSettingsAdminForm()" style="background: #f8fafc; border: 1px solid #cbd5e1; color: #334155; padding: 6px 14px; border-radius: 8px; font-family: 'Cairo'; font-size: 0.8rem; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-sync-alt"></i> تحديث البيانات
+                    </button>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+                    <div>
+                        <label style="font-size: 0.85rem; font-weight: 700; color: #1e293b; display: block; margin-bottom: 6px;">
+                            رقم الحساب الجاري (CCP Account Number): <span style="color: #ef4444;">*</span>
+                        </label>
+                        <input type="text" id="adminCcpAccountInput" placeholder="مثال: 0022334455" style="width: 100%; padding: 11px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: monospace; font-size: 1rem; font-weight: 700; direction: ltr;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.85rem; font-weight: 700; color: #1e293b; display: block; margin-bottom: 6px;">
+                            المفتاح (Clé CCP): <span style="color: #ef4444;">*</span>
+                        </label>
+                        <input type="text" id="adminCcpKeyInput" placeholder="مثال: 45" style="width: 100%; padding: 11px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: monospace; font-size: 1rem; font-weight: 700; direction: ltr;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.85rem; font-weight: 700; color: #1e293b; display: block; margin-bottom: 6px;">
+                            رقم الحساب البنكي / البريدي (RIP):
+                        </label>
+                        <input type="text" id="adminCcpRipInput" placeholder="مثال: 00799999002233445545" style="width: 100%; padding: 11px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: monospace; font-size: 0.95rem; font-weight: 700; direction: ltr;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.85rem; font-weight: 700; color: #1e293b; display: block; margin-bottom: 6px;">
+                            اسم صاحب الحساب (Nom du Titulaire): <span style="color: #ef4444;">*</span>
+                        </label>
+                        <input type="text" id="adminCcpAccountHolderInput" placeholder="مثال: منصة ZoomDz التعليمية" style="width: 100%; padding: 11px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: 'Cairo'; font-size: 0.95rem; font-weight: 700;">
+                    </div>
+                </div>
+
+                <div style="margin-top: 14px;">
+                    <label style="font-size: 0.85rem; font-weight: 700; color: #1e293b; display: block; margin-bottom: 6px;">
+                        تعليمات أو إرشادات تظهر للمستخدمين عند الشحن:
+                    </label>
+                    <textarea id="adminCcpInstructionsInput" rows="2" placeholder="مثال: يرجى كتابة اسمك في بيان العملية وإرفاق صورة واضحة لوصل الدفع وسيتم الشحن خلال دقائق." style="width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: 'Cairo'; font-size: 0.88rem;"></textarea>
+                </div>
+
+                <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+                    <button onclick="saveCcpSettingsAdmin()" id="saveCcpSettingsBtn" style="background: #059669; color: white; border: none; padding: 11px 24px; border-radius: 8px; font-family: 'Cairo'; font-weight: 800; font-size: 0.92rem; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 8px rgba(5,150,105,0.25);">
+                        <i class="fas fa-save"></i> حفظ إعدادات حساب CCP
+                    </button>
                 </div>
             </div>
         </div>
@@ -1930,6 +2054,93 @@
     </div>
 
     <div id="modalOverlay" class="modal-overlay"></div>
+
+    <!-- View Deposit Receipt Full Image Modal -->
+    <div id="viewDepositReceiptModal" class="modal" style="display: none; max-width: 680px; z-index: 10001;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">
+            <h3 style="color: #1e293b; margin: 0; font-size: 1.15rem; display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-receipt" style="color: #10b981;"></i> وصل الدفع والمعاملة
+            </h3>
+            <button onclick="closeViewReceiptModal()" style="background: none; border: none; font-size: 1.3rem; color: #64748b; cursor: pointer;">&times;</button>
+        </div>
+        <div class="modal-body" style="padding: 16px 0; text-align: center;">
+            <div id="receiptModalInfo" style="margin-bottom: 14px; text-align: right; background: #f8fafc; padding: 12px 16px; border-radius: 10px; border: 1px solid #e2e8f0; font-size: 0.9rem;"></div>
+            <div style="background: #0f172a; border-radius: 12px; padding: 10px; min-height: 250px; max-height: 60vh; overflow: auto; display: flex; align-items: center; justify-content: center;">
+                <img id="receiptModalFullImg" src="" alt="وصل الدفع" referrerpolicy="no-referrer" style="max-width: 100%; max-height: 55vh; object-fit: contain; border-radius: 8px;">
+            </div>
+        </div>
+        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+            <a id="receiptDownloadLink" href="#" target="_blank" download="receipt.jpg" style="background: #0284c7; color: white; padding: 9px 18px; border-radius: 8px; font-weight: 700; text-decoration: none; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px;">
+                <i class="fas fa-download"></i> تحميل الصورة
+            </a>
+            <button class="btn-cancel" onclick="closeViewReceiptModal()">إغلاق</button>
+        </div>
+    </div>
+
+    <!-- Reject Manual Deposit Modal -->
+    <div id="rejectDepositModal" class="modal" style="display: none; max-width: 480px; z-index: 10001;">
+        <div class="modal-header" style="border-bottom: 1px solid #fee2e2;">
+            <h3 style="color: #dc2626; margin: 0; font-size: 1.15rem; display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-times-circle"></i> رفض طلب الشحن اليدوي
+            </h3>
+        </div>
+        <div class="modal-body" style="padding: 16px 0;">
+            <input type="hidden" id="rejectDepositId">
+            <p id="rejectDepositUserInfo" style="color: #475569; font-size: 0.9rem; margin-bottom: 12px;"></p>
+            <label style="font-weight: 700; font-size: 0.88rem; color: #1e293b; display: block; margin-bottom: 6px;">
+                سبب الرفض (سيظهر للمستخدم): <span style="color: #ef4444;">*</span>
+            </label>
+            <textarea id="rejectDepositReasonInput" rows="3" style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: 'Cairo'; font-size: 0.88rem;" placeholder="مثال: وصل الدفع غير واضح أو المبلغ لم يصل إلى الحساب..."></textarea>
+            <div style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;">
+                <button type="button" onclick="setQuickRejectReason('وصل الدفع غير واضح أو غير مكتمل')" style="font-size: 0.75rem; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 8px; cursor: pointer;">وصل غير واضح</button>
+                <button type="button" onclick="setQuickRejectReason('المبلغ المكتوب لا يطابق المبلغ في وصل المعاملة')" style="font-size: 0.75rem; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 8px; cursor: pointer;">المبلغ غير مطابق</button>
+                <button type="button" onclick="setQuickRejectReason('لم يتم استلام أي تحويل في الحساب البريدي')" style="font-size: 0.75rem; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 8px; cursor: pointer;">لم يصل التحويل</button>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="closeRejectDepositModal()">إلغاء</button>
+            <button class="btn-reject" onclick="submitRejectDepositAction()" id="submitRejectDepositBtn" style="background: #dc2626; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 700; cursor: pointer;">
+                <i class="fas fa-times"></i> تأكيد الرفض
+            </button>
+        </div>
+    </div>
+
+    <!-- Edit CCP Settings Popup Modal -->
+    <div id="editCcpSettingsPopupModal" class="modal" style="display: none; max-width: 550px; z-index: 10001;">
+        <div class="modal-header" style="border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">
+            <h3 style="color: #065f46; margin: 0; font-size: 1.15rem; display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-university" style="color: #10b981;"></i> إعدادات حساب بريد الجزائر / CCP للمنصة
+            </h3>
+        </div>
+        <div class="modal-body" style="padding: 16px 0; max-height: 75vh; overflow-y: auto;">
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <div>
+                    <label style="font-weight: 700; font-size: 0.85rem; display: block; margin-bottom: 4px;">رقم الحساب الجاري CCP: <span style="color:red">*</span></label>
+                    <input type="text" id="popupCcpAccount" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-family: monospace; font-size: 1rem; direction: ltr;" placeholder="0022334455">
+                </div>
+                <div>
+                    <label style="font-weight: 700; font-size: 0.85rem; display: block; margin-bottom: 4px;">المفتاح Clé CCP: <span style="color:red">*</span></label>
+                    <input type="text" id="popupCcpKey" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-family: monospace; font-size: 1rem; direction: ltr;" placeholder="45">
+                </div>
+                <div>
+                    <label style="font-weight: 700; font-size: 0.85rem; display: block; margin-bottom: 4px;">رقم الحساب RIP:</label>
+                    <input type="text" id="popupCcpRip" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-family: monospace; font-size: 0.95rem; direction: ltr;" placeholder="00799999002233445545">
+                </div>
+                <div>
+                    <label style="font-weight: 700; font-size: 0.85rem; display: block; margin-bottom: 4px;">اسم صاحب الحساب: <span style="color:red">*</span></label>
+                    <input type="text" id="popupCcpAccountHolder" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-family: 'Cairo';" placeholder="منصة ZoomDz التعليمية">
+                </div>
+                <div>
+                    <label style="font-weight: 700; font-size: 0.85rem; display: block; margin-bottom: 4px;">إرشادات وتعليمات للمستخدمين:</label>
+                    <textarea id="popupCcpInstructions" rows="2" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-family: 'Cairo';" placeholder="ملاحظات توضيحية للمستخدم..."></textarea>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="closeCcpSettingsModal()">إلغاء</button>
+            <button class="btn-save" onclick="saveCcpSettingsFromPopup()" style="background: #059669;"><i class="fas fa-save"></i> حفظ البيانات</button>
+        </div>
+    </div>
 
     <!-- Add Developer Modal -->
     <div id="addDeveloperModal" class="modal" style="display: none; max-width: 500px;">
@@ -2728,6 +2939,7 @@
             document.getElementById('studentsTab').style.display = tab === 'students' ? 'block' : 'none';
             document.getElementById('bannedTab').style.display = tab === 'banned' ? 'block' : 'none';
             document.getElementById('withdrawalsTab').style.display = tab === 'withdrawals' ? 'block' : 'none';
+            if (document.getElementById('manual-depositsTab')) document.getElementById('manual-depositsTab').style.display = tab === 'manual-deposits' ? 'block' : 'none';
             document.getElementById('supportTab').style.display = tab === 'support' ? 'block' : 'none';
             document.getElementById('notificationsTab').style.display = tab === 'notifications' ? 'block' : 'none';
             document.getElementById('settingsTab').style.display = tab === 'settings' ? 'block' : 'none';
@@ -2759,11 +2971,12 @@
             else if (tab === 'students') loadStudents();
             else if (tab === 'banned') loadBannedUsers();
             else if (tab === 'withdrawals') loadWithdrawals();
+            else if (tab === 'manual-deposits') loadManualDeposits();
             else if (tab === 'courses-review') loadPendingCourses();
             else if (tab === 'packages-admin') loadAdminPackages();
             else if (tab === 'support') loadSupportMessages();
             else if (tab === 'notifications') loadSentNotifications();
-            else if (tab === 'settings') loadSettings();
+            else if (tab === 'settings') { loadSettings(); loadCcpSettingsAdminForm(); }
             else if (tab === 'revenue') loadRevenueSettings();
   else if (tab === 'promotion-applications') loadPromotionApplications();
             else if (tab === 'developers') loadDevelopersAdmin();
@@ -4321,7 +4534,7 @@ async function sendNotificationToAllStudents() {
                         <i class="fas fa-users-slash" style="font-size: 2rem; margin-bottom: 10px; color: #94a3b8; display: block;"></i>
                         <p style="font-weight: 600; margin-bottom: 10px;">لا يوجد مطورين حالياً</p>
                         <button onclick="openAddDeveloperModal()" class="btn-primary" style="padding: 8px 16px; border-radius: 8px; font-size: 0.9rem;">
-                            <i class="fas fa-plus"></i> إضافة عضو ج��يد
+                            <i class="fas fa-plus"></i> إضافة عضو جيد
                         </button>
                     </div>
                 `;
@@ -4916,7 +5129,7 @@ async function sendNotificationToAllStudents() {
 
         async function toggleTeacherCertify(id, certState) {
     const actionText = certState ? "منح الشارة الذهبية وتصنيف الأستاذ كـ \"أستاذ معتمد\"" : "إلغاء شارة الاعتماد للأستاذ";
-    if (!confirm("هل أنت متأك�� من " + actionText + "؟")) return;
+    if (!confirm("هل أنت متأك من " + actionText + "؟")) return;
     try {
         const token = localStorage.getItem("token");
         const res = await fetch("/api/admin/toggle-certify-teacher/" + id, {
@@ -5599,11 +5812,468 @@ window.certifyAllTeachers = certifyAllTeachers;
                 updateBadge('pendingCount', counts.pendingTeachers);
                 updateBadge('upgradeRequestsCount', counts.upgradeRequests);
                 updateBadge('withdrawalsCount', counts.withdrawals);
+                updateBadge('manualDepositsCount', counts.manualDeposits);
                 updateBadge('supportCount', counts.support);
                 updateBadge('noDocsCount', counts.noDocs);
                 updateBadge('pendingCoursesCount', counts.pendingCourses);
             } catch (error) {
                 console.error('Error updating counts:', error);
+            }
+        }
+
+        // ============================================================
+        // 💳 إدارة طلبات الشحن اليدوي (بريدي موب / CCP)
+        // ============================================================
+        let allManualDeposits = [];
+        let currentManualFilter = 'all';
+
+        async function loadManualDeposits() {
+            const container = document.getElementById('manualDepositsList');
+            if (!container) return;
+            container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري جلب طلبات الشحن...</div>';
+
+            try {
+                const data = await fetchData('/api/admin/manual-deposits', 'خطأ في جلب طلبات الشحن اليدوي');
+                allManualDeposits = Array.isArray(data) ? data : [];
+
+                // Calculate statistics
+                const pendingCount = allManualDeposits.filter(d => d.status === 'pending').length;
+                const approvedCount = allManualDeposits.filter(d => d.status === 'approved').length;
+                const rejectedCount = allManualDeposits.filter(d => d.status === 'rejected').length;
+                const totalApprovedAmount = allManualDeposits
+                    .filter(d => d.status === 'approved')
+                    .reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
+
+                if (document.getElementById('manualDepPendingCount')) document.getElementById('manualDepPendingCount').innerText = pendingCount;
+                if (document.getElementById('manualDepApprovedCount')) document.getElementById('manualDepApprovedCount').innerText = approvedCount;
+                if (document.getElementById('manualDepRejectedCount')) document.getElementById('manualDepRejectedCount').innerText = rejectedCount;
+                if (document.getElementById('manualDepTotalAmount')) document.getElementById('manualDepTotalAmount').innerText = totalApprovedAmount.toLocaleString() + ' دج';
+
+                if (document.getElementById('filterAllCount')) document.getElementById('filterAllCount').innerText = allManualDeposits.length;
+                if (document.getElementById('filterPendingCount')) document.getElementById('filterPendingCount').innerText = pendingCount;
+                if (document.getElementById('filterApprovedCount')) document.getElementById('filterApprovedCount').innerText = approvedCount;
+                if (document.getElementById('filterRejectedCount')) document.getElementById('filterRejectedCount').innerText = rejectedCount;
+
+                const badge = document.getElementById('manualDepositsCount');
+                if (badge) {
+                    badge.innerText = pendingCount > 0 ? pendingCount : '';
+                    badge.style.display = pendingCount > 0 ? 'inline' : 'none';
+                }
+
+                renderManualDepositsFiltered();
+            } catch (err) {
+                console.error(err);
+                container.innerHTML = `<div class="error-state"><i class="fas fa-exclamation-triangle" style="color:#dc2626;"></i> ${err.message}</div>`;
+            }
+        }
+
+        function filterManualDeposits(filter, btn) {
+            currentManualFilter = filter;
+            document.querySelectorAll('.manual-filter-btn').forEach(b => {
+                b.style.background = '#f8fafc';
+                b.style.color = '#475569';
+                b.style.border = '1px solid #cbd5e1';
+                b.style.fontWeight = '700';
+            });
+            if (btn) {
+                btn.style.background = '#065f46';
+                btn.style.color = 'white';
+                btn.style.border = 'none';
+                btn.style.fontWeight = '800';
+            }
+            renderManualDepositsFiltered();
+        }
+
+        function renderManualDepositsFiltered() {
+            const container = document.getElementById('manualDepositsList');
+            if (!container) return;
+
+            let filtered = allManualDeposits;
+            if (currentManualFilter !== 'all') {
+                filtered = allManualDeposits.filter(d => d.status === currentManualFilter);
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state" style="padding: 40px; text-align: center; background: white; border-radius: 16px; border: 1px dashed #cbd5e1;">
+                        <i class="fas fa-receipt" style="font-size: 2.5rem; color: #10b981; margin-bottom: 12px; display: block;"></i>
+                        <h4 style="color: #1e293b; margin: 0 0 6px 0;">لا توجد طلبات شحن في هذا القسم</h4>
+                        <p style="color: #64748b; font-size: 0.85rem; margin: 0;">لم يتم تقديم طلبات مطابقة للفلتر المحدد</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 18px;">';
+
+            for (const req of filtered) {
+                const isStudent = req.user_type === 'student';
+                const userTypeBadge = isStudent 
+                    ? '<span style="background: #eff6ff; color: #1d4ed8; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 800;"><i class="fas fa-graduation-cap"></i> طالب</span>'
+                    : '<span style="background: #fdf2f8; color: #be185d; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 800;"><i class="fas fa-chalkboard-teacher"></i> أستاذ</span>';
+
+                let statusBadge = '';
+                if (req.status === 'pending') {
+                    statusBadge = '<span style="background: #fef3c7; color: #b45309; padding: 4px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 800;"><i class="fas fa-clock"></i> قيد المراجعة</span>';
+                } else if (req.status === 'approved') {
+                    statusBadge = '<span style="background: #dcfce7; color: #15803d; padding: 4px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 800;"><i class="fas fa-check-circle"></i> تم الشحن بنجاح</span>';
+                } else {
+                    statusBadge = '<span style="background: #fee2e2; color: #b91c1c; padding: 4px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 800;"><i class="fas fa-times-circle"></i> مرفوض</span>';
+                }
+
+                const receiptUrl = req.receipt_image_url || '';
+                const createdDate = new Date(req.created_at).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
+                const safeName = escapeHtml(req.user_name || (isStudent ? 'طالب' : 'أستاذ'));
+                const safeEmail = escapeHtml(req.user_email || '-');
+                const safePhone = escapeHtml(req.user_phone || '-');
+                const safeNotes = escapeHtml(req.notes || '');
+                const safeRejectReason = escapeHtml(req.admin_notes || '');
+
+                html += `
+                    <div style="background: white; border-radius: 16px; border: 1.5px solid ${req.status === 'pending' ? '#fbbf24' : '#e2e8f0'}; box-shadow: 0 4px 12px rgba(0,0,0,0.04); overflow: hidden; display: flex; flex-direction: column;">
+                        <!-- Header -->
+                        <div style="padding: 16px; background: ${req.status === 'pending' ? '#fffbeb' : '#f8fafc'}; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                ${userTypeBadge}
+                                <span style="font-size: 0.78rem; color: #64748b; font-weight: 600;">#${req.id}</span>
+                            </div>
+                            <div>
+                                ${statusBadge}
+                            </div>
+                        </div>
+
+                        <!-- Body -->
+                        <div style="padding: 16px; flex: 1; display: flex; flex-direction: column; gap: 12px;">
+                            <!-- Amount & User Info -->
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+                                <div>
+                                    <h4 style="margin: 0 0 4px 0; color: #1e293b; font-size: 1.05rem; font-weight: 800;">${safeName}</h4>
+                                    <div style="font-size: 0.82rem; color: #64748b; display: flex; flex-direction: column; gap: 2px;">
+                                        <span><i class="fas fa-envelope" style="width: 16px; color: #94a3b8;"></i> ${safeEmail}</span>
+                                        ${safePhone !== '-' ? `<span><i class="fas fa-phone" style="width: 16px; color: #94a3b8;"></i> ${safePhone}</span>` : ''}
+                                    </div>
+                                </div>
+                                <div style="text-align: left; background: #ecfdf5; border: 1.5px solid #a7f3d0; padding: 6px 14px; border-radius: 12px;">
+                                    <div style="font-size: 0.7rem; color: #065f46; font-weight: 700;">المبلغ المطلوب</div>
+                                    <div style="font-size: 1.35rem; font-weight: 900; color: #047857; direction: ltr;">${parseFloat(req.amount).toLocaleString()} <span style="font-size: 0.8rem;">دج</span></div>
+                                </div>
+                            </div>
+
+                            <!-- Receipt Preview Thumbnail -->
+                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px; display: flex; align-items: center; gap: 12px;">
+                                ${receiptUrl ? `
+                                    <img src="${receiptUrl}" alt="وصل الدفع" referrerpolicy="no-referrer" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid #cbd5e1; cursor: pointer;" onclick="openViewReceiptModal('${receiptUrl}', '${safeName}', '${req.amount}', '${createdDate}')" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'60\\' height=\\'60\\'><rect fill=\\'%23eee\\' width=\\'60\\' height=\\'60\\'/><text fill=\\'%23999\\' x=\\'50%\\' y=\\'50%\\' dominant-baseline=\\'middle\\' text-anchor=\\'middle\\' font-size=\\'10\\'>وصل</text></svg>'">
+                                    <div style="flex: 1;">
+                                        <div style="font-size: 0.82rem; font-weight: 700; color: #1e293b;">صورة وصل الدفع / التحويل</div>
+                                        <button onclick="openViewReceiptModal('${receiptUrl}', '${safeName}', '${req.amount}', '${createdDate}')" style="background: none; border: none; color: #2563eb; font-size: 0.8rem; font-weight: 700; cursor: pointer; padding: 0; margin-top: 4px; display: inline-flex; align-items: center; gap: 4px;">
+                                            <i class="fas fa-eye"></i> معاينة وتكبير الوصل
+                                        </button>
+                                    </div>
+                                ` : `
+                                    <div style="color: #94a3b8; font-size: 0.85rem;"><i class="fas fa-file-image"></i> لا توجد صورة مرفقة</div>
+                                `}
+                            </div>
+
+                            <!-- User Notes -->
+                            ${safeNotes ? `
+                                <div style="background: #f1f5f9; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; color: #334155;">
+                                    <b>ملاحظات المستخدم:</b> ${safeNotes}
+                                </div>
+                            ` : ''}
+
+                            <!-- Rejection Reason if rejected -->
+                            ${req.status === 'rejected' && safeRejectReason ? `
+                                <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; color: #991b1b;">
+                                    <b>سبب الرفض:</b> ${safeRejectReason}
+                                </div>
+                            ` : ''}
+
+                            <div style="font-size: 0.75rem; color: #94a3b8; margin-top: auto; display: flex; justify-content: space-between; align-items: center;">
+                                <span><i class="far fa-calendar-alt"></i> ${createdDate}</span>
+                                ${req.reviewed_at ? `<span><i class="fas fa-user-check"></i> تم التدقيق</span>` : ''}
+                            </div>
+                        </div>
+
+                        <!-- Actions footer -->
+                        ${req.status === 'pending' ? `
+                            <div style="padding: 12px 16px; background: #fafafa; border-top: 1px solid #e2e8f0; display: flex; gap: 10px;">
+                                <button onclick="approveManualDeposit(${req.id}, '${safeName}', ${req.amount})" style="flex: 2; background: #059669; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: 800; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 6px rgba(5,150,105,0.2);">
+                                    <i class="fas fa-check-circle"></i> قبول وشحن الرصيد
+                                </button>
+                                <button onclick="openRejectDepositModal(${req.id}, '${safeName}', ${req.amount})" style="flex: 1; background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; padding: 10px; border-radius: 8px; font-weight: 700; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                    <i class="fas fa-times"></i> رفض
+                                </button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        async function approveManualDeposit(id, userName, amount) {
+            const formatted = parseFloat(amount).toLocaleString();
+            if (!confirm(`هل أنت متأكد من قبول الطلب وإضافة مبلغ ${formatted} دج إلى محفظة ${userName} فورياً؟`)) {
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('token');
+                const res = await fetch(`/api/admin/manual-deposits/${id}/approve`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    showNotification(`✅ تم شحن رصيد ${userName} بمبلغ ${formatted} دج بنجاح!`, 'success');
+                    loadManualDeposits();
+                } else {
+                    showNotification(data.error || 'فشل قبول الطلب', 'error');
+                }
+            } catch (e) {
+                console.error(e);
+                showNotification('حدث خطأ أثناء معالجة الطلب', 'error');
+            }
+        }
+
+        function openRejectDepositModal(id, userName, amount) {
+            document.getElementById('rejectDepositId').value = id;
+            document.getElementById('rejectDepositUserInfo').innerHTML = `رفض طلب شحن بمبلغ <b>${parseFloat(amount).toLocaleString()} دج</b> للمستخدم: <b>${userName}</b>`;
+            document.getElementById('rejectDepositReasonInput').value = '';
+            document.getElementById('modalOverlay').style.display = 'block';
+            document.getElementById('rejectDepositModal').style.display = 'block';
+        }
+
+        function closeRejectDepositModal() {
+            document.getElementById('modalOverlay').style.display = 'none';
+            document.getElementById('rejectDepositModal').style.display = 'none';
+        }
+
+        function setQuickRejectReason(reason) {
+            const input = document.getElementById('rejectDepositReasonInput');
+            if (input) input.value = reason;
+        }
+
+        async function submitRejectDepositAction() {
+            const id = document.getElementById('rejectDepositId').value;
+            const reason = document.getElementById('rejectDepositReasonInput').value.trim();
+
+            if (!reason) {
+                alert('يرجى كتابة سبب الرفض لتوضيحه للمستخدم');
+                return;
+            }
+
+            const btn = document.getElementById('submitRejectDepositBtn');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الرفض...';
+            }
+
+            try {
+                const token = localStorage.getItem('token');
+                const res = await fetch(`/api/admin/manual-deposits/${id}/reject`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ reason })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    showNotification('تم رفض الطلب بنجاح', 'info');
+                    closeRejectDepositModal();
+                    loadManualDeposits();
+                } else {
+                    showNotification(data.error || 'فشل رفض الطلب', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                showNotification('حدث خطأ أثناء رفض الطلب', 'error');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-times"></i> تأكيد الرفض';
+                }
+            }
+        }
+
+        function openViewReceiptModal(imageUrl, userName, amount, date) {
+            const img = document.getElementById('receiptModalFullImg');
+            const info = document.getElementById('receiptModalInfo');
+            const dl = document.getElementById('receiptDownloadLink');
+
+            if (img) img.src = imageUrl;
+            if (dl) {
+                dl.href = imageUrl;
+                dl.download = `receipt_${userName}_${amount}DZD.jpg`;
+            }
+            if (info) {
+                info.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                        <div><b>المستخدم:</b> ${userName}</div>
+                        <div><b>المبلغ:</b> <span style="color: #059669; font-weight: 800; font-size: 1.05rem;">${parseFloat(amount).toLocaleString()} دج</span></div>
+                        <div style="color: #64748b; font-size: 0.8rem;">${date}</div>
+                    </div>
+                `;
+            }
+
+            document.getElementById('modalOverlay').style.display = 'block';
+            document.getElementById('viewDepositReceiptModal').style.display = 'block';
+        }
+
+        function closeViewReceiptModal() {
+            document.getElementById('modalOverlay').style.display = 'none';
+            document.getElementById('viewDepositReceiptModal').style.display = 'none';
+        }
+
+        // ============================================================
+        // 🏛️ إعدادات حساب بريد الجزائر / CCP للمنصة
+        // ============================================================
+        function openCcpSettingsModal() {
+            loadCcpSettingsToPopup();
+            document.getElementById('modalOverlay').style.display = 'block';
+            document.getElementById('editCcpSettingsPopupModal').style.display = 'block';
+        }
+
+        function closeCcpSettingsModal() {
+            document.getElementById('modalOverlay').style.display = 'none';
+            document.getElementById('editCcpSettingsPopupModal').style.display = 'none';
+        }
+
+        async function loadCcpSettingsAdminForm() {
+            try {
+                const res = await fetch('/api/wallet/ccp-info');
+                const data = await res.json();
+                if (data.success && data.settings) {
+                    const s = data.settings;
+                    if (document.getElementById('adminCcpAccountInput')) document.getElementById('adminCcpAccountInput').value = s.ccp_account_number || '';
+                    if (document.getElementById('adminCcpKeyInput')) document.getElementById('adminCcpKeyInput').value = s.ccp_key || '';
+                    if (document.getElementById('adminCcpRipInput')) document.getElementById('adminCcpRipInput').value = s.ccp_rip || '';
+                    if (document.getElementById('adminCcpAccountHolderInput')) document.getElementById('adminCcpAccountHolderInput').value = s.ccp_account_holder || '';
+                    if (document.getElementById('adminCcpInstructionsInput')) document.getElementById('adminCcpInstructionsInput').value = s.ccp_instructions || '';
+                }
+            } catch (err) {
+                console.error('Error loading CCP settings:', err);
+            }
+        }
+
+        async function loadCcpSettingsToPopup() {
+            try {
+                const res = await fetch('/api/wallet/ccp-info');
+                const data = await res.json();
+                if (data.success && data.settings) {
+                    const s = data.settings;
+                    if (document.getElementById('popupCcpAccount')) document.getElementById('popupCcpAccount').value = s.ccp_account_number || '';
+                    if (document.getElementById('popupCcpKey')) document.getElementById('popupCcpKey').value = s.ccp_key || '';
+                    if (document.getElementById('popupCcpRip')) document.getElementById('popupCcpRip').value = s.ccp_rip || '';
+                    if (document.getElementById('popupCcpAccountHolder')) document.getElementById('popupCcpAccountHolder').value = s.ccp_account_holder || '';
+                    if (document.getElementById('popupCcpInstructions')) document.getElementById('popupCcpInstructions').value = s.ccp_instructions || '';
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function saveCcpSettingsAdmin() {
+            const ccp_account_number = document.getElementById('adminCcpAccountInput')?.value.trim();
+            const ccp_key = document.getElementById('adminCcpKeyInput')?.value.trim();
+            const ccp_rip = document.getElementById('adminCcpRipInput')?.value.trim();
+            const ccp_account_holder = document.getElementById('adminCcpAccountHolderInput')?.value.trim();
+            const ccp_instructions = document.getElementById('adminCcpInstructionsInput')?.value.trim();
+
+            if (!ccp_account_number || !ccp_key || !ccp_account_holder) {
+                showNotification('يرجى ملء رقم الحساب والمفتاح واسم صاحب الحساب', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('saveCcpSettingsBtn');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
+            }
+
+            try {
+                const token = localStorage.getItem('token');
+                const res = await fetch('/api/admin/settings/ccp_settings', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        ccp_account_number,
+                        ccp_key,
+                        ccp_rip,
+                        ccp_account_holder,
+                        ccp_instructions
+                    })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    showNotification('✅ تم حفظ إعدادات حساب CCP وبريدي موب بنجاح!', 'success');
+                } else {
+                    showNotification(data.error || 'فشل حفظ الإعدادات', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                showNotification('حدث خطأ أثناء حفظ الإعدادات', 'error');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-save"></i> حفظ إعدادات حساب CCP';
+                }
+            }
+        }
+
+        async function saveCcpSettingsFromPopup() {
+            const ccp_account_number = document.getElementById('popupCcpAccount')?.value.trim();
+            const ccp_key = document.getElementById('popupCcpKey')?.value.trim();
+            const ccp_rip = document.getElementById('popupCcpRip')?.value.trim();
+            const ccp_account_holder = document.getElementById('popupCcpAccountHolder')?.value.trim();
+            const ccp_instructions = document.getElementById('popupCcpInstructions')?.value.trim();
+
+            if (!ccp_account_number || !ccp_key || !ccp_account_holder) {
+                alert('يرجى ملء رقم الحساب والمفتاح واسم صاحب الحساب');
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('token');
+                const res = await fetch('/api/admin/settings/ccp_settings', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        ccp_account_number,
+                        ccp_key,
+                        ccp_rip,
+                        ccp_account_holder,
+                        ccp_instructions
+                    })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    showNotification('✅ تم حفظ إعدادات حساب CCP بنجاح!', 'success');
+                    closeCcpSettingsModal();
+                    loadCcpSettingsAdminForm();
+                } else {
+                    showNotification(data.error || 'فشل حفظ الإعدادات', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                showNotification('حدث خطأ أثناء حفظ البيانات', 'error');
             }
         }
 

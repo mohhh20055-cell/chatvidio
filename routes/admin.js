@@ -162,9 +162,20 @@ router.get('/admin-counts', authenticate, authorize(['admin']), async (req, res)
             .select('id', { count: 'exact', head: true })
             .eq('status', 'pending');
 
+        // Manual deposit requests (بريدي موب / CCP)
+        let manualDepositsCount = 0;
+        try {
+            const { count: mCount } = await supabase
+                .from('manual_deposit_requests')
+                .select('id', { count: 'exact', head: true })
+                .eq('status', 'pending');
+            manualDepositsCount = mCount || 0;
+        } catch (mErr) {}
+
         res.json({
             pendingTeachers: pendingTeachersCount || 0,
             withdrawals: withdrawalsCount || 0,
+            manualDeposits: manualDepositsCount || 0,
             support: supportCount || 0,
             noDocs: noDocsData ? noDocsData.length : 0,
             upgradeRequests: upgradeRequestsData ? upgradeRequestsData.length : 0,
@@ -2827,6 +2838,313 @@ router.post('/courses/:id/reject', authenticate, authorize(['admin']), async (re
     } catch (error) {
         logger.error('❌ خطأ في رفض الدورة:', error.message);
         res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
+// 💳 إدارة طلبات شحن الرصيد اليدوي (بريدي موب / CCP)
+// ============================================================
+
+// GET /api/admin/manual-deposits - جلب قائمة طلبات الشحن اليدوي
+router.get('/manual-deposits', authenticate, authorize(['admin']), async (req, res) => {
+    try {
+        const { status, user_type } = req.query;
+        let query = supabase
+            .from('manual_deposit_requests')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (status && status !== 'all') {
+            query = query.eq('status', status);
+        }
+        if (user_type && user_type !== 'all') {
+            query = query.eq('user_type', user_type);
+        }
+
+        const { data, error } = await query;
+        if (error) {
+            logger.warn('⚠️ تعذر جلب طلبات الشحن من manual_deposit_requests:', error.message);
+            return res.json({ success: true, requests: [] });
+        }
+
+        return res.json({ success: true, requests: data || [] });
+    } catch (error) {
+        logger.error('❌ خطأ في جلب طلبات الشحن اليدوي:', error.message);
+        return res.status(500).json({ success: false, error: 'حدث خطأ أثناء جلب طلبات الشحن اليدوي' });
+    }
+});
+
+// GET /api/admin/manual-deposits/stats - إحصائيات طلبات الشحن اليدوي
+router.get('/manual-deposits/stats', authenticate, authorize(['admin']), async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('manual_deposit_requests')
+            .select('status, amount');
+
+        if (error) {
+            return res.json({
+                success: true,
+                stats: { pending: 0, approved: 0, rejected: 0, total_approved_amount: 0 }
+            });
+        }
+
+        const stats = (data || []).reduce((acc, row) => {
+            if (row.status === 'pending') acc.pending++;
+            else if (row.status === 'approved') {
+                acc.approved++;
+                acc.total_approved_amount += parseFloat(row.amount || 0);
+            } else if (row.status === 'rejected') acc.rejected++;
+            return acc;
+        }, { pending: 0, approved: 0, rejected: 0, total_approved_amount: 0 });
+
+        return res.json({ success: true, stats });
+    } catch (error) {
+        return res.json({
+            success: true,
+            stats: { pending: 0, approved: 0, rejected: 0, total_approved_amount: 0 }
+        });
+    }
+});
+
+// POST /api/admin/manual-deposits/:id/approve - الموافقة على طلب الشحن وإضافة الرصيد
+router.post('/manual-deposits/:id/approve', authenticate, authorize(['admin']), async (req, res) => {
+    try {
+        const requestId = parseInt(req.params.id);
+        if (!requestId || isNaN(requestId)) {
+            return res.status(400).json({ success: false, error: 'معرف الطلب غير صالح' });
+        }
+
+        const { data: requestList, error: fetchErr } = await supabase
+            .from('manual_deposit_requests')
+            .select('*')
+            .eq('id', requestId);
+
+        if (fetchErr || !requestList || requestList.length === 0) {
+            return res.status(404).json({ success: false, error: 'طلب الشحن غير موجود' });
+        }
+
+        const depositReq = requestList[0];
+        if (depositReq.status !== 'pending') {
+            return res.status(400).json({ 
+                success: false, 
+                error: `لا يمكن معالجة هذا الطلب لأنه بحالة: ${depositReq.status === 'approved' ? 'مقبول مسبقاً' : 'مرفوض مسبقاً'}` 
+            });
+        }
+
+        const amount = parseFloat(depositReq.amount);
+        const userId = depositReq.user_id;
+        const userType = depositReq.user_type || 'student';
+
+        // 1. شحن رصيد المحفظة للمستخدم
+        if (userType === 'student') {
+            const student = await getOne('students', 'id', userId);
+            if (!student) {
+                return res.status(404).json({ success: false, error: 'حساب الطالب غير موجود في النظام' });
+            }
+            const newBalance = (parseFloat(student.wallet_balance) || 0) + amount;
+            await update('students', userId, { wallet_balance: newBalance });
+        } else {
+            const teacher = await getOne('teachers', 'id', userId);
+            if (!teacher) {
+                return res.status(404).json({ success: false, error: 'حساب الأستاذ غير موجود في النظام' });
+            }
+            const currentBal = parseFloat(teacher.balance || teacher.wallet_balance || 0);
+            const newBalance = currentBal + amount;
+            await update('teachers', userId, { balance: newBalance });
+        }
+
+        // 2. تحديث حالة الطلب إلى approved
+        await supabase
+            .from('manual_deposit_requests')
+            .update({
+                status: 'approved',
+                processed_at: new Date().toISOString(),
+                processed_by: req.user.userId,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', requestId);
+
+        // 3. تحديث أو تسجيل المعاملة في جدول wallet_transactions
+        try {
+            await insert('wallet_transactions', {
+                [userType === 'teacher' ? 'teacher_id' : 'student_id']: userId,
+                amount: amount,
+                type: 'deposit_manual',
+                status: 'completed',
+                description: `شحن رصيد معتمد عبر بريدي موب / CCP بمبلغ ${amount} دج (طلب #${requestId})`,
+                created_at: new Date().toISOString()
+            });
+        } catch (txErr) {
+            logger.warn('⚠️ تعذر تسجيل المعاملة في wallet_transactions:', txErr.message);
+        }
+
+        // 4. إرسال إشعار فوري للمستخدم
+        try {
+            await insert('notifications', {
+                user_id: userId,
+                user_type: userType,
+                title: '🎉 تم شحن رصيدك بنجاح!',
+                content: `تمت مراجعة وصل الدفع والموافقة على طلب شحن الرصيد بمبلغ ${amount} دج، وتمت إضافته إلى محفظتك بنجاح. يمكنك الآن استخدامه في جميع خدمات المنصة!`,
+                type: 'wallet',
+                is_read: false,
+                created_at: new Date().toISOString()
+            });
+        } catch (notifErr) {}
+
+        return res.json({
+            success: true,
+            message: `✅ تمت الموافقة على طلب الشحن بنجاح وإضافة ${amount} دج إلى رصيد الحساب.`,
+            amount: amount,
+            user_id: userId
+        });
+    } catch (error) {
+        logger.error('❌ خطأ في الموافقة على طلب الشحن:', error.message);
+        return res.status(500).json({ success: false, error: 'حدث خطأ في الخادم أثناء معالجة الطلب' });
+    }
+});
+
+// POST /api/admin/manual-deposits/:id/reject - رفض طلب الشحن
+router.post('/manual-deposits/:id/reject', authenticate, authorize(['admin']), async (req, res) => {
+    try {
+        const requestId = parseInt(req.params.id);
+        const { reason } = req.body;
+
+        if (!requestId || isNaN(requestId)) {
+            return res.status(400).json({ success: false, error: 'معرف الطلب غير صالح' });
+        }
+
+        const { data: requestList, error: fetchErr } = await supabase
+            .from('manual_deposit_requests')
+            .select('*')
+            .eq('id', requestId);
+
+        if (fetchErr || !requestList || requestList.length === 0) {
+            return res.status(404).json({ success: false, error: 'طلب الشحن غير موجود' });
+        }
+
+        const depositReq = requestList[0];
+        if (depositReq.status !== 'pending') {
+            return res.status(400).json({ 
+                success: false, 
+                error: `لا يمكن معالجة هذا الطلب لأنه بحالة: ${depositReq.status === 'approved' ? 'مقبول مسبقاً' : 'مرفوض مسبقاً'}` 
+            });
+        }
+
+        const amount = parseFloat(depositReq.amount);
+        const userId = depositReq.user_id;
+        const userType = depositReq.user_type || 'student';
+        const rejectReason = reason || 'صورة الوصل أو بيانات المعاملة غير مطابقة';
+
+        // 1. تحديث حالة الطلب إلى rejected
+        await supabase
+            .from('manual_deposit_requests')
+            .update({
+                status: 'rejected',
+                admin_notes: rejectReason,
+                processed_at: new Date().toISOString(),
+                processed_by: req.user.userId,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', requestId);
+
+        // 2. إرسال إشعار للمستخدم بسبب الرفض
+        try {
+            await insert('notifications', {
+                user_id: userId,
+                user_type: userType,
+                title: '❌ تم رفض طلب شحن الرصيد',
+                content: `نأسف، تم رفض طلب شحن الرصيد عبر بريدي موب بمبلغ ${amount} دج. سبب الرفض: ${rejectReason}. يرجى التحقق وإعادة المحاولة بوصل صحيح.`,
+                type: 'wallet',
+                is_read: false,
+                created_at: new Date().toISOString()
+            });
+        } catch (notifErr) {}
+
+        return res.json({
+            success: true,
+            message: 'تم رفض طلب الشحن وإشعار المستخدم بالسبب بنجاح.',
+            request_id: requestId
+        });
+    } catch (error) {
+        logger.error('❌ خطأ في رفض طلب الشحن:', error.message);
+        return res.status(500).json({ success: false, error: 'حدث خطأ في الخادم أثناء رفض الطلب' });
+    }
+});
+
+// ============================================================
+// ⚙️ إعدادات حساب بريدي موب و CCP للمنصة (Admin Settings)
+// ============================================================
+
+// GET /api/admin/settings/ccp_settings
+router.get('/settings/ccp_settings', authenticate, authorize(['admin']), async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('platform_settings')
+            .select('value')
+            .eq('key', 'ccp_settings')
+            .maybeSingle();
+
+        const defaultSettings = {
+            ccp_account_number: "0022334455",
+            ccp_key: "45",
+            ccp_rip: "00799999002233445545",
+            ccp_account_holder: "منصة ZoomDz التعليمية",
+            baridimob_phone: "0555001122",
+            instructions: "يرجى تحويل المبلغ بدقة عبر تطبيق BaridiMob أو مكتب البريد، ثم إرفاق صورة واضحة لوصل المعاملة ليتم تزويدك بالرصيد فور التأكد من التحويل."
+        };
+
+        if (!error && data && data.value) {
+            return res.json({ success: true, settings: { ...defaultSettings, ...data.value } });
+        }
+        return res.json({ success: true, settings: defaultSettings });
+    } catch (error) {
+        return res.json({ success: true, settings: {} });
+    }
+});
+
+// POST /api/admin/settings/ccp_settings
+router.post('/settings/ccp_settings', authenticate, authorize(['admin']), async (req, res) => {
+    try {
+        const {
+            ccp_account_number,
+            ccp_key,
+            ccp_rip,
+            ccp_account_holder,
+            baridimob_phone,
+            instructions
+        } = req.body;
+
+        const newCcpSettings = {
+            ccp_account_number: (ccp_account_number || '').trim(),
+            ccp_key: (ccp_key || '').trim(),
+            ccp_rip: (ccp_rip || '').trim(),
+            ccp_account_holder: (ccp_account_holder || '').trim(),
+            baridimob_phone: (baridimob_phone || '').trim(),
+            instructions: (instructions || '').trim()
+        };
+
+        const { data, error } = await supabase
+            .from('platform_settings')
+            .upsert({
+                key: 'ccp_settings',
+                value: newCcpSettings,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'key' })
+            .select();
+
+        if (error) {
+            logger.error('❌ خطأ في حفظ إعدادات ccp_settings:', error.message);
+            return res.status(500).json({ success: false, error: error.message });
+        }
+
+        return res.json({
+            success: true,
+            message: 'تم حفظ وتحديث إعدادات حساب بريدي موب و CCP بنجاح',
+            settings: newCcpSettings
+        });
+    } catch (error) {
+        logger.error('❌ خطأ في حفظ إعدادات CCP:', error.message);
+        return res.status(500).json({ success: false, error: 'حدث خطأ أثناء حفظ إعدادات CCP' });
     }
 });
 
