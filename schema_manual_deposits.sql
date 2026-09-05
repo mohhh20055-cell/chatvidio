@@ -3,6 +3,13 @@
 -- منصة ZoomDz التعليمية
 -- ============================================================
 
+-- 0️⃣ إنشاء جدول إعدادات المنصة إذا لم يكن موجوداً
+CREATE TABLE IF NOT EXISTS public.platform_settings (
+    key VARCHAR(255) PRIMARY KEY,
+    value JSONB,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- 1️⃣ إنشاء جدول طلبات الشحن اليدوي (Manual Deposit Requests)
 CREATE TABLE IF NOT EXISTS public.manual_deposit_requests (
     id BIGSERIAL PRIMARY KEY,
@@ -19,7 +26,7 @@ CREATE TABLE IF NOT EXISTS public.manual_deposit_requests (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     processed_at TIMESTAMPTZ,
-    processed_by BIGINT REFERENCES public.admins(id) ON DELETE SET NULL
+    processed_by BIGINT
 );
 
 -- 2️⃣ إنشاء الفهارس لتسريع البحث والاستعلامات (Indexes)
@@ -47,13 +54,18 @@ SET value = EXCLUDED.value, updated_at = NOW();
 -- 4️⃣ تمكين سياسات الأمان والحماية (Row Level Security - RLS)
 ALTER TABLE public.manual_deposit_requests ENABLE ROW LEVEL SECURITY;
 
--- السماح للمستخدمين بالاطلاع على طلباتهم الخاصة
+-- حذف أي سياسات سابقة لتفادي تكرار الأسماء
+DROP POLICY IF EXISTS "Users can view their own manual deposit requests" ON public.manual_deposit_requests;
+DROP POLICY IF EXISTS "Users can insert manual deposit requests" ON public.manual_deposit_requests;
+DROP POLICY IF EXISTS "Admins can update manual deposit requests" ON public.manual_deposit_requests;
+
+-- السماح بالقراءة لجميع المستخدمين
 CREATE POLICY "Users can view their own manual deposit requests"
 ON public.manual_deposit_requests
 FOR SELECT
 USING (true);
 
--- السماح للمستخدمين المسجلين بإرسال طلبات شحن جديدة
+-- السماح بإرسال طلبات شحن جديدة
 CREATE POLICY "Users can insert manual deposit requests"
 ON public.manual_deposit_requests
 FOR INSERT
@@ -66,5 +78,5 @@ FOR ALL
 USING (true);
 
 -- ============================================================
--- ✅ انتهى كود SQL الخاص بنظام الشحن عبر بريدي موب والبطاقة الذهبية
+-- ✅ تم تجهيز كود SQL بنجاح
 -- ============================================================
