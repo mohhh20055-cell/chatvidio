@@ -6003,22 +6003,58 @@ window.certifyAllTeachers = certifyAllTeachers;
                         </div>
 
                         <!-- Actions footer -->
-                        ${req.status === 'pending' ? `
-                            <div style="padding: 12px 16px; background: #fafafa; border-top: 1px solid #e2e8f0; display: flex; gap: 10px;">
-                                <button onclick="approveManualDeposit(${req.id}, '${safeName}', ${req.amount})" style="flex: 2; background: #059669; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: 800; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 6px rgba(5,150,105,0.2);">
-                                    <i class="fas fa-check-circle"></i> قبول وشحن الرصيد
-                                </button>
-                                <button onclick="openRejectDepositModal(${req.id}, '${safeName}', ${req.amount})" style="flex: 1; background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; padding: 10px; border-radius: 8px; font-weight: 700; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
-                                    <i class="fas fa-times"></i> رفض
-                                </button>
-                            </div>
-                        ` : ''}
+                        <div style="padding: 12px 16px; background: #fafafa; border-top: 1px solid #e2e8f0; display: flex; gap: 8px; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                            ${req.status === 'pending' ? `
+                                <div style="display: flex; gap: 8px; flex: 1;">
+                                    <button onclick="approveManualDeposit(${req.id}, '${safeName}', ${req.amount})" style="flex: 2; background: #059669; color: white; border: none; padding: 9px 12px; border-radius: 8px; font-weight: 800; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 6px rgba(5,150,105,0.2);">
+                                        <i class="fas fa-check-circle"></i> قبول وشحن الرصيد
+                                    </button>
+                                    <button onclick="openRejectDepositModal(${req.id}, '${safeName}', ${req.amount})" style="flex: 1; background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; padding: 9px 10px; border-radius: 8px; font-weight: 700; font-size: 0.82rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                        <i class="fas fa-times"></i> رفض
+                                    </button>
+                                </div>
+                            ` : `
+                                <div style="font-size: 0.8rem; font-weight: 700; color: ${req.status === 'approved' ? '#15803d' : '#991b1b'}; display: flex; align-items: center; gap: 6px;">
+                                    <i class="fas ${req.status === 'approved' ? 'fa-check-circle' : 'fa-times-circle'}"></i> ${req.status === 'approved' ? 'تمت الموافقة والشحن' : 'تم رفض الطلب'}
+                                </div>
+                            `}
+                            <button onclick="deleteManualDepositRequest(${req.id}, '${safeName}')" title="حذف طلب الشحن من السجل" style="background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; padding: 8px 12px; border-radius: 8px; font-weight: 700; font-size: 0.8rem; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s;" onmouseover="this.style.background='#fca5a5'" onmouseout="this.style.background='#fee2e2'">
+                                <i class="fas fa-trash-alt"></i> حذف
+                            </button>
+                        </div>
                     </div>
                 `;
             }
 
             html += '</div>';
             container.innerHTML = html;
+        }
+
+        async function deleteManualDepositRequest(id, userName) {
+            if (!confirm(`هل أنت متأكد من رغبتك في حذف طلب الشحن (#${id}) الخاص بـ "${userName}" نهائياً من السجل؟`)) {
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('token');
+                const res = await fetch(`/api/admin/manual-deposits/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    showNotification('🗑️ تم حذف طلب الشحن بنجاح من السجل', 'success');
+                    loadManualDeposits();
+                } else {
+                    showNotification(data.error || 'فشل حذف طلب الشحن', 'error');
+                }
+            } catch (e) {
+                console.error(e);
+                showNotification('حدث خطأ أثناء محاولة حذف الطلب', 'error');
+            }
         }
 
         async function approveManualDeposit(id, userName, amount) {

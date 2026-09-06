@@ -440,11 +440,13 @@ router.post('/manual-deposit', authenticate, upload.single('receipt'), async (re
 
         // 3. إرسال إشعار للمستخدم
         try {
+            const notifText = `تم استلام طلب شحن رصيدك عبر بريدي موب بمبلغ ${amount} دج وهو الآن قيد مراجعة الإدارة وسيتم إضافة الرصيد إلى حسابك فور التحقق.`;
             await insert('notifications', {
                 user_id: userId,
                 user_type: userType,
                 title: 'تم استلام طلب الشحن بنجاح ⏳',
-                content: `تم استلام طلب شحن رصيدك عبر بريدي موب بمبلغ ${amount} دج وهو الآن قيد مراجعة الإدارة وسيتم إضافة الرصيد إلى حسابك فور التحقق.`,
+                message: notifText,
+                content: notifText,
                 type: 'wallet',
                 is_read: false,
                 created_at: new Date().toISOString()

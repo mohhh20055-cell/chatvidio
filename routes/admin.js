@@ -2968,6 +2968,7 @@ router.post('/manual-deposits/:id/approve', authenticate, authorize(['admin']), 
         const amount = parseFloat(depositReq.amount);
         const userId = depositReq.user_id;
         const userType = depositReq.user_type || 'student';
+        const idField = userType === 'teacher' ? 'teacher_id' : 'student_id';
 
         // 1. شحن رصيد المحفظة للمستخدم
         if (userType === 'student') {
@@ -2998,27 +2999,46 @@ router.post('/manual-deposits/:id/approve', authenticate, authorize(['admin']), 
             })
             .eq('id', requestId);
 
-        // 3. تحديث أو تسجيل المعاملة في جدول wallet_transactions
+        // 3. تحديث المعاملة المعلقة في جدول wallet_transactions إلى ناجحة (completed)
         try {
-            await insert('wallet_transactions', {
-                [userType === 'teacher' ? 'teacher_id' : 'student_id']: userId,
-                amount: amount,
-                type: 'deposit_manual',
-                status: 'completed',
-                description: `شحن رصيد معتمد عبر بريدي موب / CCP بمبلغ ${amount} دج (طلب #${requestId})`,
-                created_at: new Date().toISOString()
-            });
+            const { data: pendingTx } = await supabase
+                .from('wallet_transactions')
+                .select('id')
+                .eq(idField, userId)
+                .eq('type', 'deposit_manual')
+                .eq('status', 'pending')
+                .order('created_at', { ascending: false })
+                .limit(1);
+
+            if (pendingTx && pendingTx.length > 0) {
+                await update('wallet_transactions', pendingTx[0].id, {
+                    status: 'completed',
+                    description: `شحن رصيد معتمد عبر بريدي موب / CCP بمبلغ ${amount} دج (طلب #${requestId})`,
+                    updated_at: new Date().toISOString()
+                });
+            } else {
+                await insert('wallet_transactions', {
+                    [idField]: userId,
+                    amount: amount,
+                    type: 'deposit_manual',
+                    status: 'completed',
+                    description: `شحن رصيد معتمد عبر بريدي موب / CCP بمبلغ ${amount} دج (طلب #${requestId})`,
+                    created_at: new Date().toISOString()
+                });
+            }
         } catch (txErr) {
-            logger.warn('⚠️ تعذر تسجيل المعاملة في wallet_transactions:', txErr.message);
+            logger.warn('⚠️ تعذر تسجيل/تحديث المعاملة في wallet_transactions:', txErr.message);
         }
 
         // 4. إرسال إشعار فوري للمستخدم
         try {
+            const notifMsg = `تمت مراجعة وصل الدفع والموافقة على طلب شحن الرصيد بمبلغ ${amount} دج، وتمت إضافته إلى محفظتك بنجاح. يمكنك الآن استخدامه في جميع خدمات المنصة!`;
             await insert('notifications', {
                 user_id: userId,
                 user_type: userType,
                 title: '🎉 تم شحن رصيدك بنجاح!',
-                content: `تمت مراجعة وصل الدفع والموافقة على طلب شحن الرصيد بمبلغ ${amount} دج، وتمت إضافته إلى محفظتك بنجاح. يمكنك الآن استخدامه في جميع خدمات المنصة!`,
+                message: notifMsg,
+                content: notifMsg,
                 type: 'wallet',
                 is_read: false,
                 created_at: new Date().toISOString()
@@ -3067,6 +3087,7 @@ router.post('/manual-deposits/:id/reject', authenticate, authorize(['admin']), a
         const amount = parseFloat(depositReq.amount);
         const userId = depositReq.user_id;
         const userType = depositReq.user_type || 'student';
+        const idField = userType === 'teacher' ? 'teacher_id' : 'student_id';
         const rejectReason = reason || 'صورة الوصل أو بيانات المعاملة غير مطابقة';
 
         // 1. تحديث حالة الطلب إلى rejected
@@ -3081,13 +3102,37 @@ router.post('/manual-deposits/:id/reject', authenticate, authorize(['admin']), a
             })
             .eq('id', requestId);
 
-        // 2. إرسال إشعار للمستخدم بسبب الرفض
+        // 2. تحديث حالة المعاملة المعلقة في جدول wallet_transactions إلى مرفوضة
         try {
+            const { data: pendingTx } = await supabase
+                .from('wallet_transactions')
+                .select('id')
+                .eq(idField, userId)
+                .eq('type', 'deposit_manual')
+                .eq('status', 'pending')
+                .order('created_at', { ascending: false })
+                .limit(1);
+
+            if (pendingTx && pendingTx.length > 0) {
+                await update('wallet_transactions', pendingTx[0].id, {
+                    status: 'failed',
+                    description: `طلب شحن بريدي موب / CCP مرفوض: ${rejectReason} (طلب #${requestId})`,
+                    updated_at: new Date().toISOString()
+                });
+            }
+        } catch (txErr) {
+            logger.warn('⚠️ تعذر تحديث المعاملة في wallet_transactions:', txErr.message);
+        }
+
+        // 3. إرسال إشعار للمستخدم بسبب الرفض
+        try {
+            const notifMsg = `نأسف، تم رفض طلب شحن الرصيد عبر بريدي موب بمبلغ ${amount} دج. سبب الرفض: ${rejectReason}. يرجى التحقق وإعادة المحاولة بوصل صحيح.`;
             await insert('notifications', {
                 user_id: userId,
                 user_type: userType,
                 title: '❌ تم رفض طلب شحن الرصيد',
-                content: `نأسف، تم رفض طلب شحن الرصيد عبر بريدي موب بمبلغ ${amount} دج. سبب الرفض: ${rejectReason}. يرجى التحقق وإعادة المحاولة بوصل صحيح.`,
+                message: notifMsg,
+                content: notifMsg,
                 type: 'wallet',
                 is_read: false,
                 created_at: new Date().toISOString()
@@ -3102,6 +3147,34 @@ router.post('/manual-deposits/:id/reject', authenticate, authorize(['admin']), a
     } catch (error) {
         logger.error('❌ خطأ في رفض طلب الشحن:', error.message);
         return res.status(500).json({ success: false, error: 'حدث خطأ في الخادم أثناء رفض الطلب' });
+    }
+});
+
+// DELETE /api/admin/manual-deposits/:id - حذف طلب الشحن اليدوي من السجل
+router.delete('/manual-deposits/:id', authenticate, authorize(['admin']), async (req, res) => {
+    try {
+        const requestId = parseInt(req.params.id);
+        if (!requestId || isNaN(requestId)) {
+            return res.status(400).json({ success: false, error: 'معرف الطلب غير صالح' });
+        }
+
+        const { error } = await supabase
+            .from('manual_deposit_requests')
+            .delete()
+            .eq('id', requestId);
+
+        if (error) {
+            logger.error('❌ خطأ في حذف طلب الشحن:', error.message);
+            return res.status(500).json({ success: false, error: 'تعذر حذف طلب الشحن من قاعدة البيانات' });
+        }
+
+        return res.json({
+            success: true,
+            message: 'تم حذف طلب الشحن بنجاح من السجل'
+        });
+    } catch (error) {
+        logger.error('❌ خطأ في حذف طلب الشحن:', error.message);
+        return res.status(500).json({ success: false, error: 'حدث خطأ في الخادم أثناء حذف الطلب' });
     }
 });
 

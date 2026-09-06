@@ -7315,13 +7315,13 @@
             for (const t of transactions) {
                 const date = new Date(t.created_at);
                 const formattedDate = date.toLocaleString('ar-DZ', { timeZone: 'Africa/Algiers', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                const isDeposit = t.type === 'deposit' || t.type === 'credit';
+                const isDeposit = t.type === 'deposit' || t.type === 'credit' || t.type === 'deposit_manual' || t.type === 'manual_deposit';
                 const isReferral = t.type === 'referral_gift' || t.type === 'gift_reward';
                 
-                let icon = isDeposit ? 'fa-arrow-up' : 'fa-arrow-down';
+                let icon = isDeposit ? (t.type === 'deposit_manual' || t.type === 'manual_deposit' ? 'fa-money-bill-transfer' : 'fa-arrow-up') : 'fa-arrow-down';
                 let color = isDeposit ? 'var(--secondary)' : 'var(--danger)';
                 let bg = isDeposit ? 'var(--secondary-soft)' : 'var(--danger-soft)';
-                let label = isDeposit ? 'شحن رصيد' : 'خصم رصيد';
+                let label = isDeposit ? (t.type === 'deposit_manual' || t.type === 'manual_deposit' ? 'شحن رصيد (بريدي موب)' : 'شحن رصيد') : 'خصم رصيد';
                 
                 if (isReferral) {
                     icon = 'fa-gift';
@@ -7336,12 +7336,12 @@
                 let statusBg = '';
                 
                 const status = (t.status || 'success').toLowerCase();
-                if (status === 'success' || status === 'completed' || status === 'paid') {
+                if (status === 'success' || status === 'completed' || status === 'paid' || status === 'approved') {
                     statusLabel = 'ناجحة';
                     statusColor = 'var(--secondary)';
                     statusBg = 'var(--secondary-soft)';
-                } else if (status === 'failed' || status === 'error') {
-                    statusLabel = 'فاشلة';
+                } else if (status === 'failed' || status === 'error' || status === 'rejected') {
+                    statusLabel = status === 'rejected' ? 'مرفوضة' : 'فاشلة';
                     statusColor = 'var(--danger)';
                     statusBg = 'var(--danger-soft)';
                 } else if (status === 'cancelled' || status === 'expired') {
@@ -7349,7 +7349,7 @@
                     statusColor = 'var(--gray-600)';
                     statusBg = 'var(--gray-200)';
                 } else {
-                    statusLabel = 'قيد الانتظار';
+                    statusLabel = 'قيد المراجعة';
                     statusColor = 'var(--gold-dark)';
                     statusBg = 'var(--gold-soft)';
                 }
@@ -8920,7 +8920,7 @@
             }
             
             // Set Amount
-            const isDeposit = tx.type === 'deposit' || tx.type === 'credit' || tx.type === 'referral_gift' || tx.type === 'gift_reward';
+            const isDeposit = tx.type === 'deposit' || tx.type === 'credit' || tx.type === 'referral_gift' || tx.type === 'gift_reward' || tx.type === 'deposit_manual' || tx.type === 'manual_deposit';
             const sign = isDeposit ? '+' : '-';
             const amountEl = document.getElementById('txDetailsAmount');
             if (amountEl) {

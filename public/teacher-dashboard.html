@@ -8339,14 +8339,14 @@ function updateUI() {
             for (const t of transactions) {
                 const date = new Date(t.created_at);
                 const formattedDate = date.toLocaleString('ar-DZ', { timeZone: 'Africa/Algiers', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                const isDeposit = t.type === 'deposit' || t.type === 'credit';
+                const isDeposit = t.type === 'deposit' || t.type === 'credit' || t.type === 'deposit_manual' || t.type === 'manual_deposit';
                 const isWithdraw = t.type === 'withdraw';
                 const isFees = t.type === 'fees';
                 
-                let icon = isDeposit ? 'fa-arrow-up' : (isWithdraw ? 'fa-hand-holding-usd' : 'fa-arrow-down');
+                let icon = isDeposit ? (t.type === 'deposit_manual' || t.type === 'manual_deposit' ? 'fa-money-bill-transfer' : 'fa-arrow-up') : (isWithdraw ? 'fa-hand-holding-usd' : 'fa-arrow-down');
                 let color = isDeposit ? 'var(--secondary)' : (isWithdraw ? '#2563eb' : 'var(--danger)');
                 let bg = isDeposit ? 'var(--secondary-soft)' : (isWithdraw ? '#dbeafe' : 'var(--danger-soft)');
-                let label = isDeposit ? 'شحن رصيد' : (isWithdraw ? 'سحب رصيد' : (isFees ? 'رسوم إنشاء حصة مجانية' : 'خصم رصيد'));
+                let label = isDeposit ? (t.type === 'deposit_manual' || t.type === 'manual_deposit' ? 'شحن رصيد (بريدي موب / CCP)' : 'شحن رصيد') : (isWithdraw ? 'سحب رصيد' : (isFees ? 'رسوم إنشاء حصة مجانية' : 'خصم رصيد'));
                 
                 // تحديد حالة العملية
                 let statusLabel = '';
@@ -8354,7 +8354,7 @@ function updateUI() {
                 let statusBg = '';
                 
                 const status = (t.status || 'success').toLowerCase();
-                if (status === 'success' || status === 'completed' || status === 'paid') {
+                if (status === 'success' || status === 'completed' || status === 'paid' || status === 'approved') {
                     statusLabel = 'ناجحة';
                     statusColor = 'var(--secondary)';
                     statusBg = 'var(--secondary-soft)';
@@ -8367,7 +8367,7 @@ function updateUI() {
                     statusColor = 'var(--gray-600)';
                     statusBg = 'var(--gray-200)';
                 } else {
-                    statusLabel = 'قيد الانتظار';
+                    statusLabel = 'قيد المراجعة';
                     statusColor = 'var(--gold-dark)';
                     statusBg = 'var(--gold-soft)';
                 }
@@ -10609,7 +10609,7 @@ function updateUI() {
             }
 
             // Set Amount
-            const isDeposit = tx.type === 'deposit' || tx.type === 'credit';
+            const isDeposit = tx.type === 'deposit' || tx.type === 'credit' || tx.type === 'deposit_manual' || tx.type === 'manual_deposit';
             const sign = isDeposit ? '+' : '-';
             const amountEl = document.getElementById('txDetailsAmount');
             if (amountEl) {
