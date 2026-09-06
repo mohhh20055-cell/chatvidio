@@ -3192,16 +3192,27 @@ router.get('/settings/ccp_settings', authenticate, authorize(['admin']), async (
             .maybeSingle();
 
         const defaultSettings = {
-            ccp_account_number: "0022334455",
-            ccp_key: "45",
-            ccp_rip: "00799999002233445545",
+            ccp_account_number: "0042539805",
+            ccp_key: "05",
+            ccp_rip: "00799999004253980505",
+            baridimob_account: "004253980505",
             ccp_account_holder: "منصة ZoomDz التعليمية",
             baridimob_phone: "0555001122",
             instructions: "يرجى تحويل المبلغ بدقة عبر تطبيق BaridiMob أو مكتب البريد، ثم إرفاق صورة واضحة لوصل المعاملة ليتم تزويدك بالرصيد فور التأكد من التحويل."
         };
 
         if (!error && data && data.value) {
-            return res.json({ success: true, settings: { ...defaultSettings, ...data.value } });
+            const settings = { ...defaultSettings, ...data.value };
+            if (settings.ccp_account_number === '0022334455' || settings.ccp_rip === '00799999002233445545') {
+                settings.ccp_account_number = defaultSettings.ccp_account_number;
+                settings.ccp_key = defaultSettings.ccp_key;
+                settings.ccp_rip = defaultSettings.ccp_rip;
+                settings.baridimob_account = defaultSettings.baridimob_account;
+            }
+            if (!settings.baridimob_account) {
+                settings.baridimob_account = defaultSettings.baridimob_account;
+            }
+            return res.json({ success: true, settings });
         }
         return res.json({ success: true, settings: defaultSettings });
     } catch (error) {

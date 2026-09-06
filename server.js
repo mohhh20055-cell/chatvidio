@@ -5218,6 +5218,43 @@ app.get('/api/teacher/me', authenticate, authorize(['teacher']), async (req, res
         
         console.log('✅ تم جلب بيانات الأستاذ:', teacher.full_name);
         
+        // ⭐ التحقق الفوري من انتهاء مدة الترقية (VIP Expiration)
+        if (teacher.is_vip && teacher.vip_expires_at) {
+            const expiry = new Date(teacher.vip_expires_at);
+            if (expiry <= new Date()) {
+                teacher.is_vip = false;
+                try {
+                    const nowISO = new Date().toISOString();
+                    await supabase
+                        .from('teachers')
+                        .update({ is_vip: false, updated_at: nowISO })
+                        .eq('id', teacherId);
+
+                    try {
+                        await supabase
+                            .from('teacher_vip_subscriptions')
+                            .update({ status: 'expired' })
+                            .eq('teacher_id', teacherId)
+                            .eq('status', 'active');
+                    } catch (subErr) {}
+
+                    try {
+                        await supabase.from('notifications').insert({
+                            user_id: teacherId,
+                            user_type: 'teacher',
+                            title: '⏳ انتهاء فترة ترقية الحساب (VIP)',
+                            message: 'لقد انتهت مدة ترقية حسابك إلى الشارة الذهبية (VIP). تم إيقاف ميزات الترقية مؤقتاً، ويمكنك تجديد اشتراكك في أي وقت من لوحة التحكم.',
+                            is_read: false,
+                            created_at: nowISO
+                        });
+                    } catch (notifErr) {}
+                    console.log(`⏳ [VIP Expiry] تم إنهاء ترقية الأستاذ #${teacherId} لانتهاء مدة الترقية.`);
+                } catch (expireErr) {
+                    console.warn('⚠️ Could not update expired VIP status in /api/teacher/me:', expireErr.message);
+                }
+            }
+        }
+        
         // التحقق من التجديد اليومي التلقائي وإعادة شحن النقاط مجاناً لـ 5 نقاط
         const nowTeacher = new Date();
         const lastResetTeacherStr = teacher.last_ai_reset;
@@ -6787,6 +6824,78 @@ function startCleanupCron() {
     console.log('🧹 Cron: تنظيف الإشعارات والسجلات القديمة (أكثر من 7 أيام) - يعمل كل 6 ساعات');
 }
 
+// ============================================================
+// ⭐ Cron: فحص وإلغاء ترقية الأساتذة المنتهية صلاحيتها تلقائياً (VIP Auto-Expiry)
+// ============================================================
+async function checkAndExpireOverdueVipSubscriptions() {
+    try {
+        const nowISO = new Date().toISOString();
+        const { data: expiredTeachers, error } = await supabase
+            .from('teachers')
+            .select('id, full_name, email, is_vip, vip_expires_at')
+            .eq('is_vip', true)
+            .lte('vip_expires_at', nowISO);
+
+        if (error) {
+            console.warn('⚠️ [VIP Cron] خطأ أثناء جلب ترقيات VIP المنتهية:', error.message);
+            return;
+        }
+
+        if (expiredTeachers && expiredTeachers.length > 0) {
+            for (const t of expiredTeachers) {
+                // 1. إلغاء VIP وإعادة حالة الترقية
+                const { error: updateErr } = await supabase
+                    .from('teachers')
+                    .update({
+                        is_vip: false,
+                        updated_at: nowISO
+                    })
+                    .eq('id', t.id);
+
+                if (updateErr) {
+                    console.error(`❌ فشل إلغاء VIP للأستاذ #${t.id}:`, updateErr.message);
+                    continue;
+                }
+
+                // 2. تحديث سجل الاشتراكات إلى expired
+                try {
+                    await supabase
+                        .from('teacher_vip_subscriptions')
+                        .update({ status: 'expired' })
+                        .eq('teacher_id', t.id)
+                        .eq('status', 'active');
+                } catch (subErr) {}
+
+                // 3. إرسال إشعار للأستاذ لإعلامه بانتهاء فترة الترقية
+                try {
+                    await supabase.from('notifications').insert({
+                        user_id: t.id,
+                        user_type: 'teacher',
+                        title: '⏳ انتهاء فترة ترقية الحساب (VIP)',
+                        message: 'لقد انتهت مدة ترقية حسابك إلى الشارة الذهبية (VIP). تم إيقاف ميزات الترقية مؤقتاً، ويمكنك تجديد اشتراكك في أي وقت من لوحة التحكم لمواصلة الاستفادة من الصدارة وميزات VIP.',
+                        is_read: false,
+                        created_at: nowISO
+                    });
+                } catch (notifErr) {}
+
+                console.log(`⏳ [VIP Cron] تم إزالة الترقية عن الأستاذ #${t.id} (${t.full_name || ''}) لانتهاء مدة الاشتراك.`);
+            }
+        }
+    } catch (err) {
+        console.error('Cron checkAndExpireOverdueVipSubscriptions error:', err.message);
+    }
+}
+
+function startVipExpiryCron() {
+    // تشغيل فوري عند بدء الخادم
+    checkAndExpireOverdueVipSubscriptions();
+
+    // ثم فحص دوري كل دقيقة للتأكد من إزالة الترقية لحظة انتهائها
+    setInterval(checkAndExpireOverdueVipSubscriptions, 60 * 1000);
+
+    console.log('👑 Cron: فحص وإلغاء ترقية VIP المنتهية للأساتذة - يعمل كل دقيقة');
+}
+
 // ✅ التحقق من وجود حاوية التخزين profiles وتكوينها كحاوية عامة (Public) تلقائياً
 async function ensureProfilesBucket() {
     if (!supabaseUrl || !supabaseKey) {
@@ -6858,5 +6967,6 @@ if ((require.main === module || !process.env.IS_TEST) && !process.env.VERCEL) {
         
         startOfferCron();
         startCleanupCron();
+        startVipExpiryCron();
     });
 }

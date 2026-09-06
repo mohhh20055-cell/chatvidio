@@ -104,6 +104,42 @@ router.get('/me', authenticate, authorize(['teacher']), async (req, res) => {
             return res.status(404).json({ success: false, error: 'الأستاذ غير موجود' });
         }
 
+        // ⭐ التحقق الفوري من انتهاء مدة الترقية (VIP Expiration)
+        if (teacher.is_vip && teacher.vip_expires_at) {
+            const expiry = new Date(teacher.vip_expires_at);
+            if (expiry <= new Date()) {
+                teacher.is_vip = false;
+                try {
+                    const nowISO = new Date().toISOString();
+                    await supabase
+                        .from('teachers')
+                        .update({ is_vip: false, updated_at: nowISO })
+                        .eq('id', teacher.id);
+
+                    try {
+                        await supabase
+                            .from('teacher_vip_subscriptions')
+                            .update({ status: 'expired' })
+                            .eq('teacher_id', teacher.id)
+                            .eq('status', 'active');
+                    } catch (subErr) {}
+
+                    try {
+                        await supabase.from('notifications').insert({
+                            user_id: teacher.id,
+                            user_type: 'teacher',
+                            title: '⏳ انتهاء فترة ترقية الحساب (VIP)',
+                            message: 'لقد انتهت مدة ترقية حسابك إلى الشارة الذهبية (VIP). تم إيقاف ميزات الترقية مؤقتاً، ويمكنك تجديد اشتراكك في أي وقت من لوحة التحكم.',
+                            is_read: false,
+                            created_at: nowISO
+                        });
+                    } catch (notifErr) {}
+                } catch (expireErr) {
+                    logger.warn('⚠️ Could not update expired VIP status in routes/teacher.js:', expireErr.message);
+                }
+            }
+        }
+
         if (teacher.email === ADMIN_EMAIL || req.user.email === ADMIN_EMAIL) {
             teacher.rank = 'مدير';
             teacher.status = 'approved';
@@ -1809,8 +1845,9 @@ router.post('/request-upgrade', authenticate, authorize(['teacher']), upload.fie
             return res.status(400).json({ success: false, error: 'حسابك معتمد بالفعل ومزود بالشارة الذهبية!' });
         }
 
-        if (!teacher.is_vip) {
-            return res.status(403).json({ success: false, error: 'يجب عليك دفع رسوم الترقية أولاً قبل رفع الوثائق.' });
+        const isVipActive = Boolean(teacher.is_vip === true && (!teacher.vip_expires_at || new Date(teacher.vip_expires_at) > new Date()));
+        if (!isVipActive) {
+            return res.status(403).json({ success: false, error: 'يجب عليك دفع رسوم الترقية أولاً أو تجديد اشتراكك قبل رفع الوثائق.' });
         }
 
         let diploma_image = teacher.diploma_image;
@@ -2086,8 +2123,9 @@ router.post('/teacher/upload-verification-docs', authenticate, authorize(['teach
             return res.status(404).json({ success: false, error: 'الأستاذ غير موجود' });
         }
 
-        if (!teacher.is_vip) {
-            return res.status(403).json({ success: false, error: 'يرجى ترقية حسابك إلى VIP أولاً قبل رفع وثائق التوثيق.' });
+        const isVipActive = Boolean(teacher.is_vip === true && (!teacher.vip_expires_at || new Date(teacher.vip_expires_at) > new Date()));
+        if (!isVipActive) {
+            return res.status(403).json({ success: false, error: 'يرجى ترقية حسابك إلى VIP أولاً أو تجديد اشتراكك قبل رفع وثائق التوثيق.' });
         }
 
         let idCardUrl = teacher.id_card_image || teacher.id_card_image_url || null;
@@ -2166,7 +2204,8 @@ router.post('/teacher/request-founder-promo', authenticate, authorize(['teacher'
             return res.status(404).json({ success: false, error: 'الأستاذ غير موجود' });
         }
 
-        if (!teacher.is_vip && !teacher.is_certified) {
+        const isVipActive = Boolean(teacher.is_vip === true && (!teacher.vip_expires_at || new Date(teacher.vip_expires_at) > new Date()));
+        if (!isVipActive && !teacher.is_certified) {
             return res.status(403).json({
                 success: false,
                 error: 'هذه الميزة مخصصة فقط لأساتذة VIP الحاصلين على الشارة الذهبية.'

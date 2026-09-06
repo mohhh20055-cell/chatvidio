@@ -4338,12 +4338,25 @@
                     <span style="background: #dcfce7; color: #15803d; font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 6px;">بريد الجزائر</span>
                 </div>
 
+                <!-- BaridiMob Account Number -->
+                <div style="display: flex; justify-content: space-between; align-items: center; background: #f0fdf4; padding: 10px 14px; border-radius: 8px; border: 1.5px solid #86efac; margin-bottom: 8px;">
+                    <div>
+                        <div style="font-size: 0.75rem; color: #166534; font-weight: 700;">رقم الحساب في بريدي موب (BaridiMob):</div>
+                        <div style="font-weight: 900; font-family: monospace; font-size: 1.15rem; color: #065f46; direction: ltr; text-align: right; letter-spacing: 1px;">
+                            <span id="baridimobAccountDisplay">004253980505</span>
+                        </div>
+                    </div>
+                    <button type="button" onclick="copyTextValue(document.getElementById('baridimobAccountDisplay').innerText, this)" style="background: #059669; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px; font-family: 'Cairo';">
+                        <i class="fas fa-copy"></i> نسخ
+                    </button>
+                </div>
+
                 <!-- CCP Number -->
                 <div style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 8px 12px; border-radius: 8px; border: 1px solid #bbf7d0; margin-bottom: 8px;">
                     <div>
                         <div style="font-size: 0.75rem; color: #64748b;">رقم الحساب الجاري CCP والمفتاح:</div>
                         <div style="font-weight: 900; font-family: monospace; font-size: 1.05rem; color: #0f172a; direction: ltr; text-align: right;">
-                            <span id="ccpAccountDisplay">0022334455</span> / <span id="ccpKeyDisplay">45</span>
+                            <span id="ccpAccountDisplay">0042539805</span> / <span id="ccpKeyDisplay">05</span>
                         </div>
                     </div>
                     <button type="button" onclick="copyTextValue(document.getElementById('ccpAccountDisplay').innerText, this)" style="background: #2563eb; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px; font-family: 'Cairo';">
@@ -4356,7 +4369,7 @@
                     <div>
                         <div style="font-size: 0.75rem; color: #64748b;">رقم الـ RIP (لتحويل بريدي موب):</div>
                         <div style="font-weight: 900; font-family: monospace; font-size: 0.92rem; color: #0f172a; direction: ltr; text-align: right;">
-                            <span id="ccpRipDisplay">00799999002233445545</span>
+                            <span id="ccpRipDisplay">00799999004253980505</span>
                         </div>
                     </div>
                     <button type="button" onclick="copyTextValue(document.getElementById('ccpRipDisplay').innerText, this)" style="background: #16a34a; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px; font-family: 'Cairo';">
@@ -8660,14 +8673,17 @@
             const data = await res.json();
             if (data.success && data.settings) {
                 const s = data.settings;
+                if (document.getElementById('baridimobAccountDisplay')) {
+                    document.getElementById('baridimobAccountDisplay').innerText = s.baridimob_account || (s.ccp_account_number ? s.ccp_account_number + (s.ccp_key || '') : '004253980505');
+                }
                 if (document.getElementById('ccpAccountDisplay')) {
-                    document.getElementById('ccpAccountDisplay').innerText = s.ccp_account_number || '0022334455';
+                    document.getElementById('ccpAccountDisplay').innerText = s.ccp_account_number || '0042539805';
                 }
                 if (document.getElementById('ccpKeyDisplay')) {
-                    document.getElementById('ccpKeyDisplay').innerText = s.ccp_key || '45';
+                    document.getElementById('ccpKeyDisplay').innerText = s.ccp_key || '05';
                 }
                 if (document.getElementById('ccpRipDisplay')) {
-                    document.getElementById('ccpRipDisplay').innerText = s.ccp_rip || '00799999002233445545';
+                    document.getElementById('ccpRipDisplay').innerText = s.ccp_rip || '00799999004253980505';
                 }
                 if (document.getElementById('ccpHolderDisplay')) {
                     document.getElementById('ccpHolderDisplay').innerText = s.ccp_account_holder || 'منصة ZoomDz التعليمية';

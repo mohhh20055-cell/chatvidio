@@ -39,9 +39,10 @@ INSERT INTO public.platform_settings (key, value, updated_at)
 VALUES (
     'ccp_settings',
     '{
-        "ccp_account_number": "0022334455",
-        "ccp_key": "45",
-        "ccp_rip": "00799999002233445545",
+        "ccp_account_number": "0042539805",
+        "ccp_key": "05",
+        "ccp_rip": "00799999004253980505",
+        "baridimob_account": "004253980505",
         "ccp_account_holder": "منصة ZoomDz التعليمية",
         "baridimob_phone": "0555001122",
         "instructions": "يرجى تحويل المبلغ بدقة عبر تطبيق BaridiMob أو من خلال مكتب البريد، ثم إرفاق صورة واضحة لوصل المعاملة أو لقطة شاشة التحويل لتتم مراجعتها وإضافة الرصيد إلى حسابك فوراً."
