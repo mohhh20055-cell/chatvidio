@@ -10,22 +10,29 @@ if (!supabaseUrl || !supabaseKey) {
     logger.warn('[AI Studio] Supabase credentials missing — using mock client in utils/db.js');
     const asyncNoOp = async () => ({ data: null, error: null });
     const asyncInsertNoOp = async () => ({ data: [{ id: 123 }], error: null });
+    
+    const createChainableProxy = (targetFunc) => {
+        const proxy = new Proxy(targetFunc, {
+            get: (target, prop) => {
+                if (prop === 'then') return target().then.bind(target());
+                if (prop === 'catch') return target().catch.bind(target());
+                return (...args) => proxy;
+            },
+            apply: () => proxy
+        });
+        return proxy;
+    };
+
+    const chainableNoOp = createChainableProxy(asyncNoOp);
+    const chainableInsertNoOp = createChainableProxy(asyncInsertNoOp);
+
     const mockClient = {
         from: () => ({
-            select: () => ({
-                eq: () => ({
-                    single: asyncNoOp,
-                    order: () => ({ single: asyncNoOp, select: asyncNoOp }),
-                    in: () => ({ single: asyncNoOp, order: () => ({ single: asyncNoOp }) }),
-                }),
-                single: asyncNoOp,
-                order: () => ({ single: asyncNoOp, limit: () => ({ single: asyncNoOp }) }),
-                limit: () => ({ single: asyncNoOp }),
-            }),
-            insert: () => ({ select: asyncInsertNoOp }),
-            update: () => ({ eq: () => ({ select: asyncInsertNoOp }) }),
-            delete: () => ({ eq: asyncNoOp }),
-            upsert: () => ({ select: asyncInsertNoOp }),
+            select: () => chainableNoOp,
+            insert: () => chainableInsertNoOp,
+            update: () => chainableInsertNoOp,
+            delete: () => chainableNoOp,
+            upsert: () => chainableInsertNoOp,
         }),
         auth: {
             getUser: asyncNoOp,
