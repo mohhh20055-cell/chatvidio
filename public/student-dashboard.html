@@ -4269,21 +4269,37 @@
                     <label style="font-size: 0.88rem; font-weight: 700; color: #334155; margin-bottom: 6px; display: block;">
                         صورة وصل الدفع أو لقطة شاشة التحويل: <span style="color: #dc2626;">*</span>
                     </label>
-                    <div id="receiptDropzone" onclick="document.getElementById('receiptFileInput').click()" style="border: 2px dashed #94a3b8; border-radius: 12px; padding: 18px 12px; text-align: center; cursor: pointer; background: #f8fafc; transition: all 0.2s;">
-                        <input type="file" id="receiptFileInput" accept="image/*" style="display: none;" onchange="previewDepositReceipt(this)">
+
+                    <!-- Real hidden file input (outside dropzone container) -->
+                    <input type="file" id="receiptFileInput" accept="image/jpeg,image/png,image/webp,image/jpg,application/pdf,image/*" style="position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none;" onchange="previewDepositReceipt(this)">
+
+                    <!-- Interactive Dropzone Area -->
+                    <div id="receiptDropzone" style="border: 2px dashed #94a3b8; border-radius: 12px; padding: 18px 12px; text-align: center; background: #f8fafc; transition: all 0.2s; position: relative;">
+                        <!-- Upload Placeholder State -->
                         <div id="receiptUploadPlaceholder">
-                            <i class="fas fa-cloud-arrow-up" style="font-size: 2rem; color: #16a34a; margin-bottom: 6px;"></i>
-                            <div style="font-weight: 700; font-size: 0.9rem; color: #1e293b;">انقر لرفع صورة الوصل أو لقطة الشاشة</div>
-                            <div style="font-size: 0.75rem; color: #64748b; margin-top: 3px;">JPG, PNG, WebP (الحد الأقصى 25 ميغابايت)</div>
+                            <i class="fas fa-cloud-arrow-up" style="font-size: 2.2rem; color: #16a34a; margin-bottom: 6px; display: block;"></i>
+                            <div style="font-weight: 800; font-size: 0.95rem; color: #1e293b; margin-bottom: 4px;">اسحب وأفلت صورة الوصل هنا أو انقر للاختيار</div>
+                            <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 12px;">يدعم صور JPG, PNG, WebP ومستندات PDF حتى 25 ميغابايت</div>
+                            <button type="button" onclick="triggerReceiptUpload(event)" style="background: #10b981; color: white; border: none; padding: 9px 18px; border-radius: 8px; font-weight: 700; font-size: 0.85rem; font-family: 'Cairo'; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(16,185,129,0.25);">
+                                <i class="fas fa-folder-open"></i> اختيار صورة الوصل / التقاط صورة
+                            </button>
                         </div>
-                        <div id="receiptPreviewBox" style="display: none; align-items: center; justify-content: center; gap: 10px;">
-                            <img id="receiptPreviewImg" src="" alt="وصل الدفع" style="max-height: 90px; max-width: 120px; border-radius: 8px; border: 1px solid #cbd5e1; object-fit: contain;">
-                            <div style="text-align: right;">
-                                <div id="receiptFileName" style="font-weight: 700; font-size: 0.82rem; color: #1e293b; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></div>
-                                <span style="color: #16a34a; font-size: 0.75rem; font-weight: 700;"><i class="fas fa-check-circle"></i> تم تحديد الوصل</span>
-                                <div style="margin-top: 4px;">
-                                    <button type="button" onclick="event.stopPropagation(); removeDepositReceipt();" style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; cursor: pointer; font-family: 'Cairo';">
-                                        <i class="fas fa-times"></i> تغيير الصورة
+
+                        <!-- Preview State -->
+                        <div id="receiptPreviewBox" style="display: none; align-items: center; justify-content: center; gap: 14px; text-align: right; flex-wrap: wrap;">
+                            <img id="receiptPreviewImg" src="" alt="وصل الدفع" style="max-height: 95px; max-width: 130px; border-radius: 8px; border: 1.5px solid #cbd5e1; object-fit: contain; background: #ffffff;">
+                            <div style="flex: 1; min-width: 160px;">
+                                <div id="receiptFileName" style="font-weight: 800; font-size: 0.85rem; color: #1e293b; word-break: break-all;"></div>
+                                <div id="receiptFileSize" style="font-size: 0.75rem; color: #64748b; margin-top: 2px;"></div>
+                                <div style="color: #16a34a; font-size: 0.78rem; font-weight: 800; margin-top: 3px;">
+                                    <i class="fas fa-check-circle"></i> تم تحديد وصل الدفع بنجاح
+                                </div>
+                                <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+                                    <button type="button" onclick="triggerReceiptUpload(event)" style="background: #e2e8f0; color: #334155; border: none; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; font-weight: 700; font-family: 'Cairo'; display: inline-flex; align-items: center; gap: 4px;">
+                                        <i class="fas fa-sync-alt"></i> تغيير الصورة
+                                    </button>
+                                    <button type="button" onclick="removeDepositReceipt(event)" style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; font-weight: 700; font-family: 'Cairo'; display: inline-flex; align-items: center; gap: 4px;">
+                                        <i class="fas fa-trash-alt"></i> حذف
                                     </button>
                                 </div>
                             </div>
@@ -8406,6 +8422,7 @@
             }
             if (goldSec) goldSec.style.display = 'none';
             if (baridiSec) baridiSec.style.display = 'block';
+            setTimeout(setupReceiptDropzone, 50);
         }
     }
 
@@ -8433,27 +8450,71 @@
         }
     }
 
-    function previewDepositReceipt(input) {
-        if (input.files && input.files[0]) {
-            const file = input.files[0];
-            selectedDepositReceiptFile = file;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const previewImg = document.getElementById('receiptPreviewImg');
-                const previewBox = document.getElementById('receiptPreviewBox');
-                const placeholder = document.getElementById('receiptUploadPlaceholder');
-                const fileName = document.getElementById('receiptFileName');
-
-                if (previewImg) previewImg.src = e.target.result;
-                if (fileName) fileName.innerText = file.name;
-                if (placeholder) placeholder.style.display = 'none';
-                if (previewBox) previewBox.style.display = 'flex';
-            };
-            reader.readAsDataURL(file);
+    function triggerReceiptUpload(e) {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        const fileInput = document.getElementById('receiptFileInput');
+        if (fileInput) {
+            fileInput.click();
         }
     }
 
-    function removeDepositReceipt() {
+    function previewDepositReceipt(input) {
+        const file = (input && input.files && input.files[0]) ? input.files[0] : null;
+        if (!file) return;
+
+        // التحقق من حجم الملف (أقصى حد 25MB)
+        if (file.size > 25 * 1024 * 1024) {
+            showToast('حجم الملف كبير جداً (الحد الأقصى 25 ميغابايت)', 'error');
+            removeDepositReceipt();
+            return;
+        }
+
+        selectedDepositReceiptFile = file;
+
+        const previewImg = document.getElementById('receiptPreviewImg');
+        const previewBox = document.getElementById('receiptPreviewBox');
+        const placeholder = document.getElementById('receiptUploadPlaceholder');
+        const fileName = document.getElementById('receiptFileName');
+        const fileSize = document.getElementById('receiptFileSize');
+
+        if (fileName) fileName.innerText = file.name;
+        if (fileSize) {
+            const mb = file.size / (1024 * 1024);
+            fileSize.innerText = mb >= 1 ? mb.toFixed(2) + ' MB' : Math.round(file.size / 1024) + ' KB';
+        }
+
+        if (file.type && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                if (previewImg) {
+                    previewImg.src = e.target.result;
+                    previewImg.style.display = 'block';
+                }
+                if (placeholder) placeholder.style.display = 'none';
+                if (previewBox) previewBox.style.display = 'flex';
+            };
+            reader.onerror = function() {
+                showToast('تعذر قراءة صورة الوصل', 'error');
+            };
+            reader.readAsDataURL(file);
+        } else {
+            if (previewImg) {
+                previewImg.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="%2316a34a" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+                previewImg.style.display = 'block';
+            }
+            if (placeholder) placeholder.style.display = 'none';
+            if (previewBox) previewBox.style.display = 'flex';
+        }
+    }
+
+    function removeDepositReceipt(e) {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
         selectedDepositReceiptFile = null;
         const fileInput = document.getElementById('receiptFileInput');
         if (fileInput) fileInput.value = '';
@@ -8464,6 +8525,42 @@
         if (previewImg) previewImg.src = '';
         if (previewBox) previewBox.style.display = 'none';
         if (placeholder) placeholder.style.display = 'block';
+    }
+
+    function setupReceiptDropzone() {
+        const dropzone = document.getElementById('receiptDropzone');
+        if (!dropzone || dropzone._dragDropInitialized) return;
+        dropzone._dragDropInitialized = true;
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.style.borderColor = '#10b981';
+                dropzone.style.backgroundColor = '#ecfdf5';
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.style.borderColor = '#94a3b8';
+                dropzone.style.backgroundColor = '#f8fafc';
+            }, false);
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files && files.length > 0) {
+                const fileInput = document.getElementById('receiptFileInput');
+                if (fileInput) {
+                    fileInput.files = files;
+                    previewDepositReceipt(fileInput);
+                }
+            }
+        }, false);
     }
 
     function copyTextValue(text, btnElement) {

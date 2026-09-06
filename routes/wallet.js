@@ -338,11 +338,36 @@ router.post('/manual-deposit', authenticate, upload.single('receipt'), async (re
 
         // معالجة رفع صورة الوصل
         if (req.file) {
-            const uploadRes = await uploadToSupabase(req.file, 'deposit_receipts');
-            if (uploadRes && uploadRes.url) {
-                receiptUrl = uploadRes.url;
-            } else {
-                return res.status(400).json({ success: false, error: 'فشل في رفع صورة وصل الدفع. يرجى المحاولة مرة أخرى بصورة واضحة.' });
+            try {
+                const uploadRes = await uploadToSupabase(req.file, 'deposit_receipts');
+                if (uploadRes && uploadRes.url) {
+                    receiptUrl = uploadRes.url;
+                }
+            } catch (upErr) {
+                logger.warn('⚠️ خطأ في uploadToSupabase للوصل:', upErr.message);
+            }
+
+            // تخزين احتياطي محلي في حال تعذر التخزين السحابي
+            if (!receiptUrl && req.file.buffer) {
+                try {
+                    const fs = require('fs');
+                    const path = require('path');
+                    const { v4: uuidv4 } = require('uuid');
+                    const uploadDir = path.join(__dirname, '../public/uploads/deposit_receipts');
+                    if (!fs.existsSync(uploadDir)) {
+                        fs.mkdirSync(uploadDir, { recursive: true });
+                    }
+                    const ext = path.extname(req.file.originalname) || '.jpg';
+                    const filename = `${uuidv4()}${ext}`;
+                    fs.writeFileSync(path.join(uploadDir, filename), req.file.buffer);
+                    receiptUrl = `/uploads/deposit_receipts/${filename}`;
+                } catch (localErr) {
+                    logger.error('❌ خطأ في الحفظ المحلي لوصل الدفع:', localErr.message);
+                }
+            }
+
+            if (!receiptUrl) {
+                return res.status(400).json({ success: false, error: 'فشل في حفظ صورة وصل الدفع. يرجى المحاولة مرة أخرى بصورة واضحة.' });
             }
         }
 
