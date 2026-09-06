@@ -544,10 +544,6 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
                         title: notifTitle,
                         message: notifMessage,
                         offer_id: insertedOffer.id,
-                        meet_url: isFreeOffer && meetDetails ? meetDetails.url : null,
-                        stream_url: isFreeOffer && meetDetails ? meetDetails.url : null,
-                        is_free: isFreeOffer,
-                        stream_platform: isFreeOffer ? 'google_meet' : 'agora',
                         is_read: false,
                         created_at: new Date().toISOString()
                     });
@@ -1810,10 +1806,6 @@ router.post('/:id/update-meet-url', authenticate, authorize(['teacher', 'admin']
                         title: notifTitle,
                         message: notifMessage,
                         offer_id: offerId,
-                        meet_url: formattedUrl,
-                        stream_url: formattedUrl,
-                        is_free: true,
-                        stream_platform: 'google_meet',
                         is_read: false,
                         created_at: new Date().toISOString()
                     });
