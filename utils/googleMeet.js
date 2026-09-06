@@ -123,26 +123,31 @@ async function removeTeacherGoogleToken(teacherId) {
  * إنشاء رابط تفويض OAuth 2.0 لجوجل بطلب مفتاح دائم offline refresh_token
  */
 function getGoogleAuthUrl(redirectUri, teacherId) {
-    const clientId = process.env.GOOGLE_CLIENT_ID || GOOGLE_CONFIG.client_id;
-    const scope = encodeURIComponent('https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email');
-    const state = encodeURIComponent(JSON.stringify({ teacherId, ts: Date.now() }));
+    const rawClientId = process.env.GOOGLE_CLIENT_ID || GOOGLE_CONFIG.client_id || '';
+    const clientId = rawClientId.trim().replace(/^["']|["']$/g, '');
+    const state = JSON.stringify({ teacherId, ts: Date.now() });
 
-    return `https://accounts.google.com/o/oauth2/v2/auth?` +
-        `client_id=${clientId}&` +
-        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-        `response_type=code&` +
-        `scope=${scope}&` +
-        `access_type=offline&` +
-        `prompt=consent&` +
-        `state=${state}`;
+    const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        response_type: 'code',
+        scope: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email',
+        access_type: 'offline',
+        prompt: 'consent',
+        state: state
+    });
+
+    return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 }
 
 /**
  * تبديل كود التفويض بمفاتيح الدخول وتجديد الجلسة
  */
 async function exchangeCodeForTokens(code, redirectUri) {
-    const clientId = process.env.GOOGLE_CLIENT_ID || GOOGLE_CONFIG.client_id;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET || GOOGLE_CONFIG.client_secret;
+    const rawClientId = process.env.GOOGLE_CLIENT_ID || GOOGLE_CONFIG.client_id || '';
+    const clientId = rawClientId.trim().replace(/^["']|["']$/g, '');
+    const rawClientSecret = process.env.GOOGLE_CLIENT_SECRET || GOOGLE_CONFIG.client_secret || '';
+    const clientSecret = rawClientSecret.trim().replace(/^["']|["']$/g, '');
 
     const params = new URLSearchParams({
         client_id: clientId,
@@ -186,8 +191,10 @@ async function getValidAccessToken(teacherId) {
         return record.access_token;
     }
 
-    const clientId = process.env.GOOGLE_CLIENT_ID || GOOGLE_CONFIG.client_id;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET || GOOGLE_CONFIG.client_secret;
+    const rawClientId = process.env.GOOGLE_CLIENT_ID || GOOGLE_CONFIG.client_id || '';
+    const clientId = rawClientId.trim().replace(/^["']|["']$/g, '');
+    const rawClientSecret = process.env.GOOGLE_CLIENT_SECRET || GOOGLE_CONFIG.client_secret || '';
+    const clientSecret = rawClientSecret.trim().replace(/^["']|["']$/g, '');
 
     try {
         const params = new URLSearchParams({
