@@ -383,11 +383,11 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
             });
         }
 
-        // ✅ توليد غرفة البث المباشر تلقائياً للحصة المجانية (عبر Google Meet API إن كان الحساب مربوطاً، أو التوليد الآلي)
+        // ✅ توليد غرفة البث المباشر تلقائياً للحصة المجانية (عبر Google Meet API أو توليد غرفة Google Meet قياسية)
         let freeRoomDetails = null;
         if (isFreeOffer) {
             const customMeet = req.body.meet_url || req.body.stream_url;
-            if (customMeet) {
+            if (customMeet && formatGoogleMeetUrl(customMeet)) {
                 freeRoomDetails = generateFreeStreamRoom(teacher_id, subject_name.trim(), customMeet);
             } else {
                 // المحاولة البرمجية لإنشاء غرفة رسمية عبر Google Meet API
@@ -401,6 +401,7 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
                         via_api: true
                     };
                 } else {
+                    // توليد غرفة Google Meet قياسية
                     freeRoomDetails = generateFreeStreamRoom(teacher_id, subject_name.trim());
                 }
             }
@@ -418,7 +419,7 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
             room_password: defaultPassword,
             stream_url: isFreeOffer && freeRoomDetails ? freeRoomDetails.url : null,
             meet_url: isFreeOffer && freeRoomDetails ? freeRoomDetails.url : null,
-            stream_platform: isFreeOffer && freeRoomDetails ? freeRoomDetails.platform : 'agora',
+            stream_platform: isFreeOffer ? 'google_meet' : (stream_platform || 'agora'),
             status: 'upcoming',
             education_level: finalEducationLevel,
             thumbnail_url: thumbnailUrl,
@@ -675,8 +676,8 @@ router.put('/offer/update/:offer_id', authenticate, authorize(['teacher']), uplo
         }
 
         if (willBeFree) {
-            if (!offer.meet_url || !offer.stream_url || !offer.stream_url.includes('meet.google.com')) {
-                const meetDetails = generateGoogleMeetRoom(offer.subject_name, offer.teacher_id);
+            if (!offer.meet_url || !offer.stream_url || !offer.stream_url.includes('meet.google.com') || offer.stream_url.includes('jit.si')) {
+                const meetDetails = generateGoogleMeetRoom(offer_id, offer.subject_name);
                 updateData.stream_platform = 'google_meet';
                 updateData.meet_url = meetDetails.url;
                 updateData.stream_url = meetDetails.url;

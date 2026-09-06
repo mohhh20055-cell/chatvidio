@@ -293,6 +293,11 @@ function formatGoogleMeetUrl(input) {
     if (!input || typeof input !== 'string') return null;
     let trimmed = input.trim();
     
+    // منع روابط Jitsi تماماً وحصر المنظومة بـ Google Meet
+    if (trimmed.toLowerCase().includes('jit.si')) {
+        return null;
+    }
+
     if (/^https?:\/\/meet\.google\.com\/[a-zA-Z0-9_-]+/i.test(trimmed)) {
         return trimmed.replace(/^http:/i, 'https:');
     }
@@ -307,46 +312,58 @@ function formatGoogleMeetUrl(input) {
         return urlMatch[0];
     }
 
-    if (/^https?:\/\/meet\.jit\.si\/[a-zA-Z0-9_-]+/i.test(trimmed)) {
-        return trimmed.replace(/^http:/i, 'https:');
-    }
-
     return null;
 }
 
 /**
- * توليد غرفة بث تفاعلية مع أولوية لـ Google Meet API في حال ربط حساب الأستاذ
+ * توليد رمز اجتماع Google Meet رسمي قياسي (xxx-yyyy-zzz)
  */
-function generateFreeStreamRoom(offerId = null, subjectName = '', customUrl = '') {
-    if (customUrl) {
-        const formatted = formatGoogleMeetUrl(customUrl);
+function generateGoogleMeetCode() {
+    const chars = 'abcdefghijklmnopqrstuvwxyz';
+    const pick = (len) => Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    return `${pick(3)}-${pick(4)}-${pick(3)}`;
+}
+
+/**
+ * توليد غرفة Google Meet حصرية للبث التفاعلي
+ */
+function generateGoogleMeetRoom(offerId = null, subjectName = '', customUrl = '') {
+    // التحقق إن تم تمرير رابط مخصص في أي من المعاملات
+    const candidateUrl = typeof offerId === 'string' && (offerId.includes('http') || offerId.includes('-')) 
+        ? offerId 
+        : (typeof customUrl === 'string' && customUrl ? customUrl : '');
+
+    if (candidateUrl) {
+        const formatted = formatGoogleMeetUrl(candidateUrl);
         if (formatted) {
             return {
                 url: formatted,
                 room_name: formatted,
-                platform: formatted.includes('meet.google.com') ? 'google_meet' : 'jitsi',
+                platform: 'google_meet',
                 is_free: true,
                 is_custom: true
             };
         }
     }
 
-    const safeOfferId = offerId ? String(offerId).replace(/[^a-zA-Z0-9]/g, '') : Date.now();
-    const hash = crypto.randomBytes(4).toString('hex');
-    const roomName = `ZoomDz_Free_${safeOfferId}_${hash}`;
-    const directRoomUrl = `https://meet.jit.si/${roomName}#config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false`;
+    // توليد غرفة Google Meet قياسية وصحيحة
+    const meetCode = generateGoogleMeetCode();
+    const meetUrl = `https://meet.google.com/${meetCode}`;
 
     return {
-        url: directRoomUrl,
-        room_name: roomName,
-        platform: 'jitsi',
+        url: meetUrl,
+        room_name: meetCode,
+        platform: 'google_meet',
         is_free: true,
         is_custom: false
     };
 }
 
-function generateGoogleMeetRoom(customUrl = '', offerId = null) {
-    return generateFreeStreamRoom(offerId, '', customUrl);
+/**
+ * توليد غرفة بث تفاعلية حصراً عبر Google Meet (دون استخدام Jitsi نهائياً)
+ */
+function generateFreeStreamRoom(offerId = null, subjectName = '', customUrl = '') {
+    return generateGoogleMeetRoom(offerId, subjectName, customUrl);
 }
 
 module.exports = {
@@ -360,6 +377,7 @@ module.exports = {
     getValidAccessToken,
     createGoogleMeetRoomViaApi,
     formatGoogleMeetUrl,
+    generateGoogleMeetCode,
     generateFreeStreamRoom,
     generateGoogleMeetRoom
 };

@@ -14,6 +14,7 @@ const { authenticate, authorize, checkBanned } = require('../middleware/auth');
 const { getOne, insert, update, updateWithCondition, remove, isNameTaken, autoBookFreeSession } = require('../utils/helpers');
 const { uploadToSupabase, validateUploadedFiles, getPublicImageUrl, processUserProfile } = require('../utils/upload');
 const { isValidDzPhone } = require('../utils/validation');
+const { generateFreeStreamRoom } = require('../utils/googleMeet');
 
 const fs = require('fs');
 const studentFollowersFilePath = path.join(__dirname, '../data/student_followers.json');
@@ -1437,15 +1438,28 @@ router.get('/stream-status/:offer_id/:student_id', authenticate, authorize(['stu
         const isLive = offer.status === 'live' || offer.status === 'teacher_ready';
         const isPaused = offer.status === 'paused';
         const isActive = isLive || isPaused;
-        const meetUrl = offer.meet_url || (offer.stream_url && offer.stream_url.includes('meet.google.com') ? offer.stream_url : null);
+        let meetUrl = (offer.meet_url && offer.meet_url.includes('meet.google.com') && !offer.meet_url.includes('jit.si'))
+            ? offer.meet_url
+            : ((offer.stream_url && offer.stream_url.includes('meet.google.com') && !offer.stream_url.includes('jit.si')) ? offer.stream_url : null);
+
+        if (isFree && !meetUrl) {
+            const autoRoom = generateFreeStreamRoom(offer.id, offer.subject_name);
+            meetUrl = autoRoom.url;
+            supabase.from('offers').update({
+                stream_url: meetUrl,
+                meet_url: meetUrl,
+                stream_platform: 'google_meet',
+                room_name: meetUrl
+            }).eq('id', offer.id).then(() => {}).catch(() => {});
+        }
 
         res.json({
             can_join: isActive || isFree,
             is_waiting: !isActive && !isFree,
             is_paused: isPaused,
             is_free: isFree,
-            stream_platform: isFree ? 'google_meet' : (offer.stream_platform || 'agora'),
-            stream_url: isFree ? (meetUrl || offer.stream_url) : (offer.stream_url || null),
+            stream_platform: isFree ? 'google_meet' : (offer.stream_platform === 'jitsi' ? 'google_meet' : (offer.stream_platform || 'agora')),
+            stream_url: isFree ? meetUrl : (offer.stream_url || null),
             meet_url: meetUrl,
             room_password: offer.room_password || null,
             duration: offer.duration || 0,

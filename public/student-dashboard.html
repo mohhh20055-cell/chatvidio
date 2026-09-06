@@ -5283,8 +5283,13 @@
             const res = await fetchWithAuth(`/api/student/stream-status/${offerId}/${studentId}`);
             const data = await res.json();
             if (data.can_join && data.stream_url) {
-                if (data.is_free || data.stream_platform === 'google_meet' || (data.meet_url && data.meet_url.includes('meet.google.com')) || data.stream_url.includes('meet.google.com')) {
-                    const meetUrl = data.meet_url || data.stream_url;
+                const rawUrl = data.meet_url || data.stream_url;
+                const isGoogleMeet = (rawUrl && rawUrl.includes('meet.google.com') && !rawUrl.includes('jit.si')) || data.stream_platform === 'google_meet' || data.is_free;
+                if (isGoogleMeet) {
+                    let meetUrl = (rawUrl && rawUrl.includes('meet.google.com') && !rawUrl.includes('jit.si')) ? rawUrl : null;
+                    if (!meetUrl) {
+                        meetUrl = 'https://meet.google.com/new';
+                    }
                     try {
                         const newWindow = window.open(meetUrl, '_blank');
                         if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
@@ -6223,8 +6228,13 @@
             const res = await fetchWithAuth(`/api/student/stream-status/${offerId}/${studentId}`);
             const data = await res.json();
             if (data.can_join && data.stream_url) {
-                if (data.is_free || data.stream_platform === 'google_meet' || (data.meet_url && data.meet_url.includes('meet.google.com')) || data.stream_url.includes('meet.google.com')) {
-                    const meetUrl = data.meet_url || data.stream_url;
+                const rawUrl = data.meet_url || data.stream_url;
+                const isGoogleMeet = (rawUrl && rawUrl.includes('meet.google.com') && !rawUrl.includes('jit.si')) || data.stream_platform === 'google_meet' || data.is_free;
+                if (isGoogleMeet) {
+                    let meetUrl = (rawUrl && rawUrl.includes('meet.google.com') && !rawUrl.includes('jit.si')) ? rawUrl : null;
+                    if (!meetUrl) {
+                        meetUrl = 'https://meet.google.com/new';
+                    }
                     try {
                         const newWindow = window.open(meetUrl, '_blank');
                         if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
@@ -7345,9 +7355,11 @@
         }
 
         const offerObj = (window.latestOffersData || []).find(o => o.id == offerId);
-        if (offerObj && (offerObj.meet_url || (offerObj.stream_url && offerObj.stream_url.includes('meet.google.com')) || offerObj.stream_platform === 'google_meet' || offerObj.is_free)) {
-            const meetUrl = offerObj.meet_url || (offerObj.stream_url && offerObj.stream_url.includes('meet.google.com') ? offerObj.stream_url : null);
-            if (meetUrl) {
+        if (offerObj) {
+            const rawLink = offerObj.meet_url || offerObj.stream_url;
+            const isGoogleMeet = (rawLink && rawLink.includes('meet.google.com') && !rawLink.includes('jit.si')) || offerObj.stream_platform === 'google_meet' || offerObj.is_free;
+            if (isGoogleMeet) {
+                const meetUrl = (rawLink && rawLink.includes('meet.google.com') && !rawLink.includes('jit.si')) ? rawLink : 'https://meet.google.com/new';
                 try {
                     const newWindow = window.open(meetUrl, '_blank');
                     if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {

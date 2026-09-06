@@ -81,36 +81,34 @@ const handleStreamStart = async (req, res) => {
 
         if (isFreeOffer) {
             let reqMeetUrl = req.body && req.body.meet_url ? formatGoogleMeetUrl(req.body.meet_url) : null;
-            let existingUrl = offer.meet_url || offer.stream_url;
-            let meetUrl = reqMeetUrl || (existingUrl && (existingUrl.includes('meet.google.com') || existingUrl.includes('meet.jit.si')) ? existingUrl : null);
-            let platform = 'jitsi';
+            let existingUrl = (offer.meet_url && offer.meet_url.includes('meet.google.com') && !offer.meet_url.includes('jit.si'))
+                ? offer.meet_url
+                : ((offer.stream_url && offer.stream_url.includes('meet.google.com') && !offer.stream_url.includes('jit.si')) ? offer.stream_url : null);
+            let meetUrl = reqMeetUrl || existingUrl || null;
+            let platform = 'google_meet';
 
-            // أولوية مطلقة لـ Google Meet:
-            // 1. إذا أدخل الأستاذ رابطاً أو كان لديه رابط Google Meet مسجل مسبقاً
-            // 2. أو إنشاء غرفة Google Meet رسمية تلقائياً عبر API
+            // حصر البث بـ Google Meet حصراً:
+            // 1. استخدام رابط Google Meet الذي أدخله الأستاذ إن وجد
+            // 2. أو توليد غرفة عبر Google Meet API الرسمية
+            // 3. أو توليد غرفة Google Meet قياسية تلقائياً
             if (!meetUrl || !meetUrl.includes('meet.google.com')) {
                 const apiMeetRes = await createGoogleMeetRoomViaApi(offer.teacher_id, offer.subject_name, offer.offer_date, offer.duration);
                 if (apiMeetRes && apiMeetRes.success && apiMeetRes.url) {
                     meetUrl = apiMeetRes.url;
-                    platform = 'google_meet';
-                } else if (!meetUrl) {
-                    // في حال تعذر الاتصال بـ Google API ولم يتم إدخال رابط مخصص
+                } else {
                     const autoRoom = generateFreeStreamRoom(offer_id, offer.subject_name);
                     meetUrl = autoRoom.url;
-                    platform = autoRoom.platform;
                 }
             }
-            if (meetUrl && meetUrl.includes('meet.google.com')) {
-                platform = 'google_meet';
-            }
+            platform = 'google_meet';
 
-            // ✅ حفظ بيانات البث المجاني في جدول الدروس
+            // ✅ حفظ بيانات البث المجاني في جدول الدروس (Google Meet دائماً)
             await supabase
                 .from('offers')
                 .update({
                     stream_url: meetUrl,
                     meet_url: meetUrl,
-                    stream_platform: platform,
+                    stream_platform: 'google_meet',
                     status: 'live',
                     stream_active: true,
                     is_paused: false,
@@ -555,14 +553,29 @@ router.get('/student-status/:offer_id/:student_id', authenticate, validateStuden
 
         const isFreeOffer = offer.is_free === true || offer.is_free === 1 || offer.is_free === 'true' || parseFloat(offer.price || 0) === 0 || offer.stream_platform === 'google_meet' || offer.stream_platform === 'jitsi';
 
+        let effectiveMeetUrl = (offer.meet_url && offer.meet_url.includes('meet.google.com') && !offer.meet_url.includes('jit.si'))
+            ? offer.meet_url
+            : ((offer.stream_url && offer.stream_url.includes('meet.google.com') && !offer.stream_url.includes('jit.si')) ? offer.stream_url : null);
+
+        if (isFreeOffer && !effectiveMeetUrl) {
+            const autoRoom = generateFreeStreamRoom(offer.id, offer.subject_name);
+            effectiveMeetUrl = autoRoom.url;
+            supabase.from('offers').update({
+                stream_url: effectiveMeetUrl,
+                meet_url: effectiveMeetUrl,
+                stream_platform: 'google_meet',
+                room_name: effectiveMeetUrl
+            }).eq('id', offer_id).then(() => {}).catch(() => {});
+        }
+
         res.json({
             can_join: isFreeOffer ? isActive : (isActive && isInStream),
             is_waiting: isFreeOffer ? false : (isActive && !isInStream),
             is_paused: isPaused,
             is_free: isFreeOffer,
-            stream_platform: offer.stream_platform,
-            meet_url: offer.meet_url || offer.stream_url,
-            stream_url: offer.stream_url || offer.meet_url || null,
+            stream_platform: isFreeOffer ? 'google_meet' : (offer.stream_platform === 'jitsi' ? 'google_meet' : (offer.stream_platform || 'agora')),
+            meet_url: effectiveMeetUrl,
+            stream_url: isFreeOffer ? effectiveMeetUrl : (offer.stream_url || null),
             room_password: offer.room_password || null,
             duration: offer.duration || 0,
             status: offer.status,

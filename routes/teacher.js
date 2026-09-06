@@ -16,6 +16,7 @@ const { uploadToSupabase, validateUploadedFiles, getPublicImageUrl, processUserP
 const { isValidDzPhone } = require('../utils/validation');
 const { sendWithdrawalOtpEmail } = require('../utils/email');
 const { getViewCount, syncItemViews } = require('../utils/viewsTracker');
+const { generateFreeStreamRoom } = require('../utils/googleMeet');
 const logger = require('../utils/logger');
 
 // تخزين مؤقت لرموز التحقق لسحب الأرباح (In-Memory OTP Store)
@@ -1339,8 +1340,9 @@ router.get('/offers/:teacher_id', authenticate, authorize(['teacher']), [
                 education_level: offer.education_level,
                 room_name: offer.room_name || null,
                 room_password: offer.room_password || null,
-                stream_url: offer.stream_url || null,
-                stream_platform: offer.stream_platform || 'jitsi',
+                meet_url: (offer.meet_url && !offer.meet_url.includes('jit.si')) ? offer.meet_url : ((offer.stream_url && !offer.stream_url.includes('jit.si')) ? offer.stream_url : null),
+                stream_url: (offer.stream_url && !offer.stream_url.includes('jit.si')) ? offer.stream_url : ((offer.meet_url && !offer.meet_url.includes('jit.si')) ? offer.meet_url : null),
+                stream_platform: isFree ? 'google_meet' : (offer.stream_platform === 'jitsi' ? 'google_meet' : (offer.stream_platform || 'agora')),
                 total_seconds: offer.total_seconds || (sessionDuration * 60),
                 remaining_seconds: offer.remaining_seconds || (sessionDuration * 60),
                 views_count: views,
@@ -1395,13 +1397,19 @@ router.get('/offer/:offer_id', authenticate, authorize(['teacher']), [
 
         const views = getViewCount('offer', offer.id, offer.views_count || offer.views || 0);
 
+        const isFreeOffer = offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1 || parseFloat(offer.price || 0) === 0;
+        const cleanStreamUrl = (offer.stream_url && !offer.stream_url.includes('jit.si')) ? offer.stream_url : ((offer.meet_url && !offer.meet_url.includes('jit.si')) ? offer.meet_url : null);
+        const cleanMeetUrl = (offer.meet_url && !offer.meet_url.includes('jit.si')) ? offer.meet_url : ((offer.stream_url && !offer.stream_url.includes('jit.si')) ? offer.stream_url : null);
+
         res.json({
             ...offer,
+            meet_url: cleanMeetUrl,
+            stream_url: cleanStreamUrl,
+            stream_platform: isFreeOffer ? 'google_meet' : (offer.stream_platform === 'jitsi' ? 'google_meet' : (offer.stream_platform || 'agora')),
             views_count: views,
             views: views,
             room_password: offer.room_password || null,
-            jitsi_room_name: offer.room_name || null,
-            jitsi_room_url: offer.stream_url || null,
+            room_name: offer.room_name || null,
             students_count: studentsCount || 0
         });
     } catch (error) {

@@ -257,7 +257,7 @@ app.use(helmet({
                 "https://*.analytics.google.com", "https://*.googlesyndication.com", "https://*.doubleclick.net"
             ],
             frameSrc: [
-                "'self'", "https://meet.jit.si", "https://*.google.com", "https://*.gstatic.com", "https://*.google",
+                "'self'", "https://meet.google.com", "https://*.google.com", "https://*.gstatic.com", "https://*.google",
                 "https://*.adtrafficquality.google", "https://*.googleadservices.com",
                 "https://googleads.g.doubleclick.net", "https://*.doubleclick.net",
                 "https://*.googlesyndication.com", "https://tpc.googlesyndication.com"
@@ -1940,6 +1940,15 @@ const handleTeacherZoomView = async (req, res) => {
         if (!['live', 'teacher_ready', 'paused'].includes(offer.status)) {
             return res.status(400).send('البث لم يبدأ أو تم إنهاؤه');
         }
+
+        // إذا كانت الحصة عبر Google Meet أو مجانية، التحويل فوراً لرابط Google Meet
+        const isFree = offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1 || parseFloat(offer.price || 0) === 0;
+        const meetUrl = (offer.meet_url && offer.meet_url.includes('meet.google.com') && !offer.meet_url.includes('jit.si'))
+            ? offer.meet_url
+            : ((offer.stream_url && offer.stream_url.includes('meet.google.com') && !offer.stream_url.includes('jit.si')) ? offer.stream_url : null);
+        if ((isFree || offer.stream_platform === 'google_meet') && meetUrl) {
+            return res.redirect(meetUrl);
+        }
         
         const teacher = await getOne('teachers', 'id', teacherId);
         
@@ -3452,6 +3461,15 @@ const handleStudentZoomView = async (req, res) => {
                     <a href="/student-dashboard.html" style="color:#0f5cbf;font-weight:700;">العودة للوحة التحكم</a>
                 </body></html>
             `);
+        }
+
+        // إذا كانت الحصة عبر Google Meet أو مجانية، التحويل فوراً لرابط Google Meet
+        const isFree = offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1 || parseFloat(offer.price || 0) === 0;
+        const meetUrl = (offer.meet_url && offer.meet_url.includes('meet.google.com') && !offer.meet_url.includes('jit.si'))
+            ? offer.meet_url
+            : ((offer.stream_url && offer.stream_url.includes('meet.google.com') && !offer.stream_url.includes('jit.si')) ? offer.stream_url : null);
+        if ((isFree || offer.stream_platform === 'google_meet') && meetUrl) {
+            return res.redirect(meetUrl);
         }
         
         const student = await getOne('students', 'id', studentId);
