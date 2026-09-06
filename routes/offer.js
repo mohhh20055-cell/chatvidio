@@ -136,7 +136,8 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
             max_students = 20,
             plan_type = '1_day',
             total_sessions = 1,
-            sessions_schedule = null
+            sessions_schedule = null,
+            stream_platform = null
         } = req.body;
 
         const parsedPrice = parseFloat(price || 0);
@@ -414,7 +415,7 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
             room_password: defaultPassword,
             stream_url: isFreeOffer && freeRoomDetails ? freeRoomDetails.url : null,
             meet_url: isFreeOffer && freeRoomDetails ? freeRoomDetails.url : null,
-            stream_platform: isFreeOffer ? 'google_meet' : (stream_platform || 'agora'),
+            stream_platform: isFreeOffer ? (freeRoomDetails ? freeRoomDetails.platform : 'google_meet') : (stream_platform || 'agora'),
             status: 'upcoming',
             education_level: finalEducationLevel,
             thumbnail_url: thumbnailUrl,
@@ -671,12 +672,16 @@ router.put('/offer/update/:offer_id', authenticate, authorize(['teacher']), uplo
         }
 
         if (willBeFree) {
-            if (!offer.meet_url || !offer.stream_url || !offer.stream_url.includes('meet.google.com') || offer.stream_url.includes('jit.si')) {
-                const meetDetails = generateGoogleMeetRoom(offer_id, offer.subject_name);
-                updateData.stream_platform = 'google_meet';
-                updateData.meet_url = meetDetails.url;
-                updateData.stream_url = meetDetails.url;
-                updateData.room_name = meetDetails.url;
+            const customMeet = req.body.meet_url || req.body.stream_url;
+            if (customMeet) {
+                const formatted = formatMeetOrZoomUrl(customMeet);
+                if (formatted) {
+                    const isZoom = formatted.includes('zoom.us') || formatted.includes('zoom.com');
+                    updateData.stream_platform = isZoom ? 'zoom' : 'google_meet';
+                    updateData.meet_url = formatted;
+                    updateData.stream_url = formatted;
+                    updateData.room_name = formatted;
+                }
             }
         }
 
