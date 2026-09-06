@@ -8827,13 +8827,12 @@
         updateGroupsUnreadBadge();
         setInterval(updateGroupsUnreadBadge, 15000);
 
-        // ✅ فحص إكمال الملف الشخصي للطلبة المسجلين عبر Google
+        // ✅ عدم إظهار نافذة إكمال الملف الشخصي تلقائياً عند الدخول أو التحديث (بناءً على طلب المستخدم)
         setTimeout(function() {
             try {
                 if (userData && !userData.is_guest && userData.id !== -1) {
-                    var needsCompletion = userData.requires_profile_completion || !userData.profile_completion || !userData.phone || !userData.education_level;
                     var hasParam = new URLSearchParams(window.location.search).get('complete_profile') === 'true';
-                    if (needsCompletion || hasParam) {
+                    if (hasParam) {
                         showToast('👋 مرحباً بك في ZoomDz! يرجى إكمال رقم هاتفك ومستواك الدراسي للبدء', 'info');
                         if (typeof showEditProfileModal === 'function') {
                             showEditProfileModal();
