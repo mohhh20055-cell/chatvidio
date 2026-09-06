@@ -5323,7 +5323,7 @@
 <div id="googleMeetHostModal" class="modal" style="display: none; max-width: 540px;">
     <div class="modal-header" style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); color: white; border-radius: 12px 12px 0 0; padding: 16px 20px;">
         <h3 style="color: white; margin: 0; display: flex; align-items: center; gap: 8px; font-size: 1.05rem;">
-            <i class="fab fa-google"></i> بدء بث Google Meet كمضيف (Host)
+            <i class="fas fa-video"></i> بدء البث المباشر (Google Meet أو Zoom) كمضيف
         </h3>
         <button class="close-modal" onclick="closeGoogleMeetHostModal()" style="color: white; font-size: 1.5rem;">&times;</button>
     </div>
@@ -5336,24 +5336,34 @@
                 <i class="fas fa-crown" style="color: #f59e0b;"></i> أنت المضيف والمتحكم بالكامل في الاجتماع
             </div>
             <p style="margin: 0; font-size: 0.8rem; color: #334155; line-height: 1.5;">
-                لكي تكون <strong>المضيف (Host)</strong> بصلاحيات قبول الطلاب والتحكم الكامل، افتح Google Meet بحسابك أولاً، ثم الصق الرابط هنا لإشعار الطلاب وبدء الحصة فوراً.
+                لكي تكون <strong>المضيف (Host)</strong> بصلاحيات قبول الطلاب والتحكم الكامل، افتح Google Meet أو Zoom بحسابك أولاً، ثم الصق الرابط أدناه لإشعار الطلاب وبدء الحصة فوراً.
             </p>
         </div>
 
-        <div style="margin-bottom: 14px;">
-            <label style="display: block; font-weight: 700; color: #1e293b; margin-bottom: 6px; font-size: 0.88rem;">
-                1️⃣ فتح وإنشاء الغرفة الرسمية في Google Meet:
-            </label>
-            <button type="button" onclick="window.open('https://meet.google.com/new', '_blank')" style="width: 100%; padding: 11px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: 800; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 2px 6px rgba(37,99,235,0.25);">
-                <i class="fas fa-external-link-alt"></i> فتح وإنشاء اجتماع جديد كمضيف (Google Meet)
-            </button>
+        <div style="margin-bottom: 14px; display: flex; gap: 10px;">
+            <div style="flex: 1;">
+                <label style="display: block; font-weight: 700; color: #1e293b; margin-bottom: 6px; font-size: 0.82rem;">
+                    1️⃣ إنشاء اجتماع Google Meet:
+                </label>
+                <button type="button" onclick="window.open('https://meet.google.com/new', '_blank')" style="width: 100%; padding: 11px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: 800; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; box-shadow: 0 2px 6px rgba(37,99,235,0.25);">
+                    <i class="fab fa-google"></i> Google Meet
+                </button>
+            </div>
+            <div style="flex: 1;">
+                <label style="display: block; font-weight: 700; color: #1e293b; margin-bottom: 6px; font-size: 0.82rem;">
+                    أو إنشاء اجتماع Zoom:
+                </label>
+                <button type="button" onclick="window.open('https://zoom.us/start/videomeeting', '_blank')" style="width: 100%; padding: 11px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: 800; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; box-shadow: 0 2px 6px rgba(37,99,235,0.25);">
+                    <i class="fas fa-video"></i> Zoom Meeting
+                </button>
+            </div>
         </div>
 
         <div style="margin-bottom: 16px;">
             <label for="meetHostUrlInput" style="display: block; font-weight: 700; color: #1e293b; margin-bottom: 6px; font-size: 0.88rem;">
                 2️⃣ الصق رابط أو رمز الاجتماع هنا:
             </label>
-            <input type="text" id="meetHostUrlInput" placeholder="مثال: https://meet.google.com/xxx-yyyy-zzz أو xxx-yyyy-zzz" style="width: 100%; padding: 11px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-family: 'Cairo', sans-serif; font-size: 0.88rem;">
+            <input type="text" id="meetHostUrlInput" placeholder="مثال: https://meet.google.com/xxx-yyyy-zzz أو https://us06web.zoom.us/j/..." style="width: 100%; padding: 11px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-family: 'Cairo', sans-serif; font-size: 0.88rem;">
             <small style="color: #64748b; font-size: 0.74rem; margin-top: 4px; display: block;">
                 * سيتم حفظ هذا الرابط الصالح وإرساله فوراً في إشعار لجميع المتابعين والطلاب.
             </small>
@@ -9273,22 +9283,24 @@ function updateUI() {
                         <div class="offer-info" style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><i class="fas fa-circle-info"></i> الحالة: ${escapeHtml(offer.status || 'upcoming')}</div>
                         <div class="offer-info" style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><i class="fas fa-graduation-cap"></i> المستوى: ${escapeHtml(levelName)}</div>
                         <div class="offer-info" style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><i class="fas fa-money-bill-wave"></i> السعر: ${offer.is_free ? '<span style="color:#10b981; font-weight:800;"><i class="fas fa-gift"></i> مجاني (بث تفاعلي مؤتمت)</span>' : (offer.price_per_session || offer.price || 0) + ' دج'}</div>
-                        ${offer.is_free || offer.stream_platform === 'google_meet' || offer.meet_url ? (() => {
+                        ${offer.is_free || offer.stream_platform === 'google_meet' || offer.stream_platform === 'zoom' || offer.meet_url ? (() => {
                             const rawLink = offer.meet_url || offer.stream_url;
-                            const validMeetLink = (rawLink && rawLink.includes('meet.google.com') && !rawLink.includes('jit.si')) ? rawLink : null;
+                            const validStreamLink = (rawLink && (rawLink.includes('meet.google.com') || rawLink.includes('zoom.us') || rawLink.includes('zoom.com'))) ? rawLink : null;
+                            const isZoom = validStreamLink && (validStreamLink.includes('zoom.us') || validStreamLink.includes('zoom.com'));
+                            const platformLabel = isZoom ? 'Zoom' : 'Google Meet';
                             return `
                             <div style="background:#eff6ff; border:1.5px solid #bfdbfe; border-radius:10px; padding:10px 12px; margin: 8px 0; font-size:0.82rem; color:#1e40af;">
                                 <div style="font-weight:800; display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; flex-wrap:wrap; gap:4px;">
-                                    <span><i class="fas fa-video" style="color:#2563eb;"></i> رابط حصة Google Meet (أنت المضيف):</span>
+                                    <span><i class="fas fa-video" style="color:#2563eb;"></i> رابط حصة ${platformLabel} (أنت المضيف):</span>
                                     <div style="display:flex; gap:4px;">
-                                        ${validMeetLink ? `
-                                            <button onclick="navigator.clipboard.writeText('${validMeetLink}'); showToast('تم نسخ رابط Google Meet بنجاح!', 'success');" style="background:#2563eb; color:white; border:none; padding:3px 8px; border-radius:4px; font-size:0.72rem; font-weight:700; cursor:pointer;" title="نسخ رابط Google Meet">نسخ الرابط</button>
+                                        ${validStreamLink ? `
+                                            <button onclick="navigator.clipboard.writeText('${validStreamLink}'); showToast('تم نسخ الرابط بنجاح!', 'success');" style="background:#2563eb; color:white; border:none; padding:3px 8px; border-radius:4px; font-size:0.72rem; font-weight:700; cursor:pointer;" title="نسخ رابط البث">نسخ الرابط</button>
                                         ` : ''}
-                                        <button onclick="openGoogleMeetHostModal(${offer.id})" style="background:#4f46e5; color:white; border:none; padding:3px 8px; border-radius:4px; font-size:0.72rem; font-weight:700; cursor:pointer;" title="تخصيص أو تحديث رابط Google Meet">✏️ ضبط رابط Meet</button>
+                                        <button onclick="openGoogleMeetHostModal(${offer.id})" style="background:#4f46e5; color:white; border:none; padding:3px 8px; border-radius:4px; font-size:0.72rem; font-weight:700; cursor:pointer;" title="تخصيص أو تحديث رابط البث">✏️ ضبط الرابط</button>
                                     </div>
                                 </div>
                                 <div style="font-size:0.75rem; color:#2563eb; word-break:break-all; background:white; padding:5px 8px; border-radius:6px; border:1px solid #dbeafe;">
-                                    ${validMeetLink ? `<a href="${validMeetLink}" target="_blank" style="color:#2563eb; font-weight:700; text-decoration:none;"><i class="fas fa-link"></i> ${validMeetLink}</a>` : '<span style="color:#10b981; font-weight:700;"><i class="fas fa-bolt"></i> جاهز للتوليد والتشغيل الآلي فوراً عبر Google Meet عند الضغط على "بدء البث".</span>'}
+                                    ${validStreamLink ? `<a href="${validStreamLink}" target="_blank" style="color:#2563eb; font-weight:700; text-decoration:none;"><i class="fas fa-link"></i> ${validStreamLink}</a>` : '<span style="color:#10b981; font-weight:700;"><i class="fas fa-info-circle"></i> يرجى النقر على "ضبط الرابط" لإضافة رابط Google Meet أو Zoom لبدء البث المباشر.</span>'}
                                 </div>
                             </div>
                             `;
@@ -9848,7 +9860,7 @@ function updateUI() {
         const meetUrl = document.getElementById('meetHostUrlInput').value.trim();
 
         if (!meetUrl) {
-            showToast('⚠️ يرجى لصق رابط Google Meet لكي ينضم الطلاب إليه', 'warning');
+            showToast('⚠️ يرجى لصق رابط Google Meet أو Zoom لكي ينضم الطلاب إليه', 'warning');
             document.getElementById('meetHostUrlInput').focus();
             return;
         }

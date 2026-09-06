@@ -5284,9 +5284,9 @@
             const data = await res.json();
             if (data.can_join && data.stream_url) {
                 const rawUrl = data.meet_url || data.stream_url;
-                const isGoogleMeet = (rawUrl && rawUrl.includes('meet.google.com') && !rawUrl.includes('jit.si')) || data.stream_platform === 'google_meet' || data.is_free;
-                if (isGoogleMeet) {
-                    let meetUrl = (rawUrl && rawUrl.includes('meet.google.com') && !rawUrl.includes('jit.si')) ? rawUrl : null;
+                const isGoogleMeetOrZoom = (rawUrl && (rawUrl.includes('meet.google.com') || rawUrl.includes('zoom.us') || rawUrl.includes('zoom.com'))) || data.stream_platform === 'google_meet' || data.stream_platform === 'zoom' || data.is_free;
+                if (isGoogleMeetOrZoom) {
+                    let meetUrl = (rawUrl && (rawUrl.includes('meet.google.com') || rawUrl.includes('zoom.us') || rawUrl.includes('zoom.com'))) ? rawUrl : null;
                     if (!meetUrl) {
                         meetUrl = 'https://meet.google.com/new';
                     }
@@ -6229,9 +6229,9 @@
             const data = await res.json();
             if (data.can_join && data.stream_url) {
                 const rawUrl = data.meet_url || data.stream_url;
-                const isGoogleMeet = (rawUrl && rawUrl.includes('meet.google.com') && !rawUrl.includes('jit.si')) || data.stream_platform === 'google_meet' || data.is_free;
-                if (isGoogleMeet) {
-                    let meetUrl = (rawUrl && rawUrl.includes('meet.google.com') && !rawUrl.includes('jit.si')) ? rawUrl : null;
+                const isGoogleMeetOrZoom = (rawUrl && (rawUrl.includes('meet.google.com') || rawUrl.includes('zoom.us') || rawUrl.includes('zoom.com'))) || data.stream_platform === 'google_meet' || data.stream_platform === 'zoom' || data.is_free;
+                if (isGoogleMeetOrZoom) {
+                    let meetUrl = (rawUrl && (rawUrl.includes('meet.google.com') || rawUrl.includes('zoom.us') || rawUrl.includes('zoom.com'))) ? rawUrl : null;
                     if (!meetUrl) {
                         meetUrl = 'https://meet.google.com/new';
                     }
@@ -7357,9 +7357,9 @@
         const offerObj = (window.latestOffersData || []).find(o => o.id == offerId);
         if (offerObj) {
             const rawLink = offerObj.meet_url || offerObj.stream_url;
-            const isGoogleMeet = (rawLink && rawLink.includes('meet.google.com') && !rawLink.includes('jit.si')) || offerObj.stream_platform === 'google_meet' || offerObj.is_free;
-            if (isGoogleMeet) {
-                const meetUrl = (rawLink && rawLink.includes('meet.google.com') && !rawLink.includes('jit.si')) ? rawLink : 'https://meet.google.com/new';
+            const isGoogleMeetOrZoom = (rawLink && (rawLink.includes('meet.google.com') || rawLink.includes('zoom.us') || rawLink.includes('zoom.com'))) || offerObj.stream_platform === 'google_meet' || offerObj.stream_platform === 'zoom' || offerObj.is_free;
+            if (isGoogleMeetOrZoom) {
+                const meetUrl = (rawLink && (rawLink.includes('meet.google.com') || rawLink.includes('zoom.us') || rawLink.includes('zoom.com'))) ? rawLink : 'https://meet.google.com/new';
                 try {
                     const newWindow = window.open(meetUrl, '_blank');
                     if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {

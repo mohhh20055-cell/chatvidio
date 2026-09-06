@@ -366,6 +366,41 @@ function generateFreeStreamRoom(offerId = null, subjectName = '', customUrl = ''
     return generateGoogleMeetRoom(offerId, subjectName, customUrl);
 }
 
+/**
+ * التحقق من وتنسيق رابط Google Meet أو Zoom المدخل
+ */
+function formatMeetOrZoomUrl(input) {
+    if (!input || typeof input !== 'string') return null;
+    let trimmed = input.trim();
+    
+    // التحقق من Google Meet
+    if (trimmed.toLowerCase().includes('meet.google.com')) {
+        if (/^https?:\/\/meet\.google\.com\/[a-zA-Z0-9_-]+/i.test(trimmed)) {
+            return trimmed.replace(/^http:/i, 'https:');
+        }
+        const urlMatch = trimmed.match(/https:\/\/meet\.google\.com\/[a-zA-Z0-9_-]+/i);
+        if (urlMatch) {
+            return urlMatch[0];
+        }
+    }
+    
+    // دعم إدخال رمز اجتماع Google Meet مباشرة (xxx-yyyy-zzz)
+    const codeMatch = trimmed.match(/^[a-zA-Z0-9]{3,4}-[a-zA-Z0-9]{3,4}-[a-zA-Z0-9]{3,4}$/);
+    if (codeMatch) {
+        return `https://meet.google.com/${trimmed.toLowerCase()}`;
+    }
+
+    // التحقق من Zoom
+    if (trimmed.toLowerCase().includes('zoom.us') || trimmed.toLowerCase().includes('zoom.com')) {
+        if (!/^https?:\/\//i.test(trimmed)) {
+            trimmed = 'https://' + trimmed;
+        }
+        return trimmed;
+    }
+
+    return null;
+}
+
 module.exports = {
     GOOGLE_CONFIG,
     GOOGLE_MEET_HOST_CREATE_URL,
@@ -377,6 +412,7 @@ module.exports = {
     getValidAccessToken,
     createGoogleMeetRoomViaApi,
     formatGoogleMeetUrl,
+    formatMeetOrZoomUrl,
     generateGoogleMeetCode,
     generateFreeStreamRoom,
     generateGoogleMeetRoom

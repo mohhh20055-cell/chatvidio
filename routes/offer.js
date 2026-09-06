@@ -21,7 +21,7 @@ const upload = multer({
 const { processStreamPayments, archiveStreamLog } = require('../utils/streamVerification');
 const { sendPushNotification } = require('../utils/notification');
 const { calculateBookingRefundDetails } = require('../utils/refundCalculator');
-const { generateFreeStreamRoom, generateGoogleMeetRoom, formatGoogleMeetUrl, createGoogleMeetRoomViaApi, GOOGLE_MEET_HOST_CREATE_URL } = require('../utils/googleMeet');
+const { generateFreeStreamRoom, generateGoogleMeetRoom, formatGoogleMeetUrl, formatMeetOrZoomUrl, createGoogleMeetRoomViaApi, GOOGLE_MEET_HOST_CREATE_URL } = require('../utils/googleMeet');
 
 // ✅ دالة مساعدة لحساب واسترجاع الوقت المتبقي للبث
 function calculateOfferRemainingSeconds(offer) {
@@ -383,26 +383,21 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
             });
         }
 
-        // ✅ توليد غرفة البث المباشر تلقائياً للحصة المجانية (عبر Google Meet API أو توليد غرفة Google Meet قياسية)
+        // ✅ التحقق من رابط البث المباشر المدخل اختيارياً للحصة المجانية (Google Meet أو Zoom)
         let freeRoomDetails = null;
         if (isFreeOffer) {
             const customMeet = req.body.meet_url || req.body.stream_url;
-            if (customMeet && formatGoogleMeetUrl(customMeet)) {
-                freeRoomDetails = generateFreeStreamRoom(teacher_id, subject_name.trim(), customMeet);
-            } else {
-                // المحاولة البرمجية لإنشاء غرفة رسمية عبر Google Meet API
-                const apiMeetRes = await createGoogleMeetRoomViaApi(teacher_id, subject_name.trim(), offerDateFormatted, parsedDuration);
-                if (apiMeetRes && apiMeetRes.success && apiMeetRes.url) {
+            if (customMeet) {
+                const formatted = formatMeetOrZoomUrl(customMeet);
+                if (formatted) {
+                    const isZoom = formatted.includes('zoom.us') || formatted.includes('zoom.com');
                     freeRoomDetails = {
-                        url: apiMeetRes.url,
-                        room_name: apiMeetRes.url,
-                        platform: 'google_meet',
+                        url: formatted,
+                        room_name: formatted,
+                        platform: isZoom ? 'zoom' : 'google_meet',
                         is_free: true,
-                        via_api: true
+                        is_custom: true
                     };
-                } else {
-                    // توليد غرفة Google Meet قياسية
-                    freeRoomDetails = generateFreeStreamRoom(teacher_id, subject_name.trim());
                 }
             }
         }
@@ -1753,19 +1748,20 @@ router.post('/:id/update-meet-url', authenticate, authorize(['teacher', 'admin']
             return res.status(403).json({ success: false, error: 'غير مصرح لك بتعديل هذا الدرس' });
         }
 
-        const formattedUrl = formatGoogleMeetUrl(meet_url);
+        const formattedUrl = formatMeetOrZoomUrl(meet_url);
         if (!formattedUrl) {
             return res.status(400).json({ 
                 success: false, 
-                error: 'رابط Google Meet غير صالح. يرجى إدخال رابط يبدأ بـ https://meet.google.com/ أو رمز الاجتماع المكون من (xxx-yyyy-zzz)' 
+                error: 'الرابط غير صالح. يرجى إدخال رابط Google Meet صحيح أو رابط غرفة Zoom.' 
             });
         }
 
+        const isZoom = formattedUrl.includes('zoom.us') || formattedUrl.includes('zoom.com');
         const updateData = {
             meet_url: formattedUrl,
             stream_url: formattedUrl,
             room_name: formattedUrl,
-            stream_platform: 'google_meet',
+            stream_platform: isZoom ? 'zoom' : 'google_meet',
             updated_at: new Date().toISOString()
         };
 
