@@ -2214,9 +2214,6 @@ function generateTeacherZoomPage(offer, teacher, token) {
             <button class="ctrl-btn" id="flipCamBtn" onclick="switchCamera()" title="قلب الكاميرا (التبديل بين الأمامية والخلفية)">
                 <i class="fas fa-camera-rotate"></i>
             </button>
-            <button class="ctrl-btn" id="mirrorBtn" onclick="toggleMirror()" title="قلب الصورة مرآتياً (تشغيل/إيقاف الانعكاس)">
-                <i class="fas fa-arrows-alt-h"></i>
-            </button>
             <button class="ctrl-btn" id="theaterBtn" onclick="toggleTheaterMode()" title="وضع المسرح (توسيع الشاشة بالكامل)">
                 <i class="fas fa-expand"></i>
             </button>
@@ -3687,9 +3684,6 @@ function generateStudentZoomPage(offer, student) {
         <div class="controls-bar">
             <button class="ctrl-btn" id="audioBoostBtn" onclick="toggleAudioBoost()" title="تقوية الصوت (100%)" style="position: relative;">
                 <i class="fas fa-volume-up"></i>
-            </button>
-            <button class="ctrl-btn" id="mirrorBtn" onclick="toggleMirror()" title="قلب الصورة مرآتياً (لقراءة السبورة والكتابة بشكل صحيح)">
-                <i class="fas fa-arrows-alt-h"></i>
             </button>
             <button class="ctrl-btn" id="fullscreenBtn" onclick="toggleFullscreen()" title="ملء الشاشة">
                 <i class="fas fa-expand"></i>
