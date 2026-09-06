@@ -64,6 +64,16 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='offers' AND column_name='total_released_amount') THEN
         ALTER TABLE public.offers ADD COLUMN total_released_amount NUMERIC(12, 2) DEFAULT 0;
     END IF;
+
+    -- رابط Google Meet للحصص المجانية
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='offers' AND column_name='meet_url') THEN
+        ALTER TABLE public.offers ADD COLUMN meet_url TEXT;
+    END IF;
+
+    -- منصة البث (agora, google_meet, jitsi)
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='offers' AND column_name='stream_platform') THEN
+        ALTER TABLE public.offers ADD COLUMN stream_platform VARCHAR(50) DEFAULT 'agora';
+    END IF;
 END $$;
 
 
