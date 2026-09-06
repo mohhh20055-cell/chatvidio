@@ -3471,10 +3471,6 @@
                     <span class="tab-label">ZoomDz Live</span>
                     <span class="nav-badge" id="offersBadge" style="display:none;">0</span>
                 </button>
-                <button class="nav-tab" onclick="openUpgradeModal()" style="color: #f59e0b !important; font-weight: 800 !important; border: 1.5px solid rgba(245, 158, 11, 0.3) !important; background: rgba(245, 158, 11, 0.08) !important; border-radius: 30px;">
-                    <i class="fas fa-crown" style="color:#f59e0b !important;"></i>
-                    <span class="tab-label">الترقية 👑</span>
-                </button>
                 <button class="nav-tab" data-section="all-lessons" onclick="showSection('all-lessons')">
                     <i class="fas fa-graduation-cap"></i>
                     <span class="tab-label">دروس الزملاء الاساتذة</span>
@@ -3525,6 +3521,10 @@
                 <button class="nav-tab" onclick="window.location.href='/ai-tutor'" style="background: linear-gradient(135deg, rgba(37,99,235,0.1), rgba(16,185,129,0.1)); border: 1px solid rgba(37,99,235,0.2);">
                     <i class="fas fa-robot" style="color:var(--primary);"></i>
                     <span class="tab-label" style="font-weight:700; color:var(--primary);">المعلم الذكي (AI)</span>
+                </button>
+                <button class="nav-tab" onclick="openUpgradeModal()" style="color: #f59e0b !important; font-weight: 800 !important; border: 1.5px solid rgba(245, 158, 11, 0.3) !important; background: rgba(245, 158, 11, 0.08) !important; border-radius: 30px;">
+                    <i class="fas fa-crown" style="color:#f59e0b !important;"></i>
+                    <span class="tab-label">الترقية 👑</span>
                 </button>
             </div>
             <button class="tab-scroll-btn left" onclick="document.getElementById('navTabs').scrollBy({left: -150, behavior: 'smooth'})">
@@ -3692,10 +3692,6 @@
                 <span class="tab-label">ZoomDz Live</span>
                 <span class="nav-badge" id="offersBadgeSidebar" style="display:none;">0</span>
             </button>
-            <button class="sidebar-nav-item nav-tab" onclick="openUpgradeModal()" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(217, 119, 6, 0.12)); border: 1px solid rgba(245, 158, 11, 0.25); margin-bottom: 6px; color: #d97706; font-weight: 800;">
-                <i class="fas fa-crown" style="color:#f59e0b;"></i>
-                <span class="tab-label">طلب الترقية 👑</span>
-            </button>
             <button class="sidebar-nav-item nav-tab" data-section="all-lessons" onclick="showSection('all-lessons')">
                 <i class="fas fa-graduation-cap"></i>
                 <span class="tab-label">دروس الزملاء الاساتذة</span>
@@ -3746,6 +3742,10 @@
                 <i class="fas fa-envelope"></i>
                 <span class="tab-label">الرسائل</span>
                 <span class="nav-badge" id="messagesBadgeSidebar" style="display:none; background:#ef4444; color:white; padding:2px 6px; border-radius:10px; font-size:0.7rem; font-weight:800; margin-right:auto;">0</span>
+            </button>
+            <button class="sidebar-nav-item nav-tab" onclick="openUpgradeModal()" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(217, 119, 6, 0.12)); border: 1px solid rgba(245, 158, 11, 0.25); margin-bottom: 6px; color: #d97706; font-weight: 800;">
+                <i class="fas fa-crown" style="color:#f59e0b;"></i>
+                <span class="tab-label">طلب الترقية 👑</span>
             </button>
         </div>
 
@@ -5016,6 +5016,20 @@
                     <li style="margin-bottom: 6px;"><strong>زيادة الحجوزات والمتابعين:</strong> بناء مصداقية وثقة عالية جداً تجذب أكبر عدد من طلبات الدروس والاستفسارات.</li>
                     <li><strong>امتيازات بث حية ودورات:</strong> إمكانية إنشاء بثوث مباشرة تفاعلية ونشر الدورات والحلول دون قيود.</li>
                 </ul>
+            </div>
+
+            <!-- VIP SUBSCRIPTION STATUS SECTION (Shown if VIP) -->
+            <div id="vipSubscriptionSection" style="display: none; background: linear-gradient(135deg, #ecfdf5, #d1fae5); border: 1.5px solid #10b981; border-radius: 14px; padding: 18px; text-align: center; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.08);">
+                <div style="background: white; border-radius: 50%; width: 48px; height: 48px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px; border: 1.5px solid #10b981; box-shadow: 0 2px 8px rgba(16,185,129,0.15); margin-left: auto; margin-right: auto;">
+                    <i class="fas fa-crown" style="color: #f59e0b; font-size: 1.5rem;"></i>
+                </div>
+                <h4 style="margin: 0 0 8px 0; font-size: 1.15rem; color: #065f46; font-weight: 800;">حسابك مرقى ونشط بالشارة الذهبية (VIP) ⭐</h4>
+                <p style="font-size: 0.9rem; color: #047857; font-weight: 700; margin-bottom: 14px; line-height: 1.6;">نشكرك على ترقية حسابك وتفعيل الشارة الذهبية. اشتراكك الشهري ساري المفعول حالياً.</p>
+                
+                <div style="background: white; border: 1.5px solid #a7f3d0; border-radius: 12px; padding: 14px; display: inline-block; min-width: 250px; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
+                    <span style="display: block; font-size: 0.8rem; color: #065f46; font-weight: 800; margin-bottom: 4px; text-transform: uppercase;">الوقت المتبقي لانتهاء الاشتراك:</span>
+                    <strong id="vipRemainingTimeDisplay" style="font-size: 1.25rem; color: #047857; font-weight: 900; font-family: 'Cairo', sans-serif;">...</strong>
+                </div>
             </div>
 
             <!-- PAYMENT SECTION (Shown if not VIP) -->
@@ -7332,14 +7346,50 @@
             if (data.success && data.teacher) {
                 const teacher = data.teacher;
                 const paymentSection = document.getElementById('upgradePaymentSection');
+                const vipSection = document.getElementById('vipSubscriptionSection');
                 const docsForm = document.getElementById('upgradeForm');
                 
                 if (!teacher.is_vip) {
-                    paymentSection.style.display = 'block';
-                    docsForm.style.display = 'none';
+                    if (paymentSection) paymentSection.style.display = 'block';
+                    if (vipSection) vipSection.style.display = 'none';
+                    if (docsForm) docsForm.style.display = 'none';
                 } else {
-                    paymentSection.style.display = 'none';
-                    docsForm.style.display = 'block';
+                    if (paymentSection) paymentSection.style.display = 'none';
+                    if (vipSection) vipSection.style.display = 'block';
+                    if (docsForm) docsForm.style.display = 'block';
+                    
+                    // Calculate remaining days/time
+                    const remainingDisplay = document.getElementById('vipRemainingTimeDisplay');
+                    if (remainingDisplay) {
+                        if (teacher.vip_expires_at) {
+                            const expiry = new Date(teacher.vip_expires_at);
+                            const now = new Date();
+                            const diffMs = expiry - now;
+                            
+                            if (diffMs > 0) {
+                                const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                                const diffHrs = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                                const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                                
+                                let remainingText = '';
+                                if (diffDays > 0) {
+                                    remainingText += `${diffDays} يوم `;
+                                }
+                                if (diffHrs > 0 || diffDays > 0) {
+                                    remainingText += `و ${diffHrs} ساعة `;
+                                }
+                                remainingText += `و ${diffMins} دقيقة`;
+                                remainingDisplay.textContent = remainingText;
+                                remainingDisplay.style.color = '#047857';
+                            } else {
+                                remainingDisplay.textContent = 'منتهي الصلاحية';
+                                remainingDisplay.style.color = '#ef4444';
+                            }
+                        } else {
+                            remainingDisplay.textContent = 'نشط (صلاحية غير محددة)';
+                            remainingDisplay.style.color = '#10b981';
+                        }
+                    }
                 }
             }
         } catch(e) {
@@ -13951,10 +14001,6 @@ function updateUI() {
         <i class="fas fa-video"></i>
         <span>ZoomDz Live</span>
     </button>
-    <button class="mobile-bottom-item" onclick="openUpgradeModal()" style="color: #f59e0b; font-weight: 800;">
-        <i class="fas fa-crown" style="color: #f59e0b;"></i>
-        <span>الترقية 👑</span>
-    </button>
     <button class="mobile-bottom-item" data-section="exercises" onclick="showSection('exercises')">
         <i class="fas fa-file-pen"></i>
         <span>التمارين</span>
@@ -13995,6 +14041,10 @@ function updateUI() {
     <button class="mobile-bottom-item" data-section="messages" onclick="showSection('messages')">
         <i class="fas fa-envelope"></i>
         <span>الرسائل</span>
+    </button>
+    <button class="mobile-bottom-item" onclick="openUpgradeModal()" style="color: #f59e0b; font-weight: 800;">
+        <i class="fas fa-crown" style="color: #f59e0b;"></i>
+        <span>الترقية 👑</span>
     </button>
 </div>
 
