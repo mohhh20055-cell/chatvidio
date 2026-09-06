@@ -1116,6 +1116,13 @@ router.get('/auth/google/teacher-connect', authenticate, authorize(['teacher']),
         const protocol = req.headers['x-forwarded-proto'] || req.protocol;
         const host = req.get('host');
         const redirectUri = `${protocol}://${host}/api/auth/google/callback`;
+        if (!process.env.GOOGLE_CLIENT_ID) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'لم يتم إعداد بيانات ربط جوجل (GOOGLE_CLIENT_ID) في الخادم بعد. تواصل مع الإدارة.' 
+            });
+        }
+        
         const authUrl = getGoogleAuthUrl(redirectUri, req.user.userId);
         
         res.json({
