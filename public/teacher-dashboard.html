@@ -3349,12 +3349,12 @@
             <div class="nav-tabs" id="navTabs"><button class="nav-tab" onclick="window.location.href='/ai-tutor'" style="background: linear-gradient(135deg, rgba(37,99,235,0.12), rgba(16,185,129,0.12)); border: 1.5px solid rgba(37,99,235,0.3); color:#2563eb;"><i class="fas fa-robot" style="color:#2563eb;"></i><span class="tab-label" style="font-weight:800; color:#2563eb;">تعلم بالذكاء الاصطناعي (AI) 🤖</span></button>
                 <button class="nav-tab active" data-section="offers" onclick="showSection('offers')">
                     <i class="fas fa-video"></i>
-                    <span class="tab-label">غرف اليدي</span>
+                    <span class="tab-label">دروس الزملاء الاساتذة</span>
                     <span class="nav-badge" id="offersBadge" style="display:none;">0</span>
                 </button>
                 <button class="nav-tab" data-section="all-lessons" onclick="showSection('all-lessons')">
                     <i class="fas fa-graduation-cap"></i>
-                    <span class="tab-label">غرف لايف</span>
+                    <span class="tab-label">ZoomDz Live</span>
                 </button>
                 <button class="nav-tab" data-section="exercises" onclick="showSection('exercises')">
                     <i class="fas fa-file-pen"></i>
@@ -3550,7 +3550,7 @@
         <!-- Quick Action: Create ZoomDZ Room -->
         <button class="sidebar-create-btn" onclick="showCreateOfferModal()">
             <i class="fas fa-video"></i>
-            <span>إنشاء غرفة ZoomDZ</span>
+            <span>إنشاء لايف ZoomDz</span>
         </button>
         <!-- Quick Action: Upgrade Account -->
         <button class="sidebar-upgrade-btn" onclick="openUpgradeModal()" style="width: 100%; background: linear-gradient(135deg, #fffbe3, #fef3c7); color: #92400e; border: 1.5px solid #fde68a; border-radius: 12px; padding: 10px 14px; font-weight: 800; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin: 8px 0 12px 0; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
@@ -3566,12 +3566,12 @@
             </button>
             <button class="sidebar-nav-item nav-tab active" data-section="offers" onclick="showSection('offers')">
                 <i class="fas fa-video"></i>
-                <span class="tab-label">غرف الفيديو</span>
+                <span class="tab-label">دروس الزملاء الاساتذة</span>
                 <span class="nav-badge" id="offersBadgeSidebar" style="display:none;">0</span>
             </button>
             <button class="sidebar-nav-item nav-tab" data-section="all-lessons" onclick="showSection('all-lessons')">
                 <i class="fas fa-graduation-cap"></i>
-                <span class="tab-label">غرف لايف</span>
+                <span class="tab-label">ZoomDz Live</span>
             </button>
             <button class="sidebar-nav-item nav-tab" data-section="exercises" onclick="showSection('exercises')">
                 <i class="fas fa-file-pen"></i>
@@ -3701,7 +3701,7 @@
                 </button>
             </div>
             <div class="section-actions">
-                <button class="btn-primary" onclick="showCreateOfferModal()"><i class="fas fa-video"></i> إنشاء غرفة ZoomDZ</button>
+                <button class="btn-primary" onclick="showCreateOfferModal()"><i class="fas fa-video"></i> إنشاء لايف ZoomDz</button>
                 <button class="btn-danger" onclick="deleteExpiredOffers()"><i class="fas fa-trash"></i> حذف المنتهية</button>
             </div>
             <div id="offersList" class="offers-grid"></div>
@@ -3993,7 +3993,7 @@
                 </div>
                 <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                     <button onclick="goToCreateZoomLesson()" style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; padding: 10px 20px; border-radius: 20px; font-weight: 800; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">
-                        <i class="fas fa-video"></i> إنشاء غرفة ZoomDZ
+                        <i class="fas fa-video"></i> إنشاء لايف ZoomDz
                     </button>
                     <button onclick="loadColleagueLessons(true)" style="background: #f1f5f9; color: var(--primary); border: 1px solid #cbd5e1; padding: 10px 20px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
                         <i class="fas fa-sync-alt"></i> تحديث
@@ -9123,7 +9123,7 @@ function updateUI() {
                     <h3 style="font-weight: 800; font-size: 1.15rem; color: #1e293b; margin-bottom: 8px;">ابدأ في إنشاء لغرف الخاصة بك وشاركها مع طلابك للانضمام</h3>
                     <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 18px;">لم تقم بإنشاء أي غرفة فيديو بعد. اضغط على الزر أدناه لإضافة أول غرفة لطلابك.</p>
                     <button class="btn-primary" onclick="showCreateOfferModal()" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 22px; border-radius: 25px; font-weight: 800; font-size: 0.95rem; margin: 0 auto;">
-                        <i class="fas fa-video"></i> إنشاء غرفة ZoomDZ
+                        <i class="fas fa-video"></i> إنشاء لايف ZoomDz
                     </button>
                 </div>`;
             return;
@@ -13816,26 +13816,13 @@ function updateUI() {
 
 <!-- ===== MOBILE BOTTOM NAV ===== -->
 <div class="mobile-bottom-nav">
-    <button class="mobile-bottom-item active" data-section="offers" onclick="showSection('offers')">
-        <i class="fas fa-video"></i>
-        <span>غرف الفيديو</span>
-    </button>
     <button class="mobile-bottom-item" data-section="all-lessons" onclick="showSection('all-lessons')">
         <i class="fas fa-graduation-cap"></i>
-        <span>غرف لايف</span>
+        <span>ZoomDz Live</span>
     </button>
     <button class="mobile-bottom-item" data-section="exercises" onclick="showSection('exercises')">
-        <i class="fas fa-clipboard-list"></i>
+        <i class="fas fa-file-pen"></i>
         <span>التمارين</span>
-    </button>
-    <button class="mobile-bottom-item" data-section="groups" onclick="showSection('groups')">
-        <i class="fas fa-users-rectangle"></i>
-        <span>المجموعات</span>
-        <span class="nav-badge" id="mobileGroupsBadge" style="display:none; background:#ef4444; color:white; padding:2px 6px; border-radius:10px; font-size:0.65rem; font-weight:800; position:absolute; top:4px; right:12px;">0</span>
-    </button>
-    <button class="mobile-bottom-item" data-section="packages" onclick="showSection('packages')">
-        <i class="fas fa-boxes-stacked"></i>
-        <span>الباقات</span>
     </button>
     <button class="mobile-bottom-item" data-section="posts" onclick="showSection('posts')">
         <i class="fas fa-bullhorn"></i>
@@ -13873,12 +13860,36 @@ function updateUI() {
             </button>
         </div>
 
-        <div class="mobile-drawer-menu-item mobile-drawer-upgrade-item" onclick="openUpgradeModal(); closeMobileDrawer();" style="background: linear-gradient(135deg, #fffbe3, #fef3c7); border: 1px solid #fde68a; color: #92400e; font-weight: 800;">
+        <div class="mobile-drawer-menu-item" onclick="showSection('offers'); closeMobileDrawer();">
             <div class="item-content">
-                <i class="fas fa-crown" style="color:#f59e0b;"></i>
-                <span>طلب الترقية (الشارة الذهبية) 👑</span>
+                <i class="fas fa-video" style="color:var(--primary);"></i>
+                <span>دروس الزملاء الاساتذة</span>
             </div>
-            <i class="fas fa-chevron-left" style="font-size:0.8rem; color:#d97706;"></i>
+            <i class="fas fa-chevron-left" style="font-size:0.8rem; opacity:0.5;"></i>
+        </div>
+
+        <div class="mobile-drawer-menu-item" onclick="showSection('groups'); closeMobileDrawer();">
+            <div class="item-content">
+                <i class="fas fa-users-rectangle" style="color:var(--primary);"></i>
+                <span>المجموعات الدراسية</span>
+            </div>
+            <i class="fas fa-chevron-left" style="font-size:0.8rem; opacity:0.5;"></i>
+        </div>
+
+        <div class="mobile-drawer-menu-item" onclick="showDepositModal(); closeMobileDrawer();" style="background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534;">
+            <div class="item-content">
+                <i class="fas fa-plus-circle" style="color:#22c55e;"></i>
+                <span style="font-weight:700;">شحن الرصيد</span>
+            </div>
+            <i class="fas fa-chevron-left" style="font-size:0.8rem; color:#22c55e;"></i>
+        </div>
+
+        <div class="mobile-drawer-menu-item" onclick="showSection('earnings'); closeMobileDrawer();" style="background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af;">
+            <div class="item-content">
+                <i class="fas fa-hand-holding-usd" style="color:#3b82f6;"></i>
+                <span style="font-weight:700;">سحب الأرباح</span>
+            </div>
+            <i class="fas fa-chevron-left" style="font-size:0.8rem; color:#3b82f6;"></i>
         </div>
         <div class="mobile-drawer-menu-item" onclick="showSection('earnings'); closeMobileDrawer();">
             <div class="item-content">
