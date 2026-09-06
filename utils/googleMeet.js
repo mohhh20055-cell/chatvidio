@@ -124,7 +124,7 @@ async function removeTeacherGoogleToken(teacherId) {
  */
 function getGoogleAuthUrl(redirectUri, teacherId) {
     const clientId = process.env.GOOGLE_CLIENT_ID || GOOGLE_CONFIG.client_id;
-    const scope = encodeURIComponent('https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar userinfo.email');
+    const scope = encodeURIComponent('https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email');
     const state = encodeURIComponent(JSON.stringify({ teacherId, ts: Date.now() }));
 
     return `https://accounts.google.com/o/oauth2/v2/auth?` +
