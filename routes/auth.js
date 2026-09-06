@@ -1610,7 +1610,7 @@ router.get(['/google/oauth-callback', '/auth/google/oauth-callback', '/auth/goog
                     localStorage.setItem('userData', JSON.stringify(authPayload.user));
 
                     if (window.opener) {
-                        window.opener.postMessage({ type: 'GOOGLE_AUTH_SUCCESS', data: authPayload }, '*');
+                        window.opener.postMessage({ type: 'GOOGLE_AUTH_SUCCESS', ...authPayload, data: authPayload }, '*');
                         setTimeout(() => window.close(), 1200);
                     } else {
                         setTimeout(() => { window.location.href = '${targetDashboard}'; }, 1000);

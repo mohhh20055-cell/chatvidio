@@ -6782,18 +6782,21 @@
         })();
 
         function handleGoogleAuthSuccess(data) {
-            if (!data || !data.token) {
-                showNotification('فشل تسجيل الدخول عبر Google', 'error');
+            var payload = (data && data.data && data.data.token) ? data.data : (data || {});
+            var token = payload.token || (data && data.token);
+            if (!token) {
+                showNotification('فشل تسجيل الدخول عبر Google - تعذر الحصول على رمز الجلسة', 'error');
                 return;
             }
-            localStorage.setItem('token', data.token);
-            if (data.user) {
-                localStorage.setItem('userData', JSON.stringify(data.user));
+            localStorage.setItem('token', token);
+            var user = payload.user || (data && data.user);
+            if (user) {
+                localStorage.setItem('userData', typeof user === 'string' ? user : JSON.stringify(user));
             }
             showNotification('تم الدخول بنجاح عبر حساب Google!', 'success');
             setTimeout(function() {
-                var target = data.redirectTo || (data.role === 'teacher' ? '/teacher-dashboard.html' : '/student-dashboard.html');
-                if (data.requires_profile_completion) {
+                var target = payload.redirectTo || data.redirectTo || (payload.role === 'teacher' || data.role === 'teacher' ? '/teacher-dashboard.html' : '/student-dashboard.html');
+                if (payload.requires_profile_completion || data.requires_profile_completion) {
                     target += (target.includes('?') ? '&' : '?') + 'complete_profile=true';
                 }
                 window.location.href = target;
