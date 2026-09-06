@@ -18,18 +18,8 @@
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
-  <url>
-    <loc>https://zoomdz.com/student-dashboard.html</loc>
-    <lastmod>2026-08-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://zoomdz.com/teacher-dashboard.html</loc>
-    <lastmod>2026-08-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
+  
+  
   <url>
     <loc>https://zoomdz.com/privacy-policy.html</loc>
     <lastmod>2026-08-19</lastmod>

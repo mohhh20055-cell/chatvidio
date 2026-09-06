@@ -2,20 +2,26 @@
 User-agent: *
 Allow: /
 Allow: /docs.html
+Allow: /blog.html
 Allow: /privacy-policy.html
 Allow: /terms.html
-Allow: /teacher-profile.html
+Allow: /packages.html
 Allow: /teacher/
 Allow: /course/
 Allow: /offer/
 Allow: /post/
 
-# Disallow admin panels and private API routes
+# Disallow admin panels, private pages, and private API routes
 Disallow: /admin.html
-Disallow: /api/admin/
+Disallow: /api/
 Disallow: /reset-password.html
 Disallow: /logs.html
+Disallow: /student-dashboard.html
+Disallow: /teacher-dashboard.html
+Disallow: /teacher-profile.html
+Disallow: /course-seo.html
+Disallow: /offer-seo.html
+Disallow: /post-seo.html
 
 # Sitemap Location
 Sitemap: https://zoomdz.com/sitemap.xml
-

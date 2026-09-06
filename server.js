@@ -958,7 +958,7 @@ app.get(['/teacher/:id', '/teacher-profile.html'], async (req, res, next) => {
         const teacherId = parseInt(req.params.id || req.query.id || req.query.teacherId);
         if (!teacherId || isNaN(teacherId)) {
             if (req.path.endsWith('/teacher-profile.html')) {
-                return res.sendFile(path.join(__dirname, 'public', 'teacher-profile.html'));
+                return res.status(404).sendFile(path.join(__dirname, 'public', '404.html')); // We'll create a generic 404 if needed, or just send a string
             }
             return next();
         }
@@ -970,15 +970,12 @@ app.get(['/teacher/:id', '/teacher-profile.html'], async (req, res, next) => {
             .single();
 
         if (error || !teacher || teacher.status !== 'approved' || teacher.is_banned) {
-            if (req.path.endsWith('/teacher-profile.html')) {
-                return res.sendFile(path.join(__dirname, 'public', 'teacher-profile.html'));
-            }
-            return res.redirect('/');
+            return res.status(404).send(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>غير موجود - ZoomDz</title><meta name="robots" content="noindex"></head><body style="text-align:center; padding: 50px; font-family: sans-serif;"><h1>404 - الأستاذ غير موجود أو حسابه موقوف</h1><a href="/">العودة للرئيسية</a></body></html>`);
         }
 
         const filePath = path.join(__dirname, 'public', 'teacher-profile.html');
         if (!fs.existsSync(filePath)) {
-            return res.redirect('/');
+            return res.status(404).send('404 Not Found');
         }
         
         let html = await fs.promises.readFile(filePath, 'utf8');
@@ -991,7 +988,8 @@ app.get(['/teacher/:id', '/teacher-profile.html'], async (req, res, next) => {
         const url = `https://zoomdz.com/teacher/${teacherId}`;
         const imageUrl = teacher.profile_url || `https://zoomdz.com/images/zoomdz.png`;
 
-        html = html.replace(/<title>.*?<\/title>/gi, `<title>${title}</title>`);
+        html = html.replace(/<meta\s+name=["']robots["'][^>]*>/gi, '<meta name="robots" content="index, follow, max-image-preview:large">');
+        html = html.replace(/<title>.*?<\/title>/gi, `<title>\${title}</title>`);
         html = html.replace(/<meta\s+name="description"\s+content=".*?">/gi, `<meta name="description" content="${bioClean}">`);
         html = html.replace(/<meta\s+name="keywords"\s+content=".*?">/gi, `<meta name="keywords" content="${keywords}">`);
         
@@ -1007,10 +1005,7 @@ app.get(['/teacher/:id', '/teacher-profile.html'], async (req, res, next) => {
         return res.send(html);
     } catch (err) {
         console.error('SEO Teacher Route Error:', err);
-        if (req.path.endsWith('/teacher-profile.html')) {
-            return res.sendFile(path.join(__dirname, 'public', 'teacher-profile.html'));
-        }
-        return res.redirect('/');
+        return res.status(404).send('404 Not Found');
     }
 });
 
@@ -1019,7 +1014,7 @@ app.get('/course/:id', async (req, res) => {
     try {
         const courseId = parseInt(req.params.id);
         if (!courseId || isNaN(courseId)) {
-            return res.redirect('/');
+            return res.status(404).send('404 Not Found');
         }
 
         const viewResult = await recordUniqueView('courses', 'id', courseId, req, 'course');
@@ -1031,7 +1026,7 @@ app.get('/course/:id', async (req, res) => {
             .single();
 
         if (error || !course || course.status !== 'published') {
-            return res.redirect('/');
+            return res.status(404).send(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>غير موجود - ZoomDz</title><meta name="robots" content="noindex"></head><body style="text-align:center; padding: 50px; font-family: sans-serif;"><h1>404 - الدورة غير موجودة أو غير متاحة</h1><a href="/">العودة للرئيسية</a></body></html>`);
         }
 
         const filePath = path.join(__dirname, 'public', 'course-seo.html');
@@ -1083,6 +1078,7 @@ app.get('/course/:id', async (req, res) => {
 
         const dateText = course.created_at ? new Date(course.created_at).toLocaleDateString('ar-DZ') : 'حديثاً';
 
+        html = html.replace(/<meta\s+name=["']robots["'][^>]*>/gi, '<meta name="robots" content="index, follow, max-image-preview:large">');
         html = safeReplaceAll(html, '{{COURSE_TITLE}}', courseTitle);
         html = safeReplaceAll(html, '{{COURSE_DESCRIPTION}}', courseDescRaw);
         html = safeReplaceAll(html, '{{COURSE_DESCRIPTION_RAW}}', courseDescRaw);
@@ -1149,7 +1145,7 @@ app.get(['/offer/:id', '/offers/:id', '/lesson/:id', '/lessons/:id'], async (req
     try {
         const offerId = parseInt(req.params.id);
         if (!offerId || isNaN(offerId)) {
-            return res.redirect('/');
+            return res.status(404).send('404 Not Found');
         }
 
         const clientIp = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.ip || req.socket.remoteAddress || '127.0.0.1';
@@ -1264,7 +1260,7 @@ app.get('/post/:id', async (req, res) => {
     try {
         const postId = parseInt(req.params.id);
         if (!postId || isNaN(postId)) {
-            return res.redirect('/');
+            return res.status(404).send('404 Not Found');
         }
 
         const viewResult = await recordUniqueView('posts', 'id', postId, req, 'post');
@@ -1322,6 +1318,7 @@ app.get('/post/:id', async (req, res) => {
             `;
         }
 
+        html = html.replace(/<meta\s+name=["']robots["'][^>]*>/gi, '<meta name="robots" content="index, follow, max-image-preview:large">');
         html = safeReplaceAll(html, '{{POST_TITLE}}', postTitle);
         html = safeReplaceAll(html, '{{POST_DESCRIPTION}}', postDescRaw);
         html = safeReplaceAll(html, '{{POST_DESCRIPTION_RAW}}', postDescRaw);
