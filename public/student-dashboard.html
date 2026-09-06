@@ -469,7 +469,7 @@
         
         @media (max-width: 480px) {
             .nav-balance {
-                display: none;
+                display: flex;
             }
             
             .nav-tabs {
@@ -2430,9 +2430,9 @@
             .navbar-inner { flex-wrap: wrap; gap: 8px; align-items: center; }
             .nav-logo span { font-size: 1.05rem; }
             .nav-logo i { font-size: 1.35rem; }
-            .nav-tabs-container { order: 3; width: 100% !important; max-width: 100% !important; margin: 0 !important; }
-            .nav-scroll-btn { display: none !important; }
-            .nav-tabs { order: 3; width: 100%; gap: 4px; padding: 0; overflow-x: auto; justify-content: flex-start; }
+            .nav-tabs-container { display: none !important; }
+            .nav-scroll-btn, .tab-scroll-btn { display: none !important; }
+            .nav-tabs { display: none !important; }
             .nav-tab { padding: 6px 10px; font-size: 0.74rem; }
             .nav-tab i { font-size: 0.9rem; }
             .nav-tab .tab-label { display: none; }
@@ -2626,27 +2626,78 @@
             text-align: center;
         }
 
+        .mobile-bottom-nav-wrapper {
+            display: none;
+        }
+
         @media (max-width: 768px) {
             body { padding-bottom: 74px !important; }
             .nav-deposit-btn, .nav-withdraw-btn { display: none !important; }
-            .mobile-bottom-nav {
-                display: flex;
+            .mobile-bottom-nav-wrapper {
+                display: block;
                 position: fixed;
                 bottom: 0; left: 0; right: 0;
+                height: 64px;
+                z-index: 9997;
+                direction: rtl;
+                pointer-events: none;
+            }
+            .mobile-bottom-nav {
+                display: flex;
+                pointer-events: auto;
+                position: relative;
+                width: 100%;
                 height: 64px;
                 background: #0b172a;
                 border-top: 1px solid rgba(56, 189, 248, 0.15);
                 box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.35);
-                z-index: 9997;
                 overflow-x: auto;
                 overflow-y: hidden;
                 justify-content: flex-start;
                 align-items: center;
-                padding: 0 8px;
+                padding: 0 38px;
                 gap: 6px;
                 -webkit-overflow-scrolling: touch;
                 direction: rtl;
                 padding-bottom: env(safe-area-inset-bottom);
+                scrollbar-width: none;
+            }
+            .mobile-bottom-nav::-webkit-scrollbar {
+                display: none;
+            }
+            .mobile-bottom-scroll-btn {
+                display: flex !important;
+                pointer-events: auto;
+                position: absolute;
+                top: 50%;
+                transform: translateY(-50%);
+                width: 28px;
+                height: 28px;
+                min-width: 28px;
+                min-height: 28px;
+                border-radius: 50%;
+                background: rgba(11, 23, 42, 0.95);
+                border: 1.5px solid rgba(56, 189, 248, 0.6);
+                color: #38bdf8;
+                box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+                align-items: center;
+                justify-content: center;
+                z-index: 9999;
+                font-size: 0.75rem;
+                cursor: pointer;
+                padding: 0;
+                animation: pulse-scroll-indicator 2s infinite ease-in-out;
+            }
+            .mobile-bottom-scroll-btn.right {
+                right: 5px;
+            }
+            .mobile-bottom-scroll-btn.left {
+                left: 5px;
+            }
+            .mobile-bottom-scroll-btn:hover, .mobile-bottom-scroll-btn:active {
+                background: #2563eb;
+                color: #ffffff;
+                transform: translateY(-50%) scale(1.15);
             }
             .mobile-bottom-item {
                 display: flex;
@@ -2678,7 +2729,7 @@
             .mobile-bottom-item.active i {
                 transform: translateY(-2px) scale(1.1);
             }
-            .nav-tabs { display: none !important; }
+            .nav-tabs, .nav-tabs-container, .nav-scroll-btn, .tab-scroll-btn { display: none !important; }
         }
         /* Mobile-friendly Post Card Optimization */
         @media (max-width: 640px) {
@@ -3173,34 +3224,41 @@
         border: 2px solid rgba(255, 255, 255, 0.2) !important;
     }
 
-    /* ALWAYS SHOW PULSING SMALL SCROLL BUTTONS TO PROMPT SCROLLING */
-    .nav-scroll-btn, .tab-scroll-btn {
-        display: flex !important;
-        width: 24px !important;
-        height: 24px !important;
-        min-width: 24px !important;
-        min-height: 24px !important;
-        font-size: 0.7rem !important;
-        background: rgba(11, 23, 42, 0.9) !important;
-        border: 1px solid rgba(56, 189, 248, 0.4) !important;
-        color: #38bdf8 !important;
-        box-shadow: 0 0 8px rgba(56, 189, 248, 0.3) !important;
-        animation: pulse-scroll-indicator 2s infinite ease-in-out !important;
-        align-items: center !important;
-        justify-content: center !important;
+    /* ALWAYS SHOW PULSING SMALL SCROLL BUTTONS TO PROMPT SCROLLING (DESKTOP ONLY) */
+    @media (min-width: 769px) {
+        .nav-scroll-btn, .tab-scroll-btn {
+            display: flex !important;
+            width: 24px !important;
+            height: 24px !important;
+            min-width: 24px !important;
+            min-height: 24px !important;
+            font-size: 0.7rem !important;
+            background: rgba(11, 23, 42, 0.9) !important;
+            border: 1px solid rgba(56, 189, 248, 0.4) !important;
+            color: #38bdf8 !important;
+            box-shadow: 0 0 8px rgba(56, 189, 248, 0.3) !important;
+            animation: pulse-scroll-indicator 2s infinite ease-in-out !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+        .tab-scroll-btn.right, .nav-scroll-btn[onclick*="right"] {
+            right: 2px !important;
+            left: auto !important;
+        }
+        .tab-scroll-btn.left, .nav-scroll-btn[onclick*="left"] {
+            left: 2px !important;
+            right: auto !important;
+        }
+        .tab-scroll-btn:hover, .nav-scroll-btn:hover {
+            background: #2563eb !important;
+            color: #ffffff !important;
+            transform: scale(1.15) !important;
+        }
     }
-    .tab-scroll-btn.right, .nav-scroll-btn[onclick*="right"] {
-        right: 2px !important;
-        left: auto !important;
-    }
-    .tab-scroll-btn.left, .nav-scroll-btn[onclick*="left"] {
-        left: 2px !important;
-        right: auto !important;
-    }
-    .tab-scroll-btn:hover, .nav-scroll-btn:hover {
-        background: #2563eb !important;
-        color: #ffffff !important;
-        transform: scale(1.15) !important;
+    @media (max-width: 768px) {
+        .nav-tabs-container, .nav-scroll-btn, .tab-scroll-btn {
+            display: none !important;
+        }
     }
     @keyframes pulse-scroll-indicator {
         0%, 100% { transform: scale(1); opacity: 0.8; box-shadow: 0 0 6px rgba(56, 189, 248, 0.3); }
@@ -3394,7 +3452,7 @@
             </div>
         </div>
 
-        <div class="nav-balance" onclick="showSection('transactions')" title="الرصيد المتاح">
+        <div class="nav-balance" onclick="openTransactionsModal()" title="الرصيد وسجل العمليات">
             <i class="fas fa-wallet"></i>
             <span class="balance-label">الرصيد:</span>
             <span id="navBalanceAmount">0</span>
@@ -3509,7 +3567,7 @@
         </div>
 
         <!-- Wallet Box Inside Sidebar -->
-        <div class="sidebar-wallet-box">
+        <div class="sidebar-wallet-box" onclick="openTransactionsModal()" style="cursor: pointer;" title="سجل العمليات والمحفظة">
             <div class="wallet-balance-row">
                 <i class="fas fa-wallet" style="color: #38bdf8; font-size:1.1rem;"></i>
                 <div class="wallet-text-group">
@@ -3517,7 +3575,7 @@
                     <span class="wallet-val" id="walletAmount">0 دج</span>
                 </div>
             </div>
-            <button class="sidebar-deposit-btn" onclick="showDepositModal()">
+            <button class="sidebar-deposit-btn" onclick="event.stopPropagation(); showDepositModal();" title="شحن الرصيد">
                 <i class="fas fa-plus-circle"></i> <span>شحن</span>
             </button>
         </div>
@@ -3803,7 +3861,35 @@
 
         <!-- TRANSACTIONS SECTION -->
         <div id="transactionsSection" style="display: none;">
-            <div class="section-title"><i class="fas fa-history"></i> سجل المعاملات</div>
+            <div class="section-title" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-history" style="color: var(--primary);"></i>
+                    <span>سجل المعاملات والعمليات المالية</span>
+                </div>
+            </div>
+
+            <!-- Wallet Banner With Live Balance and Recharge Button -->
+            <div class="transactions-hero-card" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 18px; padding: 22px 24px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.18);">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <div style="width: 52px; height: 52px; border-radius: 14px; background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.3); display: flex; align-items: center; justify-content: center; color: #38bdf8; font-size: 1.5rem; flex-shrink: 0;">
+                        <i class="fas fa-wallet"></i>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.85rem; color: #94a3b8; font-weight: 600; margin-bottom: 2px;">الرصيد الحالي المتاح في حسابك</div>
+                        <div style="font-size: 1.8rem; font-weight: 900; color: #ffffff; display: flex; align-items: baseline; gap: 6px;">
+                            <span id="sectionWalletAmount">0</span>
+                            <span style="font-size: 1rem; color: #38bdf8; font-weight: 700;">دج</span>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <button onclick="showDepositModal()" style="background: linear-gradient(135deg, #0284c7, #2563eb); color: #ffffff; border: none; padding: 12px 24px; border-radius: 12px; font-weight: 800; font-size: 0.95rem; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <i class="fas fa-plus-circle"></i>
+                        <span>شحن الحساب الآن</span>
+                    </button>
+                </div>
+            </div>
+
             <div id="transactionsList"></div>
         </div>
 
@@ -4249,6 +4335,48 @@
     </div>
 </div>
 
+<!-- TRANSACTIONS & WALLET POPUP MODAL -->
+<div id="transactionsModal" class="modal" style="max-width: 580px; width: 94%; border-radius: 20px; padding: 0; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.35); display: none;">
+    <div class="modal-header" style="background: linear-gradient(135deg, #0b172a 0%, #1e293b 100%); color: white; padding: 18px 22px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(56, 189, 248, 0.2);">
+        <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; display: flex; align-items: center; gap: 10px; color: white;">
+            <i class="fas fa-wallet" style="color: #38bdf8;"></i>
+            <span>سجل العمليات والمحفظة</span>
+        </h3>
+        <button class="close-modal" onclick="closeTransactionsModal()" style="background: rgba(255,255,255,0.1); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">&times;</button>
+    </div>
+    <div class="modal-body" style="padding: 20px; max-height: 80vh; overflow-y: auto;">
+        <!-- Wallet Banner With Recharge Button -->
+        <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 16px; padding: 18px; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+            <div style="display: flex; align-items: center; gap: 14px;">
+                <div style="width: 46px; height: 46px; border-radius: 12px; background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.3); display: flex; align-items: center; justify-content: center; color: #38bdf8; font-size: 1.3rem;">
+                    <i class="fas fa-wallet"></i>
+                </div>
+                <div>
+                    <div style="font-size: 0.78rem; color: #94a3b8; font-weight: 600;">الرصيد المتاح حالياً</div>
+                    <div style="font-size: 1.5rem; font-weight: 900; color: #ffffff; display: flex; align-items: baseline; gap: 4px;">
+                        <span id="modalWalletAmount">0 دج</span>
+                    </div>
+                </div>
+            </div>
+            <button onclick="closeTransactionsModal(); showDepositModal();" style="background: linear-gradient(135deg, #0284c7, #2563eb); color: #ffffff; border: none; padding: 10px 18px; border-radius: 10px; font-weight: 800; font-size: 0.88rem; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
+                <i class="fas fa-plus-circle"></i>
+                <span>شحن الحساب</span>
+            </button>
+        </div>
+
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+            <h4 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: var(--gray-800);"><i class="fas fa-history" style="color: var(--primary); margin-left: 6px;"></i> سجل العمليات</h4>
+            <button onclick="closeTransactionsModal(); showSection('transactions');" style="background: transparent; border: none; color: #2563eb; font-size: 0.8rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                عرض في صفحة كاملة <i class="fas fa-arrow-left"></i>
+            </button>
+        </div>
+
+        <div id="modalTransactionsList" style="min-height: 120px;">
+            <div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>
+        </div>
+    </div>
+</div>
+
 <!-- DEPOSIT MODAL -->
 <div id="depositModal" class="modal" style="max-width: 520px; width: 92%; border-radius: 20px; padding: 0; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
     <div class="modal-header" style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); color: white; padding: 18px 22px; display: flex; justify-content: space-between; align-items: center;">
@@ -4545,53 +4673,61 @@
     </div>
 </div>
 
-<!-- ===== MOBILE BOTTOM NAV ===== -->
-<div class="mobile-bottom-nav">
-    <button class="mobile-bottom-item" data-section="offers" onclick="showSection('offers')">
-        <i class="fas fa-calendar-alt"></i>
-        <span>ZoomDz Live</span>
+<!-- ===== MOBILE BOTTOM NAV WITH SCROLL BUTTONS ===== -->
+<div class="mobile-bottom-nav-wrapper">
+    <button type="button" class="mobile-bottom-scroll-btn right" onclick="scrollBottomNav('right')" title="التمرير لليمين" aria-label="التمرير لليمين">
+        <i class="fas fa-chevron-right"></i>
     </button>
-    <button class="mobile-bottom-item active" data-section="exercises" onclick="showSection('exercises')">
-        <i class="fas fa-file-pen"></i>
-        <span>التمارين</span>
-    </button>
-    <button class="mobile-bottom-item" data-section="posts" onclick="showSection('posts')">
-        <i class="fas fa-newspaper"></i>
-        <span>المنشورات</span>
-        <span id="mobilePostsBadge" style="display:none; position:absolute; top:4px; right:18px; background:#ef4444; color:white; border-radius:50%; width:16px; height:16px; font-size:0.65rem; font-weight:800; display:flex; align-items:center; justify-content:center;">0</span>
-    </button>
-    <button class="mobile-bottom-item" data-section="groups" onclick="showSection('groups')">
-        <i class="fas fa-users-rectangle"></i>
-        <span>الدردشة</span>
-        <span class="nav-badge" id="mobileGroupsBadgeBottom" style="display:none; background:#ef4444; color:white; padding:2px 6px; border-radius:10px; font-size:0.65rem; font-weight:800; position:absolute; top:4px; right:12px;">0</span>
-    </button>
-    <button class="mobile-bottom-item" data-section="packages" onclick="showSection('packages')">
-        <i class="fas fa-boxes-stacked"></i>
-        <span>الباقات</span>
-    </button>
-    <button class="mobile-bottom-item" onclick="window.location.href='/ai-tutor'">
-        <i class="fas fa-robot"></i>
-        <span>AI</span>
-    </button>
-    <button class="mobile-bottom-item" data-section="teachers" onclick="showSection('teachers')">
-        <i class="fas fa-chalkboard-user"></i>
-        <span>الأساتذة</span>
-    </button>
-    <button class="mobile-bottom-item" data-section="courses" onclick="showSection('courses')">
-        <i class="fas fa-play-circle"></i>
-        <span>الدورات</span>
-    </button>
-    <button class="mobile-bottom-item" data-section="transactions" onclick="showSection('transactions')">
-        <i class="fas fa-history"></i>
-        <span>المعاملات</span>
-    </button>
-    <button class="mobile-bottom-item" data-section="referral" onclick="showSection('referral')">
-        <i class="fas fa-link"></i>
-        <span>الإحالة</span>
-    </button>
-    <button class="mobile-bottom-item" data-section="messages" onclick="showSection('messages')">
-        <i class="fas fa-envelope"></i>
-        <span>الرسائل</span>
+    <div class="mobile-bottom-nav" id="mobileBottomNav">
+        <button class="mobile-bottom-item" data-section="offers" onclick="showSection('offers')">
+            <i class="fas fa-calendar-alt"></i>
+            <span>ZoomDz Live</span>
+        </button>
+        <button class="mobile-bottom-item active" data-section="exercises" onclick="showSection('exercises')">
+            <i class="fas fa-file-pen"></i>
+            <span>التمارين</span>
+        </button>
+        <button class="mobile-bottom-item" data-section="posts" onclick="showSection('posts')">
+            <i class="fas fa-newspaper"></i>
+            <span>المنشورات</span>
+            <span id="mobilePostsBadge" style="display:none; position:absolute; top:4px; right:18px; background:#ef4444; color:white; border-radius:50%; width:16px; height:16px; font-size:0.65rem; font-weight:800; display:flex; align-items:center; justify-content:center;">0</span>
+        </button>
+        <button class="mobile-bottom-item" data-section="groups" onclick="showSection('groups')">
+            <i class="fas fa-users-rectangle"></i>
+            <span>الدردشة</span>
+            <span class="nav-badge" id="mobileGroupsBadgeBottom" style="display:none; background:#ef4444; color:white; padding:2px 6px; border-radius:10px; font-size:0.65rem; font-weight:800; position:absolute; top:4px; right:12px;">0</span>
+        </button>
+        <button class="mobile-bottom-item" data-section="packages" onclick="showSection('packages')">
+            <i class="fas fa-boxes-stacked"></i>
+            <span>الباقات</span>
+        </button>
+        <button class="mobile-bottom-item" onclick="window.location.href='/ai-tutor'">
+            <i class="fas fa-robot"></i>
+            <span>AI</span>
+        </button>
+        <button class="mobile-bottom-item" data-section="teachers" onclick="showSection('teachers')">
+            <i class="fas fa-chalkboard-user"></i>
+            <span>الأساتذة</span>
+        </button>
+        <button class="mobile-bottom-item" data-section="courses" onclick="showSection('courses')">
+            <i class="fas fa-play-circle"></i>
+            <span>الدورات</span>
+        </button>
+        <button class="mobile-bottom-item" data-section="transactions" onclick="showSection('transactions')">
+            <i class="fas fa-history"></i>
+            <span>المعاملات</span>
+        </button>
+        <button class="mobile-bottom-item" data-section="referral" onclick="showSection('referral')">
+            <i class="fas fa-link"></i>
+            <span>الإحالة</span>
+        </button>
+        <button class="mobile-bottom-item" data-section="messages" onclick="showSection('messages')">
+            <i class="fas fa-envelope"></i>
+            <span>الرسائل</span>
+        </button>
+    </div>
+    <button type="button" class="mobile-bottom-scroll-btn left" onclick="scrollBottomNav('left')" title="التمرير لليسار" aria-label="التمرير لليسار">
+        <i class="fas fa-chevron-left"></i>
     </button>
 </div>
 
@@ -5881,12 +6017,16 @@
             const res = await fetchWithAuth(`/api/student/balance/${studentId}`);
             const data = await res.json();
             currentBalance = data.balance || 0;
-            const walletAmount = document.getElementById('walletAmount');
-            if (walletAmount) walletAmount.textContent = currentBalance + ' دج';
-            const navBalance = document.getElementById('navBalanceAmount');
-            if (navBalance) navBalance.textContent = currentBalance;
-            const drawerBalance = document.getElementById('drawerBalance');
-            if (drawerBalance) drawerBalance.textContent = `${currentBalance} دج`;
+            if (typeof syncAllBalanceDisplays === 'function') {
+                syncAllBalanceDisplays(currentBalance);
+            } else {
+                const walletAmount = document.getElementById('walletAmount');
+                if (walletAmount) walletAmount.textContent = currentBalance + ' دج';
+                const navBalance = document.getElementById('navBalanceAmount');
+                if (navBalance) navBalance.textContent = currentBalance;
+                const drawerBalance = document.getElementById('drawerBalance');
+                if (drawerBalance) drawerBalance.textContent = `${currentBalance} دج`;
+            }
         } catch(e) { 
             if (e.message !== 'انتهت صلاحية الجلسة') {
                 console.error('خطأ في تحميل المحفظة:', e);
@@ -6995,6 +7135,17 @@
         }
     }
 
+    function scrollBottomNav(direction) {
+        const nav = document.getElementById('mobileBottomNav') || document.querySelector('.mobile-bottom-nav');
+        if (!nav) return;
+        const scrollAmount = 180;
+        if (direction === 'left') {
+            nav.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+        } else {
+            nav.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+        }
+    }
+
     function getStarsHtml(rating) {
         let stars = '';
         const fullStars = Math.floor(rating);
@@ -7537,109 +7688,187 @@
     }
 
     // ================================================================
-    // ✅ TRANSACTIONS
     // ================================================================
+    // ✅ TRANSACTIONS & WALLET SYSTEM
+    // ================================================================
+
+    function renderTransactionsHtml(transactions) {
+        if (!transactions || transactions.length === 0) {
+            return `
+                <div style="text-align: center; padding: 36px 16px; color: var(--gray-400);">
+                    <div style="width: 58px; height: 58px; border-radius: 50%; background: #f1f5f9; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; font-size: 1.5rem; color: #94a3b8;">
+                        <i class="fas fa-receipt"></i>
+                    </div>
+                    <p style="margin: 0; font-size: 0.95rem; font-weight: 700; color: #64748b;">لا توجد معاملات سابقة حتى الآن</p>
+                    <p style="margin: 4px 0 16px; font-size: 0.8rem; color: #94a3b8;">اشحن حسابك للبدء في حجز الحصص والدورات</p>
+                    <button onclick="if(typeof closeTransactionsModal==='function') closeTransactionsModal(); showDepositModal();" style="background: linear-gradient(135deg, #0284c7, #2563eb); color: white; border: none; padding: 10px 22px; border-radius: 10px; font-weight: 800; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(37,99,235,0.35);">
+                        <i class="fas fa-plus-circle"></i> شحن الرصيد الآن
+                    </button>
+                </div>
+            `;
+        }
+
+        window.studentTransactionsMap = window.studentTransactionsMap || {};
+        let html = '';
+        for (const t of transactions) {
+            const date = new Date(t.created_at);
+            const formattedDate = date.toLocaleString('ar-DZ', { timeZone: 'Africa/Algiers', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            const isDeposit = t.type === 'deposit' || t.type === 'credit' || t.type === 'deposit_manual' || t.type === 'manual_deposit';
+            const isReferral = t.type === 'referral_gift' || t.type === 'gift_reward';
+            
+            let icon = isDeposit ? (t.type === 'deposit_manual' || t.type === 'manual_deposit' ? 'fa-money-bill-transfer' : 'fa-arrow-up') : 'fa-arrow-down';
+            let color = isDeposit ? 'var(--secondary)' : 'var(--danger)';
+            let bg = isDeposit ? 'var(--secondary-soft)' : 'var(--danger-soft)';
+            let label = isDeposit ? (t.type === 'deposit_manual' || t.type === 'manual_deposit' ? 'شحن رصيد (بريدي موب)' : 'شحن رصيد') : 'خصم رصيد';
+            
+            if (isReferral) {
+                icon = 'fa-gift';
+                color = 'var(--gold-dark)';
+                bg = 'var(--gold-soft)';
+                label = 'مكافأة إحالة 🎁';
+            }
+
+            // تحديد حالة العملية
+            let statusLabel = '';
+            let statusColor = '';
+            let statusBg = '';
+            
+            const status = (t.status || 'success').toLowerCase();
+            if (status === 'success' || status === 'completed' || status === 'paid' || status === 'approved') {
+                statusLabel = 'ناجحة';
+                statusColor = 'var(--secondary)';
+                statusBg = 'var(--secondary-soft)';
+            } else if (status === 'failed' || status === 'error' || status === 'rejected') {
+                statusLabel = status === 'rejected' ? 'مرفوضة' : 'فاشلة';
+                statusColor = 'var(--danger)';
+                statusBg = 'var(--danger-soft)';
+            } else if (status === 'cancelled' || status === 'expired') {
+                statusLabel = 'ملغاة';
+                statusColor = 'var(--gray-600)';
+                statusBg = 'var(--gray-200)';
+            } else {
+                statusLabel = 'قيد المراجعة';
+                statusColor = 'var(--gold-dark)';
+                statusBg = 'var(--gold-soft)';
+            }
+
+            const txObj = {
+                id: t.id,
+                amount: t.amount,
+                type: t.type,
+                status: statusLabel,
+                statusColor: statusColor,
+                statusBg: statusBg,
+                date: formattedDate,
+                desc: t.description || '',
+                sofizId: t.sofizpay_transaction_id || ''
+            };
+            
+            window.studentTransactionsMap[t.id] = txObj;
+
+            html += `
+                <div class="transaction-item" onclick="showTransactionDetailsByMappedId('${t.id}')" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--gray-100); cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background='transparent'">
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <div style="width: 40px; height: 40px; border-radius: 50%; background: ${bg}; color: ${color}; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink:0;">
+                            <i class="fas ${icon}"></i>
+                        </div>
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-weight: 800; color: var(--gray-900); font-size:0.9rem;">${label}</span>
+                                <span style="font-size: 0.65rem; padding: 2px 8px; border-radius: 12px; font-weight: 700; background: ${statusBg}; color: ${statusColor};">
+                                    ${statusLabel}
+                                </span>
+                            </div>
+                            <div style="font-size: 0.72rem; color: var(--gray-400); margin-top:2px;">${formattedDate}</div>
+                            <div style="font-size: 0.78rem; margin-top: 4px; color:var(--gray-500);">${t.description || ''}</div>
+                        </div>
+                    </div>
+                    <div style="text-align: left;">
+                        <div style="font-size: 1.1rem; font-weight: 900; color: ${color}">
+                            ${isDeposit || isReferral ? '+' : '-'} ${t.amount || 0} دج
+                        </div>
+                        ${t.sofizpay_transaction_id ? `<div style="font-size: 0.6rem; color: var(--gray-300); margin-top: 4px;">#${t.sofizpay_transaction_id}</div>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+        return html;
+    }
+
+    function syncAllBalanceDisplays(bal) {
+        if (bal === undefined || bal === null) return;
+        currentBalance = bal;
+        const navBal = document.getElementById('navBalanceAmount');
+        if (navBal) navBal.textContent = currentBalance;
+        const walletBal = document.getElementById('walletAmount');
+        if (walletBal) walletBal.textContent = `${currentBalance} دج`;
+        const drawerBal = document.getElementById('drawerBalance');
+        if (drawerBal) drawerBal.textContent = `${currentBalance} دج`;
+        const secWallet = document.getElementById('sectionWalletAmount');
+        if (secWallet) secWallet.textContent = currentBalance;
+        const modalWallet = document.getElementById('modalWalletAmount');
+        if (modalWallet) modalWallet.textContent = `${currentBalance} دج`;
+    }
 
     async function loadTransactions() {
         const container = document.getElementById('transactionsList');
+        if (container) container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+        try {
+            const res = await fetchWithAuth(`/api/student/balance/${studentId}`);
+            const data = await res.json();
+            if (data.balance !== undefined) {
+                syncAllBalanceDisplays(data.balance);
+            }
+            const transactions = data.transactions || [];
+            if (container) {
+                container.innerHTML = renderTransactionsHtml(transactions);
+            }
+        } catch(e) { 
+            if (e.message !== 'انتهت صلاحية الجلسة') {
+                showToast('حدث خطأ في تحميل المعاملات', 'error');
+            }
+        }
+    }
+
+    async function openTransactionsModal() {
+        if (checkGuestAction()) return;
+        const overlay = document.getElementById('modalOverlay');
+        const modal = document.getElementById('transactionsModal');
+        if (overlay) overlay.style.display = 'block';
+        if (modal) modal.style.display = 'block';
+
+        syncAllBalanceDisplays(currentBalance);
+        await loadModalTransactions();
+    }
+
+    function closeTransactionsModal() {
+        const overlay = document.getElementById('modalOverlay');
+        const modal = document.getElementById('transactionsModal');
+        if (modal) modal.style.display = 'none';
+        const depositModal = document.getElementById('depositModal');
+        const editProfileModal = document.getElementById('editProfileModal');
+        const anyOtherOpen = (depositModal && depositModal.style.display === 'block') ||
+                             (editProfileModal && editProfileModal.style.display === 'block');
+        if (overlay && !anyOtherOpen) {
+            overlay.style.display = 'none';
+        }
+    }
+
+    async function loadModalTransactions() {
+        const container = document.getElementById('modalTransactionsList');
+        if (!container) return;
         container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
         try {
             const res = await fetchWithAuth(`/api/student/balance/${studentId}`);
             const data = await res.json();
+            if (data.balance !== undefined) {
+                syncAllBalanceDisplays(data.balance);
+            }
             const transactions = data.transactions || [];
-            if (transactions.length === 0) {
-                container.innerHTML = '<p style="text-align:center; padding:30px; color:var(--gray-400);">لا  وجد معاملات سابقة</p>';
-                return;
-            }
-            window.studentTransactionsMap = {};
-            let html = '';
-            for (const t of transactions) {
-                const date = new Date(t.created_at);
-                const formattedDate = date.toLocaleString('ar-DZ', { timeZone: 'Africa/Algiers', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                const isDeposit = t.type === 'deposit' || t.type === 'credit' || t.type === 'deposit_manual' || t.type === 'manual_deposit';
-                const isReferral = t.type === 'referral_gift' || t.type === 'gift_reward';
-                
-                let icon = isDeposit ? (t.type === 'deposit_manual' || t.type === 'manual_deposit' ? 'fa-money-bill-transfer' : 'fa-arrow-up') : 'fa-arrow-down';
-                let color = isDeposit ? 'var(--secondary)' : 'var(--danger)';
-                let bg = isDeposit ? 'var(--secondary-soft)' : 'var(--danger-soft)';
-                let label = isDeposit ? (t.type === 'deposit_manual' || t.type === 'manual_deposit' ? 'شحن رصيد (بريدي موب)' : 'شحن رصيد') : 'خصم رصيد';
-                
-                if (isReferral) {
-                    icon = 'fa-gift';
-                    color = 'var(--gold-dark)';
-                    bg = 'var(--gold-soft)';
-                    label = 'مكافأة إحالة 🎁';
-                }
-
-                // تحديد حالة العملية
-                let statusLabel = '';
-                let statusColor = '';
-                let statusBg = '';
-                
-                const status = (t.status || 'success').toLowerCase();
-                if (status === 'success' || status === 'completed' || status === 'paid' || status === 'approved') {
-                    statusLabel = 'ناجحة';
-                    statusColor = 'var(--secondary)';
-                    statusBg = 'var(--secondary-soft)';
-                } else if (status === 'failed' || status === 'error' || status === 'rejected') {
-                    statusLabel = status === 'rejected' ? 'مرفوضة' : 'فاشلة';
-                    statusColor = 'var(--danger)';
-                    statusBg = 'var(--danger-soft)';
-                } else if (status === 'cancelled' || status === 'expired') {
-                    statusLabel = 'ملغاة';
-                    statusColor = 'var(--gray-600)';
-                    statusBg = 'var(--gray-200)';
-                } else {
-                    statusLabel = 'قيد المراجعة';
-                    statusColor = 'var(--gold-dark)';
-                    statusBg = 'var(--gold-soft)';
-                }
-
-                const txObj = {
-                    id: t.id,
-                    amount: t.amount,
-                    type: t.type,
-                    status: statusLabel,
-                    statusColor: statusColor,
-                    statusBg: statusBg,
-                    date: formattedDate,
-                    desc: t.description || '',
-                    sofizId: t.sofizpay_transaction_id || ''
-                };
-                
-                window.studentTransactionsMap[t.id] = txObj;
-                const txJson = JSON.stringify(txObj).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
-
-                html += `
-                    <div class="transaction-item" onclick="showTransactionDetailsByMappedId('${t.id}')" style="display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid var(--gray-100); cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background='transparent'">
-                        <div style="display: flex; align-items: center; gap: 14px;">
-                            <div style="width: 40px; height: 40px; border-radius: 50%; background: ${bg}; color: ${color}; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink:0;">
-                                <i class="fas ${icon}"></i>
-                            </div>
-                            <div>
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span style="font-weight: 800; color: var(--gray-900); font-size:0.9rem;">${label}</span>
-                                    <span style="font-size: 0.65rem; padding: 2px 8px; border-radius: 12px; font-weight: 700; background: ${statusBg}; color: ${statusColor};">
-                                        ${statusLabel}
-                                    </span>
-                                </div>
-                                <div style="font-size: 0.72rem; color: var(--gray-400); margin-top:2px;">${formattedDate}</div>
-                                <div style="font-size: 0.78rem; margin-top: 4px; color:var(--gray-500);">${t.description || ''}</div>
-                            </div>
-                        </div>
-                        <div style="text-align: left;">
-                            <div style="font-size: 1.1rem; font-weight: 900; color: ${color}">
-                                ${isDeposit || isReferral ? '+' : '-'} ${t.amount || 0} دج
-                            </div>
-                            ${t.sofizpay_transaction_id ? `<div style="font-size: 0.6rem; color: var(--gray-300); margin-top: 4px;">#${t.sofizpay_transaction_id}</div>` : ''}
-                        </div>
-                    </div>
-                `;
-            }
-            container.innerHTML = html;
-        } catch(e) { 
+            container.innerHTML = renderTransactionsHtml(transactions);
+        } catch(e) {
             if (e.message !== 'انتهت صلاحية الجلسة') {
-                showToast('حدث خطأ', 'error');
+                container.innerHTML = '<p style="text-align:center; padding:20px; color:var(--danger);">تعذر تحميل العمليات</p>';
             }
         }
     }
@@ -9153,11 +9382,13 @@
         if (overlay) overlay.style.display = 'none';
         const editModal = document.getElementById('editProfileModal');
         if (editModal) editModal.style.display = 'none';
+        const txModal = document.getElementById('transactionsModal');
+        if (txModal) txModal.style.display = 'none';
         closeTransactionModal();
     }
 
     function closeAllModals() {
-        const modals = ['modalOverlay', 'editProfileModal', 'teacherProfileModal', 'giftResultModal', 'purchaseModal', 'ratingModal', 'withdrawModal', 'transactionDetailsModal', 'depositModal', 'viewStudentModal', 'viewTeacherModal', 'errorDebugModal'];
+        const modals = ['modalOverlay', 'editProfileModal', 'teacherProfileModal', 'giftResultModal', 'purchaseModal', 'ratingModal', 'withdrawModal', 'transactionDetailsModal', 'depositModal', 'transactionsModal', 'viewStudentModal', 'viewTeacherModal', 'errorDebugModal'];
         modals.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.style.display = 'none';
