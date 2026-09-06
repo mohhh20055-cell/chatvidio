@@ -56,56 +56,76 @@ async function exchangeGoogleCode(code, redirectUri) {
         throw new Error('رمز تفويض جوجل مفقود');
     }
 
-    try {
-        const params = new URLSearchParams();
-        params.append('client_id', GOOGLE_CLIENT_ID);
-        params.append('client_secret', GOOGLE_CLIENT_SECRET);
-        params.append('code', code);
-        params.append('grant_type', 'authorization_code');
-        params.append('redirect_uri', redirectUri || 'https://www.zoomdz.com/');
+    const candidateUris = [
+        redirectUri,
+        redirectUri ? redirectUri.replace('/api/auth/google/oauth-callback', '/api/auth/google/callback') : null,
+        redirectUri ? redirectUri.replace('/api/google/oauth-callback', '/api/auth/google/callback') : null,
+        'https://www.zoomdz.com/api/auth/google/callback',
+        'https://www.zoomdz.com/api/auth/google/oauth-callback',
+        'https://www.zoomdz.com/'
+    ].filter((uri, idx, arr) => uri && arr.indexOf(uri) === idx);
 
-        const tokenRes = await axios.post('https://oauth2.googleapis.com/token', params.toString(), {
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            timeout: 10000
-        });
+    let lastError = null;
 
-        const { access_token, id_token, refresh_token } = tokenRes.data;
+    for (const uri of candidateUris) {
+        try {
+            const params = new URLSearchParams();
+            params.append('client_id', GOOGLE_CLIENT_ID);
+            params.append('client_secret', GOOGLE_CLIENT_SECRET);
+            params.append('code', code);
+            params.append('grant_type', 'authorization_code');
+            params.append('redirect_uri', uri);
 
-        // Try getting user info from id_token first or userinfo endpoint
-        if (id_token) {
-            try {
-                const idInfo = await verifyGoogleIdToken(id_token);
-                return {
-                    ...idInfo,
-                    access_token,
-                    refresh_token: refresh_token || null
-                };
-            } catch (e) {
-                logger.warn('Failed to verify id_token from code exchange, fallback to userinfo:', e.message);
+            const tokenRes = await axios.post('https://oauth2.googleapis.com/token', params.toString(), {
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                timeout: 10000
+            });
+
+            const { access_token, id_token, refresh_token } = tokenRes.data;
+
+            // Try getting user info from id_token first or userinfo endpoint
+            if (id_token) {
+                try {
+                    const idInfo = await verifyGoogleIdToken(id_token);
+                    return {
+                        ...idInfo,
+                        access_token,
+                        refresh_token: refresh_token || null
+                    };
+                } catch (e) {
+                    logger.warn('Failed to verify id_token from code exchange, fallback to userinfo:', e.message);
+                }
+            }
+
+            const userRes = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
+                headers: { Authorization: `Bearer ${access_token}` },
+                timeout: 10000
+            });
+
+            const data = userRes.data;
+            return {
+                email: data.email.toLowerCase().trim(),
+                name: data.name || data.given_name || data.email.split('@')[0],
+                given_name: data.given_name || '',
+                family_name: data.family_name || '',
+                picture: data.picture || null,
+                sub: data.sub,
+                email_verified: data.email_verified === true || data.email_verified === 'true',
+                access_token,
+                refresh_token: refresh_token || null
+            };
+        } catch (error) {
+            lastError = error;
+            const errDesc = error.response?.data?.error || '';
+            // If it's not a redirect URI mismatch or invalid_grant, don't keep retrying all candidate URIs
+            if (!errDesc.includes('redirect_uri_mismatch')) {
+                break;
             }
         }
-
-        const userRes = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
-            headers: { Authorization: `Bearer ${access_token}` },
-            timeout: 10000
-        });
-
-        const data = userRes.data;
-        return {
-            email: data.email.toLowerCase().trim(),
-            name: data.name || data.given_name || data.email.split('@')[0],
-            given_name: data.given_name || '',
-            family_name: data.family_name || '',
-            picture: data.picture || null,
-            sub: data.sub,
-            email_verified: data.email_verified === true || data.email_verified === 'true',
-            access_token,
-            refresh_token: refresh_token || null
-        };
-    } catch (error) {
-        logger.error('Error exchanging Google OAuth code:', error.response?.data || error.message);
-        throw new Error(error.response?.data?.error_description || 'فشل استبدال كود التفويض مع جوجل');
     }
+
+    logger.error('Error exchanging Google OAuth code:', lastError?.response?.data || lastError?.message);
+    throw new Error(lastError?.response?.data?.error_description || 'فشل استبدال كود التفويض مع جوجل');
 }
 
 /**

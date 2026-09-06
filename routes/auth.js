@@ -1098,171 +1098,7 @@ router.get('/me', authenticate, async (req, res) => {
     }
 });
 
-const { 
-    getGoogleAuthUrl, 
-    exchangeCodeForTokens, 
-    saveTeacherGoogleToken, 
-    getTeacherGoogleToken, 
-    removeTeacherGoogleToken 
-} = require('../utils/googleMeet');
 
-// ============================================================
-// ✅ مسارات Google Meet OAuth 2.0 للأستاذ
-// ============================================================
-
-// 1. رابط بدء تفويض Google Meet للأستاذ
-router.get('/auth/google/teacher-connect', authenticate, authorize(['teacher']), async (req, res) => {
-    try {
-        const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-        const host = req.get('host');
-        const redirectUri = `${protocol}://${host}/api/auth/google/callback`;
-        if (!process.env.GOOGLE_CLIENT_ID) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'لم يتم إعداد بيانات ربط جوجل (GOOGLE_CLIENT_ID) في الخادم بعد. تواصل مع الإدارة.' 
-            });
-        }
-        
-        const authUrl = getGoogleAuthUrl(redirectUri, req.user.userId);
-        
-        res.json({
-            success: true,
-            url: authUrl,
-            redirect_uri: redirectUri
-        });
-    } catch (e) {
-        logger.error('خطأ في توليد رابط OAuth لجوجل:', e.message);
-        res.status(500).json({ success: false, error: 'تعذر إنشاء رابط الاتصال بجوجل' });
-    }
-});
-
-// 2. استقبال التفويض من جوجل وبدء حجز مفتاح التجديد الدائم
-router.get(['/auth/google/callback', '/auth/google/callback/'], async (req, res) => {
-    try {
-        const { code, state, error: googleError } = req.query;
-        if (googleError || !code) {
-            return res.status(400).send(`
-                <html>
-                    <body style="font-family:sans-serif; text-align:center; padding:40px; background:#f8fafc;">
-                        <h2 style="color:#ef4444;">❌ تم إلغاء الربط أو حدث خطأ من جوجل</h2>
-                        <p>${googleError || 'لم يتم استلام كود التفويض'}</p>
-                        <script>setTimeout(() => window.close(), 3000);</script>
-                    </body>
-                </html>
-            `);
-        }
-
-        let teacherId = null;
-        if (state) {
-            try {
-                const parsed = JSON.parse(decodeURIComponent(state));
-                teacherId = parsed.teacherId;
-            } catch (e) {
-                teacherId = state;
-            }
-        }
-
-        const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-        const host = req.get('host');
-        const redirectUri = `${protocol}://${host}/api/auth/google/callback`;
-
-        const tokens = await exchangeCodeForTokens(code, redirectUri);
-        
-        if (!tokens || !tokens.access_token) {
-            return res.status(400).send(`
-                <html>
-                    <body style="font-family:sans-serif; text-align:center; padding:40px; background:#f8fafc;">
-                        <h2 style="color:#ef4444;">❌ تعذر استبدال المفاتيح مع جوجل</h2>
-                        <script>setTimeout(() => window.close(), 3000);</script>
-                    </body>
-                </html>
-            `);
-        }
-
-        if (teacherId) {
-            await saveTeacherGoogleToken(teacherId, tokens, tokens.email);
-        }
-
-        res.send(`
-            <!DOCTYPE html>
-            <html lang="ar" dir="rtl">
-            <head>
-                <meta charset="UTF-8">
-                <title>تم ربط Google Meet بنجاح</title>
-                <style>
-                    body { font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #eff6ff; color: #1e3a8a; }
-                    .card { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); text-align: center; max-width: 400px; width: 90%; border: 2px solid #bfdbfe; }
-                    .icon { font-size: 48px; margin-bottom: 15px; }
-                    h2 { margin: 0 0 10px 0; color: #1d4ed8; font-size: 1.4rem; }
-                    p { color: #475569; font-size: 0.95rem; line-height: 1.5; margin-bottom: 20px; }
-                </style>
-            </head>
-            <body>
-                <div class="card">
-                    <div class="icon">🎉</div>
-                    <h2>تم ربط حساب Google Meet بنجاح!</h2>
-                    <p>الآن يمكن للمنصة إنشاء غرف Google Meet تلقائياً في الخلفية تحت حسابك <strong>${tokens.email || ''}</strong>.</p>
-                    <script>
-                        if (window.opener) {
-                            window.opener.postMessage({
-                                type: 'GOOGLE_MEET_CONNECTED',
-                                success: true,
-                                email: '${tokens.email || ''}'
-                            }, '*');
-                            setTimeout(() => window.close(), 2000);
-                        } else {
-                            setTimeout(() => { window.location.href = '/teacher-dashboard.html'; }, 2000);
-                        }
-                    </script>
-                </div>
-            </body>
-            </html>
-        `);
-    } catch (e) {
-        logger.error('خطأ في إكمال Google OAuth Callback:', e.message);
-        res.status(500).send(`
-            <html>
-                <body style="font-family:sans-serif; text-align:center; padding:40px; background:#f8fafc;">
-                    <h2 style="color:#ef4444;">❌ حدث خطأ غير متوقع أثناء ربط الحساب</h2>
-                    <p>${e.message}</p>
-                    <script>setTimeout(() => window.close(), 3000);</script>
-                </body>
-            </html>
-        `);
-    }
-});
-
-// 3. حالة ربط حساب جوجل للأستاذ
-router.get('/auth/google/status', authenticate, authorize(['teacher']), async (req, res) => {
-    try {
-        const tokenRecord = await getTeacherGoogleToken(req.user.userId);
-        if (tokenRecord && tokenRecord.refresh_token) {
-            return res.json({
-                success: true,
-                is_connected: true,
-                google_email: tokenRecord.google_email || null,
-                updated_at: tokenRecord.updated_at || null
-            });
-        }
-        res.json({
-            success: true,
-            is_connected: false,
-            google_email: null
-        });
-    } catch (e) {
-        res.status(500).json({ success: false, is_connected: false, error: e.message });
-    }
-});
-
-// 4. إلغاء ربط حساب جوجل
-router.post('/auth/google/disconnect', authenticate, authorize(['teacher']), async (req, res) => {
-    try {
-        await removeTeacherGoogleToken(req.user.userId);
-        res.json({ success: true, message: 'تم إلغاء ربط حساب Google Meet بنجاح' });
-    } catch (e) {
-        res.status(500).json({ success: false, error: e.message });
-    }
-});
 
 // 5. رابط عام لطلب تسجيل الدخول عبر Google (/api/auth/google/url)
 router.get('/auth/google/url', async (req, res) => {
@@ -1303,20 +1139,21 @@ const {
 } = require('../utils/googleAuth');
 
 // 1. إرجاع إعدادات Google OAuth للواجهة الأمامية
-router.get('/google/config', (req, res) => {
+router.get(['/google/config', '/auth/google/config'], (req, res) => {
+    const rawClientId = process.env.GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID || '';
     res.json({
         success: true,
-        client_id: GOOGLE_CLIENT_ID
+        client_id: rawClientId.trim().replace(/^["']|["']$/g, '')
     });
 });
 
 // 2. توليد رابط تفويض Google OAuth للمصادقة
-router.get('/google/url', (req, res) => {
+router.get(['/google/url', '/auth/google/url'], (req, res) => {
     try {
         const { role = 'student', ref = '' } = req.query;
         const protocol = req.headers['x-forwarded-proto'] || req.protocol;
         const host = req.get('host');
-        const redirectUri = `${protocol}://${host}/api/auth/google/oauth-callback`;
+        const redirectUri = `${protocol}://${host}/api/auth/google/callback`;
         const stateObj = { role, ref, redirectUri };
         const state = encodeURIComponent(JSON.stringify(stateObj));
         const authUrl = getGoogleLoginAuthUrl(redirectUri, state);
@@ -1333,7 +1170,7 @@ router.get('/google/url', (req, res) => {
 });
 
 // 3. تسجيل الدخول أو إنشاء حساب جديد عبر Google
-router.post('/google', checkBanned, authLimiter, async (req, res) => {
+router.post(['/google', '/auth/google'], checkBanned, authLimiter, async (req, res) => {
     try {
         const { credential, code, role = 'student', ref, redirect_uri } = req.body;
 
@@ -1350,7 +1187,7 @@ router.post('/google', checkBanned, authLimiter, async (req, res) => {
         } else if (code) {
             const protocol = req.headers['x-forwarded-proto'] || req.protocol;
             const host = req.get('host');
-            const defaultRedirect = `${protocol}://${host}/api/auth/google/oauth-callback`;
+            const defaultRedirect = `${protocol}://${host}/api/auth/google/callback`;
             googleUser = await exchangeGoogleCode(code, redirect_uri || defaultRedirect);
         }
 
@@ -1591,8 +1428,12 @@ router.post('/google', checkBanned, authLimiter, async (req, res) => {
     }
 });
 
-// 4. معالجة إعادة التوجيه من Google OAuth Callback (Popup أو Redirect)
-router.get('/google/oauth-callback', async (req, res) => {
+
+
+// ============================================================
+// ✅ معالجة إعادة التوجيه من Google OAuth Callback لتسجيل الدخول والتسجيل
+// ============================================================
+router.get(['/google/oauth-callback', '/auth/google/oauth-callback', '/auth/google/callback', '/auth/google/callback/', '/google/callback'], async (req, res) => {
     try {
         const { code, state, error: googleError } = req.query;
         if (googleError || !code) {
@@ -1601,7 +1442,7 @@ router.get('/google/oauth-callback', async (req, res) => {
                 <html lang="ar" dir="rtl">
                 <head><meta charset="UTF-8"><title>فشل تسجيل الدخول</title></head>
                 <body style="font-family:sans-serif; text-align:center; padding:50px; background:#f8fafc;">
-                    <h2 style="color:#ef4444;">❌ تم إلغاء التسجيل عبر Google</h2>
+                    <h2 style="color:#ef4444;">❌ تم إلغاء العملية عبر Google</h2>
                     <p>${googleError || 'لم يتم استلام كود المصادقة'}</p>
                     <script>
                         if (window.opener) {
@@ -1619,20 +1460,25 @@ router.get('/google/oauth-callback', async (req, res) => {
         let role = 'student';
         let ref = '';
         let redirectUri = '';
+
         if (state) {
             try {
                 const parsed = JSON.parse(decodeURIComponent(state));
-                role = parsed.role || 'student';
-                ref = parsed.ref || '';
-                redirectUri = parsed.redirectUri || '';
+                if (parsed) {
+                    role = parsed.role || 'student';
+                    ref = parsed.ref || '';
+                    redirectUri = parsed.redirectUri || '';
+                }
             } catch (e) {
-                role = state;
+                if (state === 'teacher' || state === 'student') {
+                    role = state;
+                }
             }
         }
 
         const protocol = req.headers['x-forwarded-proto'] || req.protocol;
         const host = req.get('host');
-        const defaultRedirect = `${protocol}://${host}/api/auth/google/oauth-callback`;
+        const defaultRedirect = `${protocol}://${host}/api/auth/google/callback`;
         const effectiveRedirectUri = redirectUri || defaultRedirect;
 
         const googleUser = await exchangeGoogleCode(code, effectiveRedirectUri);
