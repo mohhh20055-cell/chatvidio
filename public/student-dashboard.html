@@ -3116,6 +3116,115 @@
     @media (max-width: 420px) {
         #studentChatMessagesArea [id^="msgBubble_"] { max-width: calc(100vw - 72px) !important; }
     }
+
+    /* ==========================================
+       DARK NAVBAR OVERRIDES (COOL BLUE THEME)
+       ========================================== */
+    .navbar {
+        background: #0b172a !important;
+        border-bottom: 1px solid rgba(56, 189, 248, 0.15) !important;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
+    }
+    .nav-logo span {
+        color: #ffffff !important;
+    }
+    .nav-logo i {
+        color: #38bdf8 !important;
+    }
+    .nav-tab {
+        color: #94a3b8 !important;
+    }
+    .nav-tab:hover {
+        background: rgba(255, 255, 255, 0.08) !important;
+        color: #ffffff !important;
+    }
+    .nav-tab.active {
+        background: #2563eb !important;
+        color: white !important;
+    }
+    .nav-notifications-btn, .nav-mobile-search-btn {
+        background: rgba(255, 255, 255, 0.08) !important;
+        color: #cbd5e1 !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        box-shadow: none !important;
+    }
+    .nav-notifications-btn:hover, .nav-mobile-search-btn:hover {
+        background: rgba(255, 255, 255, 0.15) !important;
+        color: #ffffff !important;
+    }
+    .nav-notifications-btn .notif-badge {
+        border: 2px solid #0b172a !important;
+    }
+    .nav-profile {
+        background: rgba(255, 255, 255, 0.08) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    }
+    .nav-profile:hover {
+        background: rgba(255, 255, 255, 0.15) !important;
+        border-color: rgba(56, 189, 248, 0.3) !important;
+    }
+    .nav-profile .profile-name {
+        color: #f1f5f9 !important;
+    }
+    .nav-profile .profile-chevron {
+        color: #94a3b8 !important;
+    }
+    .nav-profile img {
+        border: 2px solid rgba(255, 255, 255, 0.2) !important;
+    }
+
+    /* ALWAYS SHOW PULSING SMALL SCROLL BUTTONS TO PROMPT SCROLLING */
+    .nav-scroll-btn, .tab-scroll-btn {
+        display: flex !important;
+        width: 24px !important;
+        height: 24px !important;
+        min-width: 24px !important;
+        min-height: 24px !important;
+        font-size: 0.7rem !important;
+        background: rgba(11, 23, 42, 0.9) !important;
+        border: 1px solid rgba(56, 189, 248, 0.4) !important;
+        color: #38bdf8 !important;
+        box-shadow: 0 0 8px rgba(56, 189, 248, 0.3) !important;
+        animation: pulse-scroll-indicator 2s infinite ease-in-out !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    .tab-scroll-btn.right, .nav-scroll-btn[onclick*="right"] {
+        right: 2px !important;
+        left: auto !important;
+    }
+    .tab-scroll-btn.left, .nav-scroll-btn[onclick*="left"] {
+        left: 2px !important;
+        right: auto !important;
+    }
+    .tab-scroll-btn:hover, .nav-scroll-btn:hover {
+        background: #2563eb !important;
+        color: #ffffff !important;
+        transform: scale(1.15) !important;
+    }
+    @keyframes pulse-scroll-indicator {
+        0%, 100% { transform: scale(1); opacity: 0.8; box-shadow: 0 0 6px rgba(56, 189, 248, 0.3); }
+        50% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 12px rgba(56, 189, 248, 0.6); }
+    }
+    /* Add a fading overlay effect on the scrollable tabs list container to denote more items */
+    .nav-tabs-container::before, .nav-tabs-wrapper::before {
+        content: '';
+        position: absolute;
+        top: 0; bottom: 0; left: 0;
+        width: 30px;
+        background: linear-gradient(to right, #0b172a, transparent);
+        z-index: 2;
+        pointer-events: none;
+    }
+    .nav-tabs-container::after, .nav-tabs-wrapper::after {
+        content: '';
+        position: absolute;
+        top: 0; bottom: 0; right: 0;
+        width: 30px;
+        background: linear-gradient(to left, #0b172a, transparent);
+        z-index: 2;
+        pointer-events: none;
+    }
     </style>
 </head>
 <body>
