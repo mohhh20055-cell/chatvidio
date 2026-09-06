@@ -1943,9 +1943,23 @@ const handleTeacherZoomView = async (req, res) => {
 
         // إذا كانت الحصة عبر Google Meet أو مجانية، التحويل فوراً لرابط Google Meet
         const isFree = offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1 || parseFloat(offer.price || 0) === 0;
-        const meetUrl = (offer.meet_url && offer.meet_url.includes('meet.google.com') && !offer.meet_url.includes('jit.si'))
+        let meetUrl = (offer.meet_url && offer.meet_url.includes('meet.google.com') && !offer.meet_url.includes('jit.si'))
             ? offer.meet_url
             : ((offer.stream_url && offer.stream_url.includes('meet.google.com') && !offer.stream_url.includes('jit.si')) ? offer.stream_url : null);
+        
+        if (isFree && !meetUrl) {
+            const { generateFreeStreamRoom } = require('./utils/googleMeet');
+            const autoRoom = generateFreeStreamRoom(offer.id, offer.subject_name);
+            meetUrl = autoRoom.url;
+            // تحديث قاعدة البيانات في الخلفية
+            supabase.from('offers').update({
+                stream_url: meetUrl,
+                meet_url: meetUrl,
+                stream_platform: 'google_meet',
+                room_name: meetUrl
+            }).eq('id', offer.id).then(() => {}).catch(() => {});
+        }
+
         if ((isFree || offer.stream_platform === 'google_meet') && meetUrl) {
             return res.redirect(meetUrl);
         }
@@ -3465,9 +3479,23 @@ const handleStudentZoomView = async (req, res) => {
 
         // إذا كانت الحصة عبر Google Meet أو مجانية، التحويل فوراً لرابط Google Meet
         const isFree = offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1 || parseFloat(offer.price || 0) === 0;
-        const meetUrl = (offer.meet_url && offer.meet_url.includes('meet.google.com') && !offer.meet_url.includes('jit.si'))
+        let meetUrl = (offer.meet_url && offer.meet_url.includes('meet.google.com') && !offer.meet_url.includes('jit.si'))
             ? offer.meet_url
             : ((offer.stream_url && offer.stream_url.includes('meet.google.com') && !offer.stream_url.includes('jit.si')) ? offer.stream_url : null);
+        
+        if (isFree && !meetUrl) {
+            const { generateFreeStreamRoom } = require('./utils/googleMeet');
+            const autoRoom = generateFreeStreamRoom(offer.id, offer.subject_name);
+            meetUrl = autoRoom.url;
+            // تحديث قاعدة البيانات في الخلفية
+            supabase.from('offers').update({
+                stream_url: meetUrl,
+                meet_url: meetUrl,
+                stream_platform: 'google_meet',
+                room_name: meetUrl
+            }).eq('id', offer.id).then(() => {}).catch(() => {});
+        }
+
         if ((isFree || offer.stream_platform === 'google_meet') && meetUrl) {
             return res.redirect(meetUrl);
         }
