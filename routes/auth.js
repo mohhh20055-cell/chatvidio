@@ -1264,6 +1264,34 @@ router.post('/auth/google/disconnect', authenticate, authorize(['teacher']), asy
     }
 });
 
+// 5. رابط عام لطلب تسجيل الدخول عبر Google (/api/auth/google/url)
+router.get('/auth/google/url', async (req, res) => {
+    try {
+        const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+        const host = req.get('host');
+        const redirectUri = `${protocol}://${host}/api/auth/google/callback`;
+        const role = req.query.role || 'student';
+        
+        if (!process.env.GOOGLE_CLIENT_ID) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'لم يتم إعداد Google Client ID في الخادم.' 
+            });
+        }
+        
+        const authUrl = getGoogleAuthUrl(redirectUri, JSON.stringify({ role, type: 'login' }));
+        
+        res.json({
+            success: true,
+            url: authUrl,
+            redirect_uri: redirectUri
+        });
+    } catch (e) {
+        logger.error('خطأ في توليد رابط تسجيل الدخول مع جوجل:', e.message);
+        res.status(500).json({ success: false, error: 'تعذر إنشاء رابط تسجيل الدخول مع Google' });
+    }
+});
+
 // ============================================================
 // ✅ مسارات المصادقة والتسجيل عبر Google & إكمال الملف الشخصي
 // ============================================================
