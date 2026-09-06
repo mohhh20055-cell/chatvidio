@@ -201,9 +201,16 @@ function processUserProfile(user, role) {
     if (!user) return user;
     
     // تأمين الصورة الشخصية
-    const profile_image_url = user.profile_url || getPublicImageUrl('profiles', role === 'teacher' ? 'teachers' : 'students', user.profile_image);
+    const rawPic = user.profile_url || user.profile_image;
+    const profile_image_url = (rawPic && (rawPic.startsWith('http://') || rawPic.startsWith('https://') || rawPic.startsWith('data:'))) 
+        ? rawPic 
+        : getPublicImageUrl('profiles', role === 'teacher' ? 'teachers' : 'students', user.profile_image);
+    
     user.profile_image = profile_image_url;
     user.profile_image_url = profile_image_url;
+    user.profile_url = profile_image_url;
+    user.avatar = profile_image_url;
+    user.avatar_url = profile_image_url;
     
     // تأمين الروابط الأخرى للأستاذ
     if (role === 'teacher') {

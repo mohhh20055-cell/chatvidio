@@ -1201,17 +1201,16 @@ router.post(['/google', '/auth/google'], checkBanned, authLimiter, async (req, r
         const email = googleUser.email.toLowerCase().trim();
         const fullName = (googleUser.name || email.split('@')[0]).trim();
         const profileImage = googleUser.picture || null;
-        const targetRole = (role === 'teacher' || role === 'admin') ? role : 'student';
+        const targetRole = (role === 'teacher' || role === 'admin') ? 'teacher' : 'student';
 
         logger.info(`🔑 محاولة دخول / تسجيل عبر Google: ${email} كـ ${targetRole}`);
 
-        // التحقق من وجود الحساب في جدول الأساتذة
+        // التحقق من وجود الحساب في جدول الأساتذة أو الطلاب
         let teacher = await getOne('teachers', 'email', email);
-        // التحقق من وجود الحساب في جدول الطلاب
         let student = await getOne('students', 'email', email);
 
-        // الحالة 1: المستخدم مسجل بالفعل كأستاذ
-        if (teacher) {
+        // الحالة 1: تسجيل دخول أستاذ موجود
+        if (targetRole === 'teacher' && teacher) {
             if (teacher.is_banned) {
                 return res.status(403).json({
                     success: false,
@@ -1219,22 +1218,14 @@ router.post(['/google', '/auth/google'], checkBanned, authLimiter, async (req, r
                 });
             }
 
-            // تحديث صورة الملف الشخصي إذا لم تكن موجودة
-            if (!teacher.profile_image && profileImage) {
+            // تحديث صورة الملف الشخصي من حساب Google تلقائياً
+            if (profileImage) {
                 try {
                     await update('teachers', teacher.id, { profile_image: profileImage, profile_url: profileImage });
                     teacher.profile_image = profileImage;
                     teacher.profile_url = profileImage;
                 } catch (e) {}
             }
-
-            const isProfileComplete = Boolean(
-                teacher.phone && 
-                (teacher.specialization || teacher.subject) && 
-                (teacher.teaching_level || teacher.education_level) && 
-                teacher.profile_completion !== false
-            );
-            const requiresCompletion = !isProfileComplete;
 
             const token = generateToken(teacher.id, 'teacher', email);
 
@@ -1244,18 +1235,18 @@ router.post(['/google', '/auth/google'], checkBanned, authLimiter, async (req, r
                 token: token,
                 role: 'teacher',
                 redirectTo: '/teacher-dashboard.html',
-                requires_profile_completion: requiresCompletion,
+                requires_profile_completion: false, // لا نطلب الإكمال بعد المرة الأولى
                 user: processUserProfile({
                     ...teacher,
                     role: 'teacher',
-                    requires_profile_completion: requiresCompletion,
-                    profile_completion: !requiresCompletion
+                    requires_profile_completion: false,
+                    profile_completion: true
                 }, 'teacher')
             });
         }
 
-        // الحالة 2: المستخدم مسجل بالفعل كطالب
-        if (student) {
+        // الحالة 2: تسجيل دخول طالب موجود
+        if (targetRole === 'student' && student) {
             if (student.is_banned) {
                 return res.status(403).json({
                     success: false,
@@ -1263,21 +1254,14 @@ router.post(['/google', '/auth/google'], checkBanned, authLimiter, async (req, r
                 });
             }
 
-            // تحديث صورة الملف الشخصي إذا لم تكن موجودة
-            if (!student.profile_image && profileImage) {
+            // تحديث صورة الملف الشخصي من حساب Google تلقائياً
+            if (profileImage) {
                 try {
                     await update('students', student.id, { profile_image: profileImage, profile_url: profileImage });
                     student.profile_image = profileImage;
                     student.profile_url = profileImage;
                 } catch (e) {}
             }
-
-            const isProfileComplete = Boolean(
-                student.phone && 
-                student.education_level && 
-                student.profile_completion !== false
-            );
-            const requiresCompletion = !isProfileComplete;
 
             const token = generateToken(student.id, 'student', email);
 
@@ -1287,13 +1271,39 @@ router.post(['/google', '/auth/google'], checkBanned, authLimiter, async (req, r
                 token: token,
                 role: 'student',
                 redirectTo: '/student-dashboard.html',
-                requires_profile_completion: requiresCompletion,
+                requires_profile_completion: false, // لا نطلب الإكمال بعد المرة الأولى
                 user: processUserProfile({
                     ...student,
                     role: 'student',
-                    requires_profile_completion: requiresCompletion,
-                    profile_completion: !requiresCompletion
+                    requires_profile_completion: false,
+                    profile_completion: true
                 }, 'student')
+            });
+        }
+
+        // في حال كان يمتلك حساب أستاذ وسجل بصفة طالب بدون وجود حساب طالب
+        if (teacher && !student) {
+            if (profileImage) {
+                try {
+                    await update('teachers', teacher.id, { profile_image: profileImage, profile_url: profileImage });
+                    teacher.profile_image = profileImage;
+                    teacher.profile_url = profileImage;
+                } catch (e) {}
+            }
+            const token = generateToken(teacher.id, 'teacher', email);
+            return res.json({
+                success: true,
+                is_new: false,
+                token: token,
+                role: 'teacher',
+                redirectTo: '/teacher-dashboard.html',
+                requires_profile_completion: false,
+                user: processUserProfile({
+                    ...teacher,
+                    role: 'teacher',
+                    requires_profile_completion: false,
+                    profile_completion: true
+                }, 'teacher')
             });
         }
 
@@ -1462,19 +1472,24 @@ router.get(['/google/oauth-callback', '/auth/google/oauth-callback', '/auth/goog
         let redirectUri = '';
 
         if (state) {
+            let parsed = null;
             try {
-                const parsed = JSON.parse(decodeURIComponent(state));
-                if (parsed) {
-                    role = parsed.role || 'student';
-                    ref = parsed.ref || '';
-                    redirectUri = parsed.redirectUri || '';
-                }
-            } catch (e) {
-                if (state === 'teacher' || state === 'student') {
-                    role = state;
-                }
+                parsed = JSON.parse(state);
+            } catch (e1) {
+                try {
+                    parsed = JSON.parse(decodeURIComponent(state));
+                } catch (e2) {}
+            }
+            if (parsed) {
+                role = parsed.role || 'student';
+                ref = parsed.ref || '';
+                redirectUri = parsed.redirectUri || '';
+            } else if (state === 'teacher' || state === 'student') {
+                role = state;
             }
         }
+
+        const targetRole = (role === 'teacher' || role === 'admin') ? 'teacher' : 'student';
 
         const protocol = req.headers['x-forwarded-proto'] || req.protocol;
         const host = req.get('host');
@@ -1489,27 +1504,65 @@ router.get(['/google/oauth-callback', '/auth/google/oauth-callback', '/auth/goog
         let teacher = await getOne('teachers', 'email', email);
         let student = await getOne('students', 'email', email);
 
-        let finalRole = role;
+        let finalRole = targetRole;
         let finalUser = null;
         let token = null;
         let requiresCompletion = false;
 
-        if (teacher) {
+        if (targetRole === 'teacher' && teacher) {
             finalRole = 'teacher';
             finalUser = teacher;
             token = generateToken(teacher.id, 'teacher', email);
-            requiresCompletion = !teacher.phone || !teacher.specialization || !teacher.teaching_level || !teacher.profile_completion;
-        } else if (student) {
+            requiresCompletion = false;
+            if (profileImage) {
+                try {
+                    await update('teachers', teacher.id, { profile_image: profileImage, profile_url: profileImage });
+                    finalUser.profile_image = profileImage;
+                    finalUser.profile_url = profileImage;
+                } catch (e) {}
+            }
+        } else if (targetRole === 'student' && student) {
             finalRole = 'student';
             finalUser = student;
             token = generateToken(student.id, 'student', email);
-            requiresCompletion = !student.phone || !student.education_level || !student.profile_completion;
+            requiresCompletion = false;
+            if (profileImage) {
+                try {
+                    await update('students', student.id, { profile_image: profileImage, profile_url: profileImage });
+                    finalUser.profile_image = profileImage;
+                    finalUser.profile_url = profileImage;
+                } catch (e) {}
+            }
+        } else if (teacher && !student) {
+            finalRole = 'teacher';
+            finalUser = teacher;
+            token = generateToken(teacher.id, 'teacher', email);
+            requiresCompletion = false;
+            if (profileImage) {
+                try {
+                    await update('teachers', teacher.id, { profile_image: profileImage, profile_url: profileImage });
+                    finalUser.profile_image = profileImage;
+                    finalUser.profile_url = profileImage;
+                } catch (e) {}
+            }
+        } else if (student && !teacher && targetRole === 'student') {
+            finalRole = 'student';
+            finalUser = student;
+            token = generateToken(student.id, 'student', email);
+            requiresCompletion = false;
+            if (profileImage) {
+                try {
+                    await update('students', student.id, { profile_image: profileImage, profile_url: profileImage });
+                    finalUser.profile_image = profileImage;
+                    finalUser.profile_url = profileImage;
+                } catch (e) {}
+            }
         } else {
-            // مستخدم جديد
+            // مستخدم جديد تماماً
             const randomPassword = crypto.randomBytes(24).toString('hex');
             const hashedPassword = await bcrypt.hash(randomPassword, SALT_ROUNDS);
 
-            if (role === 'teacher') {
+            if (targetRole === 'teacher') {
                 finalRole = 'teacher';
                 finalUser = await insert('teachers', {
                     full_name: fullName,
@@ -1538,7 +1591,7 @@ router.get(['/google/oauth-callback', '/auth/google/oauth-callback', '/auth/goog
                 } catch (e) {}
                 if (ref) await processReferralOnRegister(ref, finalUser.id, 'teacher');
                 token = generateToken(finalUser.id, 'teacher', email);
-                requiresCompletion = true;
+                requiresCompletion = true; // إكمال الملف مطلوب فقط للجدد أول مرة
             } else {
                 finalRole = 'student';
                 finalUser = await insert('students', {
@@ -1563,7 +1616,7 @@ router.get(['/google/oauth-callback', '/auth/google/oauth-callback', '/auth/goog
                 } catch (e) {}
                 if (ref) await processReferralOnRegister(ref, finalUser.id, 'student');
                 token = generateToken(finalUser.id, 'student', email);
-                requiresCompletion = true;
+                requiresCompletion = true; // إكمال الملف مطلوب فقط للجدد أول مرة
             }
         }
 
