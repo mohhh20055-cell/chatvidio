@@ -9810,6 +9810,8 @@ function updateUI() {
     document.addEventListener('DOMContentLoaded', () => {
         setTimeout(checkGoogleMeetStatus, 1000);
     });
+
+    function openGoogleMeetHostModal(offerId, sessionNumber = 1) {
         if (checkGuestAction()) return;
         const modal = document.getElementById('googleMeetHostModal');
         if (!modal) return;
