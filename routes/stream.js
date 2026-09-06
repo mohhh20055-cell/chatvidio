@@ -13,7 +13,7 @@ const { supabase } = require('../config/database');
 const { authenticate, authorize, checkBanned, checkActiveStream, isOwner, validateOfferOwnership, validateStudentAccess, checkStreamActive, checkNoActiveStream } = require('../middleware/auth');
 const { getOne, insert, update, autoBookFreeSession, loadLocalTeacherFollowers } = require('../utils/helpers');
 const { verifyToken } = require('../utils/jwt');
-const { generateFreeStreamRoom, generateGoogleMeetRoom, formatGoogleMeetUrl, GOOGLE_MEET_HOST_CREATE_URL } = require('../utils/googleMeet');
+const { generateFreeStreamRoom, generateGoogleMeetRoom, formatGoogleMeetUrl, createGoogleMeetRoomViaApi, GOOGLE_MEET_HOST_CREATE_URL } = require('../utils/googleMeet');
 const { sendPushNotification } = require('../utils/notification');
 
 // ✅ استيراد نظام التحقق المستقل من وقت البث
@@ -85,11 +85,17 @@ const handleStreamStart = async (req, res) => {
             let meetUrl = reqMeetUrl || (existingUrl && (existingUrl.includes('meet.google.com') || existingUrl.includes('meet.jit.si')) ? existingUrl : null);
             let platform = 'jitsi';
 
-            // توليد غرفة فورية ومؤتمتة 100% إن لم تكن موجودة بالفعل
+            // توليد غرفة رسمية تلقائياً عبر Google Meet API إن لم توجد غرفة مخصصة
             if (!meetUrl) {
-                const autoRoom = generateFreeStreamRoom(offer_id, offer.subject_name);
-                meetUrl = autoRoom.url;
-                platform = autoRoom.platform;
+                const apiMeetRes = await createGoogleMeetRoomViaApi(offer.teacher_id, offer.subject_name, offer.offer_date, offer.duration);
+                if (apiMeetRes && apiMeetRes.success && apiMeetRes.url) {
+                    meetUrl = apiMeetRes.url;
+                    platform = 'google_meet';
+                } else {
+                    const autoRoom = generateFreeStreamRoom(offer_id, offer.subject_name);
+                    meetUrl = autoRoom.url;
+                    platform = autoRoom.platform;
+                }
             } else if (meetUrl.includes('meet.google.com')) {
                 platform = 'google_meet';
             }

@@ -5191,13 +5191,30 @@
                 </span>
             </div>
             <p style="margin: 0 0 8px 0; color:#334155; font-size:0.82rem;">
-                يتم <strong>توليد وتجهيز غرفة البث التفاعلية المباشرة تلقائياً</strong> فور إنشاء الدرس وبدء البث مع كامل صلاحيات الإدارة ومشاركة الشاشة. لا يلزمك أي إنشاء يدوي.
+                يتم <strong>توليد وتجهيز غرفة البث التفاعلية المباشرة تلقائياً عبر Google Meet API</strong> فور إنشاء الدرس وبدء البث مع كامل صلاحيات المضيف وإدارة الطلاب.
             </p>
-            <div style="background:white; padding:10px; border-radius:8px; border:1px solid #bfdbfe;">
+            <div id="googleMeetConnectBox" style="margin-top:10px; background:#fff; padding:12px; border-radius:10px; border:1.5px solid #bfdbfe;">
+                <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                    <div>
+                        <div style="font-weight:800; color:#1e3a8a; font-size:0.88rem; display:flex; align-items:center; gap:6px;">
+                            <i class="fab fa-google" style="color:#4285F4;"></i> ربط حساب Google Meet (مرة واحدة فقط)
+                        </div>
+                        <div id="googleMeetStatusText" style="font-size:0.78rem; color:#64748b; margin-top:2px;">
+                            جاري التحقق من حالة الربط...
+                        </div>
+                    </div>
+                    <div id="googleMeetActionBtnContainer">
+                        <button type="button" onclick="connectGoogleMeetAccount()" style="background:#4285f4; color:white; border:none; padding:8px 14px; border-radius:8px; font-weight:700; font-size:0.82rem; cursor:pointer; display:flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(66,133,244,0.3);">
+                            <i class="fab fa-google"></i> ربط حساب Google الآن
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div style="background:white; padding:10px; border-radius:8px; border:1px solid #bfdbfe; margin-top:10px;">
                 <label style="display:block; font-size:0.78rem; font-weight:700; color:#475569; margin-bottom:4px;">
-                    (اختياري) هل تفضل رابط مخصص مثل Google Meet؟ اتركه فارغاً للتوليد التلقائي:
+                    (اختياري) هل تفضل رابط مخصص مسبقاً؟ اتركه فارغاً للتوليد التلقائي عبر API:
                 </label>
-                <input type="text" id="freeMeetUrl" placeholder="اختياري: الصق رابط Google Meet هنا إن رغبت، أو اتركه فارغاً للتوليد الآلي..." style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.82rem; background:#f8fafc;">
+                <input type="text" id="freeMeetUrl" placeholder="اختياري: الصق رابط Google Meet مخصص إن رغبت، أو اتركه فارغاً للتوليد الآلي..." style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.82rem; background:#f8fafc;">
             </div>
         </div>
 
@@ -9690,7 +9707,109 @@ function updateUI() {
     }
     window.completeSessionEscrow = completeSessionEscrow;
 
-    function openGoogleMeetHostModal(offerId, sessionNumber = 1) {
+    // ============================================================
+    // ✅ وظائف إدارة ربط حساب Google Meet OAuth 2.0
+    // ============================================================
+    async function checkGoogleMeetStatus() {
+        try {
+            const token = localStorage.getItem('token') || localStorage.getItem('jwt');
+            if (!token) return;
+            const res = await fetch('/api/auth/google/status', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            
+            const statusText = document.getElementById('googleMeetStatusText');
+            const btnContainer = document.getElementById('googleMeetActionBtnContainer');
+            
+            if (data.success && data.is_connected) {
+                if (statusText) {
+                    statusText.innerHTML = `<span style="color:#16a34a; font-weight:700;">✅ حساب Google متصل بنجاح (${data.google_email || ''})</span> - يتم إنشاء غرف Google Meet تلقائياً برمجياً عبر API`;
+                }
+                if (btnContainer) {
+                    btnContainer.innerHTML = `
+                        <button type="button" onclick="disconnectGoogleMeetAccount()" style="background:#f1f5f9; color:#ef4444; border:1px solid #fca5a5; padding:6px 12px; border-radius:6px; font-weight:700; font-size:0.78rem; cursor:pointer;">
+                            <i class="fas fa-unlink"></i> إلغاء الربط
+                        </button>
+                    `;
+                }
+            } else {
+                if (statusText) {
+                    statusText.innerHTML = `⚠️ لم تقم بربط حساب Google بعد. اربط حسابك لمرة واحدة فقط لإنشاء الغرف تلقائياً.`;
+                }
+                if (btnContainer) {
+                    btnContainer.innerHTML = `
+                        <button type="button" onclick="connectGoogleMeetAccount()" style="background:#4285f4; color:white; border:none; padding:8px 14px; border-radius:8px; font-weight:700; font-size:0.82rem; cursor:pointer; display:flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(66,133,244,0.3);">
+                            <i class="fab fa-google"></i> ربط حساب Google الآن
+                        </button>
+                    `;
+                }
+            }
+        } catch(e) {
+            console.error('Error checking Google Meet status:', e);
+        }
+    }
+    window.checkGoogleMeetStatus = checkGoogleMeetStatus;
+
+    async function connectGoogleMeetAccount() {
+        if (checkGuestAction()) return;
+        try {
+            const token = localStorage.getItem('token') || localStorage.getItem('jwt');
+            const res = await fetch('/api/auth/google/teacher-connect', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            
+            if (data.success && data.url) {
+                const width = 550;
+                const height = 650;
+                const left = (window.innerWidth - width) / 2 + window.screenX;
+                const top = (window.innerHeight - height) / 2 + window.screenY;
+                
+                const popup = window.open(data.url, 'GoogleMeetOAuth', `width=${width},height=${height},top=${top},left=${left}`);
+                if (!popup) {
+                    window.location.href = data.url;
+                }
+            } else {
+                showToast(data.error || 'تعذر جلب رابط الاتصال بجوجل', 'error');
+            }
+        } catch(e) {
+            showToast('حدث خطأ أثناء فتح نافذة الربط مع جوجل', 'error');
+        }
+    }
+    window.connectGoogleMeetAccount = connectGoogleMeetAccount;
+
+    async function disconnectGoogleMeetAccount() {
+        if (checkGuestAction()) return;
+        if (!confirm('هل أنت تأكد من إلغاء ربط حساب Google Meet؟')) return;
+        try {
+            const token = localStorage.getItem('token') || localStorage.getItem('jwt');
+            const res = await fetch('/api/auth/google/disconnect', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast('✅ تم إلغاء ربط حساب Google Meet بنجاح', 'success');
+                checkGoogleMeetStatus();
+            }
+        } catch(e) {
+            showToast('حدث خطأ أثناء إلغاء الربط', 'error');
+        }
+    }
+    window.disconnectGoogleMeetAccount = disconnectGoogleMeetAccount;
+
+    window.addEventListener('message', function(event) {
+        if (event.data && event.data.type === 'GOOGLE_MEET_CONNECTED') {
+            showToast('🎉 تم ربط حساب Google Meet بنجاح! يتم الآن توليد الغرف تلقائياً.', 'success');
+            checkGoogleMeetStatus();
+        }
+    });
+
+    // استدعاء التحقق عند تحميل الصفحة
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(checkGoogleMeetStatus, 1000);
+    });
         if (checkGuestAction()) return;
         const modal = document.getElementById('googleMeetHostModal');
         if (!modal) return;

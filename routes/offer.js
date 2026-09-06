@@ -21,7 +21,7 @@ const upload = multer({
 const { processStreamPayments, archiveStreamLog } = require('../utils/streamVerification');
 const { sendPushNotification } = require('../utils/notification');
 const { calculateBookingRefundDetails } = require('../utils/refundCalculator');
-const { generateFreeStreamRoom, generateGoogleMeetRoom, formatGoogleMeetUrl, GOOGLE_MEET_HOST_CREATE_URL } = require('../utils/googleMeet');
+const { generateFreeStreamRoom, generateGoogleMeetRoom, formatGoogleMeetUrl, createGoogleMeetRoomViaApi, GOOGLE_MEET_HOST_CREATE_URL } = require('../utils/googleMeet');
 
 // ✅ دالة مساعدة لحساب واسترجاع الوقت المتبقي للبث
 function calculateOfferRemainingSeconds(offer) {
@@ -383,11 +383,27 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
             });
         }
 
-        // ✅ توليد غرفة البث المباشر تلقائياً للحصة المجانية (أو استخدام رابط مخصص إن تم إدخاله)
+        // ✅ توليد غرفة البث المباشر تلقائياً للحصة المجانية (عبر Google Meet API إن كان الحساب مربوطاً، أو التوليد الآلي)
         let freeRoomDetails = null;
         if (isFreeOffer) {
             const customMeet = req.body.meet_url || req.body.stream_url;
-            freeRoomDetails = generateFreeStreamRoom(teacher_id, subject_name.trim(), customMeet);
+            if (customMeet) {
+                freeRoomDetails = generateFreeStreamRoom(teacher_id, subject_name.trim(), customMeet);
+            } else {
+                // المحاولة البرمجية لإنشاء غرفة رسمية عبر Google Meet API
+                const apiMeetRes = await createGoogleMeetRoomViaApi(teacher_id, subject_name.trim(), offerDateFormatted, parsedDuration);
+                if (apiMeetRes && apiMeetRes.success && apiMeetRes.url) {
+                    freeRoomDetails = {
+                        url: apiMeetRes.url,
+                        room_name: apiMeetRes.url,
+                        platform: 'google_meet',
+                        is_free: true,
+                        via_api: true
+                    };
+                } else {
+                    freeRoomDetails = generateFreeStreamRoom(teacher_id, subject_name.trim());
+                }
+            }
         }
 
         // ✅ إدخال الدرس في قاعدة البيانات
