@@ -85,18 +85,22 @@ const handleStreamStart = async (req, res) => {
             let meetUrl = reqMeetUrl || (existingUrl && (existingUrl.includes('meet.google.com') || existingUrl.includes('meet.jit.si')) ? existingUrl : null);
             let platform = 'jitsi';
 
-            // توليد غرفة رسمية تلقائياً عبر Google Meet API إن لم توجد غرفة مخصصة
-            if (!meetUrl) {
+            // أولوية مطلقة لـ Google Meet:
+            // 1. إذا أدخل الأستاذ رابطاً أو كان لديه رابط Google Meet مسجل مسبقاً
+            // 2. أو إنشاء غرفة Google Meet رسمية تلقائياً عبر API
+            if (!meetUrl || !meetUrl.includes('meet.google.com')) {
                 const apiMeetRes = await createGoogleMeetRoomViaApi(offer.teacher_id, offer.subject_name, offer.offer_date, offer.duration);
                 if (apiMeetRes && apiMeetRes.success && apiMeetRes.url) {
                     meetUrl = apiMeetRes.url;
                     platform = 'google_meet';
-                } else {
+                } else if (!meetUrl) {
+                    // في حال تعذر الاتصال بـ Google API ولم يتم إدخال رابط مخصص
                     const autoRoom = generateFreeStreamRoom(offer_id, offer.subject_name);
                     meetUrl = autoRoom.url;
                     platform = autoRoom.platform;
                 }
-            } else if (meetUrl.includes('meet.google.com')) {
+            }
+            if (meetUrl && meetUrl.includes('meet.google.com')) {
                 platform = 'google_meet';
             }
 

@@ -9280,7 +9280,6 @@ function updateUI() {
                                     <div style="display:flex; gap:4px;">
                                         ${(offer.meet_url || offer.stream_url) ? `
                                             <button onclick="navigator.clipboard.writeText('${offer.meet_url || offer.stream_url}'); showToast('تم نسخ الرابط بنجاح!', 'success');" style="background:#2563eb; color:white; border:none; padding:3px 8px; border-radius:4px; font-size:0.72rem; font-weight:700; cursor:pointer;" title="نسخ رابط الاجتماع">نسخ الرابط</button>
-                                            <button onclick="window.open('${offer.meet_url || offer.stream_url}', '_blank')" style="background:#059669; color:white; border:none; padding:3px 8px; border-radius:4px; font-size:0.72rem; font-weight:700; cursor:pointer;" title="دخول الغرفة كمضيف"><i class="fas fa-crown"></i> دخول كمضيف</button>
                                         ` : ''}
                                         <button onclick="openGoogleMeetHostModal(${offer.id})" style="background:#4f46e5; color:white; border:none; padding:3px 8px; border-radius:4px; font-size:0.72rem; font-weight:700; cursor:pointer;" title="تخصيص رابط Google Meet أو رابط خارجي">✏️ تخصيص الرابط</button>
                                     </div>
