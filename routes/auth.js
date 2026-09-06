@@ -1100,15 +1100,25 @@ router.get('/me', authenticate, async (req, res) => {
 
 
 
+// ============================================================
+// ✅ مسارات المصادقة والتسجيل عبر Google & إكمال الملف الشخصي
+// ============================================================
+const { 
+    GOOGLE_CLIENT_ID, 
+    verifyGoogleIdToken, 
+    exchangeGoogleCode, 
+    getGoogleAuthUrl 
+} = require('../utils/googleAuth');
+
 // 5. رابط عام لطلب تسجيل الدخول عبر Google (/api/auth/google/url)
-router.get('/auth/google/url', async (req, res) => {
+router.get(['/auth/google/url', '/google/url'], async (req, res) => {
     try {
         const protocol = req.headers['x-forwarded-proto'] || req.protocol;
         const host = req.get('host');
         const redirectUri = `${protocol}://${host}/api/auth/google/callback`;
         const role = req.query.role || 'student';
         
-        if (!process.env.GOOGLE_CLIENT_ID) {
+        if (!process.env.GOOGLE_CLIENT_ID && !GOOGLE_CLIENT_ID) {
             return res.status(400).json({ 
                 success: false, 
                 error: 'لم يتم إعداد Google Client ID في الخادم.' 
@@ -1128,16 +1138,6 @@ router.get('/auth/google/url', async (req, res) => {
     }
 });
 
-// ============================================================
-// ✅ مسارات المصادقة والتسجيل عبر Google & إكمال الملف الشخصي
-// ============================================================
-const { 
-    GOOGLE_CLIENT_ID, 
-    verifyGoogleIdToken, 
-    exchangeGoogleCode, 
-    getGoogleAuthUrl: getGoogleLoginAuthUrl 
-} = require('../utils/googleAuth');
-
 // 1. إرجاع إعدادات Google OAuth للواجهة الأمامية
 router.get(['/google/config', '/auth/google/config'], (req, res) => {
     const rawClientId = process.env.GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID || '';
@@ -1156,7 +1156,7 @@ router.get(['/google/url', '/auth/google/url'], (req, res) => {
         const redirectUri = `${protocol}://${host}/api/auth/google/callback`;
         const stateObj = { role, ref, redirectUri };
         const state = encodeURIComponent(JSON.stringify(stateObj));
-        const authUrl = getGoogleLoginAuthUrl(redirectUri, state);
+        const authUrl = getGoogleAuthUrl(redirectUri, state);
 
         res.json({
             success: true,
