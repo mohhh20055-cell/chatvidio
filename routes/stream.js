@@ -13,7 +13,7 @@ const { supabase } = require('../config/database');
 const { authenticate, authorize, checkBanned, checkActiveStream, isOwner, validateOfferOwnership, validateStudentAccess, checkStreamActive, checkNoActiveStream } = require('../middleware/auth');
 const { getOne, insert, update, autoBookFreeSession, loadLocalTeacherFollowers } = require('../utils/helpers');
 const { verifyToken } = require('../utils/jwt');
-const { generateGoogleMeetRoom, formatGoogleMeetUrl, GOOGLE_MEET_HOST_CREATE_URL } = require('../utils/googleMeet');
+const { generateFreeStreamRoom, generateGoogleMeetRoom, formatGoogleMeetUrl, GOOGLE_MEET_HOST_CREATE_URL } = require('../utils/googleMeet');
 const { sendPushNotification } = require('../utils/notification');
 
 // ✅ استيراد نظام التحقق المستقل من وقت البث
@@ -76,21 +76,22 @@ const handleStreamStart = async (req, res) => {
             return res.status(400).json({ success: false, error: 'لا يمكن إعادة تشغيل حصة منتهية أو ملغاة' });
         }
 
-        // ✅ التحقق إن كانت الحصة مجانية لتشغيلها تلقائياً عبر Google Meet
-        const isFreeOffer = offer.is_free === true || offer.is_free === 1 || offer.is_free === 'true' || parseFloat(offer.price || 0) === 0 || offer.stream_platform === 'google_meet';
+        // ✅ التحقق إن كانت الحصة مجانية لتشغيلها تلقائياً وفورياً
+        const isFreeOffer = offer.is_free === true || offer.is_free === 1 || offer.is_free === 'true' || parseFloat(offer.price || 0) === 0 || offer.stream_platform === 'google_meet' || offer.stream_platform === 'jitsi';
 
         if (isFreeOffer) {
             let reqMeetUrl = req.body && req.body.meet_url ? formatGoogleMeetUrl(req.body.meet_url) : null;
-            let meetUrl = reqMeetUrl || offer.meet_url || (offer.stream_url && offer.stream_url.includes('meet.google.com') ? offer.stream_url : null);
-            
-            // إذا لم يكن هناك رابط صالح بعد، نطلب من الأستاذ فتح الرابط كمضيف
+            let existingUrl = offer.meet_url || offer.stream_url;
+            let meetUrl = reqMeetUrl || (existingUrl && (existingUrl.includes('meet.google.com') || existingUrl.includes('meet.jit.si')) ? existingUrl : null);
+            let platform = 'jitsi';
+
+            // توليد غرفة فورية ومؤتمتة 100% إن لم تكن موجودة بالفعل
             if (!meetUrl) {
-                return res.json({
-                    success: false,
-                    requires_meet_url: true,
-                    host_create_url: GOOGLE_MEET_HOST_CREATE_URL,
-                    message: 'يرجى فتح غرفة الاجتماع كمضيف (Host) في Google Meet ولصق الرابط لبدء البث وإشعار الطلاب.'
-                });
+                const autoRoom = generateFreeStreamRoom(offer_id, offer.subject_name);
+                meetUrl = autoRoom.url;
+                platform = autoRoom.platform;
+            } else if (meetUrl.includes('meet.google.com')) {
+                platform = 'google_meet';
             }
 
             // ✅ حفظ بيانات البث المجاني في جدول الدروس
@@ -99,7 +100,7 @@ const handleStreamStart = async (req, res) => {
                 .update({
                     stream_url: meetUrl,
                     meet_url: meetUrl,
-                    stream_platform: 'google_meet',
+                    stream_platform: platform,
                     status: 'live',
                     stream_active: true,
                     is_paused: false,
@@ -110,7 +111,7 @@ const handleStreamStart = async (req, res) => {
 
             // ✅ تسجيل بداية البث من الخادم (نظام التحقق المستقل)
             await recordStreamStart(offer_id, req.user.userId);
-            console.log(`✅ تم تسجيل بداية البث المجاني من الخادم عبر Google Meet: ${new Date().toISOString()}`);
+            console.log(`✅ تم تسجيل بداية البث المجاني المؤتمت من الخادم: ${new Date().toISOString()}`);
 
             const teacher = await getOne('teachers', 'id', offer.teacher_id);
             const teacherName = teacher ? teacher.full_name : 'الأستاذ';
@@ -144,8 +145,8 @@ const handleStreamStart = async (req, res) => {
                 }
             } catch(e) {}
 
-            const notifTitle = '🔴 بدأ البث المجاني الآن عبر Google Meet!';
-            const notifMessage = `بدأ الآن البث المباشر المجاني لحصة "${offer.subject_name || 'الدرس'}" مع الأستاذ ${teacherName}! انضم الآن مباشرة عبر رابط Google Meet: ${meetUrl}`;
+            const notifTitle = '🔴 بدأ البث المجاني التفاعلي الآن!';
+            const notifMessage = `بدأ الآن البث المباشر المجاني لحصة "${offer.subject_name || 'الدرس'}" مع الأستاذ ${teacherName}! اضغط هنا للدخول الفوري: ${meetUrl}`;
 
             for (const sId of targetStudents) {
                 try {
@@ -158,7 +159,7 @@ const handleStreamStart = async (req, res) => {
                         meet_url: meetUrl,
                         stream_url: meetUrl,
                         is_free: true,
-                        stream_platform: 'google_meet',
+                        stream_platform: platform,
                         is_read: false,
                         created_at: new Date().toISOString()
                     });
@@ -175,12 +176,13 @@ const handleStreamStart = async (req, res) => {
             return res.json({
                 success: true,
                 is_free: true,
-                stream_platform: 'google_meet',
+                stream_platform: platform,
                 room_url: meetUrl,
                 meet_url: meetUrl,
+                stream_url: meetUrl,
                 duration: offer.duration,
                 students_count: targetStudents.size,
-                message: 'تم إطلاق البث المجاني عبر Google Meet وإشعار جميع المتابعين والطلاب برابط الدخول المباشر بنجاح!'
+                message: '✅ تم إطلاق البث المباشر المجاني وإشعار جميع الطلاب بنجاح!'
             });
         }
 
@@ -541,11 +543,16 @@ router.get('/student-status/:offer_id/:student_id', authenticate, validateStuden
             activeCount = count || 0;
         } catch (e) {}
 
+        const isFreeOffer = offer.is_free === true || offer.is_free === 1 || offer.is_free === 'true' || parseFloat(offer.price || 0) === 0 || offer.stream_platform === 'google_meet' || offer.stream_platform === 'jitsi';
+
         res.json({
-            can_join: isActive && isInStream,
-            is_waiting: isActive && !isInStream,
+            can_join: isFreeOffer ? isActive : (isActive && isInStream),
+            is_waiting: isFreeOffer ? false : (isActive && !isInStream),
             is_paused: isPaused,
-            stream_url: offer.stream_url || null,
+            is_free: isFreeOffer,
+            stream_platform: offer.stream_platform,
+            meet_url: offer.meet_url || offer.stream_url,
+            stream_url: offer.stream_url || offer.meet_url || null,
             room_password: offer.room_password || null,
             duration: offer.duration || 0,
             status: offer.status,

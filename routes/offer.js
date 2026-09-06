@@ -21,7 +21,7 @@ const upload = multer({
 const { processStreamPayments, archiveStreamLog } = require('../utils/streamVerification');
 const { sendPushNotification } = require('../utils/notification');
 const { calculateBookingRefundDetails } = require('../utils/refundCalculator');
-const { generateGoogleMeetRoom, formatGoogleMeetUrl, GOOGLE_MEET_HOST_CREATE_URL } = require('../utils/googleMeet');
+const { generateFreeStreamRoom, generateGoogleMeetRoom, formatGoogleMeetUrl, GOOGLE_MEET_HOST_CREATE_URL } = require('../utils/googleMeet');
 
 // ✅ دالة مساعدة لحساب واسترجاع الوقت المتبقي للبث
 function calculateOfferRemainingSeconds(offer) {
@@ -383,13 +383,11 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
             });
         }
 
-        // ✅ فحص رابط Google Meet في حال كانت الحصة مجانية
-        let validMeetUrl = null;
+        // ✅ توليد غرفة البث المباشر تلقائياً للحصة المجانية (أو استخدام رابط مخصص إن تم إدخاله)
+        let freeRoomDetails = null;
         if (isFreeOffer) {
             const customMeet = req.body.meet_url || req.body.stream_url;
-            if (customMeet) {
-                validMeetUrl = formatGoogleMeetUrl(customMeet);
-            }
+            freeRoomDetails = generateFreeStreamRoom(teacher_id, subject_name.trim(), customMeet);
         }
 
         // ✅ إدخال الدرس في قاعدة البيانات
@@ -400,11 +398,11 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
             offer_date: offerDateFormatted,
             price: isFreeOffer ? 0 : parsedPrice,
             is_free: isFreeOffer,
-            room_name: isFreeOffer && validMeetUrl ? validMeetUrl : room_name,
+            room_name: isFreeOffer && freeRoomDetails ? freeRoomDetails.room_name : room_name,
             room_password: defaultPassword,
-            stream_url: isFreeOffer && validMeetUrl ? validMeetUrl : null,
-            meet_url: isFreeOffer && validMeetUrl ? validMeetUrl : null,
-            stream_platform: isFreeOffer ? 'google_meet' : 'agora',
+            stream_url: isFreeOffer && freeRoomDetails ? freeRoomDetails.url : null,
+            meet_url: isFreeOffer && freeRoomDetails ? freeRoomDetails.url : null,
+            stream_platform: isFreeOffer && freeRoomDetails ? freeRoomDetails.platform : 'agora',
             status: 'upcoming',
             education_level: finalEducationLevel,
             thumbnail_url: thumbnailUrl,
