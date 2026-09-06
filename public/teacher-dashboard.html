@@ -2917,17 +2917,24 @@
 
         @media (max-width: 768px) {
             body { padding-bottom: 74px !important; }
+            .nav-deposit-btn, .nav-withdraw-btn { display: none !important; }
             .mobile-bottom-nav {
                 display: flex;
                 position: fixed;
                 bottom: 0; left: 0; right: 0;
-                height: 62px;
+                height: 64px;
                 background: linear-gradient(180deg, #0e1e38 0%, #081224 100%);
                 border-top: 1px solid rgba(255, 255, 255, 0.08);
                 box-shadow: 0 -8px 25px rgba(8, 18, 36, 0.45);
                 z-index: 9997;
-                justify-content: space-around;
+                overflow-x: auto;
+                overflow-y: hidden;
+                justify-content: flex-start;
                 align-items: center;
+                padding: 0 8px;
+                gap: 6px;
+                -webkit-overflow-scrolling: touch;
+                direction: rtl;
                 padding-bottom: env(safe-area-inset-bottom);
             }
             .mobile-bottom-item {
@@ -2938,13 +2945,16 @@
                 gap: 3px;
                 color: #94a3b8;
                 text-decoration: none;
-                font-size: 0.7rem;
+                font-size: 0.68rem;
                 font-weight: 700;
                 background: none;
                 border: none;
                 cursor: pointer;
-                flex: 1;
+                flex: 0 0 auto;
+                min-width: 72px;
                 height: 100%;
+                padding: 4px 6px;
+                white-space: nowrap;
                 transition: all 0.2s ease;
             }
             .mobile-bottom-item i {
@@ -13820,18 +13830,50 @@ function updateUI() {
         <i class="fas fa-graduation-cap"></i>
         <span>ZoomDz Live</span>
     </button>
+    <button class="mobile-bottom-item" data-section="offers" onclick="showSection('offers')">
+        <i class="fas fa-video"></i>
+        <span>دروس الأساتذة</span>
+    </button>
     <button class="mobile-bottom-item" data-section="exercises" onclick="showSection('exercises')">
         <i class="fas fa-file-pen"></i>
         <span>التمارين</span>
+    </button>
+    <button class="mobile-bottom-item" data-section="groups" onclick="showSection('groups')">
+        <i class="fas fa-users-rectangle"></i>
+        <span>المجموعات</span>
     </button>
     <button class="mobile-bottom-item" data-section="posts" onclick="showSection('posts')">
         <i class="fas fa-bullhorn"></i>
         <span>المنشورات</span>
         <span id="mobilePostsBadge" style="display: none; position: absolute; top: 4px; right: 18px; background: #ef4444; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 0.65rem; font-weight: 800; display: flex; align-items: center; justify-content: center;">0</span>
     </button>
-    <button class="mobile-bottom-item" onclick="toggleMobileDrawer()">
-        <i class="fas fa-bars"></i>
-        <span>المزيد</span>
+    <button class="mobile-bottom-item" data-section="packages" onclick="showSection('packages')">
+        <i class="fas fa-boxes-stacked"></i>
+        <span>الباقات</span>
+    </button>
+    <button class="mobile-bottom-item" data-section="courses" onclick="showSection('courses')">
+        <i class="fas fa-play-circle"></i>
+        <span>دوراتي</span>
+    </button>
+    <button class="mobile-bottom-item" data-section="earnings" onclick="showSection('earnings')">
+        <i class="fas fa-money-bill-wave"></i>
+        <span>الأرباح</span>
+    </button>
+    <button class="mobile-bottom-item" data-section="transactions" onclick="showSection('transactions')">
+        <i class="fas fa-history"></i>
+        <span>المعاملات</span>
+    </button>
+    <button class="mobile-bottom-item" data-section="referral" onclick="showSection('referral')">
+        <i class="fas fa-link"></i>
+        <span>الإحالة</span>
+    </button>
+    <button class="mobile-bottom-item" data-section="teachers" onclick="showSection('teachers')">
+        <i class="fas fa-users"></i>
+        <span>الأساتذة</span>
+    </button>
+    <button class="mobile-bottom-item" data-section="messages" onclick="showSection('messages')">
+        <i class="fas fa-envelope"></i>
+        <span>الرسائل</span>
     </button>
 </div>
 
