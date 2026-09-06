@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node dist/server.cjs",
     "dev": "tsx server.js",
-    "build": "vite build && esbuild server.js --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs"
+    "build": "vite build && esbuild server.js --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "lint": "tsc --noEmit"
   },
   "dependencies": {
     "@ai-sdk/gateway": "^4.0.64",

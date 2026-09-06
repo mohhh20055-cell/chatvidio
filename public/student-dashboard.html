@@ -8826,6 +8826,25 @@
         setInterval(checkUnreadPostsCount, 30000);
         updateGroupsUnreadBadge();
         setInterval(updateGroupsUnreadBadge, 15000);
+
+        // ✅ فحص إكمال الملف الشخصي للطلبة المسجلين عبر Google
+        setTimeout(function() {
+            try {
+                if (userData && !userData.is_guest && userData.id !== -1) {
+                    var needsCompletion = userData.requires_profile_completion || !userData.profile_completion || !userData.phone || !userData.education_level;
+                    var hasParam = new URLSearchParams(window.location.search).get('complete_profile') === 'true';
+                    if (needsCompletion || hasParam) {
+                        showToast('👋 مرحباً بك في ZoomDz! يرجى إكمال رقم هاتفك ومستواك الدراسي للبدء', 'info');
+                        if (typeof showEditProfileModal === 'function') {
+                            showEditProfileModal();
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Error checking profile completion:', e);
+            }
+        }, 1000);
+
         const levelSelect = document.getElementById('editEducationLevel');
         if (levelSelect) {
             levelSelect.addEventListener('change', function() {

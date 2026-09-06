@@ -11349,6 +11349,23 @@ function updateUI() {
             }
             startAutoRefresh();
             hidePreloader(true);
+
+            // ✅ فحص إكمال الملف للأستاذ المسجل عبر Google أو بحاجة لإكمال بياناته
+            setTimeout(() => {
+                try {
+                    const isGuest = userData && (userData.is_guest || userData.id === -1);
+                    if (!isGuest && userData) {
+                        const needsCompletion = userData.requires_profile_completion === true || !userData.profile_completion;
+                        const hasParam = new URLSearchParams(window.location.search).get('complete_profile') === 'true';
+                        if (needsCompletion || hasParam) {
+                            showToast('👋 مرحباً بك يا أستاذ في ZoomDz! يرجى إكمال ملفك الشخصي والوثائق للمراجعة والتفعيل', 'info');
+                            if (typeof openCompleteProfileModal === 'function') {
+                                openCompleteProfileModal();
+                            }
+                        }
+                    }
+                } catch(e) {}
+            }, 1200);
         }).catch((err) => {
             console.error('Error in loadUserData:', err);
             hidePreloader(true);

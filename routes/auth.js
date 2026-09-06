@@ -1265,6 +1265,664 @@ router.post('/auth/google/disconnect', authenticate, authorize(['teacher']), asy
 });
 
 // ============================================================
+// ✅ مسارات المصادقة والتسجيل عبر Google & إكمال الملف الشخصي
+// ============================================================
+const { 
+    GOOGLE_CLIENT_ID, 
+    verifyGoogleIdToken, 
+    exchangeGoogleCode, 
+    getGoogleAuthUrl: getGoogleLoginAuthUrl 
+} = require('../utils/googleAuth');
+
+// 1. إرجاع إعدادات Google OAuth للواجهة الأمامية
+router.get('/google/config', (req, res) => {
+    res.json({
+        success: true,
+        client_id: GOOGLE_CLIENT_ID
+    });
+});
+
+// 2. توليد رابط تفويض Google OAuth للمصادقة
+router.get('/google/url', (req, res) => {
+    try {
+        const { role = 'student', ref = '' } = req.query;
+        const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+        const host = req.get('host');
+        const redirectUri = `${protocol}://${host}/api/auth/google/oauth-callback`;
+        const stateObj = { role, ref, redirectUri };
+        const state = encodeURIComponent(JSON.stringify(stateObj));
+        const authUrl = getGoogleLoginAuthUrl(redirectUri, state);
+
+        res.json({
+            success: true,
+            url: authUrl,
+            redirect_uri: redirectUri
+        });
+    } catch (e) {
+        logger.error('خطأ في توليد رابط Google OAuth:', e.message);
+        res.status(500).json({ success: false, error: 'تعذر توليد رابط المصادقة عبر Google' });
+    }
+});
+
+// 3. تسجيل الدخول أو إنشاء حساب جديد عبر Google
+router.post('/google', checkBanned, authLimiter, async (req, res) => {
+    try {
+        const { credential, code, role = 'student', ref, redirect_uri } = req.body;
+
+        if (!credential && !code) {
+            return res.status(400).json({
+                success: false,
+                error: 'رمز التحقق من جوجل مفقود (credential أو code)'
+            });
+        }
+
+        let googleUser = null;
+        if (credential) {
+            googleUser = await verifyGoogleIdToken(credential);
+        } else if (code) {
+            const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+            const host = req.get('host');
+            const defaultRedirect = `${protocol}://${host}/api/auth/google/oauth-callback`;
+            googleUser = await exchangeGoogleCode(code, redirect_uri || defaultRedirect);
+        }
+
+        if (!googleUser || !googleUser.email) {
+            return res.status(400).json({
+                success: false,
+                error: 'فشل استرجاع بيانات الحساب من جوجل'
+            });
+        }
+
+        const email = googleUser.email.toLowerCase().trim();
+        const fullName = (googleUser.name || email.split('@')[0]).trim();
+        const profileImage = googleUser.picture || null;
+        const targetRole = (role === 'teacher' || role === 'admin') ? role : 'student';
+
+        logger.info(`🔑 محاولة دخول / تسجيل عبر Google: ${email} كـ ${targetRole}`);
+
+        // التحقق من وجود الحساب في جدول الأساتذة
+        let teacher = await getOne('teachers', 'email', email);
+        // التحقق من وجود الحساب في جدول الطلاب
+        let student = await getOne('students', 'email', email);
+
+        // الحالة 1: المستخدم مسجل بالفعل كأستاذ
+        if (teacher) {
+            if (teacher.is_banned) {
+                return res.status(403).json({
+                    success: false,
+                    error: `⛔ تم حظر حسابك من المنصة. السبب: ${teacher.ban_reason || 'انتهاك شروط الاستخدام'}`
+                });
+            }
+
+            // تحديث صورة الملف الشخصي إذا لم تكن موجودة
+            if (!teacher.profile_image && profileImage) {
+                try {
+                    await update('teachers', teacher.id, { profile_image: profileImage, profile_url: profileImage });
+                    teacher.profile_image = profileImage;
+                    teacher.profile_url = profileImage;
+                } catch (e) {}
+            }
+
+            const isProfileComplete = Boolean(
+                teacher.phone && 
+                (teacher.specialization || teacher.subject) && 
+                (teacher.teaching_level || teacher.education_level) && 
+                teacher.profile_completion !== false
+            );
+            const requiresCompletion = !isProfileComplete;
+
+            const token = generateToken(teacher.id, 'teacher', email);
+
+            return res.json({
+                success: true,
+                is_new: false,
+                token: token,
+                role: 'teacher',
+                redirectTo: '/teacher-dashboard.html',
+                requires_profile_completion: requiresCompletion,
+                user: processUserProfile({
+                    ...teacher,
+                    role: 'teacher',
+                    requires_profile_completion: requiresCompletion,
+                    profile_completion: !requiresCompletion
+                }, 'teacher')
+            });
+        }
+
+        // الحالة 2: المستخدم مسجل بالفعل كطالب
+        if (student) {
+            if (student.is_banned) {
+                return res.status(403).json({
+                    success: false,
+                    error: `⛔ تم حظر حسابك من المنصة. السبب: ${student.ban_reason || 'انتهاك شروط الاستخدام'}`
+                });
+            }
+
+            // تحديث صورة الملف الشخصي إذا لم تكن موجودة
+            if (!student.profile_image && profileImage) {
+                try {
+                    await update('students', student.id, { profile_image: profileImage, profile_url: profileImage });
+                    student.profile_image = profileImage;
+                    student.profile_url = profileImage;
+                } catch (e) {}
+            }
+
+            const isProfileComplete = Boolean(
+                student.phone && 
+                student.education_level && 
+                student.profile_completion !== false
+            );
+            const requiresCompletion = !isProfileComplete;
+
+            const token = generateToken(student.id, 'student', email);
+
+            return res.json({
+                success: true,
+                is_new: false,
+                token: token,
+                role: 'student',
+                redirectTo: '/student-dashboard.html',
+                requires_profile_completion: requiresCompletion,
+                user: processUserProfile({
+                    ...student,
+                    role: 'student',
+                    requires_profile_completion: requiresCompletion,
+                    profile_completion: !requiresCompletion
+                }, 'student')
+            });
+        }
+
+        // الحالة 3: حساب جديد تماماً يتم إنشاؤه عبر Google
+        const randomPassword = crypto.randomBytes(24).toString('hex');
+        const hashedPassword = await bcrypt.hash(randomPassword, SALT_ROUNDS);
+
+        if (targetRole === 'teacher') {
+            const newTeacher = await insert('teachers', {
+                full_name: fullName,
+                email: email,
+                password: hashedPassword,
+                phone: null,
+                specialization: null,
+                subject: null,
+                bio: null,
+                experience: null,
+                teaching_level: null,
+                profile_image: profileImage,
+                profile_url: profileImage,
+                diploma_image: null,
+                id_image: null,
+                status: 'approved',
+                is_certified: false,
+                email_verified: true,
+                balance: 0,
+                referral_balance: 0,
+                total_earned: 0,
+                total_withdrawn: 0,
+                pending_withdraw: 0,
+                referral_code: null,
+                is_banned: false,
+                ban_reason: null,
+                profile_completion: false,
+                ai_tokens: 5,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            });
+
+            const referralCode = generateReferralCode(fullName, newTeacher.id);
+            try {
+                await supabase
+                    .from('teachers')
+                    .update({ referral_code: referralCode })
+                    .eq('id', newTeacher.id);
+            } catch (e) {}
+
+            const effectiveRef = ref || req.cookies?.referral_code || req.cookies?.pendingReferral;
+            if (effectiveRef && String(effectiveRef).trim().length > 3) {
+                await processReferralOnRegister(String(effectiveRef).trim(), newTeacher.id, 'teacher');
+            }
+
+            const token = generateToken(newTeacher.id, 'teacher', email);
+
+            return res.json({
+                success: true,
+                is_new: true,
+                token: token,
+                role: 'teacher',
+                redirectTo: '/teacher-dashboard.html',
+                requires_profile_completion: true,
+                message: 'تم التسجيل عبر Google بنجاح! يرجى إكمال بيانات ملفك الشخصي.',
+                user: processUserProfile({
+                    ...newTeacher,
+                    role: 'teacher',
+                    referral_code: referralCode,
+                    requires_profile_completion: true,
+                    profile_completion: false
+                }, 'teacher')
+            });
+        } else {
+            // إنشاء حساب طالب جديد
+            const newStudent = await insert('students', {
+                full_name: fullName,
+                email: email,
+                password: hashedPassword,
+                phone: null,
+                education_level: null,
+                profile_image: profileImage,
+                profile_url: profileImage,
+                wallet_balance: 0,
+                email_verified: true,
+                referral_balance: 0,
+                gift_box_chances: 0,
+                referral_code: null,
+                is_banned: false,
+                ban_reason: null,
+                profile_completion: false,
+                ai_tokens: 5,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            });
+
+            const referralCode = generateReferralCode(fullName, newStudent.id);
+            try {
+                await supabase
+                    .from('students')
+                    .update({ referral_code: referralCode })
+                    .eq('id', newStudent.id);
+            } catch (e) {}
+
+            const effectiveRef = ref || req.cookies?.referral_code || req.cookies?.pendingReferral;
+            if (effectiveRef && String(effectiveRef).trim().length > 3) {
+                await processReferralOnRegister(String(effectiveRef).trim(), newStudent.id, 'student');
+            }
+
+            const token = generateToken(newStudent.id, 'student', email);
+
+            return res.json({
+                success: true,
+                is_new: true,
+                token: token,
+                role: 'student',
+                redirectTo: '/student-dashboard.html',
+                requires_profile_completion: true,
+                message: 'تم التسجيل عبر Google بنجاح! يرجى إكمال بيانات ملفك الشخصي.',
+                user: processUserProfile({
+                    ...newStudent,
+                    role: 'student',
+                    referral_code: referralCode,
+                    requires_profile_completion: true,
+                    profile_completion: false
+                }, 'student')
+            });
+        }
+    } catch (error) {
+        logger.error('❌ خطأ في مسار Google Auth:', error.message);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'حدث خطأ أثناء المصادقة عبر Google'
+        });
+    }
+});
+
+// 4. معالجة إعادة التوجيه من Google OAuth Callback (Popup أو Redirect)
+router.get('/google/oauth-callback', async (req, res) => {
+    try {
+        const { code, state, error: googleError } = req.query;
+        if (googleError || !code) {
+            return res.status(400).send(`
+                <!DOCTYPE html>
+                <html lang="ar" dir="rtl">
+                <head><meta charset="UTF-8"><title>فشل تسجيل الدخول</title></head>
+                <body style="font-family:sans-serif; text-align:center; padding:50px; background:#f8fafc;">
+                    <h2 style="color:#ef4444;">❌ تم إلغاء التسجيل عبر Google</h2>
+                    <p>${googleError || 'لم يتم استلام كود المصادقة'}</p>
+                    <script>
+                        if (window.opener) {
+                            window.opener.postMessage({ type: 'GOOGLE_AUTH_ERROR', error: '${googleError || 'تم الإلغاء'}' }, '*');
+                            setTimeout(() => window.close(), 2000);
+                        } else {
+                            setTimeout(() => { window.location.href = '/'; }, 2000);
+                        }
+                    </script>
+                </body>
+                </html>
+            `);
+        }
+
+        let role = 'student';
+        let ref = '';
+        let redirectUri = '';
+        if (state) {
+            try {
+                const parsed = JSON.parse(decodeURIComponent(state));
+                role = parsed.role || 'student';
+                ref = parsed.ref || '';
+                redirectUri = parsed.redirectUri || '';
+            } catch (e) {
+                role = state;
+            }
+        }
+
+        const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+        const host = req.get('host');
+        const defaultRedirect = `${protocol}://${host}/api/auth/google/oauth-callback`;
+        const effectiveRedirectUri = redirectUri || defaultRedirect;
+
+        const googleUser = await exchangeGoogleCode(code, effectiveRedirectUri);
+        const email = googleUser.email.toLowerCase().trim();
+        const fullName = (googleUser.name || email.split('@')[0]).trim();
+        const profileImage = googleUser.picture || null;
+
+        let teacher = await getOne('teachers', 'email', email);
+        let student = await getOne('students', 'email', email);
+
+        let finalRole = role;
+        let finalUser = null;
+        let token = null;
+        let requiresCompletion = false;
+
+        if (teacher) {
+            finalRole = 'teacher';
+            finalUser = teacher;
+            token = generateToken(teacher.id, 'teacher', email);
+            requiresCompletion = !teacher.phone || !teacher.specialization || !teacher.teaching_level || !teacher.profile_completion;
+        } else if (student) {
+            finalRole = 'student';
+            finalUser = student;
+            token = generateToken(student.id, 'student', email);
+            requiresCompletion = !student.phone || !student.education_level || !student.profile_completion;
+        } else {
+            // مستخدم جديد
+            const randomPassword = crypto.randomBytes(24).toString('hex');
+            const hashedPassword = await bcrypt.hash(randomPassword, SALT_ROUNDS);
+
+            if (role === 'teacher') {
+                finalRole = 'teacher';
+                finalUser = await insert('teachers', {
+                    full_name: fullName,
+                    email: email,
+                    password: hashedPassword,
+                    phone: null,
+                    specialization: null,
+                    subject: null,
+                    bio: null,
+                    experience: null,
+                    teaching_level: null,
+                    profile_image: profileImage,
+                    profile_url: profileImage,
+                    status: 'approved',
+                    is_certified: false,
+                    email_verified: true,
+                    balance: 0,
+                    referral_balance: 0,
+                    profile_completion: false,
+                    ai_tokens: 5,
+                    created_at: new Date().toISOString()
+                });
+                const referralCode = generateReferralCode(fullName, finalUser.id);
+                try {
+                    await supabase.from('teachers').update({ referral_code: referralCode }).eq('id', finalUser.id);
+                } catch (e) {}
+                if (ref) await processReferralOnRegister(ref, finalUser.id, 'teacher');
+                token = generateToken(finalUser.id, 'teacher', email);
+                requiresCompletion = true;
+            } else {
+                finalRole = 'student';
+                finalUser = await insert('students', {
+                    full_name: fullName,
+                    email: email,
+                    password: hashedPassword,
+                    phone: null,
+                    education_level: null,
+                    profile_image: profileImage,
+                    profile_url: profileImage,
+                    wallet_balance: 0,
+                    email_verified: true,
+                    profile_completion: false,
+                    referral_balance: 0,
+                    gift_box_chances: 0,
+                    ai_tokens: 5,
+                    created_at: new Date().toISOString()
+                });
+                const referralCode = generateReferralCode(fullName, finalUser.id);
+                try {
+                    await supabase.from('students').update({ referral_code: referralCode }).eq('id', finalUser.id);
+                } catch (e) {}
+                if (ref) await processReferralOnRegister(ref, finalUser.id, 'student');
+                token = generateToken(finalUser.id, 'student', email);
+                requiresCompletion = true;
+            }
+        }
+
+        const processedUser = processUserProfile({
+            ...finalUser,
+            role: finalRole,
+            requires_profile_completion: requiresCompletion,
+            profile_completion: !requiresCompletion
+        }, finalRole);
+
+        const targetDashboard = finalRole === 'teacher' ? '/teacher-dashboard.html' : '/student-dashboard.html';
+
+        res.send(`
+            <!DOCTYPE html>
+            <html lang="ar" dir="rtl">
+            <head>
+                <meta charset="UTF-8">
+                <title>تم تسجيل الدخول بنجاح</title>
+                <style>
+                    body { font-family: system-ui, -apple-system, sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; margin:0; background:#f0fdf4; color:#166534; }
+                    .card { background:white; padding:32px; border-radius:16px; box-shadow:0 10px 25px rgba(0,0,0,0.08); text-align:center; max-width:420px; width:90%; border:2px solid #bbf7d0; }
+                    .icon { font-size:48px; margin-bottom:12px; }
+                    h2 { margin:0 0 10px 0; color:#15803d; }
+                    p { color:#475569; font-size:0.95rem; margin-bottom:20px; }
+                </style>
+            </head>
+            <body>
+                <div class="card">
+                    <div class="icon">✨</div>
+                    <h2>تم تسجيل الدخول عبر Google بنجاح!</h2>
+                    <p>مرحباً بك <strong>${fullName}</strong>، جاري نقلك إلى لوحة التحكم...</p>
+                </div>
+                <script>
+                    const authPayload = {
+                        success: true,
+                        token: '${token}',
+                        role: '${finalRole}',
+                        redirectTo: '${targetDashboard}',
+                        requires_profile_completion: ${requiresCompletion},
+                        user: ${JSON.stringify(processedUser)}
+                    };
+
+                    localStorage.setItem('token', authPayload.token);
+                    localStorage.setItem('userData', JSON.stringify(authPayload.user));
+
+                    if (window.opener) {
+                        window.opener.postMessage({ type: 'GOOGLE_AUTH_SUCCESS', data: authPayload }, '*');
+                        setTimeout(() => window.close(), 1200);
+                    } else {
+                        setTimeout(() => { window.location.href = '${targetDashboard}'; }, 1000);
+                    }
+                </script>
+            </body>
+            </html>
+        `);
+
+    } catch (e) {
+        logger.error('خطأ في معالجة Google OAuth callback:', e.message);
+        res.status(500).send(`
+            <!DOCTYPE html>
+            <html lang="ar" dir="rtl">
+            <head><meta charset="UTF-8"><title>خطأ في تسجيل الدخول</title></head>
+            <body style="font-family:sans-serif; text-align:center; padding:50px; background:#fef2f2;">
+                <h2 style="color:#dc2626;">❌ حدث خطأ أثناء المصادقة عبر Google</h2>
+                <p>${e.message}</p>
+                <script>setTimeout(() => { window.location.href = '/'; }, 3000);</script>
+            </body>
+            </html>
+        `);
+    }
+});
+
+// 5. مسار إكمال الملف الشخصي المشترك (للطالب والأستاذ)
+router.post('/complete-profile', authenticate, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const userRole = req.user.role;
+        const { 
+            phone, 
+            education_level, 
+            teaching_level, 
+            specialization, 
+            subject, 
+            bio, 
+            experience, 
+            full_name 
+        } = req.body;
+
+        logger.info(`📝 طلب إكمال الملف الشخصي للمستخدم #${userId} (${userRole})`);
+
+        if (userRole === 'student') {
+            if (!phone || !isValidDzPhone(phone)) {
+                return res.status(400).json({
+                    success: false,
+                    error: '⚠️ رقم الهاتف مطلوب ويجب أن يكون رقم هاتف جزائري صحيح (مثال: 0550123456 أو 0660123456 أو 0770123456)'
+                });
+            }
+
+            if (!education_level || !String(education_level).trim()) {
+                return res.status(400).json({
+                    success: false,
+                    error: '⚠️ المستوى الدراسي مطلوب'
+                });
+            }
+
+            const updateData = {
+                phone: phone.trim(),
+                education_level: String(education_level).trim(),
+                profile_completion: true,
+                updated_at: new Date().toISOString()
+            };
+
+            if (full_name && String(full_name).trim()) {
+                const cleanName = String(full_name).trim();
+                const nameCheck = await isNameTaken(cleanName, userId, 'student');
+                if (nameCheck.taken) {
+                    return res.status(400).json({
+                        success: false,
+                        error: '⚠️ هذا الاسم الكامل مستخدم مسبقاً، يرجى اختيار اسم آخر'
+                    });
+                }
+                updateData.full_name = cleanName;
+            }
+
+            const { data, error } = await supabase
+                .from('students')
+                .update(updateData)
+                .eq('id', userId)
+                .select();
+
+            if (error) {
+                logger.error('Supabase error updating student profile completion:', error.message);
+                await update('students', userId, updateData);
+            }
+
+            const student = await getOne('students', 'id', userId);
+            const processed = processUserProfile({
+                ...student,
+                role: 'student',
+                profile_completion: true,
+                requires_profile_completion: false
+            }, 'student');
+
+            return res.json({
+                success: true,
+                message: '✅ تم إكمال وتأكيد ملفك الشخصي بنجاح!',
+                user: processed
+            });
+
+        } else if (userRole === 'teacher') {
+            if (!phone || !isValidDzPhone(phone)) {
+                return res.status(400).json({
+                    success: false,
+                    error: '⚠️ رقم الهاتف مطلوب ويجب أن يكون رقم هاتف جزائري صحيح (مثال: 0550123456 أو 0660123456 أو 0770123456)'
+                });
+            }
+
+            const spec = specialization || subject;
+            if (!spec || !String(spec).trim()) {
+                return res.status(400).json({
+                    success: false,
+                    error: '⚠️ التخصص أو المادة التدريسية مطلوبة'
+                });
+            }
+
+            const level = teaching_level || education_level;
+            if (!level || !String(level).trim()) {
+                return res.status(400).json({
+                    success: false,
+                    error: '⚠️ المستوى التعليمي المدرس مطلوب'
+                });
+            }
+
+            const updateData = {
+                phone: phone.trim(),
+                specialization: String(spec).trim(),
+                subject: String(spec).trim(),
+                teaching_level: String(level).trim(),
+                bio: bio ? String(bio).trim() : null,
+                experience: experience ? String(experience).trim() : null,
+                profile_completion: true,
+                updated_at: new Date().toISOString()
+            };
+
+            if (full_name && String(full_name).trim()) {
+                const cleanName = String(full_name).trim();
+                const nameCheck = await isNameTaken(cleanName, userId, 'teacher');
+                if (nameCheck.taken) {
+                    return res.status(400).json({
+                        success: false,
+                        error: '⚠️ هذا الاسم الكامل مستخدم مسبقاً، يرجى اختيار اسم آخر'
+                    });
+                }
+                updateData.full_name = cleanName;
+            }
+
+            const { data, error } = await supabase
+                .from('teachers')
+                .update(updateData)
+                .eq('id', userId)
+                .select();
+
+            if (error) {
+                logger.error('Supabase error updating teacher profile completion:', error.message);
+                await update('teachers', userId, updateData);
+            }
+
+            const teacher = await getOne('teachers', 'id', userId);
+            const processed = processUserProfile({
+                ...teacher,
+                role: 'teacher',
+                profile_completion: true,
+                requires_profile_completion: false
+            }, 'teacher');
+
+            return res.json({
+                success: true,
+                message: '✅ تم إكمال وتأكيد ملفك الشخصي بنجاح!',
+                user: processed
+            });
+        } else {
+            return res.status(400).json({ success: false, error: 'نوع الحساب غير مدعوم' });
+        }
+    } catch (error) {
+        logger.error('❌ خطأ في إكمال الملف الشخصي:', error.message);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'حدث خطأ أثناء حفظ بيانات الملف الشخصي'
+        });
+    }
+});
+
+// ============================================================
 // ✅ التحقق من توفر الاسم (عدم التكرار)
 // ============================================================
 router.get('/check-name', async (req, res) => {
