@@ -11,8 +11,10 @@ const crypto = require('crypto');
 
 const { supabase } = require('../config/database');
 const { authenticate, authorize, checkBanned, checkActiveStream, isOwner, validateOfferOwnership, validateStudentAccess, checkStreamActive, checkNoActiveStream } = require('../middleware/auth');
-const { getOne, insert, update, autoBookFreeSession } = require('../utils/helpers');
+const { getOne, insert, update, autoBookFreeSession, loadLocalTeacherFollowers } = require('../utils/helpers');
 const { verifyToken } = require('../utils/jwt');
+const { generateGoogleMeetRoom } = require('../utils/googleMeet');
+const { sendPushNotification } = require('../utils/notification');
 
 // ✅ استيراد نظام التحقق المستقل من وقت البث
 const { 
@@ -72,6 +74,107 @@ const handleStreamStart = async (req, res) => {
 
         if (offer.status === 'completed' || offer.status === 'cancelled') {
             return res.status(400).json({ success: false, error: 'لا يمكن إعادة تشغيل حصة منتهية أو ملغاة' });
+        }
+
+        // ✅ التحقق إن كانت الحصة مجانية لتشغيلها تلقائياً عبر Google Meet
+        const isFreeOffer = offer.is_free === true || offer.is_free === 1 || offer.is_free === 'true' || parseFloat(offer.price || 0) === 0 || offer.stream_platform === 'google_meet';
+
+        if (isFreeOffer) {
+            let meetUrl = offer.meet_url || (offer.stream_url && offer.stream_url.includes('meet.google.com') ? offer.stream_url : null);
+            if (!meetUrl) {
+                const meetRoom = generateGoogleMeetRoom(offer.subject_name, offer.id);
+                meetUrl = meetRoom.url;
+            }
+
+            // ✅ حفظ بيانات البث المجاني في جدول الدروس
+            await supabase
+                .from('offers')
+                .update({
+                    stream_url: meetUrl,
+                    meet_url: meetUrl,
+                    stream_platform: 'google_meet',
+                    status: 'live',
+                    stream_active: true,
+                    is_paused: false,
+                    stream_started_at: new Date().toISOString(),
+                    room_name: meetUrl
+                })
+                .eq('id', offer_id);
+
+            // ✅ تسجيل بداية البث من الخادم (نظام التحقق المستقل)
+            await recordStreamStart(offer_id, req.user.userId);
+            console.log(`✅ تم تسجيل بداية البث المجاني من الخادم عبر Google Meet: ${new Date().toISOString()}`);
+
+            const teacher = await getOne('teachers', 'id', offer.teacher_id);
+            const teacherName = teacher ? teacher.full_name : 'الأستاذ';
+
+            // ✅ جلب جميع المتابعين والطلاب المسجلين لإشعارهم ببدء البث مع رابط الدخول المباشر
+            const targetStudents = new Set();
+            try {
+                const { data: followers } = await supabase
+                    .from('teacher_followers')
+                    .select('follower_id')
+                    .eq('teacher_id', offer.teacher_id)
+                    .eq('follower_type', 'student');
+                if (followers) {
+                    followers.forEach(f => targetStudents.add(parseInt(f.follower_id)));
+                }
+                const localFollowers = await loadLocalTeacherFollowers();
+                localFollowers.forEach(f => {
+                    if (parseInt(f.teacher_id) === parseInt(offer.teacher_id) && f.follower_type === 'student') {
+                        targetStudents.add(parseInt(f.follower_id));
+                    }
+                });
+            } catch(e) {}
+
+            try {
+                const { data: booked } = await supabase
+                    .from('sessions')
+                    .select('student_id')
+                    .eq('offer_id', offer_id);
+                if (booked) {
+                    booked.forEach(b => targetStudents.add(parseInt(b.student_id)));
+                }
+            } catch(e) {}
+
+            const notifTitle = '🔴 بدأ البث المجاني الآن عبر Google Meet!';
+            const notifMessage = `بدأ الآن البث المباشر المجاني لحصة "${offer.subject_name || 'الدرس'}" مع الأستاذ ${teacherName}! انضم الآن مباشرة عبر رابط Google Meet: ${meetUrl}`;
+
+            for (const sId of targetStudents) {
+                try {
+                    await supabase.from('notifications').insert({
+                        user_id: sId,
+                        user_type: 'student',
+                        title: notifTitle,
+                        message: notifMessage,
+                        offer_id: offer_id,
+                        meet_url: meetUrl,
+                        stream_url: meetUrl,
+                        is_free: true,
+                        stream_platform: 'google_meet',
+                        is_read: false,
+                        created_at: new Date().toISOString()
+                    });
+
+                    const { data: student } = await supabase.from('students').select('push_subscription').eq('id', sId).single();
+                    if (student && student.push_subscription) {
+                        await sendPushNotification(student, notifTitle, notifMessage);
+                    }
+                } catch (notifErr) {
+                    logger.error(`⚠️ تعذر إرسال إشعار البث المباشر للطالب ${sId}:`, notifErr.message);
+                }
+            }
+
+            return res.json({
+                success: true,
+                is_free: true,
+                stream_platform: 'google_meet',
+                room_url: meetUrl,
+                meet_url: meetUrl,
+                duration: offer.duration,
+                students_count: targetStudents.size,
+                message: 'تم إطلاق البث المجاني عبر Google Meet وإشعار جميع المتابعين والطلاب برابط الدخول المباشر بنجاح!'
+            });
         }
 
         // ✅ تم إلغاء قيود الوقت للأستاذ لفتح البث متى شاء دون أي شروط زمنية

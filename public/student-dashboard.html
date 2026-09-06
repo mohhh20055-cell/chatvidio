@@ -5059,6 +5059,8 @@
 
             const isStreamStartNotif = (title.includes('بدء') || title.includes('بث') || title.includes('مباشر') || title.includes('🔴')) && !title.includes('تم حجز') && !title.includes('تأكيد');
             const cleanMessage = (notif.message || '').replace(/\[(POST|STUDENT|TEACHER):\d+\]/g, '').trim();
+            const hasGoogleMeet = notif.meet_url || (notif.stream_url && notif.stream_url.includes('meet.google.com')) || (notif.message && notif.message.includes('meet.google.com'));
+            const meetUrlMatch = notif.meet_url || (notif.stream_url && notif.stream_url.includes('meet.google.com') ? notif.stream_url : null) || (notif.message && notif.message.match(/https:\/\/meet\.google\.com\/[a-z0-9-]+/i) ? notif.message.match(/https:\/\/meet\.google\.com\/[a-z0-9-]+/i)[0] : null);
 
             html += `
                 <div class="notif-item ${isUnread ? 'unread' : ''}" onclick='markNotificationRead("${notif.id}", ${notif.offer_id || 'null'}, ${JSON.stringify(notif.message || '')}, ${JSON.stringify(notif.title || '')})'>
@@ -5067,13 +5069,22 @@
                         <div class="notif-title">${escapeHtml(notif.title)}</div>
                         <div class="notif-message">${escapeHtml(cleanMessage)}</div>
                         <div class="notif-time">${timeStr}</div>
-                        ${(notif.offer_id && isStreamStartNotif) ? `
+                        ${meetUrlMatch ? `
+                            <div class="notif-action" style="margin-top:6px; display:flex; gap:6px;">
+                                <a href="${meetUrlMatch}" target="_blank" onclick="event.stopPropagation(); markNotificationRead('${notif.id}', ${notif.offer_id || 'null'});" style="background: #2563eb; color: white; text-decoration: none; padding: 5px 12px; border-radius: 6px; font-weight: 700; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 5px;">
+                                    <i class="fab fa-google"></i> فتح Google Meet مباشرة
+                                </a>
+                                <button onclick="event.stopPropagation(); navigator.clipboard.writeText('${meetUrlMatch}'); showToast('تم نسخ الرابط بنجاح!', 'success');" style="background:#f1f5f9; color:#1e293b; border:1px solid #cbd5e1; padding:5px 8px; border-radius:6px; font-size:0.75rem; cursor:pointer;">
+                                    نسخ
+                                </button>
+                            </div>
+                        ` : (notif.offer_id && isStreamStartNotif ? `
                             <div class="notif-action">
                                 <button onclick="event.stopPropagation(); joinFromNotification(${notif.offer_id})">
                                     <i class="fas fa-video"></i> انضم الآن
                                 </button>
                             </div>
-                        ` : ''}
+                        ` : '')}
                     </div>
                 </div>
             `;
@@ -5254,20 +5265,45 @@
         showToast('تم تحديد جميع الإشعارات كمقروءة', 'success');
     }
 
-    async function joinFromNotification(offerId) {
+    async function joinFromNotification(offerId, directMeetUrl) {
+        if (directMeetUrl && directMeetUrl.includes('meet.google.com')) {
+            try {
+                const newWindow = window.open(directMeetUrl, '_blank');
+                if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                    window.location.href = directMeetUrl;
+                }
+            } catch(e) {
+                window.location.href = directMeetUrl;
+            }
+            document.getElementById('notifDropdown').classList.remove('open');
+            return;
+        }
+
         try {
             const res = await fetchWithAuth(`/api/student/stream-status/${offerId}/${studentId}`);
             const data = await res.json();
             if (data.can_join && data.stream_url) {
-                const token = localStorage.getItem('token');
-                const agoraUrl = `/api/join-agora/${offerId}/${studentId}?token=${encodeURIComponent(token)}`;
-                try {
-                    const newWindow = window.open(agoraUrl, '_blank');
-                    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                if (data.is_free || data.stream_platform === 'google_meet' || (data.meet_url && data.meet_url.includes('meet.google.com')) || data.stream_url.includes('meet.google.com')) {
+                    const meetUrl = data.meet_url || data.stream_url;
+                    try {
+                        const newWindow = window.open(meetUrl, '_blank');
+                        if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                            window.location.href = meetUrl;
+                        }
+                    } catch(e) {
+                        window.location.href = meetUrl;
+                    }
+                } else {
+                    const token = localStorage.getItem('token');
+                    const agoraUrl = `/api/join-agora/${offerId}/${studentId}?token=${encodeURIComponent(token)}`;
+                    try {
+                        const newWindow = window.open(agoraUrl, '_blank');
+                        if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                            window.location.href = agoraUrl;
+                        }
+                    } catch(e) {
                         window.location.href = agoraUrl;
                     }
-                } catch(e) {
-                    window.location.href = agoraUrl;
                 }
             } else if (data.is_waiting) {
                 showToast('⏳ جاري التحضير للبث، انتظر قليلاً...', 'warning');
@@ -6187,6 +6223,18 @@
             const res = await fetchWithAuth(`/api/student/stream-status/${offerId}/${studentId}`);
             const data = await res.json();
             if (data.can_join && data.stream_url) {
+                if (data.is_free || data.stream_platform === 'google_meet' || (data.meet_url && data.meet_url.includes('meet.google.com')) || data.stream_url.includes('meet.google.com')) {
+                    const meetUrl = data.meet_url || data.stream_url;
+                    try {
+                        const newWindow = window.open(meetUrl, '_blank');
+                        if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                            window.location.href = meetUrl;
+                        }
+                    } catch(e) {
+                        window.location.href = meetUrl;
+                    }
+                    return;
+                }
                 joinLiveStream(offerId);
             } else if (data.is_waiting) {
                 showToast('⏳ البث لم يبدأ بعد أو لم يفتح الأستاذ الغرفة، انتظر قليلاً...', 'warning');
@@ -7278,11 +7326,40 @@
         });
     }
 
-    function joinLiveStream(offerId) {
-        if (!offerId) {
+    async function joinLiveStream(offerId, directMeetUrl) {
+        if (!offerId && !directMeetUrl) {
             showToast('⚠️ لا يمكن الانضمام للبث', 'error');
             return;
         }
+
+        if (directMeetUrl && directMeetUrl.includes('meet.google.com')) {
+            try {
+                const newWindow = window.open(directMeetUrl, '_blank');
+                if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                    window.location.href = directMeetUrl;
+                }
+            } catch(e) {
+                window.location.href = directMeetUrl;
+            }
+            return;
+        }
+
+        const offerObj = (window.latestOffersData || []).find(o => o.id == offerId);
+        if (offerObj && (offerObj.meet_url || (offerObj.stream_url && offerObj.stream_url.includes('meet.google.com')) || offerObj.stream_platform === 'google_meet' || offerObj.is_free)) {
+            const meetUrl = offerObj.meet_url || (offerObj.stream_url && offerObj.stream_url.includes('meet.google.com') ? offerObj.stream_url : null);
+            if (meetUrl) {
+                try {
+                    const newWindow = window.open(meetUrl, '_blank');
+                    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                        window.location.href = meetUrl;
+                    }
+                } catch(e) {
+                    window.location.href = meetUrl;
+                }
+                return;
+            }
+        }
+
         const token = localStorage.getItem('token');
         const agoraUrl = `/api/join-agora/${offerId}/${studentId}?token=${encodeURIComponent(token)}`;
         try {

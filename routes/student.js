@@ -1416,6 +1416,8 @@ router.get('/stream-status/:offer_id/:student_id', authenticate, authorize(['stu
             return res.json({ can_join: false, error: 'الدرس غير موجود' });
         }
 
+        const isFree = (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) || parseFloat(offer.price || 0) === 0 || offer.stream_platform === 'google_meet';
+
         let { data: session } = await supabase
             .from('sessions')
             .select('*')
@@ -1424,23 +1426,27 @@ router.get('/stream-status/:offer_id/:student_id', authenticate, authorize(['stu
             .in('payment_status', ['paid', 'pending_stream'])
             .maybeSingle();
 
-        if (!session && offer) {
+        if (!session && offer && isFree) {
             session = await autoBookFreeSession(offer, student_id);
         }
 
-        if (!session) {
+        if (!session && !isFree) {
             return res.json({ can_join: false, error: 'لم تقم بحجز هذه الحصة' });
         }
 
         const isLive = offer.status === 'live' || offer.status === 'teacher_ready';
         const isPaused = offer.status === 'paused';
         const isActive = isLive || isPaused;
+        const meetUrl = offer.meet_url || (offer.stream_url && offer.stream_url.includes('meet.google.com') ? offer.stream_url : null);
 
         res.json({
-            can_join: isActive,
-            is_waiting: !isActive,
+            can_join: isActive || isFree,
+            is_waiting: !isActive && !isFree,
             is_paused: isPaused,
-            stream_url: offer.stream_url || null,
+            is_free: isFree,
+            stream_platform: isFree ? 'google_meet' : (offer.stream_platform || 'agora'),
+            stream_url: isFree ? (meetUrl || offer.stream_url) : (offer.stream_url || null),
+            meet_url: meetUrl,
             room_password: offer.room_password || null,
             duration: offer.duration || 0,
             status: offer.status,

@@ -21,6 +21,7 @@ const upload = multer({
 const { processStreamPayments, archiveStreamLog } = require('../utils/streamVerification');
 const { sendPushNotification } = require('../utils/notification');
 const { calculateBookingRefundDetails } = require('../utils/refundCalculator');
+const { generateGoogleMeetRoom } = require('../utils/googleMeet');
 
 // ✅ دالة مساعدة لحساب واسترجاع الوقت المتبقي للبث
 function calculateOfferRemainingSeconds(offer) {
@@ -382,6 +383,12 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
             });
         }
 
+        // ✅ إنشاء رابط Google Meet تلقائياً في حال كانت الحصة مجانية
+        let meetDetails = null;
+        if (isFreeOffer) {
+            meetDetails = generateGoogleMeetRoom(subject_name.trim(), teacher_id);
+        }
+
         // ✅ إدخال الدرس في قاعدة البيانات
         const newOffer = {
             teacher_id: teacher_id,
@@ -390,8 +397,11 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
             offer_date: offerDateFormatted,
             price: isFreeOffer ? 0 : parsedPrice,
             is_free: isFreeOffer,
-            room_name: room_name,
+            room_name: isFreeOffer && meetDetails ? meetDetails.url : room_name,
             room_password: defaultPassword,
+            stream_url: isFreeOffer && meetDetails ? meetDetails.url : null,
+            meet_url: isFreeOffer && meetDetails ? meetDetails.url : null,
+            stream_platform: isFreeOffer ? 'google_meet' : 'agora',
             status: 'upcoming',
             education_level: finalEducationLevel,
             thumbnail_url: thumbnailUrl,
@@ -463,7 +473,7 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
 
         console.log('✅ تم إنشاء الدرس بنجاح:', insertedOffer.id);
 
-        // ✅ إشعار المتابعين
+        // ✅ إشعار المتابعين بموعد الدرس بدقة
         try {
             let allFollowers = [];
             const { data: followers } = await supabase
@@ -491,13 +501,36 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
             } catch (lErr) {}
             
             if (allFollowers.length > 0) {
+                // تنسيق موعد البث بالتفصيل بتوقيت الجزائر
+                const offerDateObj = new Date(offerDateFormatted);
+                const algeriaDateFormatted = !isNaN(offerDateObj.getTime())
+                    ? offerDateObj.toLocaleString('ar-DZ', { 
+                        timeZone: 'Africa/Algiers', 
+                        weekday: 'long', 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric', 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                    })
+                    : offerDateFormatted;
+
+                const notifTitle = isFreeOffer ? '🎁 حصة مجانية جديدة عبر Google Meet!' : '📢 حصة جديدة من أستاذك!';
+                const notifMessage = isFreeOffer
+                    ? `أعلن الأستاذ ${teacher.full_name} عن حصة مجانية في مادة "${subject_name.trim()}" عبر Google Meet! موعد البدء بالتحديد: ${algeriaDateFormatted}. البث مفتوح ومجاني للجميع 🚀`
+                    : `قام الأستاذ ${teacher.full_name} بإضافة حصة جديدة: "${subject_name.trim()}". موعد البدء: ${algeriaDateFormatted}.`;
+
                 for (const f of allFollowers) {
                     await insert('notifications', {
                         user_id: f.follower_id,
                         user_type: 'student',
-                        title: '📢 عرض جديد!',
-                        message: `قام الأستاذ ${teacher.full_name} بإضافة عرض جديد: ${subject_name}`,
+                        title: notifTitle,
+                        message: notifMessage,
                         offer_id: insertedOffer.id,
+                        meet_url: isFreeOffer && meetDetails ? meetDetails.url : null,
+                        stream_url: isFreeOffer && meetDetails ? meetDetails.url : null,
+                        is_free: isFreeOffer,
+                        stream_platform: isFreeOffer ? 'google_meet' : 'agora',
                         is_read: false,
                         created_at: new Date().toISOString()
                     });
@@ -505,7 +538,7 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
                     // إرسال إشعار الدفع إذا كان مفعلاً
                     const { data: student } = await supabase.from('students').select('push_subscription').eq('id', f.follower_id).single();
                     if (student && student.push_subscription) {
-                        await sendPushNotification(student, '📢 عرض جديد!', `قام الأستاذ ${teacher.full_name} بإضافة عرض جديد: ${subject_name}`);
+                        await sendPushNotification(student, notifTitle, notifMessage);
                     }
                 }
             }
@@ -625,6 +658,16 @@ router.put('/offer/update/:offer_id', authenticate, authorize(['teacher']), uplo
                     success: false,
                     error: 'العرض المجاني يتسع لـ 20 شخصاً كحد أقصى'
                 });
+            }
+        }
+
+        if (willBeFree) {
+            if (!offer.meet_url || !offer.stream_url || !offer.stream_url.includes('meet.google.com')) {
+                const meetDetails = generateGoogleMeetRoom(offer.subject_name, offer.teacher_id);
+                updateData.stream_platform = 'google_meet';
+                updateData.meet_url = meetDetails.url;
+                updateData.stream_url = meetDetails.url;
+                updateData.room_name = meetDetails.url;
             }
         }
 
@@ -923,7 +966,8 @@ router.get('/offers', async (req, res) => {
                 room_password: offer.room_password || null,
                 room_name: offer.room_name || null,
                 stream_url: offer.stream_url || null,
-                stream_platform: offer.stream_platform || 'jitsi',
+                meet_url: offer.meet_url || (offer.stream_url && offer.stream_url.includes('meet.google.com') ? offer.stream_url : null),
+                stream_platform: isFree ? 'google_meet' : (offer.stream_platform || 'agora'),
                 total_seconds: offer.total_seconds || (sessionDuration * 60),
                 remaining_seconds: remainingSeconds,
                 is_paused: offer.is_paused || false,
@@ -1003,7 +1047,8 @@ duration: offer.duration,
                 status: offer.status,
                 education_level: offer.education_level,
                 stream_url: offer.stream_url || null,
-                stream_platform: offer.stream_platform || 'jitsi',
+                meet_url: offer.meet_url || (offer.stream_url && offer.stream_url.includes('meet.google.com') ? offer.stream_url : null),
+                stream_platform: ((offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && parseFloat(offer.price || 0) === 0) ? 'google_meet' : (offer.stream_platform || 'agora'),
                 room_password: offer.room_password || null,
                 room_name: offer.room_name || null,
                 total_seconds: offer.total_seconds || (offer.duration * 60),
@@ -1131,7 +1176,8 @@ router.get(['/offer/:offer_id', '/teacher/offer/:offer_id'], async (req, res) =>
             stream_active: Boolean(offer.stream_active),
             education_level: offer.education_level,
             stream_url: offer.stream_url || null,
-            stream_platform: offer.stream_platform || 'jitsi',
+            meet_url: offer.meet_url || (offer.stream_url && offer.stream_url.includes('meet.google.com') ? offer.stream_url : null),
+            stream_platform: isFree ? 'google_meet' : (offer.stream_platform || 'agora'),
             room_password: offer.room_password || null,
             room_name: offer.room_name || null,
             total_seconds: offer.total_seconds || (sessionDuration * 60),
@@ -1269,7 +1315,8 @@ router.get('/teacher/offers/:teacher_id', authenticate, authorize(['teacher']), 
                 room_name: offer.room_name || null,
                 room_password: offer.room_password || null,
                 stream_url: offer.stream_url || null,
-                stream_platform: offer.stream_platform || 'jitsi',
+                meet_url: offer.meet_url || (offer.stream_url && offer.stream_url.includes('meet.google.com') ? offer.stream_url : null),
+                stream_platform: isFree ? 'google_meet' : (offer.stream_platform || 'agora'),
                 total_seconds: offer.total_seconds || (sessionDuration * 60),
                 remaining_seconds: remainingSeconds,
                 is_paused: offer.is_paused || false,

@@ -5179,10 +5179,13 @@
 
         <div class="free-checkbox" style="margin-top:6px; margin-bottom:12px;">
             <input type="checkbox" id="isFree" onchange="togglePrice(); calculatePlanCosts();">
-            <label for="isFree" style="font-weight:700; cursor:pointer;">🎁 تقديم كعرض مجاني (حصة واحدة - ساعة واحدة كحد أقصى)</label>
+            <label for="isFree" style="font-weight:700; cursor:pointer;">🎁 تقديم كعرض مجاني (حصة واحدة - مؤتمت عبر Google Meet)</label>
         </div>
-        <div id="freeOfferNotice" style="display: none; background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; padding: 10px 14px; border-radius: 8px; font-size: 0.82rem; margin-bottom: 12px; font-weight: 600; line-height: 1.5;">
-            <i class="fas fa-gift" style="color:#10b981;"></i> <strong>عرض مجاني 100%:</strong> متاح لمدة أقصاها ساعة واحدة (60 دقيقة) ولـ 20 شخص كحد أقصى (مجاني تماماً بدون أي رسوم).
+        <div id="freeOfferNotice" style="display: none; background: #eff6ff; border: 1.5px solid #93c5fd; color: #1e3a8a; padding: 12px 14px; border-radius: 8px; font-size: 0.85rem; margin-bottom: 12px; font-weight: 600; line-height: 1.6;">
+            <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px; color:#1d4ed8; font-weight:800;">
+                <i class="fab fa-google"></i> بث مجاني مؤتمت تلقائياً عبر Google Meet
+            </div>
+            سيتم توليد رابط Google Meet تلقائياً لهذه الحصة وإرسال إشعار فوري لجميع المتابعين بموعد البدء بدقة، وعند بدء البث سيصلهم إشعار فوري مع رابط الدخول المباشر.
         </div>
 
         <div id="priceGroup" style="margin-top:6px; margin-bottom:12px;">
@@ -9188,7 +9191,18 @@ function updateUI() {
                         <div class="offer-info" style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><i class="fas fa-video"></i> حالة البث: ${offer.stream_active ? '<span style="color:green">نشط</span>' : '<span style="color:red">غير نشط</span>'}</div>
                         <div class="offer-info" style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><i class="fas fa-circle-info"></i> الحالة: ${escapeHtml(offer.status || 'upcoming')}</div>
                         <div class="offer-info" style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><i class="fas fa-graduation-cap"></i> المستوى: ${escapeHtml(levelName)}</div>
-                        <div class="offer-info" style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><i class="fas fa-money-bill-wave"></i> السعر: ${offer.is_free ? 'مجاني' : (offer.price_per_session || offer.price || 0) + ' دج'}</div>
+                        <div class="offer-info" style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><i class="fas fa-money-bill-wave"></i> السعر: ${offer.is_free ? '<span style="color:#10b981; font-weight:800;"><i class="fas fa-gift"></i> مجاني (Google Meet)</span>' : (offer.price_per_session || offer.price || 0) + ' دج'}</div>
+                        ${offer.is_free || offer.stream_platform === 'google_meet' || offer.meet_url ? `
+                            <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:8px 10px; margin: 8px 0; font-size:0.8rem; color:#1e40af;">
+                                <div style="font-weight:700; display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+                                    <span><i class="fab fa-google"></i> بث Google Meet:</span>
+                                    <button onclick="navigator.clipboard.writeText('${offer.meet_url || offer.stream_url || ''}'); showToast('تم نسخ الرابط بنجاح!', 'success');" style="background:#2563eb; color:white; border:none; padding:2px 8px; border-radius:4px; font-size:0.72rem; cursor:pointer;">نسخ الرابط</button>
+                                </div>
+                                <div style="font-size:0.75rem; color:#3b82f6; word-break:break-all;">
+                                    ${offer.meet_url || offer.stream_url || 'سيتم إنشاء الرابط تلقائياً عند البدء'}
+                                </div>
+                            </div>
+                        ` : ''}
                         
                         <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 10px; margin: 8px 0; font-size:0.8rem;">
                             <div style="font-weight:700; color:#334155; margin-bottom:4px;">
@@ -9624,6 +9638,21 @@ function updateUI() {
             });
             const data = await res.json();
             if (data.success) {
+                if (data.is_free || data.stream_platform === 'google_meet' || (data.meet_url && data.meet_url.includes('meet.google.com'))) {
+                    const meetUrl = data.meet_url || data.room_url;
+                    showToast('🎉 تم إطلاق البث المجاني عبر Google Meet وإشعار جميع المتابعين برابط الدخول!', 'success');
+                    try {
+                        const newWindow = window.open(meetUrl, '_blank');
+                        if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                            window.location.href = meetUrl;
+                        }
+                    } catch(e) {
+                        window.location.href = meetUrl;
+                    }
+                    setTimeout(() => loadOffers(), 1500);
+                    return;
+                }
+
                 showToast(`✅ تم فتح شاشة البث (الحصة رقم ${sessionNumber || 1}) بنجاح! اضغط على "👈 انقر هنا لإدخال الطلاب وبدء البث" لإتاحة الحضور للطلاب.`, 'success');
                 
                 const token = localStorage.getItem('token');
@@ -9655,6 +9684,25 @@ function updateUI() {
                 showToast('⚠️ يرجى تسجيل الدخول أولاً', 'warning');
                 return;
             }
+            try {
+                const res = await fetchWithAuth(`/api/offer/${offerId}`);
+                const offer = await res.json();
+                if (offer && (offer.is_free || offer.stream_platform === 'google_meet' || (offer.meet_url && offer.meet_url.includes('meet.google.com')))) {
+                    const meetUrl = offer.meet_url || offer.stream_url;
+                    if (meetUrl) {
+                        try {
+                            const newWindow = window.open(meetUrl, '_blank');
+                            if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                                window.location.href = meetUrl;
+                            }
+                        } catch(e) {
+                            window.location.href = meetUrl;
+                        }
+                        return;
+                    }
+                }
+            } catch(oErr) {}
+
             const agoraUrl = `/api/teacher-agora/${offerId}?token=${encodeURIComponent(token)}`;
             try {
                 const newWindow = window.open(agoraUrl, '_blank');
