@@ -1065,7 +1065,7 @@ router.get(['/search/users', '/public/search/users'], async (req, res) => {
     try {
         const query = (req.query.q || req.query.query || '').trim();
         const role = (req.query.role || 'all').toLowerCase().trim(); // 'all' | 'teacher' | 'student'
-        const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+        const limit = parseInt(req.query.limit) || 1000; // للسماح بجلب عدد كبير من النتائج
 
         let teachers = [];
         let students = [];
@@ -1082,6 +1082,7 @@ router.get(['/search/users', '/public/search/users'], async (req, res) => {
                             .select('*')
                             .neq('is_banned', true)
                             .or(`full_name.ilike.%${query}%,specialization.ilike.%${query}%,bio.ilike.%${query}%`)
+                            .order('is_vip', { ascending: false, nullsFirst: false })
                             .limit(limit);
                         if (!error && data && data.length > 0) {
                             tData = data;
@@ -1096,7 +1097,8 @@ router.get(['/search/users', '/public/search/users'], async (req, res) => {
                         .from('teachers')
                         .select('*')
                         .neq('is_banned', true)
-                        .limit(50);
+                        .order('is_vip', { ascending: false, nullsFirst: false })
+                        .limit(limit);
                     if (!error && data) {
                         tData = data;
                     }
@@ -1154,7 +1156,7 @@ router.get(['/search/users', '/public/search/users'], async (req, res) => {
                             .select('*')
                             .neq('is_banned', true)
                             .order('created_at', { ascending: false })
-                            .limit(100);
+                            .limit(limit);
                         if (!error && data && data.length > 0) {
                             sData = data;
                         } else {
@@ -1162,7 +1164,7 @@ router.get(['/search/users', '/public/search/users'], async (req, res) => {
                             const { data: rawD, error: rawE } = await supabase
                                 .from('students')
                                 .select('*')
-                                .limit(100);
+                                .limit(limit);
                             if (!rawE && rawD) {
                                 sData = rawD;
                             }
@@ -1244,16 +1246,41 @@ router.get(['/search/users', '/public/search/users'], async (req, res) => {
             };
         });
 
+        // ترتيب الأساتذة مرة أخرى لضمان أولوية التاج الذهبي في نتائج البحث
+        teachers.sort((a, b) => {
+            const aVip = (a.is_vip === true || (a.is_certified === true && a.verification_status === 'approved')) ? 1 : 0;
+            const bVip = (b.is_vip === true || (b.is_certified === true && b.verification_status === 'approved')) ? 1 : 0;
+            return bVip - aVip;
+        });
+
+        // تطبيق نفس الترتيب على المصفوفة المنسقة
+        const sortedFormattedTeachers = teachers.map(t => {
+            return formattedTeachers.find(ft => ft.id === t.id);
+        }).filter(Boolean);
+
+
         let combined = [];
         if (role === 'teacher') {
-            combined = formattedTeachers;
+            combined = sortedFormattedTeachers;
         } else if (role === 'student') {
             combined = formattedStudents;
         } else {
-            // دمج النتائج بشكل متوازن
-            const maxLength = Math.max(formattedTeachers.length, formattedStudents.length);
+            // وضع الأساتذة أصحاب التاج الذهبي في المقدمة
+            const vipTeachers = sortedFormattedTeachers.filter(t => {
+                const orig = teachers.find(o => o.id === t.id);
+                return orig && (orig.is_vip === true || (orig.is_certified === true && orig.verification_status === 'approved'));
+            });
+            const normalTeachers = sortedFormattedTeachers.filter(t => {
+                const orig = teachers.find(o => o.id === t.id);
+                return !orig || !(orig.is_vip === true || (orig.is_certified === true && orig.verification_status === 'approved'));
+            });
+
+            combined.push(...vipTeachers);
+
+            // دمج النتائج بشكل متوازن للبقية
+            const maxLength = Math.max(normalTeachers.length, formattedStudents.length);
             for (let i = 0; i < maxLength; i++) {
-                if (i < formattedTeachers.length) combined.push(formattedTeachers[i]);
+                if (i < normalTeachers.length) combined.push(normalTeachers[i]);
                 if (i < formattedStudents.length) combined.push(formattedStudents[i]);
             }
         }

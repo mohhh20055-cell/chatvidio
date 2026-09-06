@@ -6445,7 +6445,7 @@
         // فرز الأساتذة المعتمدين أولاً
         if (Array.isArray(teachers)) {
             teachers.sort((a, b) => {
-                const aCert = (a.is_certified === true || a.status === 'certified') ? 1 : 0;
+                const aVip = (a.is_vip === true || a.teacher_is_vip === true) ? 1 : 0; const bVip = (b.is_vip === true || b.teacher_is_vip === true) ? 1 : 0; if (bVip !== aVip) return bVip - aVip; const aCert = (a.is_certified === true || a.status === 'certified') ? 1 : 0;
                 const bCert = (b.is_certified === true || b.status === 'certified') ? 1 : 0;
                 return bCert - aCert;
             });
