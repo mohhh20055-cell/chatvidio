@@ -5833,8 +5833,16 @@ window.certifyAllTeachers = certifyAllTeachers;
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري جلب طلبات الشحن...</div>';
 
             try {
-                const data = await fetchData('/api/admin/manual-deposits', 'خطأ في جلب طلبات الشحن اليدوي');
-                allManualDeposits = Array.isArray(data) ? data : [];
+                const res = await fetchData('/api/admin/manual-deposits', 'خطأ في جلب طلبات الشحن اليدوي');
+                if (Array.isArray(res)) {
+                    allManualDeposits = res;
+                } else if (res && Array.isArray(res.requests)) {
+                    allManualDeposits = res.requests;
+                } else if (res && Array.isArray(res.data)) {
+                    allManualDeposits = res.data;
+                } else {
+                    allManualDeposits = [];
+                }
 
                 // Calculate statistics
                 const pendingCount = allManualDeposits.filter(d => d.status === 'pending').length;
@@ -5921,7 +5929,7 @@ window.certifyAllTeachers = certifyAllTeachers;
                     statusBadge = '<span style="background: #fee2e2; color: #b91c1c; padding: 4px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 800;"><i class="fas fa-times-circle"></i> مرفوض</span>';
                 }
 
-                const receiptUrl = req.receipt_image_url || '';
+                const receiptUrl = req.receipt_url || req.receipt_image_url || '';
                 const createdDate = new Date(req.created_at).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
                 const safeName = escapeHtml(req.user_name || (isStudent ? 'طالب' : 'أستاذ'));
                 const safeEmail = escapeHtml(req.user_email || '-');

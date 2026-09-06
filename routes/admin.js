@@ -2864,10 +2864,44 @@ router.get('/manual-deposits', authenticate, authorize(['admin']), async (req, r
         const { data, error } = await query;
         if (error) {
             logger.warn('⚠️ تعذر جلب طلبات الشحن من manual_deposit_requests:', error.message);
-            return res.json({ success: true, requests: [] });
+            return res.json({ success: true, requests: [], data: [] });
         }
 
-        return res.json({ success: true, requests: data || [] });
+        // إثراء بيانات الطلبات في حال نقص الاسم أو الإيميل أو الصورة
+        const enrichedRequests = await Promise.all((data || []).map(async (item) => {
+            let userName = item.user_name;
+            let userEmail = item.user_email;
+            let userPhone = item.user_phone;
+            
+            if (!userName || !userEmail) {
+                try {
+                    const table = item.user_type === 'teacher' ? 'teachers' : 'students';
+                    const { data: userData } = await supabase
+                        .from(table)
+                        .select('name, full_name, email, phone, phone_number')
+                        .eq('id', item.user_id)
+                        .maybeSingle();
+                    if (userData) {
+                        userName = userName || userData.full_name || userData.name || (item.user_type === 'teacher' ? 'أستاذ' : 'طالب');
+                        userEmail = userEmail || userData.email || '-';
+                        userPhone = userPhone || userData.phone || userData.phone_number || '-';
+                    }
+                } catch (uErr) {}
+            }
+
+            const receiptUrl = item.receipt_url || item.receipt_image_url || '';
+
+            return {
+                ...item,
+                user_name: userName || (item.user_type === 'teacher' ? 'أستاذ' : 'طالب'),
+                user_email: userEmail || '-',
+                user_phone: userPhone || '-',
+                receipt_url: receiptUrl,
+                receipt_image_url: receiptUrl
+            };
+        }));
+
+        return res.json({ success: true, requests: enrichedRequests, data: enrichedRequests });
     } catch (error) {
         logger.error('❌ خطأ في جلب طلبات الشحن اليدوي:', error.message);
         return res.status(500).json({ success: false, error: 'حدث خطأ أثناء جلب طلبات الشحن اليدوي' });

@@ -165,23 +165,24 @@ const validateUploadedFiles = (req, res, next) => {
 };
 
 function getPublicImageUrl(bucketName, folder, fileName) {
-    if (!fileName || fileName === 'null' || fileName === 'undefined' || fileName === 'NULL') {
-        console.log(`[getPublicImageUrl LOG] Skipping invalid filename: "${fileName}" for bucket: ${bucketName}, folder: ${folder}`);
+    if (!fileName || typeof fileName !== 'string' || !fileName.trim()) {
         return null;
     }
-    if (typeof fileName === 'string') {
-        if (fileName.startsWith('http://') || fileName.startsWith('https://') || fileName.startsWith('data:') || fileName.startsWith('/')) {
-            if (fileName.endsWith('/null') || fileName.endsWith('/undefined')) {
-                console.warn(`[getPublicImageUrl LOG] Warning: detected invalid trailing null/undefined in full URL: "${fileName}"`);
-                return null;
-            }
-            console.log(`[getPublicImageUrl LOG] Using existing full URL: "${fileName}"`);
-            return encodeURI(fileName);
+    const cleanFileName = fileName.trim();
+    if (cleanFileName === 'null' || cleanFileName === 'undefined' || cleanFileName === 'NULL' || 
+        cleanFileName.toLowerCase() === 'undefined' || cleanFileName.toLowerCase() === 'null') {
+        return null;
+    }
+
+    if (cleanFileName.startsWith('http://') || cleanFileName.startsWith('https://') || cleanFileName.startsWith('data:') || cleanFileName.startsWith('/')) {
+        if (cleanFileName.endsWith('/null') || cleanFileName.endsWith('/undefined') || cleanFileName.endsWith('/NULL')) {
+            return null;
         }
+        return encodeURI(cleanFileName);
     }
 
     const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-    let fullPath = typeof fileName === 'string' && fileName.includes('/') ? fileName : `${folder}/${fileName}`;
+    let fullPath = cleanFileName.includes('/') ? cleanFileName : `${folder}/${cleanFileName}`;
     // إزالة أية تكرارات لاسم الـ bucket في بداية المسار
     if (fullPath.startsWith(`${bucketName}/`)) {
         fullPath = fullPath.substring(bucketName.length + 1);
@@ -193,9 +194,7 @@ function getPublicImageUrl(bucketName, folder, fileName) {
     } else {
         resolvedUrl = `/uploads/${fullPath}`;
     }
-    resolvedUrl = encodeURI(resolvedUrl);
-    console.log(`[getPublicImageUrl LOG] Resolved URL for ${bucketName}/${fullPath} => ${resolvedUrl}`);
-    return resolvedUrl;
+    return encodeURI(resolvedUrl);
 }
 
 function processUserProfile(user, role) {
