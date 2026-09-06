@@ -1,5 +1,3 @@
-const crypto = require('crypto');
-
 const GOOGLE_CONFIG = {
     client_id: process.env.GOOGLE_CLIENT_ID || "",
     project_id: process.env.GOOGLE_PROJECT_ID || "cedar-channel-507807-e0",
@@ -10,44 +8,53 @@ const GOOGLE_CONFIG = {
     redirect_uris: ["https://www.zoomdz.com/"]
 };
 
+// رابط إنشاء غرفة جديدة كمضيف ومتحكم رسمي في Google Meet
+const GOOGLE_MEET_HOST_CREATE_URL = "https://meet.google.com/new";
+
 /**
- * توليد كود ورابط غرفة Google Meet قياسي وفق نسق (xxx-yyyy-zzz)
+ * التحقق من وتنسيق رابط Google Meet المدخل
  */
-function generateGoogleMeetCode() {
-    const chars = 'abcdefghijklmnopqrstuvwxyz';
-    const getRandomSegment = (len) => {
-        let res = '';
-        const bytes = crypto.randomBytes(len);
-        for (let i = 0; i < len; i++) {
-            res += chars[bytes[i] % chars.length];
-        }
-        return res;
-    };
+function formatGoogleMeetUrl(input) {
+    if (!input || typeof input !== 'string') return null;
+    let trimmed = input.trim();
     
-    const part1 = getRandomSegment(3);
-    const part2 = getRandomSegment(4);
-    const part3 = getRandomSegment(3);
+    // إذا كان المدخل رابطاً كاملاً
+    if (/^https?:\/\/meet\.google\.com\/[a-zA-Z0-9_-]+/i.test(trimmed)) {
+        return trimmed.replace(/^http:/i, 'https:');
+    }
     
-    return `${part1}-${part2}-${part3}`;
+    // إذا كان المدخل كود الاجتماع فقط مثل abc-defg-hij
+    const codeMatch = trimmed.match(/^[a-zA-Z0-9]{3,4}-[a-zA-Z0-9]{3,4}-[a-zA-Z0-9]{3,4}$/);
+    if (codeMatch) {
+        return `https://meet.google.com/${trimmed.toLowerCase()}`;
+    }
+
+    // إذا كان يحتوي على رابط ضمن نص
+    const urlMatch = trimmed.match(/https:\/\/meet\.google\.com\/[a-zA-Z0-9_-]+/i);
+    if (urlMatch) {
+        return urlMatch[0];
+    }
+
+    return null;
 }
 
 /**
  * إنشاء تفاصيل رابط غرفة Google Meet للحصص المجانية
  */
-function generateGoogleMeetRoom(subjectName = '', offerId = null) {
-    const code = generateGoogleMeetCode();
-    const url = `https://meet.google.com/${code}`;
+function generateGoogleMeetRoom(customUrl = '', offerId = null) {
+    const formatted = formatGoogleMeetUrl(customUrl);
     return {
-        code,
-        url,
+        url: formatted || null,
+        host_create_url: GOOGLE_MEET_HOST_CREATE_URL,
         platform: 'google_meet',
-        is_free: true,
-        client_id: GOOGLE_CONFIG.client_id
+        is_free: true
     };
 }
 
 module.exports = {
     GOOGLE_CONFIG,
-    generateGoogleMeetCode,
+    GOOGLE_MEET_HOST_CREATE_URL,
+    formatGoogleMeetUrl,
     generateGoogleMeetRoom
 };
+

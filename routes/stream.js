@@ -13,7 +13,7 @@ const { supabase } = require('../config/database');
 const { authenticate, authorize, checkBanned, checkActiveStream, isOwner, validateOfferOwnership, validateStudentAccess, checkStreamActive, checkNoActiveStream } = require('../middleware/auth');
 const { getOne, insert, update, autoBookFreeSession, loadLocalTeacherFollowers } = require('../utils/helpers');
 const { verifyToken } = require('../utils/jwt');
-const { generateGoogleMeetRoom } = require('../utils/googleMeet');
+const { generateGoogleMeetRoom, formatGoogleMeetUrl, GOOGLE_MEET_HOST_CREATE_URL } = require('../utils/googleMeet');
 const { sendPushNotification } = require('../utils/notification');
 
 // ✅ استيراد نظام التحقق المستقل من وقت البث
@@ -80,10 +80,17 @@ const handleStreamStart = async (req, res) => {
         const isFreeOffer = offer.is_free === true || offer.is_free === 1 || offer.is_free === 'true' || parseFloat(offer.price || 0) === 0 || offer.stream_platform === 'google_meet';
 
         if (isFreeOffer) {
-            let meetUrl = offer.meet_url || (offer.stream_url && offer.stream_url.includes('meet.google.com') ? offer.stream_url : null);
+            let reqMeetUrl = req.body && req.body.meet_url ? formatGoogleMeetUrl(req.body.meet_url) : null;
+            let meetUrl = reqMeetUrl || offer.meet_url || (offer.stream_url && offer.stream_url.includes('meet.google.com') ? offer.stream_url : null);
+            
+            // إذا لم يكن هناك رابط صالح بعد، نطلب من الأستاذ فتح الرابط كمضيف
             if (!meetUrl) {
-                const meetRoom = generateGoogleMeetRoom(offer.subject_name, offer.id);
-                meetUrl = meetRoom.url;
+                return res.json({
+                    success: false,
+                    requires_meet_url: true,
+                    host_create_url: GOOGLE_MEET_HOST_CREATE_URL,
+                    message: 'يرجى فتح غرفة الاجتماع كمضيف (Host) في Google Meet ولصق الرابط لبدء البث وإشعار الطلاب.'
+                });
             }
 
             // ✅ حفظ بيانات البث المجاني في جدول الدروس

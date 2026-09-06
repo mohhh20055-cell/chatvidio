@@ -21,7 +21,7 @@ const upload = multer({
 const { processStreamPayments, archiveStreamLog } = require('../utils/streamVerification');
 const { sendPushNotification } = require('../utils/notification');
 const { calculateBookingRefundDetails } = require('../utils/refundCalculator');
-const { generateGoogleMeetRoom } = require('../utils/googleMeet');
+const { generateGoogleMeetRoom, formatGoogleMeetUrl, GOOGLE_MEET_HOST_CREATE_URL } = require('../utils/googleMeet');
 
 // ✅ دالة مساعدة لحساب واسترجاع الوقت المتبقي للبث
 function calculateOfferRemainingSeconds(offer) {
@@ -383,10 +383,13 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
             });
         }
 
-        // ✅ إنشاء رابط Google Meet تلقائياً في حال كانت الحصة مجانية
-        let meetDetails = null;
+        // ✅ فحص رابط Google Meet في حال كانت الحصة مجانية
+        let validMeetUrl = null;
         if (isFreeOffer) {
-            meetDetails = generateGoogleMeetRoom(subject_name.trim(), teacher_id);
+            const customMeet = req.body.meet_url || req.body.stream_url;
+            if (customMeet) {
+                validMeetUrl = formatGoogleMeetUrl(customMeet);
+            }
         }
 
         // ✅ إدخال الدرس في قاعدة البيانات
@@ -397,10 +400,10 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
             offer_date: offerDateFormatted,
             price: isFreeOffer ? 0 : parsedPrice,
             is_free: isFreeOffer,
-            room_name: isFreeOffer && meetDetails ? meetDetails.url : room_name,
+            room_name: isFreeOffer && validMeetUrl ? validMeetUrl : room_name,
             room_password: defaultPassword,
-            stream_url: isFreeOffer && meetDetails ? meetDetails.url : null,
-            meet_url: isFreeOffer && meetDetails ? meetDetails.url : null,
+            stream_url: isFreeOffer && validMeetUrl ? validMeetUrl : null,
+            meet_url: isFreeOffer && validMeetUrl ? validMeetUrl : null,
             stream_platform: isFreeOffer ? 'google_meet' : 'agora',
             status: 'upcoming',
             education_level: finalEducationLevel,
@@ -1713,6 +1716,111 @@ router.get('/unread-count', async (req, res) => {
     } catch (error) {
         logger.error('Error getting unread offers count:', error.message);
         res.json({ success: true, unread_count: 0 });
+    }
+});
+
+// ============================================================
+// ✅ تحديث أو حفظ رابط Google Meet للدرس وإشعار الطلاب فوراً
+// ============================================================
+router.post('/:id/update-meet-url', authenticate, authorize(['teacher', 'admin']), async (req, res) => {
+    try {
+        const offerId = req.params.id;
+        const { meet_url, notify_students } = req.body;
+        const teacherId = req.user.userId;
+
+        const { data: offer, error: fetchErr } = await supabase
+            .from('offers')
+            .select('*')
+            .eq('id', offerId)
+            .single();
+
+        if (fetchErr || !offer) {
+            return res.status(404).json({ success: false, error: 'الدرس غير موجود' });
+        }
+
+        if (req.user.role === 'teacher' && parseInt(offer.teacher_id) !== parseInt(teacherId)) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك بتعديل هذا الدرس' });
+        }
+
+        const formattedUrl = formatGoogleMeetUrl(meet_url);
+        if (!formattedUrl) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'رابط Google Meet غير صالح. يرجى إدخال رابط يبدأ بـ https://meet.google.com/ أو رمز الاجتماع المكون من (xxx-yyyy-zzz)' 
+            });
+        }
+
+        const updateData = {
+            meet_url: formattedUrl,
+            stream_url: formattedUrl,
+            room_name: formattedUrl,
+            stream_platform: 'google_meet',
+            updated_at: new Date().toISOString()
+        };
+
+        const { error: updateErr } = await supabase
+            .from('offers')
+            .update(updateData)
+            .eq('id', offerId);
+
+        if (updateErr) {
+            return res.status(500).json({ success: false, error: 'تعذر حفظ رابط Google Meet في قاعدة البيانات' });
+        }
+
+        // إشعار الطلاب والمتابعين بالرابط الحقيقي
+        if (notify_students !== false) {
+            try {
+                const teacher = await getOne('teachers', 'id', offer.teacher_id);
+                const teacherName = teacher ? teacher.full_name : 'الأستاذ';
+                const notifTitle = '🔗 تم تحديد رابط Google Meet للحصة!';
+                const notifMessage = `أضاف الأستاذ ${teacherName} رابط Google Meet لحصة "${offer.subject_name}". رابط الدخول: ${formattedUrl}`;
+
+                const targetStudents = new Set();
+                const { data: followers } = await supabase
+                    .from('teacher_followers')
+                    .select('follower_id')
+                    .eq('teacher_id', offer.teacher_id)
+                    .eq('follower_type', 'student');
+                if (followers) followers.forEach(f => targetStudents.add(parseInt(f.follower_id)));
+
+                const { data: booked } = await supabase
+                    .from('sessions')
+                    .select('student_id')
+                    .eq('offer_id', offerId);
+                if (booked) booked.forEach(b => targetStudents.add(parseInt(b.student_id)));
+
+                for (const sId of targetStudents) {
+                    await supabase.from('notifications').insert({
+                        user_id: sId,
+                        user_type: 'student',
+                        title: notifTitle,
+                        message: notifMessage,
+                        offer_id: offerId,
+                        meet_url: formattedUrl,
+                        stream_url: formattedUrl,
+                        is_free: true,
+                        stream_platform: 'google_meet',
+                        is_read: false,
+                        created_at: new Date().toISOString()
+                    });
+                    const { data: student } = await supabase.from('students').select('push_subscription').eq('id', sId).single();
+                    if (student && student.push_subscription) {
+                        sendPushNotification(student, notifTitle, notifMessage).catch(() => {});
+                    }
+                }
+            } catch (e) {
+                console.error('Error sending update notifications:', e);
+            }
+        }
+
+        res.json({
+            success: true,
+            meet_url: formattedUrl,
+            message: '✅ تم حفظ رابط Google Meet وإشعار الطلاب بنجاح!'
+        });
+    } catch (error) {
+        logger.error('Error updating meet url:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
 

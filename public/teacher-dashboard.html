@@ -5181,11 +5181,21 @@
             <input type="checkbox" id="isFree" onchange="togglePrice(); calculatePlanCosts();">
             <label for="isFree" style="font-weight:700; cursor:pointer;">🎁 تقديم كعرض مجاني (حصة واحدة - مؤتمت عبر Google Meet)</label>
         </div>
-        <div id="freeOfferNotice" style="display: none; background: #eff6ff; border: 1.5px solid #93c5fd; color: #1e3a8a; padding: 12px 14px; border-radius: 8px; font-size: 0.85rem; margin-bottom: 12px; font-weight: 600; line-height: 1.6;">
-            <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px; color:#1d4ed8; font-weight:800;">
-                <i class="fab fa-google"></i> بث مجاني مؤتمت تلقائياً عبر Google Meet
+        <div id="freeOfferNotice" style="display: none; background: #eff6ff; border: 1.5px solid #93c5fd; color: #1e3a8a; padding: 14px; border-radius: 10px; font-size: 0.85rem; margin-bottom: 14px; line-height: 1.6;">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+                <div style="color:#1d4ed8; font-weight:800; font-size:0.92rem; display:flex; align-items:center; gap:6px;">
+                    <i class="fab fa-google" style="color:#2563eb;"></i> بث مجاني عبر Google Meet (أنت المضيف والمدير)
+                </div>
+                <button type="button" onclick="window.open('https://meet.google.com/new', '_blank')" style="background:#2563eb; color:white; border:none; padding:5px 12px; border-radius:6px; font-size:0.78rem; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:5px;">
+                    <i class="fas fa-external-link-alt"></i> فتح وإنشاء غرفة كمضيف الآن
+                </button>
             </div>
-            سيتم توليد رابط Google Meet تلقائياً لهذه الحصة وإرسال إشعار فوري لجميع المتابعين بموعد البدء بدقة، وعند بدء البث سيصلهم إشعار فوري مع رابط الدخول المباشر.
+            <p style="margin: 0 0 8px 0; color:#334155; font-size:0.82rem;">
+                عند فتح الرابط، تنشئ Google Meet غرفة جديدة وتكون أنت <strong>المضيف (Host)</strong> مع كامل صلاحيات التحكم. الصق الرابط بالأسفل (أو يمكنك تركه الآن ووضعه عند بدء البث):
+            </p>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <input type="text" id="freeMeetUrl" placeholder="الصق رابط أو رمز Google Meet هنا (مثال: https://meet.google.com/xxx-yyyy-zzz)..." style="width:100%; padding:9px 12px; border:1.5px solid #bfdbfe; border-radius:8px; font-size:0.85rem; background:white;">
+            </div>
         </div>
 
         <div id="priceGroup" style="margin-top:6px; margin-bottom:12px;">
@@ -5286,6 +5296,57 @@
                 </button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- GOOGLE MEET HOST & SETTINGS MODAL -->
+<div id="googleMeetHostModal" class="modal" style="display: none; max-width: 540px;">
+    <div class="modal-header" style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); color: white; border-radius: 12px 12px 0 0; padding: 16px 20px;">
+        <h3 style="color: white; margin: 0; display: flex; align-items: center; gap: 8px; font-size: 1.05rem;">
+            <i class="fab fa-google"></i> بدء بث Google Meet كمضيف (Host)
+        </h3>
+        <button class="close-modal" onclick="closeGoogleMeetHostModal()" style="color: white; font-size: 1.5rem;">&times;</button>
+    </div>
+    <div class="modal-body" style="padding: 20px;">
+        <input type="hidden" id="meetHostOfferId">
+        <input type="hidden" id="meetHostSessionNumber" value="1">
+        
+        <div style="background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 10px; padding: 12px 14px; margin-bottom: 14px;">
+            <div style="font-weight: 800; color: #1e40af; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; font-size: 0.9rem;">
+                <i class="fas fa-crown" style="color: #f59e0b;"></i> أنت المضيف والمتحكم بالكامل في الاجتماع
+            </div>
+            <p style="margin: 0; font-size: 0.8rem; color: #334155; line-height: 1.5;">
+                لكي تكون <strong>المضيف (Host)</strong> بصلاحيات قبول الطلاب والتحكم الكامل، افتح Google Meet بحسابك أولاً، ثم الصق الرابط هنا لإشعار الطلاب وبدء الحصة فوراً.
+            </p>
+        </div>
+
+        <div style="margin-bottom: 14px;">
+            <label style="display: block; font-weight: 700; color: #1e293b; margin-bottom: 6px; font-size: 0.88rem;">
+                1️⃣ فتح وإنشاء الغرفة الرسمية في Google Meet:
+            </label>
+            <button type="button" onclick="window.open('https://meet.google.com/new', '_blank')" style="width: 100%; padding: 11px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: 800; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 2px 6px rgba(37,99,235,0.25);">
+                <i class="fas fa-external-link-alt"></i> فتح وإنشاء اجتماع جديد كمضيف (Google Meet)
+            </button>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+            <label for="meetHostUrlInput" style="display: block; font-weight: 700; color: #1e293b; margin-bottom: 6px; font-size: 0.88rem;">
+                2️⃣ الصق رابط أو رمز الاجتماع هنا:
+            </label>
+            <input type="text" id="meetHostUrlInput" placeholder="مثال: https://meet.google.com/xxx-yyyy-zzz أو xxx-yyyy-zzz" style="width: 100%; padding: 11px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-family: 'Cairo', sans-serif; font-size: 0.88rem;">
+            <small style="color: #64748b; font-size: 0.74rem; margin-top: 4px; display: block;">
+                * سيتم حفظ هذا الرابط الصالح وإرساله فوراً في إشعار لجميع المتابعين والطلاب.
+            </small>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+            <button type="button" onclick="submitGoogleMeetStreamStart()" style="flex: 2; padding: 11px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: 800; font-size: 0.92rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 6px rgba(16,185,129,0.25);">
+                <i class="fas fa-paper-plane"></i> حفظ الرابط وبدء البث وإشعار الطلاب 🚀
+            </button>
+            <button type="button" class="cancel-btn" onclick="closeGoogleMeetHostModal()" style="flex: 1; padding: 11px; border-radius: 8px; font-weight: 700; margin: 0; border: 1px solid #cbd5e1; background: #f1f5f9; cursor: pointer;">
+                إلغاء
+            </button>
+        </div>
     </div>
 </div>
 
@@ -9193,13 +9254,19 @@ function updateUI() {
                         <div class="offer-info" style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><i class="fas fa-graduation-cap"></i> المستوى: ${escapeHtml(levelName)}</div>
                         <div class="offer-info" style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 5px;"><i class="fas fa-money-bill-wave"></i> السعر: ${offer.is_free ? '<span style="color:#10b981; font-weight:800;"><i class="fas fa-gift"></i> مجاني (Google Meet)</span>' : (offer.price_per_session || offer.price || 0) + ' دج'}</div>
                         ${offer.is_free || offer.stream_platform === 'google_meet' || offer.meet_url ? `
-                            <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:8px 10px; margin: 8px 0; font-size:0.8rem; color:#1e40af;">
-                                <div style="font-weight:700; display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
-                                    <span><i class="fab fa-google"></i> بث Google Meet:</span>
-                                    <button onclick="navigator.clipboard.writeText('${offer.meet_url || offer.stream_url || ''}'); showToast('تم نسخ الرابط بنجاح!', 'success');" style="background:#2563eb; color:white; border:none; padding:2px 8px; border-radius:4px; font-size:0.72rem; cursor:pointer;">نسخ الرابط</button>
+                            <div style="background:#eff6ff; border:1.5px solid #bfdbfe; border-radius:10px; padding:10px 12px; margin: 8px 0; font-size:0.82rem; color:#1e40af;">
+                                <div style="font-weight:800; display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; flex-wrap:wrap; gap:4px;">
+                                    <span><i class="fab fa-google" style="color:#2563eb;"></i> غرفة Google Meet (أنت المضيف):</span>
+                                    <div style="display:flex; gap:4px;">
+                                        ${offer.meet_url ? `
+                                            <button onclick="navigator.clipboard.writeText('${offer.meet_url}'); showToast('تم نسخ الرابط بنجاح!', 'success');" style="background:#2563eb; color:white; border:none; padding:3px 8px; border-radius:4px; font-size:0.72rem; font-weight:700; cursor:pointer;" title="نسخ رابط الاجتماع">نسخ الرابط</button>
+                                            <button onclick="window.open('${offer.meet_url}', '_blank')" style="background:#059669; color:white; border:none; padding:3px 8px; border-radius:4px; font-size:0.72rem; font-weight:700; cursor:pointer;" title="دخول الغرفة كمضيف"><i class="fas fa-crown"></i> دخول كمضيف</button>
+                                        ` : ''}
+                                        <button onclick="openGoogleMeetHostModal(${offer.id})" style="background:#4f46e5; color:white; border:none; padding:3px 8px; border-radius:4px; font-size:0.72rem; font-weight:700; cursor:pointer;">${offer.meet_url ? '✏️ تعديل' : '🔗 تعيين الرابط'}</button>
+                                    </div>
                                 </div>
-                                <div style="font-size:0.75rem; color:#3b82f6; word-break:break-all;">
-                                    ${offer.meet_url || offer.stream_url || 'سيتم إنشاء الرابط تلقائياً عند البدء'}
+                                <div style="font-size:0.75rem; color:#2563eb; word-break:break-all; background:white; padding:5px 8px; border-radius:6px; border:1px solid #dbeafe;">
+                                    ${offer.meet_url ? `<a href="${offer.meet_url}" target="_blank" style="color:#2563eb; font-weight:700; text-decoration:none;"><i class="fas fa-link"></i> ${offer.meet_url}</a>` : '<span style="color:#64748b;"><i class="fas fa-info-circle"></i> لم يتم تعيين الرابط بعد. اضغط على "تعيين الرابط" أو "بدء البث" لإنشاء الغرفة كمضيف.</span>'}
                                 </div>
                             </div>
                         ` : ''}
@@ -9620,9 +9687,100 @@ function updateUI() {
     }
     window.completeSessionEscrow = completeSessionEscrow;
 
+    function openGoogleMeetHostModal(offerId, sessionNumber = 1) {
+        if (checkGuestAction()) return;
+        const modal = document.getElementById('googleMeetHostModal');
+        if (!modal) return;
+        document.getElementById('meetHostOfferId').value = offerId;
+        document.getElementById('meetHostSessionNumber').value = sessionNumber;
+        
+        // جلب الرابط الحالي إن وجد من البطاقة
+        const card = document.getElementById(`offer-card-${offerId}`);
+        const currentLink = card?.querySelector('a[href*="meet.google.com"]')?.getAttribute('href') || '';
+        document.getElementById('meetHostUrlInput').value = currentLink;
+        
+        modal.style.display = 'block';
+    }
+    window.openGoogleMeetHostModal = openGoogleMeetHostModal;
+
+    function closeGoogleMeetHostModal() {
+        const modal = document.getElementById('googleMeetHostModal');
+        if (modal) modal.style.display = 'none';
+    }
+    window.closeGoogleMeetHostModal = closeGoogleMeetHostModal;
+
+    function openGoogleMeetNewRoom() {
+        window.open('https://meet.google.com/new', '_blank');
+    }
+    window.openGoogleMeetNewRoom = openGoogleMeetNewRoom;
+
+    async function submitGoogleMeetStreamStart() {
+        if (checkGuestAction()) return;
+        const offerId = document.getElementById('meetHostOfferId').value;
+        const sessionNumber = document.getElementById('meetHostSessionNumber').value || 1;
+        const meetUrl = document.getElementById('meetHostUrlInput').value.trim();
+
+        if (!meetUrl) {
+            showToast('⚠️ يرجى لصق رابط Google Meet لكي ينضم الطلاب إليه', 'warning');
+            document.getElementById('meetHostUrlInput').focus();
+            return;
+        }
+
+        try {
+            showToast('⏳ جاري حفظ الرابط وإطلاق البث المباشر...', 'info');
+            // أولاً: حفظ الرابط في الدرس
+            const updateRes = await fetchWithAuth(`/api/offer/${offerId}/update-meet-url`, {
+                method: 'POST',
+                body: JSON.stringify({ meet_url: meetUrl, notify_students: true })
+            });
+            const updateData = await updateRes.json();
+            if (!updateData.success) {
+                showToast(updateData.error || '❌ تعذر حفظ الرابط، تأكد من صحة الرابط', 'error');
+                return;
+            }
+
+            // ثانياً: بدء البث
+            const startRes = await fetchWithAuth('/api/stream/start-agora-stream', {
+                method: 'POST',
+                body: JSON.stringify({ offer_id: offerId, meet_url: updateData.meet_url })
+            });
+            const startData = await startRes.json();
+            
+            closeGoogleMeetHostModal();
+            showToast('🎉 تم إطلاق البث المجاني وإشعار جميع الطلاب والمتابعين برابط الدخول!', 'success');
+            
+            const targetMeetUrl = updateData.meet_url || meetUrl;
+            try {
+                const newWindow = window.open(targetMeetUrl, '_blank');
+                if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                    window.location.href = targetMeetUrl;
+                }
+            } catch(e) {
+                window.location.href = targetMeetUrl;
+            }
+            setTimeout(() => loadOffers(), 1500);
+        } catch(err) {
+            showToast('❌ حدث خطأ في الاتصال أثناء بدء البث', 'error');
+        }
+    }
+    window.submitGoogleMeetStreamStart = submitGoogleMeetStreamStart;
+
     async function startStreamNow(offerId, sessionNumber) {
         if (checkGuestAction()) return;
         
+        // التحقق إن كان الدرس مجانياً عبر Google Meet
+        try {
+            const offerRes = await fetchWithAuth(`/api/offer/${offerId}`);
+            const offerData = await offerRes.json();
+            if (offerData && (offerData.is_free || offerData.stream_platform === 'google_meet')) {
+                // إذا لم يكن هناك رابط صالح بعد، نفتح نافذة إنشاء الرابط كمضيف
+                if (!offerData.meet_url || !offerData.meet_url.includes('meet.google.com')) {
+                    openGoogleMeetHostModal(offerId, sessionNumber);
+                    return;
+                }
+            }
+        } catch(e) {}
+
         let confirmMsg = "⚠️ هل تريد بدء البث المباشر لهذه الغرفة الآن؟";
         if (sessionNumber) {
             confirmMsg = `⚠️ أنت على وشك بدء البث المباشر للحصة الحالية (رقم ${sessionNumber}).\nهل أنت متأكد من بدء البث المباشر لهذه الحصة الآن؟`;
@@ -9637,6 +9795,10 @@ function updateUI() {
                 body: JSON.stringify({ offer_id: offerId })
             });
             const data = await res.json();
+            if (data.requires_meet_url) {
+                openGoogleMeetHostModal(offerId, sessionNumber);
+                return;
+            }
             if (data.success) {
                 if (data.is_free || data.stream_platform === 'google_meet' || (data.meet_url && data.meet_url.includes('meet.google.com'))) {
                     const meetUrl = data.meet_url || data.room_url;
@@ -9698,6 +9860,9 @@ function updateUI() {
                         } catch(e) {
                             window.location.href = meetUrl;
                         }
+                        return;
+                    } else {
+                        openGoogleMeetHostModal(offerId);
                         return;
                     }
                 }
@@ -10169,6 +10334,8 @@ function updateUI() {
             });
         }
 
+        const freeMeetUrlVal = document.getElementById('freeMeetUrl') ? document.getElementById('freeMeetUrl').value.trim() : '';
+
         const reqBody = JSON.stringify({
             teacher_id: teacherId,
             subject_name: subject_name,
@@ -10176,6 +10343,8 @@ function updateUI() {
             max_students: isFree ? Math.min(20, maxStudentsVal) : maxStudentsVal,
             offer_date: offer_date_formatted,
             is_free: isFree,
+            meet_url: isFree ? freeMeetUrlVal : null,
+            stream_url: isFree ? freeMeetUrlVal : null,
             price: isFree ? 0 : priceVal,
             education_level: finalLevel,
             plan_type: plan_type,
