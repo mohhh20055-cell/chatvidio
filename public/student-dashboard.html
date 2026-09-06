@@ -4089,7 +4089,7 @@
                 </div>
                 
                 <!-- Chat Messages Area -->
-                <div id="studentChatMessagesArea" style="flex-grow: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 14px; background: #f8fafc; scroll-behavior: smooth;">
+                <div id="studentChatMessagesArea" onscroll="if(this.scrollTop===0){ window.studentChatMessagesAreaLimit = (window.studentChatMessagesAreaLimit || 50) + 50; if(typeof loadStudentChatMessages === 'function') loadStudentChatMessages(true); }" style="flex-grow: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 14px; background: #f8fafc; scroll-behavior: smooth;">
                     <!-- Messages bubble list -->
                 </div>
 
@@ -11942,7 +11942,7 @@
             }
 
             try {
-                const response = await fetch(`/api/groups/${activeStudentGroupId}/messages`, {
+                let _limit = window.studentChatMessagesAreaLimit || 50; const response = await fetch(`/api/groups/${activeStudentGroupId}/messages?limit=${_limit}`, {
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
                 });
                 const messages = await response.json();
@@ -11970,6 +11970,8 @@
                 }
                 
                 const isScrolledToBottom = messagesArea.scrollHeight - messagesArea.clientHeight <= messagesArea.scrollTop + 90;
+                const oldScrollHeight = messagesArea.scrollHeight;
+                const oldScrollTop = messagesArea.scrollTop;
 
                 messagesArea.innerHTML = messages.map(m => {
                     const isSelf = String(m.sender_id) === String(currentUserId) && m.sender_type === 'student';
@@ -12065,9 +12067,16 @@
                     `;
                 }).join('');
                 
-                if (isScrolledToBottom || messagesArea.scrollTop === 0) {
+                
+                const isEmpty = messagesArea.children.length === 0;
+                if (isScrolledToBottom || isEmpty) {
                     messagesArea.scrollTop = messagesArea.scrollHeight;
+                } else if (arguments[0] === true) {
+                    messagesArea.scrollTop = messagesArea.scrollHeight - (oldScrollHeight - oldScrollTop);
+                } else {
+                    messagesArea.scrollTop = oldScrollTop;
                 }
+    
             } catch (e) {
                 console.error('Error loading student chat messages:', e);
             }
