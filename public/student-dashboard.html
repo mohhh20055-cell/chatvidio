@@ -5144,21 +5144,23 @@
         return false;
     }
 
-    function checkAndHandleAutoLogout(reason = 'انتهت صلاحية الجلسة، تم تسجيل الخروج تلقائياً') {
+    function checkAndHandleAutoLogout(reason = 'يتم تسجيل الخروج الآن') {
         const uData = JSON.parse(localStorage.getItem('userData') || '{}');
         if (uData.is_guest || uData.id === -1) return false;
 
         const token = localStorage.getItem('token');
         if (!token || isTokenExpired(token)) {
-            console.warn('🔒 التوكن منتهي الصلاحية! جاري تسجيل الخروج التلقائي...');
+            if (window._isLoggingOut) return true;
+            window._isLoggingOut = true;
+            console.warn('🔒 التوكن منتهي الصلاحية! يتم تسجيل الخروج الآن...');
             localStorage.removeItem('token');
             localStorage.removeItem('userData');
             if (typeof showToast === 'function') {
-                showToast(`🔒 ${reason}`, 'error');
+                showToast('يتم تسجيل الخروج الآن', 'info');
             }
             setTimeout(() => {
                 window.location.href = '/';
-            }, 1000);
+            }, 800);
             return true;
         }
         return false;
@@ -5224,13 +5226,27 @@
                         console.warn('401 response for guest user - ignoring logout redirect');
                         throw new Error('غير مصرح به للزائر');
                     }
-                    showToast('⏳ انتهت صلاحية الجلسة، جاري إعادة التوجيه...', 'error');
+                    if (window._isLoggingOut) throw new Error('انتهت صلاحية الجلسة');
+                    window._isLoggingOut = true;
+                    showToast('يتم تسجيل الخروج الآن', 'info');
                     localStorage.removeItem('token');
                     localStorage.removeItem('userData');
                     setTimeout(() => {
                         window.location.href = '/';
-                    }, 1500);
+                    }, 1000);
                     throw new Error('انتهت صلاحية الجلسة');
+                }
+
+                if (response.status >= 500) {
+                    const lastReload = sessionStorage.getItem('last_auto_reload');
+                    const now = Date.now();
+                    if (!lastReload || (now - parseInt(lastReload)) > 15000) {
+                        sessionStorage.setItem('last_auto_reload', now.toString());
+                        showToast('خطأ في الخادم، جاري تحديث الصفحة...', 'error');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1000);
+                    }
                 }
 
                 if (response.status === 403) {
@@ -5264,6 +5280,15 @@
         } catch (netErr) {
             if (!netErr.message.includes('انتهت صلاحية الجلسة') && !netErr.message.includes('حساب محظور')) {
                 logAppError('Fetch Error', netErr.message, null, url);
+                const lastReload = sessionStorage.getItem('last_auto_reload');
+                const now = Date.now();
+                if (!lastReload || (now - parseInt(lastReload)) > 15000) {
+                    sessionStorage.setItem('last_auto_reload', now.toString());
+                    showToast('خطأ في الاتصال، جاري تحديث الصفحة...', 'error');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                }
             }
             throw netErr;
         }
@@ -9553,9 +9578,16 @@
     // ================================================================
 
     function logout() {
+        if (window._isLoggingOut) return;
+        window._isLoggingOut = true;
+        if (typeof showToast === 'function') {
+            showToast('يتم تسجيل الخروج الآن', 'info');
+        }
         localStorage.removeItem('token');
         localStorage.removeItem('userData');
-        window.location.href = '/';
+        setTimeout(() => {
+            window.location.href = '/';
+        }, 800);
     }
 
     function exitGuestAndNavigate(targetUrl) {
