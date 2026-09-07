@@ -4880,10 +4880,69 @@
                     <label style="display:block; margin-bottom:6px; font-weight:700;"><i class="fas fa-align-left" style="color: var(--primary);"></i> نبذة تعريفية <span style="color:red;">*</span></label>
                     <textarea id="completeBio" placeholder="تحدث عن خبرتك وأسلوبك في التدريس وما تقدمه لطلابك..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--gray-300); height: 85px;"></textarea>
                 </div>
-                <!-- الصورة الشخصية (اختياري) -->
+                <!-- التقاط الصورة الشخصية حصرياً بالكاميرا مع ضغط فائق لتوفير الحجم (اختياري) -->
                 <div class="form-group" style="margin-bottom: 0;">
-                    <label style="display:block; margin-bottom:6px; font-weight:700;"><i class="fas fa-user-circle" style="color: var(--primary);"></i> الصورة الشخصية (اختياري)</label>
-                    <input type="file" id="completeProfileImage" accept="image/*" style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--gray-300); background: white;">
+                    <label style="display:block; margin-bottom:8px; font-weight:700;">
+                        <i class="fas fa-camera" style="color: var(--primary);"></i> الصورة الشخصية (التقاط بالكاميرا) <span style="font-size: 0.8rem; color: var(--gray-500); font-weight: normal;">(اختياري)</span>
+                    </label>
+
+                    <!-- زر تشغيل الكاميرا -->
+                    <div id="completeProfileCameraInitialBox">
+                        <button type="button" onclick="startCompleteProfileCamera()" style="width: 100%; padding: 12px 16px; border-radius: 10px; background: linear-gradient(135deg, #0284c7, #0369a1); color: white; border: none; cursor: pointer; font-size: 0.92rem; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 3px 10px rgba(2,132,199,0.25); transition: all 0.2s ease;">
+                            <i class="fas fa-camera fa-lg"></i>
+                            <span>فتح الكاميرا والتقاط صورة شخصية</span>
+                        </button>
+                        <div style="font-size: 0.78rem; color: #64748b; margin-top: 6px; text-align: center; font-weight: 600;">
+                            📸 يتم ضغط الصورة الملتقطة تلقائياً إلى حجم خفيف جداً لضمان سرعة الحفظ بدون أي مشاكل في الحجم
+                        </div>
+                    </div>
+
+                    <!-- حاوية تصوير الكاميرا المباشرة -->
+                    <div id="completeProfileCameraLiveBox" style="display: none; margin-top: 10px; background: #0f172a; padding: 14px; border-radius: 14px; text-align: center; border: 1.5px solid #38bdf8;">
+                        <div style="position: relative; max-width: 320px; margin: 0 auto; overflow: hidden; border-radius: 12px; border: 2px solid #38bdf8; background: #000;">
+                            <video id="completeProfileCameraVideo" width="100%" height="auto" autoplay playsinline style="display: block; width: 100%; height: auto; max-height: 260px; object-fit: cover;"></video>
+                            <!-- دليل دائري توجيهي للوجه -->
+                            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 160px; height: 160px; border: 2px dashed rgba(255,255,255,0.75); border-radius: 50%; pointer-events: none; box-shadow: 0 0 0 9999px rgba(0,0,0,0.35);"></div>
+                        </div>
+
+                        <div style="margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;">
+                            <button type="button" onclick="captureCompleteProfilePhoto()" style="padding: 9px 18px; border-radius: 8px; background: #16a34a; color: white; border: none; cursor: pointer; font-size: 0.88rem; font-weight: 800; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 8px rgba(22,163,74,0.35);">
+                                <i class="fas fa-camera"></i> التقاط الصورة الآن
+                            </button>
+                            <button type="button" onclick="toggleCompleteProfileCameraDirection()" title="تبديل الكاميرا (أمامية/خلفية)" style="padding: 9px 14px; border-radius: 8px; background: #3b82f6; color: white; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+                                <i class="fas fa-sync-alt"></i> تبديل
+                            </button>
+                            <button type="button" onclick="stopCompleteProfileCamera(true)" style="padding: 9px 14px; border-radius: 8px; background: #475569; color: white; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 700;">
+                                إلغاء
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- معاينة الصورة الملتقطة والمضغوطة -->
+                    <div id="completeProfilePreviewBox" style="display: none; margin-top: 10px; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 12px; padding: 12px; text-align: center;">
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 14px;">
+                            <img id="completeProfilePreviewImg" src="" alt="معاينة الصورة الشخصية" style="width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 3px solid #16a34a; box-shadow: 0 3px 10px rgba(22,163,74,0.2);">
+                            <div style="text-align: right;">
+                                <div style="font-size: 0.88rem; font-weight: 800; color: #15803d; display: flex; align-items: center; gap: 6px;">
+                                    <i class="fas fa-check-circle"></i> تم التقاط الصورة وضغطها بنجاح
+                                </div>
+                                <div id="completeProfileSizeInfo" style="font-size: 0.78rem; color: #166534; font-weight: 700; margin-top: 3px;">
+                                    الحجم: -- KB (مضغوطة بنسبة عالية)
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 10px; display: flex; gap: 8px; justify-content: center;">
+                            <button type="button" onclick="startCompleteProfileCamera()" style="padding: 6px 14px; border-radius: 6px; background: #0284c7; color: white; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+                                <i class="fas fa-redo"></i> إعادة التقاط
+                            </button>
+                            <button type="button" onclick="clearCompleteProfileCapturedPhoto()" style="padding: 6px 14px; border-radius: 6px; background: #ef4444; color: white; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+                                <i class="fas fa-trash-alt"></i> إزالة الصورة
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Canvas مخفي للمعالجة والضغط الفائق -->
+                    <canvas id="completeProfileCanvas" style="display: none;"></canvas>
                 </div>
             </div>
         </div>
@@ -7170,6 +7229,152 @@
         });
     }
 
+    let completeProfileCameraStream = null;
+    let completeProfileFacingMode = 'user'; // Front camera by default for selfie/profile photo
+    window.completeCapturedProfileImage = null;
+
+    window.startCompleteProfileCamera = async function() {
+        const liveBox = document.getElementById('completeProfileCameraLiveBox');
+        const initialBox = document.getElementById('completeProfileCameraInitialBox');
+        const previewBox = document.getElementById('completeProfilePreviewBox');
+        const video = document.getElementById('completeProfileCameraVideo');
+        if (!liveBox || !video) return;
+
+        // Stop any previous stream
+        if (completeProfileCameraStream) {
+            completeProfileCameraStream.getTracks().forEach(t => { try { t.stop(); } catch(e) {} });
+            completeProfileCameraStream = null;
+        }
+
+        try {
+            const constraints = {
+                video: {
+                    facingMode: completeProfileFacingMode,
+                    width: { ideal: 640 },
+                    height: { ideal: 640 }
+                },
+                audio: false
+            };
+            completeProfileCameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+            video.srcObject = completeProfileCameraStream;
+            await video.play();
+
+            if (initialBox) initialBox.style.display = 'none';
+            if (previewBox) previewBox.style.display = 'none';
+            liveBox.style.display = 'block';
+            setTimeout(() => {
+                liveBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 100);
+        } catch (err) {
+            console.warn('Direct camera constraints failed, attempting generic video:', err);
+            try {
+                completeProfileCameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                video.srcObject = completeProfileCameraStream;
+                await video.play();
+                if (initialBox) initialBox.style.display = 'none';
+                if (previewBox) previewBox.style.display = 'none';
+                liveBox.style.display = 'block';
+            } catch (fallbackErr) {
+                console.error('Camera access denied or unavailable:', fallbackErr);
+                showToast('تعذر فتح الكاميرا، يرجى السماح للمتصفح بالوصول إلى الكاميرا', 'error');
+            }
+        }
+    };
+
+    window.toggleCompleteProfileCameraDirection = function() {
+        completeProfileFacingMode = (completeProfileFacingMode === 'user') ? 'environment' : 'user';
+        startCompleteProfileCamera();
+    };
+
+    window.stopCompleteProfileCamera = function(showInitial = true) {
+        if (completeProfileCameraStream) {
+            completeProfileCameraStream.getTracks().forEach(t => { try { t.stop(); } catch(e) {} });
+            completeProfileCameraStream = null;
+        }
+        const video = document.getElementById('completeProfileCameraVideo');
+        if (video) video.srcObject = null;
+
+        const liveBox = document.getElementById('completeProfileCameraLiveBox');
+        if (liveBox) liveBox.style.display = 'none';
+
+        if (showInitial && !window.completeCapturedProfileImage) {
+            const initialBox = document.getElementById('completeProfileCameraInitialBox');
+            if (initialBox) initialBox.style.display = 'block';
+        }
+    };
+
+    window.captureCompleteProfilePhoto = function() {
+        const video = document.getElementById('completeProfileCameraVideo');
+        const canvas = document.getElementById('completeProfileCanvas');
+        if (!video || !canvas || !video.videoWidth || !video.videoHeight) {
+            showToast('⚠️ الكاميرا قيد التهيئة، يرجى الانتظار ثانية والمحاولة مرة أخرى', 'warning');
+            return;
+        }
+
+        const vWidth = video.videoWidth;
+        const vHeight = video.videoHeight;
+
+        // Crop square from center for avatar
+        const minDim = Math.min(vWidth, vHeight);
+        const startX = (vWidth - minDim) / 2;
+        const startY = (vHeight - minDim) / 2;
+
+        // Compress dimensions: 360x360 pixels is optimal for avatars in modern web apps and retina displays
+        const targetDim = Math.min(minDim, 360);
+
+        canvas.width = targetDim;
+        canvas.height = targetDim;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+
+        // Draw cropped and scaled image onto canvas
+        ctx.drawImage(video, startX, startY, minDim, minDim, 0, 0, targetDim, targetDim);
+
+        // High compression to JPEG with quality 0.60 (reduces file size down to ~20KB - 35KB, saving without any size errors)
+        canvas.toBlob((blob) => {
+            if (!blob) {
+                showToast('❌ تعذر معالجة الصورة، يرجى المحاولة ثانية', 'error');
+                return;
+            }
+
+            const sizeKb = (blob.size / 1024).toFixed(1);
+            const compressedFile = new File([blob], 'profile_camera.jpg', { type: 'image/jpeg' });
+            window.completeCapturedProfileImage = compressedFile;
+
+            // Stop camera stream immediately
+            stopCompleteProfileCamera(false);
+
+            // Update Preview UI
+            const previewBox = document.getElementById('completeProfilePreviewBox');
+            const previewImg = document.getElementById('completeProfilePreviewImg');
+            const sizeInfo = document.getElementById('completeProfileSizeInfo');
+            const initialBox = document.getElementById('completeProfileCameraInitialBox');
+
+            if (previewImg) {
+                previewImg.src = URL.createObjectURL(blob);
+            }
+            if (sizeInfo) {
+                sizeInfo.innerHTML = `حجم الصورة: <strong>${sizeKb} KB</strong> (تم الضغط بنجاح لحجم فائق الخفة)`;
+            }
+            if (initialBox) initialBox.style.display = 'none';
+            if (previewBox) previewBox.style.display = 'block';
+
+            showToast(`✅ تم التقاط الصورة وضغطها بنجاح (${sizeKb} KB)`, 'success');
+        }, 'image/jpeg', 0.60);
+    };
+
+    window.clearCompleteProfileCapturedPhoto = function() {
+        window.completeCapturedProfileImage = null;
+        const previewBox = document.getElementById('completeProfilePreviewBox');
+        const previewImg = document.getElementById('completeProfilePreviewImg');
+        const initialBox = document.getElementById('completeProfileCameraInitialBox');
+
+        if (previewImg) previewImg.src = '';
+        if (previewBox) previewBox.style.display = 'none';
+        if (initialBox) initialBox.style.display = 'block';
+    };
+
     function openCompleteProfileModal() {
         if (checkGuestAction()) return;
         const overlay = document.getElementById('modalOverlay');
@@ -7181,6 +7386,30 @@
             if (modalContent) modalContent.scrollTop = 0;
         }
         
+        // إعادة تعيين حالة الكاميرا والصورة
+        stopCompleteProfileCamera(false);
+        window.completeCapturedProfileImage = null;
+        
+        const previewBox = document.getElementById('completeProfilePreviewBox');
+        const previewImg = document.getElementById('completeProfilePreviewImg');
+        const sizeInfo = document.getElementById('completeProfileSizeInfo');
+        const initialBox = document.getElementById('completeProfileCameraInitialBox');
+        const liveBox = document.getElementById('completeProfileCameraLiveBox');
+
+        if (liveBox) liveBox.style.display = 'none';
+
+        if (userData && userData.profile_image) {
+            if (previewBox && previewImg && sizeInfo && initialBox) {
+                previewImg.src = userData.profile_image;
+                sizeInfo.innerHTML = 'صورة ملفك الشخصي الحالية (يمكنك إعادة التقاط صورة جديدة بالكاميرا)';
+                previewBox.style.display = 'block';
+                initialBox.style.display = 'none';
+            }
+        } else {
+            if (previewBox) previewBox.style.display = 'none';
+            if (initialBox) initialBox.style.display = 'block';
+        }
+
         // تعبئة البيانات الموجودة بالفعل إن وجدت
         if (userData) {
             const phoneEl = document.getElementById('completePhone') || document.getElementById('profilePhone');
@@ -7530,13 +7759,14 @@
         if (!experience) { showToast('⚠️ يرجى إدخال سنوات الخبرة', 'error'); return; }
         if (!teachingLevel) { showToast('⚠️ يرجى اختيار المستوى الدراسي', 'error'); return; }
 
-        const profileInput = document.getElementById('completeProfileImage') || document.getElementById('profileImage');
-        const profileImage = profileInput && profileInput.files ? profileInput.files[0] : null;
-
-        const MAX_SINGLE_FILE_SIZE = 50 * 1024 * 1024; // 50MB per single file
-        if (profileImage && profileImage.size > MAX_SINGLE_FILE_SIZE) {
-            showToast(`⚠️ حجم الصورة الشخصية (${(profileImage.size / (1024 * 1024)).toFixed(2)} MB) يتجاوز الحد الأقصى المسموح به للصورة الواحدة وهو 50 ميجابايت`, 'error');
-            return;
+        let profileImageToSend = null;
+        if (window.completeCapturedProfileImage) {
+            profileImageToSend = window.completeCapturedProfileImage;
+        } else {
+            const profileInput = document.getElementById('completeProfileImage') || document.getElementById('profileImage');
+            if (profileInput && profileInput.files && profileInput.files[0]) {
+                profileImageToSend = profileInput.files[0];
+            }
         }
 
         const formData = new FormData();
@@ -7546,7 +7776,7 @@
         formData.append('bio', bio);
         formData.append('experience', experience);
         formData.append('teaching_level', teachingLevel);
-        if (profileImage) formData.append('profile_image', profileImage);
+        if (profileImageToSend) formData.append('profile_image', profileImageToSend, 'profile_camera.jpg');
 
         const submitBtn = document.getElementById('btnSubmitTeacherProfile');
         if (submitBtn) {
@@ -10957,6 +11187,9 @@ function updateUI() {
     };
 
     function closeModal() {
+        if (typeof stopCompleteProfileCamera === 'function') {
+            stopCompleteProfileCamera(false);
+        }
         const modals = ['modalOverlay', 'editProfileModal', 'completeProfileModal', 'createOfferModal', 'createCourseModal', 'withdrawModal', 'depositModal', 'viewStudentModal', 'viewTeacherModal', 'addPostModal', 'supportModal', 'transactionDetailsModal'];
         modals.forEach(mId => {
             const el = document.getElementById(mId);
