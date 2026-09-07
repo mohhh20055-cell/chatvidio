@@ -4257,7 +4257,7 @@
                 </div>
                 
                 <!-- Chat Messages Area -->
-                <div id="chatMessagesArea" onscroll="if(this.scrollTop===0){ window.chatMessagesAreaLimit = (window.chatMessagesAreaLimit || 50) + 50; if(typeof loadChatMessages === 'function') loadChatMessages(true); }" style="flex-grow: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 14px; background: #f8fafc; scroll-behavior: smooth;">
+                <div id="chatMessagesArea" onscroll="if(this.scrollTop===0){ window.chatMessagesAreaLimit = (window.chatMessagesAreaLimit || 20) + 20; if(typeof loadChatMessages === 'function') loadChatMessages(true); }" style="flex-grow: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 14px; background: #f8fafc; scroll-behavior: smooth;">
                     <!-- Message Bubbles will populate here -->
                 </div>
 
@@ -8802,7 +8802,7 @@ function updateUI() {
         let html = '';
         for (const msg of messages) {
             const isSent = msg.sender_id == teacherId;
-            const date = new Date(msg.created_at);
+            let _dStr = msg.created_at; if (_dStr && !_dStr.endsWith('Z') && !_dStr.includes('+')) { _dStr += 'Z'; } const date = new Date(_dStr);
             const otherName = currentChatTeacher ? currentChatTeacher.name : 'المستلم';
             const senderDisplayName = isSent ? 'أنت' : otherName;
             const cleanTextForJs = escapeHtml(msg.message).replace(/'/g, "\\'").replace(/"/g, '&quot;');
@@ -8835,7 +8835,7 @@ function updateUI() {
                         ${replyQuoteHtml}
                         <div class="message-text-body">${autoLinkUrls(msg.message, { isSelf: isSent, linkColor: isSent ? '#93c5fd' : '#2563eb' })}</div>
                         ${reactionsHtml}
-                        <div class="message-time">${date.toLocaleTimeString('ar')}</div>
+                        <div class="message-time">${date.toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Algiers' })}</div>
                     </div>
                 </div>`;
         }
@@ -8978,7 +8978,7 @@ function updateUI() {
         }
         let html = '<div class="messages-list">';
         for (const conv of conversations) {
-            const date = new Date(conv.last_message_date);
+            let _dStrL = conv.last_message_date; if (_dStrL && !_dStrL.endsWith('Z') && !_dStrL.includes('+')) { _dStrL += 'Z'; } const date = new Date(_dStrL);
             const isUnread = conv.unread_count > 0;
             const oType = conv.other_type || 'teacher';
             const typeLabel = oType === 'student' ? 'طالب' : 'أستاذ';
@@ -15231,7 +15231,7 @@ function updateUI() {
             }
 
             try {
-                let _limit = window.chatMessagesAreaLimit || 50; const response = await fetchWithAuth(`/api/groups/${activeChatGroupId}/messages?limit=${_limit}`);
+                let _limit = window.chatMessagesAreaLimit || 20; const response = await fetchWithAuth(`/api/groups/${activeChatGroupId}/messages?limit=${_limit}`);
                 const messages = await response.json();
                 
                 let currentUserId = null;
@@ -15282,7 +15282,7 @@ function updateUI() {
                             ? `<span style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 0.65rem; padding: 1px 6px; border-radius: 4px; font-weight: 700;"><i class="fas fa-chalkboard-teacher" style="font-size:0.6rem; margin-left:2px;"></i> أستاذ</span>`
                             : `<span style="background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; font-size: 0.65rem; padding: 1px 6px; border-radius: 4px; font-weight: 700;">طالب</span>`);
 
-                    const timeStr = new Date(m.created_at).toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' });
+                    let dStr = m.created_at; if (dStr && !dStr.endsWith('Z') && !dStr.includes('+')) { dStr += 'Z'; } const timeStr = new Date(dStr).toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Algiers' });
                     
                     const profileClick = m.sender_type === 'teacher' 
                         ? `viewTeacherProfile(${m.sender_id})` 
