@@ -3160,7 +3160,9 @@ function generateTeacherZoomPage(offer, teacher, token) {
                 };
 
                 mediaRecorder.onstop = () => {
-                    triggerRecordingDownload();
+                    if (!isLeaving) {
+                        promptAndDownloadRecording();
+                    }
                 };
 
                 mediaRecorder.start(1000);
@@ -3263,7 +3265,17 @@ function generateTeacherZoomPage(offer, teacher, token) {
             }
         }
 
-        function stopStreamRecordingAndDownload() {
+        function promptAndDownloadRecording() {
+            if (!recordedChunks || recordedChunks.length === 0) return;
+            const wantDownload = confirm('🎥 تم تسجيل البث المباشر.\\nهل ترغب في تنزيل وحفظ ملف فيديو التسجيل على جهازك الآن؟');
+            if (wantDownload) {
+                triggerRecordingDownload();
+            } else {
+                console.log('ℹ️ تم إلغاء تنزيل التسجيل بناءً على رغبة الأستاذ.');
+            }
+        }
+
+        function stopStreamRecordingAndDownload(askConfirm = true) {
             if (mediaRecorder && mediaRecorder.state !== 'inactive') {
                 try {
                     mediaRecorder.stop();
@@ -3272,10 +3284,14 @@ function generateTeacherZoomPage(offer, teacher, token) {
                     if (recBadge) recBadge.style.display = 'none';
                 } catch(e) {
                     console.error('خطأ إيقاف التسجيل:', e);
-                    triggerRecordingDownload();
+                    if (askConfirm) {
+                        promptAndDownloadRecording();
+                    }
                 }
             } else if (recordedChunks && recordedChunks.length > 0) {
-                triggerRecordingDownload();
+                if (askConfirm) {
+                    promptAndDownloadRecording();
+                }
             }
         }
 
@@ -3284,13 +3300,15 @@ function generateTeacherZoomPage(offer, teacher, token) {
                 alert('⚠️ لا يتوفر تسجيل حالياً أو البث بدأ للتو.');
                 return;
             }
-            triggerRecordingDownload();
-            alert('📥 جاري تنزيل النسخة الحالية من تسجيل البث المباشر على جهازك...');
+            const wantDownload = confirm('📥 هل أنت متأكد من رغبتك في تنزيل النسخة الحالية من تسجيل البث المباشر على جهازك؟');
+            if (wantDownload) {
+                triggerRecordingDownload();
+            }
         }
 
         window.addEventListener('message', function(e) {
             if (e && e.data && e.data.type === 'STOP_AND_DOWNLOAD_RECORDING') {
-                stopStreamRecordingAndDownload();
+                stopStreamRecordingAndDownload(true);
             }
         });
 
@@ -3299,15 +3317,31 @@ function generateTeacherZoomPage(offer, teacher, token) {
             if (!confirm('⚠️ تأكد انك اكملت مده الحصه المحدده للدرس لهذه الحصه لتتلقى العائد الخاص بك.\\nإذا لم يتم اكمال الحصه وتم انهاء البث فلن تتلقى اي عوائد وسيعاد الرصيد الخاص بهذه الحصه الى الطالب.\\n\\nهل أنت متأكد من إنهاء البث؟')) return;
             isLeaving = true;
             
-            // 🎥 إيقاف تسجيل البث المباشر وتنزيله تلقائياً على جهاز الأستاذ
-            try {
-                stopStreamRecordingAndDownload();
-            } catch (recErr) {
-                console.error('Error stopping stream recording:', recErr);
+            // 🎥 إيقاف تسجيل البث المباشر دون تنزيل تلقائي
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                try {
+                    await new Promise((resolve) => {
+                        mediaRecorder.onstop = resolve;
+                        mediaRecorder.stop();
+                        isStreamRecording = false;
+                        const recBadge = document.getElementById('recordingBadge');
+                        if (recBadge) recBadge.style.display = 'none';
+                    });
+                } catch (recErr) {
+                    console.error('Error stopping stream recording:', recErr);
+                }
             }
 
-            // إعطاء مهلة قصيرة للمتصفح لتلقي أمر تنزيل الملف
-            await new Promise(r => setTimeout(r, 1500));
+            // 📥 طلب تأكيد من الأستاذ قبل تنزيل التسجيل على جهازه
+            if (recordedChunks && recordedChunks.length > 0) {
+                const wantDownload = confirm('🎥 هل ترغب في تنزيل وحفظ تسجيل البث المباشر على جهازك قبل مغادرة الغرفة؟');
+                if (wantDownload) {
+                    triggerRecordingDownload();
+                    await new Promise(r => setTimeout(r, 1500));
+                } else {
+                    console.log('ℹ️ تم إلغاء تنزيل تسجيل البث بناءً على رغبة الأستاذ.');
+                }
+            }
 
             // Notify backend first before tearing down network
             try {
@@ -3439,7 +3473,19 @@ const handleStudentZoomView = async (req, res) => {
             session = await autoBookFreeSession(offer, studentId);
         }
 
-        if (!session) {
+        // التحقق مما إذا كان الطالب قد أضيف مسبقاً للبث النشط من قبل الأستاذ
+        let inActiveStream = false;
+        try {
+            const { data: active } = await supabase
+                .from('active_stream')
+                .select('id')
+                .eq('offer_id', offerId)
+                .eq('student_id', studentId)
+                .maybeSingle();
+            if (active) inActiveStream = true;
+        } catch (e) {}
+
+        if (!session && !inActiveStream) {
             return res.status(403).send(`
                 <!DOCTYPE html>
                 <html dir="rtl" lang="ar">
@@ -3452,14 +3498,16 @@ const handleStudentZoomView = async (req, res) => {
                     <div style="max-width:500px;margin:0 auto;background:white;padding:30px;border-radius:15px;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);">
                         <div style="font-size:60px;margin-bottom:20px;">🚫</div>
                         <h1 style="color:#ef4444;margin-bottom:15px;">يجب حجز الحصة أولاً</h1>
-                        <p style="color:#64748b;margin-bottom:25px;">لم ��جد حجزاً نشطاً لك في هذه الحصة. يرجى التأكد من الدفع والحجز عبر لوحة التحكم.</p>
+                        <p style="color:#64748b;margin-bottom:25px;">لم نجد حجزاً نشطاً لك في هذه الحصة. يرجى التأكد من الدفع والحجز عبر لوحة التحكم.</p>
                         <a href="/student-dashboard.html" style="display:inline-block;padding:12px 25px;background:#0f5cbf;color:white;text-decoration:none;border-radius:8px;font-weight:700;">العودة للوحة التحكم</a>
                     </div>
                 </body></html>
             `);
         }
         
-        if (!offer || (offer.status !== 'live' && offer.status !== 'teacher_ready' && offer.status !== 'paused')) {
+        const isStreamActive = offer && (offer.status === 'live' || offer.status === 'teacher_ready' || offer.status === 'paused' || offer.stream_active || inActiveStream);
+
+        if (!offer || !isStreamActive) {
             return res.status(400).send(`
                 <!DOCTYPE html>
                 <html dir="rtl" lang="ar">
@@ -3469,6 +3517,12 @@ const handleStudentZoomView = async (req, res) => {
                     <a href="/student-dashboard.html" style="color:#0f5cbf;font-weight:700;">العودة للوحة التحكم</a>
                 </body></html>
             `);
+        }
+
+        // تحديث حالة البث لتصبح live إذا كانت الغرفة نشطة أو أضيف الطالب
+        if (offer && offer.status !== 'live' && offer.status !== 'paused') {
+            offer.status = 'live';
+            supabase.from('offers').update({ status: 'live', is_paused: false, stream_active: true }).eq('id', offerId).then(() => {}).catch(() => {});
         }
 
         // إذا كانت الحصة عبر Google Meet أو مجانية، التحويل فوراً لرابط Google Meet

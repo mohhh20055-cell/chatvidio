@@ -514,9 +514,9 @@ router.get('/student-status/:offer_id/:student_id', authenticate, validateStuden
         }
 
         // التحقق من حالة البث
-        const isLive = offer.status === 'live';
+        const isLive = offer.status === 'live' || offer.status === 'teacher_ready' || offer.stream_active === true || isInStream;
         const isPaused = offer.status === 'paused';
-        const isActive = isLive || isPaused;
+        const isActive = isLive || isPaused || isInStream;
 
         // التحقق من أن الطالب في البث النشط
         const { data: active } = await supabase
@@ -524,7 +524,7 @@ router.get('/student-status/:offer_id/:student_id', authenticate, validateStuden
             .select('*')
             .eq('offer_id', offer_id)
             .eq('student_id', student_id)
-            .single();
+            .maybeSingle();
 
         const isInStream = !!active;
 
@@ -558,14 +558,16 @@ router.get('/student-status/:offer_id/:student_id', authenticate, validateStuden
             }).eq('id', offer_id).then(() => {}).catch(() => {});
         }
 
+        const canJoinStudent = isFreeOffer ? isActive : (isActive && (isInStream || isLive));
+
         res.json({
-            can_join: isFreeOffer ? isActive : (isActive && isInStream),
-            is_waiting: isFreeOffer ? false : (isActive && !isInStream),
+            can_join: canJoinStudent,
+            is_waiting: !canJoinStudent,
             is_paused: isPaused,
             is_free: isFreeOffer,
             stream_platform: isFreeOffer ? 'google_meet' : (offer.stream_platform === 'jitsi' ? 'google_meet' : (offer.stream_platform || 'agora')),
             meet_url: effectiveMeetUrl,
-            stream_url: isFreeOffer ? effectiveMeetUrl : (offer.stream_url || null),
+            stream_url: isFreeOffer ? effectiveMeetUrl : (offer.stream_url || `/api/join-agora/${offer_id}/${student_id}`),
             room_password: offer.room_password || null,
             duration: offer.duration || 0,
             status: offer.status,
@@ -620,7 +622,7 @@ router.post('/add-all-students/:offer_id', authenticate, authorize(['teacher']),
         try {
             await supabase
                 .from('offers')
-                .update({ status: 'live', is_paused: false })
+                .update({ status: 'live', is_paused: false, stream_active: true })
                 .eq('id', offer_id);
         } catch (e) {}
 
@@ -1202,8 +1204,16 @@ router.get('/join-stream/:offer_id/:student_id', async (req, res) => {
             `);
         }
 
-        const isLive = offer.status === 'live' || offer.status === 'paused';
-        if (!isLive || !offer.stream_url) {
+        // ✅ التحقق من وجود الطالب في البث النشط
+        const { data: active } = await supabase
+            .from('active_stream')
+            .select('*')
+            .eq('offer_id', offer_id)
+            .eq('student_id', student_id)
+            .maybeSingle();
+
+        const isLive = offer.status === 'live' || offer.status === 'paused' || offer.status === 'teacher_ready' || offer.stream_active || !!active;
+        if (!isLive) {
             return res.status(400).send(`
                 <!DOCTYPE html>
                 <html dir="rtl" lang="ar">
@@ -1216,14 +1226,7 @@ router.get('/join-stream/:offer_id/:student_id', async (req, res) => {
             `);
         }
 
-        // ✅ إضافة الطالب إلى active_stream
-        const { data: active } = await supabase
-            .from('active_stream')
-            .select('*')
-            .eq('offer_id', offer_id)
-            .eq('student_id', student_id)
-            .single();
-
+        // ✅ إضافة الطالب إلى active_stream إذا لم يكن موجوداً
         if (!active) {
             await insert('active_stream', {
                 offer_id: parseInt(offer_id),

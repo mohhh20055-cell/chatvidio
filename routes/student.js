@@ -1431,22 +1431,43 @@ router.get('/stream-status/:offer_id/:student_id', authenticate, authorize(['stu
             session = await autoBookFreeSession(offer, student_id);
         }
 
-        if (!session && !isFree) {
+        // التحقق مما إذا كان الطالب قد أضيف مسبقاً للبث النشط من قبل الأستاذ
+        let inActiveStream = false;
+        try {
+            const { data: active } = await supabase
+                .from('active_stream')
+                .select('id')
+                .eq('offer_id', offer_id)
+                .eq('student_id', student_id)
+                .maybeSingle();
+            if (active) inActiveStream = true;
+        } catch (e) {}
+
+        if (!session && !isFree && !inActiveStream) {
             return res.json({ can_join: false, error: 'لم تقم بحجز هذه الحصة' });
         }
 
-        const isLive = offer.status === 'live' || offer.status === 'teacher_ready';
+        const isLive = offer.status === 'live' || offer.status === 'teacher_ready' || offer.stream_active || inActiveStream;
         const isPaused = offer.status === 'paused';
-        const isActive = isLive || isPaused;
+        const isActive = isLive || isPaused || inActiveStream;
         let meetUrl = formatMeetOrZoomUrl(offer.meet_url || offer.stream_url);
 
+        const streamPlatform = isFree ? (offer.stream_platform || 'google_meet') : (offer.stream_platform === 'jitsi' ? 'google_meet' : (offer.stream_platform || 'agora'));
+        let streamUrl = meetUrl || offer.stream_url;
+        if (!streamUrl && streamPlatform === 'agora') {
+            streamUrl = `/api/join-agora/${offer_id}/${student_id}`;
+        }
+
+        // إتاحة الدخول للطالب طالما أن البث مباشر أو نشط أو تمت إضافته من قبل الأستاذ
+        const canJoin = isActive ? true : false;
+
         res.json({
-            can_join: isActive && meetUrl ? true : false,
-            is_waiting: !(isActive && meetUrl),
+            can_join: canJoin,
+            is_waiting: !canJoin,
             is_paused: isPaused,
             is_free: isFree,
-            stream_platform: isFree ? (offer.stream_platform || 'google_meet') : (offer.stream_platform === 'jitsi' ? 'google_meet' : (offer.stream_platform || 'agora')),
-            stream_url: meetUrl || offer.stream_url || null,
+            stream_platform: streamPlatform,
+            stream_url: streamUrl,
             meet_url: meetUrl,
             room_password: offer.room_password || null,
             duration: offer.duration || 0,
