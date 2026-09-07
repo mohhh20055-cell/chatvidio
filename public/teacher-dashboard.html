@@ -6090,6 +6090,7 @@
     window.renderPostAttachments = renderPostAttachments;
 
     function showAddPostModal() {
+        if (!checkTeacherProfileComplete()) return;
         if (checkGuestAction()) return;
         if (userData && userData.status !== 'approved') {
             if (userData.requires_profile_completion || !userData.profile_completion) {
@@ -7163,6 +7164,19 @@
             });
         }
     }
+
+    function checkTeacherProfileComplete() {
+        if (checkGuestAction && checkGuestAction()) return false;
+        if (userData && (userData.requires_profile_completion || !userData.profile_completion)) {
+            showToast('⚠️ يرجى إكمال ملفك الشخصي أولاً لتتمكن من القيام بهذه العملية (إضافة دورة، درس، لايف، منشور أو مجموعة)', 'warning');
+            if (typeof openCompleteProfileModal === 'function') {
+                openCompleteProfileModal();
+            }
+            return false;
+        }
+        return true;
+    }
+    window.checkTeacherProfileComplete = checkTeacherProfileComplete;
 
     // ✅ التحقق من حالة إكمال الملف الشخصي وإظهار الشريط المناسب
     async function checkProfileCompletion() {
@@ -10032,6 +10046,7 @@ function updateUI() {
     window.openGoogleMeetNewRoom = openGoogleMeetNewRoom;
 
     async function submitGoogleMeetStreamStart() {
+        if (!checkTeacherProfileComplete()) return;
         if (checkGuestAction()) return;
         const offerId = document.getElementById('meetHostOfferId').value;
         const sessionNumber = document.getElementById('meetHostSessionNumber').value || 1;
@@ -10083,6 +10098,7 @@ function updateUI() {
     window.submitGoogleMeetStreamStart = submitGoogleMeetStreamStart;
 
     async function startStreamNow(offerId, sessionNumber) {
+        if (!checkTeacherProfileComplete()) return;
         if (checkGuestAction()) return;
 
         let confirmMsg = "⚠️ هل تريد بدء البث المباشر لهذه الغرفة الآن؟";
@@ -10279,6 +10295,7 @@ function updateUI() {
     };
 
     function showCreateOfferModal() {
+        if (!checkTeacherProfileComplete()) return;
         if (checkGuestAction()) return;
         if (userData && userData.status !== 'approved') {
             if (userData.requires_profile_completion || !userData.profile_completion) {
@@ -10545,6 +10562,7 @@ function updateUI() {
     let isCreatingOffer = false;
 
     async function createOffer() {
+        if (!checkTeacherProfileComplete()) return;
         if (checkGuestAction()) return;
         if (isCreatingOffer) {
             showToast('⏳ جاري إنشاء الدرس، الرجاء الانتظار...', 'info');
@@ -11402,6 +11420,7 @@ function updateUI() {
     }
 
     function showCreateCourseModal() {
+        if (!checkTeacherProfileComplete()) return;
         if (checkGuestAction()) return;
         if (userData && userData.status !== 'approved') {
             if (userData.requires_profile_completion || !userData.profile_completion) {
@@ -11456,6 +11475,7 @@ function updateUI() {
     }
 
     async function createCourse() {
+        if (!checkTeacherProfileComplete()) return;
         if (checkGuestAction()) return;
         const title = document.getElementById('courseTitle').value.trim();
         let description = document.getElementById('courseDescription').value.trim();
@@ -12606,6 +12626,7 @@ function updateUI() {
     }
 
     async function submitNewPost() {
+        if (!checkTeacherProfileComplete()) return;
         if (checkGuestAction()) return;
         if (userData && userData.status !== 'approved') {
             showToast('⚠️ لا يمكنك إضافة منشور حتى يتم قبول حسابك من قبل الإدارة', 'warning');
@@ -15073,6 +15094,7 @@ function updateUI() {
         }
 
         function openCreateGroupModal() {
+            if (!checkTeacherProfileComplete()) return;
             document.getElementById('createGroupModal').style.display = 'flex';
             document.getElementById('groupName').focus();
         }
@@ -15085,6 +15107,7 @@ function updateUI() {
 
         async function handleCreateGroup(e) {
             e.preventDefault();
+            if (!checkTeacherProfileComplete()) return;
             const name = document.getElementById('groupName').value.trim();
             const imageFile = document.getElementById('groupImageFile').files[0];
             const btn = document.getElementById('submitCreateGroupBtn');
