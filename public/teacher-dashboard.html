@@ -8614,7 +8614,7 @@ function updateUI() {
             let html = '';
             for (const t of transactions) {
                 const date = new Date(t.created_at);
-                const formattedDate = date.toLocaleString('ar-DZ', { , year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                const formattedDate = date.toLocaleString('ar-DZ', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
                 const isDeposit = t.type === 'deposit' || t.type === 'credit' || t.type === 'deposit_manual' || t.type === 'manual_deposit';
                 const isWithdraw = t.type === 'withdraw';
                 const isFees = t.type === 'fees';
@@ -9859,9 +9859,7 @@ function updateUI() {
 
             let html = '';
             students.forEach(s => {
-                const bookedDate = s.booked_at ? new Date(s.booked_at).toLocaleString('ar-DZ', {
-                    ,
-                    dateStyle: 'medium',
+                const bookedDate = s.booked_at ? new Date(s.booked_at).toLocaleString('ar-DZ', { dateStyle: 'medium',
                     timeStyle: 'short'
                 }) : 'غير محدد';
 
@@ -15314,9 +15312,7 @@ function updateUI() {
                 if (isNaN(d.getTime())) return '';
                 return d.toLocaleTimeString('ar-DZ', {
                     hour: '2-digit',
-                    minute: '2-digit',
-                    
-                });
+                    minute: '2-digit' });
             } catch(e) {
                 return '';
             }
