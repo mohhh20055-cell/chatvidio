@@ -8614,7 +8614,7 @@ function updateUI() {
             let html = '';
             for (const t of transactions) {
                 const date = new Date(t.created_at);
-                const formattedDate = date.toLocaleString('ar-DZ', { timeZone: 'Africa/Algiers', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                const formattedDate = date.toLocaleString('ar-DZ', { , year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
                 const isDeposit = t.type === 'deposit' || t.type === 'credit' || t.type === 'deposit_manual' || t.type === 'manual_deposit';
                 const isWithdraw = t.type === 'withdraw';
                 const isFees = t.type === 'fees';
@@ -8734,19 +8734,69 @@ function updateUI() {
         showSection('messages');
     }
 
-    async function loadConversationMessages(otherId, otherType = 'teacher', silent = false) {
+    
+    let directChatLimit = 20;
+    let directChatHasMore = true;
+    let directChatIsLoadingOlder = false;
+    let activeDirectChatOtherId = null;
+    let activeDirectChatOtherType = null;
+
+    async function loadConversationMessages(otherId, otherType = 'teacher', silent = false, isOlderLoad = false) {
         const container = document.getElementById('chatMessages');
-        if (!silent && container) {
-            container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+        if (!container) return;
+
+        if (!container._paginationAttached) {
+            container._paginationAttached = true;
+            let scrollDebounce = null;
+            container.addEventListener('scroll', () => {
+                if (scrollDebounce) clearTimeout(scrollDebounce);
+                scrollDebounce = setTimeout(() => {
+                    if (container.scrollTop <= 60 && directChatHasMore && !directChatIsLoadingOlder) {
+                        loadConversationMessages(activeDirectChatOtherId, activeDirectChatOtherType, false, true);
+                    }
+                }, 100);
+            }, { passive: true });
         }
+
+        if (isOlderLoad) {
+            if (directChatIsLoadingOlder || !directChatHasMore) return;
+            directChatIsLoadingOlder = true;
+            directChatLimit += 20;
+        } else {
+            directChatLimit = 20;
+            directChatHasMore = true;
+            directChatIsLoadingOlder = false;
+            activeDirectChatOtherId = otherId;
+            activeDirectChatOtherType = otherType;
+            if (!silent) {
+                container.innerHTML = '<div class="loading" style="text-align:center; padding:20px; color:var(--gray-400);"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+            }
+        }
+
+        const previousScrollHeight = container.scrollHeight;
+        const previousScrollTop = container.scrollTop;
+
         try {
             const typeParam = otherType || (currentChatTeacher ? currentChatTeacher.type : 'teacher');
-            const res = await fetchWithAuth(`/api/messages/${teacherId}/teacher/${otherId}/${typeParam}`);
+            const res = await fetchWithAuth(`/api/messages/${teacherId}/teacher/${otherId}/${typeParam}?limit=${directChatLimit}`);
             const messages = await res.json();
-            renderChatMessages(messages, silent);
+            
+            if (!Array.isArray(messages) || messages.length < directChatLimit) {
+                directChatHasMore = false;
+            }
+            
+            renderChatMessages(messages, silent, isOlderLoad, previousScrollHeight, previousScrollTop);
             checkUnreadMessagesCount();
-        } catch(e) { if (e.message !== 'انتهت صلاحية الجلسة') { console.log(e); container.innerHTML = '<p style="text-align:center; padding:20px; color:var(--danger);">حدث خطأ في تحميل الرسائل</p>'; } }
+        } catch(e) { 
+            if (e.message !== 'انتهت صلاحية الجلسة') { console.log(e); container.innerHTML = '<p style="text-align:center; padding:20px; color:var(--danger);">حدث خطأ في تحميل الرسائل</p>'; } 
+        } finally {
+            if (isOlderLoad) {
+                setTimeout(() => { directChatIsLoadingOlder = false; }, 300);
+            }
+        }
     }
+
+    
 
     let currentChatReply = null; // { id, name, text }
 
@@ -8791,7 +8841,7 @@ function updateUI() {
         }
     }
 
-    function renderChatMessages(messages, silent = false) {
+    function renderChatMessages(messages, silent = false, isOlderLoad = false, previousScrollHeight = 0, previousScrollTop = 0) {
         const container = document.getElementById('chatMessages');
         if (!container) return;
         if (!messages || messages.length === 0) {
@@ -8835,16 +8885,33 @@ function updateUI() {
                         ${replyQuoteHtml}
                         <div class="message-text-body">${autoLinkUrls(msg.message, { isSelf: isSent, linkColor: isSent ? '#93c5fd' : '#2563eb' })}</div>
                         ${reactionsHtml}
-                        <div class="message-time">${date.toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Algiers' })}</div>
+                        <div class="message-time">${date.toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' })}</div>
                     </div>
                 </div>`;
         }
-        container.innerHTML = html;
-
-        setupLongPressReactions(container);
-
-        if (!silent || isAtBottom) {
-            container.scrollTop = container.scrollHeight;
+        
+        let topBannerHtml = '';
+        if (directChatHasMore && messages && messages.length >= 20) {
+            topBannerHtml = `
+                <div style="text-align: center; margin-bottom: 12px;">
+                    <button type="button" onclick="loadConversationMessages(activeDirectChatOtherId, activeDirectChatOtherType, false, true)" style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 20px; padding: 6px 16px; font-size: 0.78rem; font-weight: 700; color: #475569; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                        <i class="fas fa-arrow-up" style="color: var(--primary, #3b82f6);"></i> تحميل 20 رسالة أقدم
+                    </button>
+                </div>
+            `;
+        }
+        
+        container.innerHTML = topBannerHtml + html;
+        
+        if (typeof setupLongPressReactions === 'function') {
+            setupLongPressReactions(container);
+        }
+        
+        if (isOlderLoad) {
+            const newScrollHeight = container.scrollHeight;
+            container.scrollTop = newScrollHeight - previousScrollHeight + previousScrollTop;
+        } else if (!silent && (isAtBottom || messages.length <= 20)) {
+            setTimeout(() => { container.scrollTop = container.scrollHeight; }, 100);
         }
     }
 
@@ -9244,7 +9311,7 @@ function updateUI() {
             const isOwnOffer = userData && offer.teacher_id === userData.id;
             const levelLabel = levelMap[offer.education_level] || offer.education_level || 'عام';
             const priceText = (offer.is_free || parseFloat(offer.price || 0) === 0) ? 'مجاني' : `${offer.price} دج`;
-            const formattedDate = offer.offer_date ? new Date(offer.offer_date).toLocaleDateString('ar-DZ', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Africa/Algiers' }) : 'تاريخ غير محدد';
+            const formattedDate = offer.offer_date ? new Date(offer.offer_date).toLocaleDateString('ar-DZ', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : 'تاريخ غير محدد';
             
             const isLive = offer.status === 'live' || offer.stream_url;
 
@@ -9380,8 +9447,8 @@ function updateUI() {
         function formatOfferDateTime(dateObjOrStr) {
             const d = parseAlgeriaDate(dateObjOrStr);
             if (!d || isNaN(d.getTime())) return 'غير محدد';
-            const datePart = d.toLocaleDateString('ar-DZ', { timeZone: 'Africa/Algiers' });
-            const timePart = d.toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Africa/Algiers' });
+            const datePart = d.toLocaleDateString('ar-DZ', {  });
+            const timePart = d.toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit', hour12: false });
             return `${datePart} - الساعة ${timePart}`;
         }
 
@@ -9793,7 +9860,7 @@ function updateUI() {
             let html = '';
             students.forEach(s => {
                 const bookedDate = s.booked_at ? new Date(s.booked_at).toLocaleString('ar-DZ', {
-                    timeZone: 'Africa/Algiers',
+                    ,
                     dateStyle: 'medium',
                     timeStyle: 'short'
                 }) : 'غير محدد';
@@ -15248,7 +15315,7 @@ function updateUI() {
                 return d.toLocaleTimeString('ar-DZ', {
                     hour: '2-digit',
                     minute: '2-digit',
-                    timeZone: 'Africa/Algiers'
+                    
                 });
             } catch(e) {
                 return '';
