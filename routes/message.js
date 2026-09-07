@@ -295,13 +295,21 @@ router.get('/conversations/:user_id/:user_type', authenticate, [
                     otherImage = student?.profile_image || student?.image_url || student?.avatar || null;
                 }
 
+                let normalizedMsgDate = msg.created_at;
+                if (normalizedMsgDate && typeof normalizedMsgDate === 'string') {
+                    let s = normalizedMsgDate.trim();
+                    if (s.includes(' ') && !s.includes('T')) s = s.replace(' ', 'T');
+                    if (!s.endsWith('Z') && !/[+-]\d{2}(:\d{2})?$/.test(s)) s += 'Z';
+                    normalizedMsgDate = s;
+                }
+
                 conversations[key] = {
                     other_id: otherId,
                     other_type: otherType,
                     other_name: otherName,
                     other_image: otherImage,
                     last_message: msg.message,
-                    last_message_date: msg.created_at,
+                    last_message_date: normalizedMsgDate,
                     unread_count: (!msg.is_read && msg.receiver_id == userId) ? 1 : 0
                 };
             } else if (!msg.is_read && msg.receiver_id == userId) {
@@ -339,7 +347,7 @@ router.get('/:user_id/:user_type/:other_id/:other_type', authenticate, [
             return res.status(403).json({ success: false, error: 'غير مصرح لك بدرس هذه المحادثة' });
         }
 
-        const limitParam = req.query.limit !== undefined ? parseInt(req.query.limit, 10) : 10;
+        const limitParam = req.query.limit !== undefined ? parseInt(req.query.limit, 10) : 20;
         const beforeParam = req.query.before || null;
 
         let query = supabase
@@ -436,6 +444,15 @@ router.get('/:user_id/:user_type/:other_id/:other_type', authenticate, [
                     msg.file_size = msg.file_size || att.file_size;
                     msg.file_type = msg.file_type || att.file_type;
                 }
+            }
+        }
+
+        for (const msg of messagesList) {
+            if (msg.created_at && typeof msg.created_at === 'string') {
+                let s = msg.created_at.trim();
+                if (s.includes(' ') && !s.includes('T')) s = s.replace(' ', 'T');
+                if (!s.endsWith('Z') && !/[+-]\d{2}(:\d{2})?$/.test(s)) s += 'Z';
+                msg.created_at = s;
             }
         }
 

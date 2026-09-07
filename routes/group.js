@@ -480,7 +480,7 @@ router.get('/:id/messages', optionalAuth, async (req, res) => {
         const numericGroupId = parseInt(groupId, 10);
         const checkGroupId = isNaN(numericGroupId) ? groupId : numericGroupId;
 
-        const limitParam = req.query.limit !== undefined ? parseInt(req.query.limit, 10) : 10;
+        const limitParam = req.query.limit !== undefined ? parseInt(req.query.limit, 10) : 20;
         const beforeParam = req.query.before || null;
 
         let gQuery = supabase
@@ -597,8 +597,17 @@ router.get('/:id/messages', optionalAuth, async (req, res) => {
                 displayMessage = displayMessage.replace(/<!--REPLY:[\s\S]*?-->/, '').trim();
             }
 
+            let normalizedCreatedAt = m.created_at;
+            if (normalizedCreatedAt && typeof normalizedCreatedAt === 'string') {
+                let s = normalizedCreatedAt.trim();
+                if (s.includes(' ') && !s.includes('T')) s = s.replace(' ', 'T');
+                if (!s.endsWith('Z') && !/[+-]\d{2}(:\d{2})?$/.test(s)) s += 'Z';
+                normalizedCreatedAt = s;
+            }
+
             return {
                 ...m,
+                created_at: normalizedCreatedAt,
                 message: displayMessage,
                 file_url,
                 file_name,

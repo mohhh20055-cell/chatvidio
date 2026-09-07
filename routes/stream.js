@@ -1024,7 +1024,11 @@ router.get('/teacher-stream/:offer_id/:teacher_id', async (req, res) => {
                                 div.innerHTML = \`
                                     <div class="message-meta">
                                         <span>\${m.sender_name}</span>
-                                        <span>\${new Date(m.created_at).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'})}</span>
+                                        <span>\${(() => {
+                                            let s = m.created_at || '';
+                                            if (s && !s.endsWith('Z') && !/[+-]\\d{2}/.test(s)) s = s.replace(' ', 'T') + 'Z';
+                                            return new Date(s).toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Algiers' });
+                                        })()}</span>
                                     </div>
                                     <div>\${escapeHtml(m.message)}</div>
                                 \`;
@@ -1403,7 +1407,11 @@ router.get('/join-stream/:offer_id/:student_id', async (req, res) => {
                                 div.innerHTML = \`
                                     <div class="message-meta">
                                         <span>\${m.sender_name}</span>
-                                        <span>\${new Date(m.created_at).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'})}</span>
+                                        <span>\${(() => {
+                                            let s = m.created_at || '';
+                                            if (s && !s.endsWith('Z') && !/[+-]\\d{2}/.test(s)) s = s.replace(' ', 'T') + 'Z';
+                                            return new Date(s).toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Algiers' });
+                                        })()}</span>
                                     </div>
                                     <div>\${escapeHtml(m.message)}</div>
                                 \`;
