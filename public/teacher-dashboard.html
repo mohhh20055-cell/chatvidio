@@ -4800,55 +4800,36 @@
     <div class="modal-content" style="position: relative; max-width: 650px; width: 92%; margin: 20px auto; background: white; border-radius: 16px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; scroll-behavior: smooth;">
         <div class="modal-header" style="position: relative; display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; border-bottom: 1px solid var(--gray-200); padding-bottom: 12px;">
             <div>
-                <h3 style="margin: 0; font-size: 1.2rem; color: var(--gray-800);"><i class="fas fa-user-edit" style="color: var(--primary); margin-left: 8px;"></i> إكمال الملف الشخصي والوثائق</h3>
-                <p style="font-size: 0.8rem; color: var(--gray-500); margin: 4px 0 0 0;">يجب إكمال هذه المعلومات والوثائق لتفعيل حسابك والبدء في تقديم الدروس</p>
+                <h3 style="margin: 0; font-size: 1.2rem; color: var(--gray-800);"><i class="fas fa-user-edit" style="color: var(--primary); margin-left: 8px;"></i> إكمال الملف الشخصي</h3>
+                <p style="font-size: 0.8rem; color: var(--gray-500); margin: 4px 0 0 0;">يرجى إكمال معلومات ملفك الشخصي لتتمكن من إضافة الدورات والدروس والبثوث والمجموعات</p>
             </div>
             <button class="close-modal" onclick="closeModal()" title="إغلاق" style="background: none; border: none; font-size: 1.8rem; cursor: pointer; color: var(--gray-500); line-height: 1; padding: 0 4px;">&times;</button>
         </div>
         <div class="modal-body">
-            <!-- Help Telegram Button -->
-            <div style="text-align: left; margin-bottom: 12px; display: flex; justify-content: flex-end;">
-                <button type="button" onclick="openSupportModal()" style="background: #f0f9ff; border: 1px solid #bae6fd; color: #0369a1; padding: 6px 12px; border-radius: 8px; font-size: 0.82rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                    <i class="fab fa-telegram-plane" style="color: #0284c7;"></i> هل واجهت مشكلة في رفع الوثائق؟
-                </button>
-            </div>
-
-            <!-- ✅ بطاقة توضيحية تشجيعية للأستاذ بخصوص مجانية الانضمام وموثوقية المراجعة وقبول الشهادات -->
-            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 16px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(22,163,74,0.06);">
-                <div style="display: flex; align-items: flex-start; gap: 12px;">
-                    <div style="background: white; border-radius: 50%; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.05); flex-shrink: 0; border: 1px solid #bbf7d0;">
-                        <i class="fas fa-check-circle" style="color: #16a34a; font-size: 1.1rem;"></i>
-                    </div>
-                    <div>
-                        <h4 style="margin: 0 0 4px 0; font-size: 0.95rem; color: #14532d; font-weight: 800;">لماذا تختار التدريس معنا؟</h4>
-                        <p style="margin: 0 0 6px 0; font-size: 0.85rem; color: #166534; line-height: 1.5; font-weight: 700;">
-                            انضمام الأساتذة وتدريسهم في المنصة <strong>مجاني بالكامل</strong>، ونرحب بقبول <strong>جميع الشهادات والدبلومات المعتمدة</strong> من طرف الدولة.
-                        </p>
-                        <p style="margin: 0; font-size: 0.8rem; color: #15803d; line-height: 1.5; font-weight: 700;">
-                            ⚠️ <span style="text-decoration: underline;">مراجعة آمنة وسريعة:</span> يتم مراقبة ومراجعة جميع المستندات والوثائق بدقة من قبل مشرين مختصين في المنصة، ويتم تفعيل وقبول الحساب في <strong>أقل من 24 ساعة</strong> كحد أقصى.
-                        </p>
-                    </div>
+            <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 12px; padding: 14px 16px; margin-bottom: 18px; display: flex; align-items: flex-start; gap: 12px;">
+                <div style="background: #e0f2fe; color: #0284c7; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.1rem;">
+                    <i class="fas fa-info-circle"></i>
+                </div>
+                <div>
+                    <h4 style="margin: 0 0 4px 0; font-size: 0.92rem; color: #0369a1; font-weight: 800;">معلومات الملف الشخصي</h4>
+                    <p style="margin: 0; font-size: 0.82rem; color: #0284c7; line-height: 1.5;">
+                        يرجى ملء الحقول أدناه لتفعيل حسابك والبدء في نشر الدورات والدروس واللايف والمنشورات والمجموعات.
+                        <span style="display: block; margin-top: 4px; color: #075985; font-weight: 700;">
+                            💡 ملاحظة: الوثائق والشهادات غير مطلوبة هنا، فهي مخصصة فقط لترقية الحساب للشارة الذهبية عبر زر "ترقية الحساب".
+                        </span>
+                    </p>
                 </div>
             </div>
 
-            <div style="background: #fef2f2; border: 1px solid #fee2e2; border-radius: 8px; padding: 12px; margin-bottom: 16px; color: #b91c1c; font-weight: 800; font-size: 0.85rem; text-align: center; line-height: 1.5;">
-                ⚠️ بقيت خطوة واحده لارسال حسابك لتحقق منه وهي رفع الوثائق عبر زر اكمال الملف الشخصي
-            </div>
-
-            <!-- SECTION 1: المعلومات الشخصية والتعليمية -->
-            <div id="section1Container" style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid var(--primary-light);">
-                    <span style="background: var(--primary); color: white; border-radius: 50%; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 800;">1</span>
-                    <h4 style="margin: 0; font-size: 0.95rem; color: var(--primary); font-weight: 800;"><i class="fas fa-id-card"></i> القسم الأول: المعلومات الشخصية والتعليمية</h4>
-                </div>
-
+            <!-- SECTION: المعلومات الشخصية والتعليمية -->
+            <div id="section1Container" style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-bottom: 16px;">
                 <div class="form-group" style="margin-bottom: 15px;">
                     <label style="display:block; margin-bottom:6px; font-weight:700;"><i class="fas fa-phone" style="color: var(--primary);"></i> رقم الهاتف <span style="color:red;">*</span></label>
-                    <input type="tel" id="completePhone" placeholder="رقم الهاتف" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--gray-300);" onkeydown="if(event.key==='Enter'){event.preventDefault();autoScrollToNext(this,'completeSpecialization');}" onblur="autoScrollToNext(this,'completeSpecialization')">
+                    <input type="tel" id="completePhone" placeholder="مثال: 0550123456 أو 0660123456 أو 0770123456" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--gray-300);" onkeydown="if(event.key==='Enter'){event.preventDefault();autoScrollToNext(this,'completeSpecialization');}" onblur="autoScrollToNext(this,'completeSpecialization')">
                 </div>
                 <div class="form-group" style="margin-bottom: 15px;">
                     <label style="display:block; margin-bottom:6px; font-weight:700;"><i class="fas fa-book" style="color: var(--primary);"></i> التخصص <span style="color:red;">*</span></label>
-                    <input type="text" id="completeSpecialization" placeholder="مثال: رياضيات، لغة عربية..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--gray-300);" onkeydown="if(event.key==='Enter'){event.preventDefault();autoScrollToNext(this,'completeExperience');}" onblur="autoScrollToNext(this,'completeExperience')">
+                    <input type="text" id="completeSpecialization" placeholder="مثال: رياضيات، علوم طبيعية، لغة عربية..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--gray-300);" onkeydown="if(event.key==='Enter'){event.preventDefault();autoScrollToNext(this,'completeExperience');}" onblur="autoScrollToNext(this,'completeExperience')">
                 </div>
                 <div class="form-group" style="margin-bottom: 15px;">
                     <label style="display:block; margin-bottom:6px; font-weight:700;"><i class="fas fa-clock" style="color: var(--primary);"></i> سنوات الخبرة <span style="color:red;">*</span></label>
@@ -4875,7 +4856,7 @@
                         </optgroup>
                         <optgroup label="التعليم الثانوي">
                             <option value="secondary_all">جميع مستويات الثانوي</option>
-                            <option value="1ere_as">السنة اأولى ثانوي</option>
+                            <option value="1ere_as">السنة الأولى ثانوي</option>
                             <option value="2eme_as">السنة الثانية ثانوي</option>
                             <option value="3eme_as">السنة الثالثة ثانوي (شهادة البكالوريا - BAC)</option>
                         </optgroup>
@@ -4895,112 +4876,20 @@
                         </optgroup>
                     </select>
                 </div>
-                <div class="form-group" style="margin-bottom: 0;">
+                <div class="form-group" style="margin-bottom: 15px;">
                     <label style="display:block; margin-bottom:6px; font-weight:700;"><i class="fas fa-align-left" style="color: var(--primary);"></i> نبذة تعريفية <span style="color:red;">*</span></label>
-                    <textarea id="completeBio" placeholder="تحدث عن خبرتك وأسلوبك في التدريس..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--gray-300); height: 80px;" onblur="autoScrollToNext(this,'completeDiplomaImage')"></textarea>
+                    <textarea id="completeBio" placeholder="تحدث عن خبرتك وأسلوبك في التدريس وما تقدمه لطلابك..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--gray-300); height: 85px;"></textarea>
                 </div>
-            </div>
-            
-            <!-- SECTION 2: رفع وتصوير الوثائق الثبوتية -->
-            <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 12px; padding: 16px; margin-bottom: 15px;">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 2px solid #86efac;">
-                    <span style="background: #16a34a; color: white; border-radius: 50%; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 800;">2</span>
-                    <h4 style="margin: 0; font-size: 0.95rem; color: #15803d; font-weight: 800;"><i class="fas fa-file-upload"></i> القسم الثاني: رفع أو تصوير الوثائق الثبوتية</h4>
-                </div>
-
-                <div style="background: #e0f2fe; border: 1px solid #7dd3fc; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; font-size: 0.82rem; color: #0369a1; font-weight: 700; display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-info-circle fa-lg"></i>
-                    <span>يرجى الضغط على الزر لالتقاط الصورة مباشرة عبر كاميرا الهاتف أو الجهاز (الحد الأقصى: 50MB).</span>
-                </div>
-
-                <!-- صورة الشهادة -->
-                <div class="form-group" style="margin-bottom: 16px;">
-                    <label style="display:block; font-size: 0.85rem; margin-bottom: 6px; font-weight: 700;">
-                        <i class="fas fa-certificate" style="color: #16a34a;"></i> صورة الشهادة أو الدبلوم <span style="color:red;">*</span>
-                        <span style="font-size: 0.75rem; color: #0284c7; font-weight: normal; margin-right: 6px;">(أقصى حد: 50MB)</span>
-                    </label>
-                    <input type="file" id="completeDiplomaImage" accept="image/*" style="display: none;" onchange="validateImageSize(this, 'completeIdImage'); updateCapturedDocStatus('completeDiplomaImage', 'completeDiplomaStatus');">
-                    <button type="button" onclick="startCameraForInput('completeDiplomaImage')" style="width: 100%; padding: 10px 16px; border-radius: 8px; background: #0284c7; color: white; border: none; cursor: pointer; font-size: 0.88rem; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 2px 6px rgba(2,132,199,0.25);">
-                        <i class="fas fa-camera"></i> تصوير الشهادة بالكاميرا
-                    </button>
-                    <div id="completeDiplomaStatus" style="display: none; margin-top: 6px; font-size: 0.82rem; color: #16a34a; font-weight: 700; background: #f0fdf4; padding: 6px 10px; border-radius: 6px; border: 1px solid #bbf7d0;">
-                        <i class="fas fa-check-circle"></i> تم التقاط صورة الشهادة بنجاح
-                    </div>
-                </div>
-
-                <!-- صورة بطاقة الهوية -->
-                <div class="form-group" style="margin-bottom: 16px;">
-                    <label style="display:block; font-size: 0.85rem; margin-bottom: 6px; font-weight: 700;">
-                        <i class="fas fa-address-card" style="color: #16a34a;"></i> صورة بطاقة الهوية الوطنية <span style="color:red;">*</span>
-                        <span style="font-size: 0.75rem; color: #0284c7; font-weight: normal; margin-right: 6px;">(أقصى حد: 50MB)</span>
-                    </label>
-                    <input type="file" id="completeIdImage" accept="image/*" style="display: none;" onchange="validateImageSize(this, 'completeProfileImage'); updateCapturedDocStatus('completeIdImage', 'completeIdStatus');">
-                    <button type="button" onclick="startCameraForInput('completeIdImage')" style="width: 100%; padding: 10px 16px; border-radius: 8px; background: #0284c7; color: white; border: none; cursor: pointer; font-size: 0.88rem; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 2px 6px rgba(2,132,199,0.25);">
-                        <i class="fas fa-camera"></i> تصوير بطاقة الهوية بالكاميرا
-                    </button>
-                    <div id="completeIdStatus" style="display: none; margin-top: 6px; font-size: 0.82rem; color: #16a34a; font-weight: 700; background: #f0fdf4; padding: 6px 10px; border-radius: 6px; border: 1px solid #bbf7d0;">
-                        <i class="fas fa-check-circle"></i> تم التقاط صورة الهوية بنجاح
-                    </div>
-                </div>
-
-                <!-- الصورة الشخصية -->
+                <!-- الصورة الشخصية (اختياري) -->
                 <div class="form-group" style="margin-bottom: 0;">
-                    <label style="display:block; font-size: 0.85rem; margin-bottom: 6px; font-weight: 700;">
-                        <i class="fas fa-user-circle" style="color: #16a34a;"></i> الصورة الشخصية (اختياري)
-                        <span style="font-size: 0.75rem; color: #0284c7; font-weight: normal; margin-right: 6px;">(أقصى حد: 50MB)</span>
-                    </label>
-                    <input type="file" id="completeProfileImage" accept="image/*" style="display: none;" onchange="validateImageSize(this, 'btnSubmitTeacherProfile'); updateCapturedDocStatus('completeProfileImage', 'completeProfileStatus');">
-                    <button type="button" onclick="startCameraForInput('completeProfileImage')" style="width: 100%; padding: 10px 16px; border-radius: 8px; background: #0284c7; color: white; border: none; cursor: pointer; font-size: 0.88rem; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 2px 6px rgba(2,132,199,0.25);">
-                        <i class="fas fa-camera"></i> تصوير الصورة الشخصية بالكاميرا
-                    </button>
-                    <div id="completeProfileStatus" style="display: none; margin-top: 6px; font-size: 0.82rem; color: #16a34a; font-weight: 700; background: #f0fdf4; padding: 6px 10px; border-radius: 6px; border: 1px solid #bbf7d0;">
-                        <i class="fas fa-check-circle"></i> تم التقاط الصورة الشخصية بنجاح
-                    </div>
-                </div>
-
-                <!-- حاوية الكاميرا الخاصة بالنموذج -->
-                <div id="modalCameraContainer" style="display:none; margin-top: 16px; background: #1e293b; padding: 14px; border-radius: 12px; text-align: center;">
-                    <video id="modalCameraStream" width="100%" height="auto" autoplay playsinline style="border-radius: 8px; max-height: 260px; background: black;"></video>
-                    <div style="margin-top: 10px; display: flex; gap: 10px; justify-content: center;">
-                        <button type="button" onclick="capturePhotoForInput()" style="padding: 8px 18px; border-radius: 8px; background: #16a34a; color: white; border: none; cursor: pointer; font-size: 0.88rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
-                            <i class="fas fa-check"></i> التقاط الصورة الآن
-                        </button>
-                        <button type="button" onclick="stopModalCamera()" style="padding: 8px 16px; border-radius: 8px; background: #ef4444; color: white; border: none; cursor: pointer; font-size: 0.88rem; font-weight: 700;">
-                            إلغاء
-                        </button>
-                    </div>
-                    <canvas id="modalCameraCanvas" style="display:none;"></canvas>
-                </div>
-
-                <!-- ✅ بطاقة اموافقة القانونية الصريحة لى معالجة وحذف معطيات التحقق من الهوية -->
-                <div id="completeLegalConsentBox" style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 12px; padding: 14px; margin-top: 16px; text-align: right; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
-                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: #0f172a; font-weight: 800; font-size: 0.88rem;">
-                        <i class="fas fa-shield-halved" style="color: var(--primary); font-size: 1.1rem;"></i>
-                        <span>موافقة صريحة على معالجة وحذف معطات التحقق من الهوية:</span>
-                    </div>
-                    <div style="font-size: 0.8rem; color: #334155; line-height: 1.6; background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; max-height: 150px; overflow-y: auto; margin-bottom: 10px;">
-                        <p style="margin-bottom: 8px; font-weight: 600;">بناءً على مقتضيات التشريع الجزائري لحماية المعطيات ذات الطابع الشخصي، أوافق صراحة وبمحض إرادتي على الرفع المؤقت لنسخة من (طاقة الهوية / الدبلوم) الخاصة بي عبر المنصة لغرض وحيد وهو: التحقق من أهلية الحساب وتفعيل العضوية.</p>
-                        <p style="font-weight: 800; color: #0f172a; margin-bottom: 4px;">تلتزم المنصة بالآتي:</p>
-                        <ul style="padding-right: 18px; margin-bottom: 8px; list-style-type: disc;">
-                            <li style="margin-bottom: 4px;"><strong>الحذف الفوري والنهائي:</strong> تدمير وحذف صور ومستندات الهوية والشهادات المرفوعة من خوادم المعالجة السحابية فوراً وبشكل تلقائي بمجرد قبول طلب التفعيل أو رفضه، ودون الاحتفاظ بأي أرشيف أو نسخة منها.</li>
-                            <li style="margin-bottom: 4px;"><strong>سرية المعالجة:</strong> عدم مشاركة أو بيع أو إظهار هذه الوثائق لأي جهة خارجية خلال فترة المعالجة المؤقتة.</li>
-                            <li style="margin-bottom: 4px;"><strong>الحد الأدنى من البيانات:</strong> الاكتفاء بحفظ مؤشر رقمي داخل قاعدة البيانات يفيد بأن الحساب (مُفعّل) دون ترك أي أثر للمستند الأصلي.</li>
-                        </ul>
-                        <p style="font-size: 0.76rem; color: #64748b; margin-bottom: 0; line-height: 1.5;">بالنقر على هذا المربع، فإنني أمنح المنصة تفعيلاً للموافقة المسبقة والصريحة لمعالجة هذه البيانات وفق الشروط المذكورة أعلاه وفقاً لأحكام القانون رقم 18-07 المعدّل والمتمّم بموجب القانون رقم 25-11 المتعلق بحماية الأشخاص الطبيعيين في مجال معالجة المعطيات ذات الطابع الشخصي.</p>
-                    </div>
-                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 0.85rem; font-weight: 700; color: #1e293b; line-height: 1.4; user-select: none;">
-                        <input type="checkbox" id="completeConsentCheckbox" style="width: 18px; height: 18px; accent-color: var(--primary); margin-top: 2px; flex-shrink: 0; cursor: pointer;" onchange="var err = document.getElementById('completeConsentError'); if(err) err.style.display = 'none';">
-                        <span>أوافق صراحة وبمحض إرادتي على معالجة وحذف معطيات التحقق وسياسة الخصوصية وشروط الاستخدام.</span>
-                    </label>
-                    <div id="completeConsentError" class="name-error" style="margin-top: 6px; font-size: 0.8rem; color: #dc2626; display: none;">
-                        <i class="fas fa-exclamation-circle"></i> يجب تفعيل الموافقة على شروط معالجة وحذف معطيات التحقق لإتمام إرسال الوثائق.
-                    </div>
+                    <label style="display:block; margin-bottom:6px; font-weight:700;"><i class="fas fa-user-circle" style="color: var(--primary);"></i> الصورة الشخصية (اختياري)</label>
+                    <input type="file" id="completeProfileImage" accept="image/*" style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--gray-300); background: white;">
                 </div>
             </div>
         </div>
         <div class="modal-footer" style="display: flex; gap: 10px; margin-top: 16px; border-top: 1px solid var(--gray-200); padding-top: 12px;">
             <button type="button" class="cancel-btn" onclick="closeModal()" style="padding: 10px 20px; border-radius: 8px; border: 1px solid var(--gray-300); background: #f1f5f9; cursor: pointer; font-weight: 700; color: var(--gray-700);">إلغاء</button>
-            <button id="btnSubmitTeacherProfile" type="button" class="btn-primary" onclick="submitTeacherProfile()" style="flex: 1; justify-content: center; background: var(--gradient-main); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 700; display: inline-flex; align-items: center; gap: 8px;"><i class="fas fa-check-circle"></i> إرسال الوثائق للمراجعة</button>
+            <button id="btnSubmitTeacherProfile" type="button" class="btn-primary" onclick="submitTeacherProfile()" style="flex: 1; justify-content: center; background: var(--gradient-main); color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 0.95rem; display: inline-flex; align-items: center; gap: 8px;"><i class="fas fa-check-circle"></i> حفظ وإكمال الملف الشخصي</button>
         </div>
     </div>
 </div>
@@ -7167,8 +7056,10 @@
 
     function checkTeacherProfileComplete() {
         if (checkGuestAction && checkGuestAction()) return false;
-        if (userData && (userData.requires_profile_completion || !userData.profile_completion)) {
-            showToast('⚠️ يرجى إكمال ملفك الشخصي أولاً لتتمكن من القيام بهذه العملية (إضافة دورة، درس، لايف، منشور أو مجموعة)', 'warning');
+        const hasRequiredFields = Boolean(userData && userData.phone && userData.specialization && userData.bio && userData.experience && userData.teaching_level);
+        const isProfileComplete = Boolean(userData && (userData.profile_completion === true || hasRequiredFields) && !userData.requires_profile_completion);
+        if (!isProfileComplete) {
+            showToast('⚠️ يرجى إكمال معلومات ملفك الشخصي أولاً لتتمكن من إضافة الدورات والدروس والبث المباشر والمنشورات والمجموعات', 'warning');
             if (typeof openCompleteProfileModal === 'function') {
                 openCompleteProfileModal();
             }
@@ -7306,20 +7197,6 @@
             
             const levelEl = document.getElementById('completeTeachingLevel') || document.getElementById('profileTeachingLevel');
             if (levelEl) levelEl.value = userData.teaching_level || '';
-
-            // إذا كان الأستاذ قد أدخل معلوماته مسبقاً أثناء التسجيل، نخفي القسم الأول ونظهر فقط ما تبقى ورفع الوثائق
-            const section1 = document.getElementById('section1Container');
-            if (section1 && userData.phone && userData.specialization) {
-                section1.innerHTML = `
-                    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 14px; color: #166534; font-weight: 700; font-size: 0.92rem; display: flex; align-items: center; gap: 10px;">
-                        <i class="fas fa-check-circle" style="color: #16a34a; font-size: 1.2rem;"></i>
-                        <div>
-                            <strong>تم استلام معلوماتك الأساسية بنجاح أثناء التسجيل (${userData.specialization} - ${userData.phone}).</strong>
-                            <div style="font-size: 0.82rem; color: #15803d; margin-top: 4px;">لقد قما بحفظها مسبقاً، يرجى فقط رفع الوثائق المطلوبة أدناه لتفعيل حسابك النهائي.</div>
-                        </div>
-                    </div>
-                `;
-            }
         }
     }
     window.openCompleteProfileModal = openCompleteProfileModal;
@@ -7653,57 +7530,13 @@
         if (!experience) { showToast('⚠️ يرجى إدخال سنوات الخبرة', 'error'); return; }
         if (!teachingLevel) { showToast('⚠️ يرجى اختيار المستوى الدراسي', 'error'); return; }
 
-        const diplomaInput = document.getElementById('completeDiplomaImage') || document.getElementById('diplomaImage');
-        const idInput = document.getElementById('completeIdImage') || document.getElementById('idImage');
         const profileInput = document.getElementById('completeProfileImage') || document.getElementById('profileImage');
-
-        const diplomaImage = diplomaInput && diplomaInput.files ? diplomaInput.files[0] : null;
-        const idImage = idInput && idInput.files ? idInput.files[0] : null;
         const profileImage = profileInput && profileInput.files ? profileInput.files[0] : null;
 
         const MAX_SINGLE_FILE_SIZE = 50 * 1024 * 1024; // 50MB per single file
-        if (diplomaImage && diplomaImage.size > MAX_SINGLE_FILE_SIZE) {
-            showToast(`⚠️ حجم صورة الشهادة (${(diplomaImage.size / (1024 * 1024)).toFixed(2)} MB) يتجاوز الحد الأقصى المسموح به للصورة الواحدة وهو 50 ميجابايت`, 'error');
-            return;
-        }
-        if (idImage && idImage.size > MAX_SINGLE_FILE_SIZE) {
-            showToast(`⚠️ حجم صورة الهوية (${(idImage.size / (1024 * 1024)).toFixed(2)} MB) يتجاوز الحد لأقصى المسموح به للصورة الواحدة وهو 50 ميجابايت`, 'error');
-            return;
-        }
         if (profileImage && profileImage.size > MAX_SINGLE_FILE_SIZE) {
             showToast(`⚠️ حجم الصورة الشخصية (${(profileImage.size / (1024 * 1024)).toFixed(2)} MB) يتجاوز الحد الأقصى المسموح به للصورة الواحدة وهو 50 ميجابايت`, 'error');
             return;
-        }
-
-        const isValidImg = (val) => val && typeof val === 'string' && val.trim() !== '' && val !== 'null' && val !== 'undefined';
-        const hasDiploma = diplomaImage || (userData && isValidImg(userData.diploma_image));
-        const hasId = idImage || (userData && isValidImg(userData.id_image));
-
-        if (!hasDiploma) {
-            showToast('⚠️ يرجى رفع صورة الشهادة أو الدبلوم أولاً', 'error');
-            return;
-        }
-        if (!hasId) {
-            showToast('⚠️ يرجى رفع صورة بطاقة الهوية الوطنية أولاً', 'error');
-            return;
-        }
-
-        const completeConsentCheckbox = document.getElementById('completeConsentCheckbox');
-        if (completeConsentCheckbox && !completeConsentCheckbox.checked) {
-            showToast('⚠️ يجب الموافقة على شروط معالجة وحذف معطيات التحقق وسياسة الخصوصية للمتابعة', 'error');
-            const consentErr = document.getElementById('completeConsentError');
-            if (consentErr) consentErr.style.display = 'block';
-            const consentBox = document.getElementById('completeLegalConsentBox');
-            if (consentBox) {
-                consentBox.style.borderColor = '#dc2626';
-                consentBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-            return;
-        } else {
-            const consentErr = document.getElementById('completeConsentError');
-            if (consentErr) consentErr.style.display = 'none';
-            const consentBox = document.getElementById('completeLegalConsentBox');
-            if (consentBox) consentBox.style.borderColor = '#cbd5e1';
         }
 
         const formData = new FormData();
@@ -7713,19 +7546,23 @@
         formData.append('bio', bio);
         formData.append('experience', experience);
         formData.append('teaching_level', teachingLevel);
-        if (diplomaImage) formData.append('diploma_image', diplomaImage);
-        if (idImage) formData.append('id_image', idImage);
         if (profileImage) formData.append('profile_image', profileImage);
 
+        const submitBtn = document.getElementById('btnSubmitTeacherProfile');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري حفظ الملف الشخصي...';
+        }
+
         try {
-            showToast('جاري إرسال البيانات والوثائق...', 'info');
+            showToast('جاري حفظ معلومات الملف الشخصي...', 'info');
             const res = await fetchWithAuth('/api/teacher/complete-profile', {
                 method: 'POST',
                 body: formData
             });
             const data = await res.json();
             if (data.success) {
-                showToast('✅ تم إرسال ملفك الشخصي والوثائق بنجاح!', 'success');
+                showToast('✅ تم إكمال وحفظ ملفك الشخصي بنجاح! يمكنك الآن استخدام كافة ميزات المنصة.', 'success');
                 
                 // 1. إغلاق النافذة المنبثقة
                 closeModal();
@@ -7739,41 +7576,42 @@
                 userData.teaching_level = teachingLevel;
                 userData.profile_completion = true;
                 userData.requires_profile_completion = false;
-                userData.status = 'pending';
+                userData.status = 'approved';
 
                 if (data.user) {
                     if (data.user.status) userData.status = data.user.status;
                     if (data.user.profile_image) userData.profile_image = data.user.profile_image;
-                    if (data.user.diploma_image) userData.diploma_image = data.user.diploma_image;
-                    if (data.user.id_image) userData.id_image = data.user.id_image;
                 }
 
                 localStorage.setItem('userData', JSON.stringify(userData));
 
-                // 3. إخفاء بانر التنبيه وإظهار بانر الانتظار
+                // 3. إخفاء بانرات عدم اكتمال الملف
                 hideAllBanners();
-                if (userData.status === 'rejected') {
-                    showRejectedBanner(userData.rejection_reason);
-                } else if (userData.status !== 'approved') {
-                    showPendingApprovalBanner();
-                }
 
-                // 4. تحديث عرض الملف الشخصي فوراً بدون الرسالة الحمراء
+                // 4. تحديث عرض الملف الشخصي فوراً
                 updateUI();
+                if (typeof updateTeacherProfileUI === 'function') {
+                    updateTeacherProfileUI();
+                }
 
                 // 5. مزامنة البيانات من الخادم
                 try {
                     await loadUserData();
                 } catch(e) {}
             } else {
-                showToast(data.error || 'حدث خطأ أثناء الإرسال', 'error');
-                showErrorDiagnostics('خطأ في إرسال الملف الشخصي', data.error || 'استجابة غير متوقعة من الخادم');
+                showToast(data.error || 'حدث خطأ أثناء الحفظ', 'error');
+                showErrorDiagnostics('خطأ في إكمال الملف الشخصي', data.error || 'استجابة غير متوقعة من الخادم');
             }
         } catch (e) {
             console.error('Submit Profile Error:', e);
-            const detail = e.name === 'AbortError' ? 'انتهت مهلة الاتصال (Timeout) - حاول رفع ملفات أصغر أو تحقق من جودة الإنترنت' : e.message;
+            const detail = e.name === 'AbortError' ? 'انتهت مهلة الاتصال (Timeout) - تحقق من جودة الإنترنت' : e.message;
             showToast('❌ خطأ في الاتصال بالخادم', 'error');
             showErrorDiagnostics('فشل الاتصال بالخادم عند إكمال الملف', detail);
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-check-circle"></i> حفظ وإكمال الملف الشخصي';
+            }
         }
     }
 

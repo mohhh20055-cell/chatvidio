@@ -234,11 +234,14 @@ router.get('/profile-completion-status', authenticate, authorize(['teacher']), a
             return res.status(404).json({ success: false, error: 'الأستاذ غير موجود' });
         }
 
+        const hasInfo = Boolean(teacher.phone && teacher.specialization && teacher.bio && teacher.experience && teacher.teaching_level);
+        const isComplete = Boolean(teacher.profile_completion || hasInfo);
+
         res.json({
             success: true,
-            profile_completion: teacher.profile_completion || false,
+            profile_completion: isComplete,
             status: teacher.status || 'approved',
-            requires_profile_completion: !teacher.profile_completion
+            requires_profile_completion: !isComplete
         });
     } catch (error) {
         logger.error('خطأ في جلب حالة إكمال الملف الشخصي:', error.message);
