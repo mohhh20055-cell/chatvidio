@@ -41,7 +41,7 @@ router.post('/create', authenticate, authorize(['teacher']), upload.single('thum
         }
 
         const coursePrice = is_free === 'true' || is_free === true ? 0 : parseFloat(price);
-        const isVip = Boolean(teacher.is_vip === true);
+        const isVip = Boolean(teacher.is_vip === true && (!teacher.vip_expires_at || new Date(teacher.vip_expires_at) > new Date()));
         const courseStatus = isVip ? 'published' : 'pending';
 
         const courseData = {
@@ -115,7 +115,7 @@ router.get('/public', async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('courses')
-            .select('*, teachers:teacher_id (full_name, specialization, profile_image, profile_url, is_certified, is_vip, verification_status)')
+            .select('*, teachers:teacher_id (full_name, specialization, profile_image, profile_url, is_certified, is_vip, vip_expires_at, verification_status)')
             .eq('status', 'published')
             .order('created_at', { ascending: false });
 
@@ -123,8 +123,9 @@ router.get('/public', async (req, res) => {
 
         const formatted = (data || []).map(course => {
             const views = getViewCount('course', course.id, course.views_count || course.views || 0);
-            const isVip = Boolean(course.teachers?.is_vip === true);
-            const isCert = Boolean(isVip || (course.teachers?.is_certified === true && course.teachers?.verification_status === 'approved'));
+            const teacherObj = course.teachers || {};
+            const isVip = Boolean(teacherObj.is_vip === true && (!teacherObj.vip_expires_at || new Date(teacherObj.vip_expires_at) > new Date()));
+            const isCert = Boolean(isVip || (teacherObj.is_certified === true && teacherObj.verification_status === 'approved'));
             return {
                 ...course,
                 views_count: views,

@@ -52,7 +52,7 @@ async function fetchApprovedTeachers() {
     try {
         const res = await supabase
             .from('teachers')
-            .select('id, full_name, specialization, experience, bio, profile_image, profile_url, teaching_level, facebook_url, instagram_url, linkedin_url, youtube_url, twitter_url, website_url, whatsapp_number, status, is_certified, is_vip, verification_status, is_banned')
+            .select('id, full_name, specialization, experience, bio, profile_image, profile_url, teaching_level, facebook_url, instagram_url, linkedin_url, youtube_url, twitter_url, website_url, whatsapp_number, status, is_certified, is_vip, vip_expires_at, verification_status, is_banned')
             .neq('status', 'rejected')
             .eq('is_banned', false)
             .order('is_vip', { ascending: false, nullsFirst: false })
@@ -67,7 +67,7 @@ async function fetchApprovedTeachers() {
         try {
             const resFallback = await supabase
                 .from('teachers')
-                .select('id, full_name, specialization, experience, bio, profile_image, profile_url, teaching_level, facebook_url, instagram_url, linkedin_url, youtube_url, twitter_url, website_url, whatsapp_number, status, is_certified, is_vip, verification_status, is_banned')
+                .select('id, full_name, specialization, experience, bio, profile_image, profile_url, teaching_level, facebook_url, instagram_url, linkedin_url, youtube_url, twitter_url, website_url, whatsapp_number, status, is_certified, is_vip, vip_expires_at, verification_status, is_banned')
                 .neq('status', 'rejected')
                 .order('created_at', { ascending: false });
             data = resFallback.data || [];
@@ -127,7 +127,7 @@ async function formatOffers(offers) {
     const teacherIds = [...new Set(offers.map(o => o.teacher_id))];
     const { data: teachers, error: teachersError } = await supabase
         .from('teachers')
-        .select('id, full_name, specialization, profile_image, profile_url, teaching_level, is_certified, is_vip, verification_status, status')
+        .select('id, full_name, specialization, profile_image, profile_url, teaching_level, is_certified, is_vip, vip_expires_at, verification_status, status')
         .in('id', teacherIds);
 
     if (teachersError) {
@@ -144,7 +144,7 @@ async function formatOffers(offers) {
     return offers.map(offer => {
         const teacher = teachersMap[offer.teacher_id] || {};
         const views = getViewCount('offer', offer.id, offer.views_count || offer.views || 0);
-        const isVip = Boolean(teacher.is_vip === true);
+        const isVip = Boolean(teacher.is_vip === true && (!teacher.vip_expires_at || new Date(teacher.vip_expires_at) > new Date()));
         const isCert = Boolean(isVip || (teacher.is_certified === true && teacher.verification_status === 'approved'));
         return {
             id: offer.id,
