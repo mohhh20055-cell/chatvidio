@@ -5295,9 +5295,9 @@
             </p>
             <div style="background:white; padding:10px; border-radius:8px; border:1px solid #bfdbfe; margin-top:10px;">
                 <label style="display:block; font-size:0.78rem; font-weight:700; color:#475569; margin-bottom:4px;">
-                    رابط البث للحصة المجانية (Google Meet أو Zoom):
+                    رابط البث للحصة المجانية (Google Meet أو Zoom) <span style="color:#ef4444; font-weight:800;">* إجباري (مطلوب لإنشاء العرض)</span>:
                 </label>
-                <input type="text" id="freeMeetUrl" placeholder="الصق رابط Google Meet أو Zoom هنا لربطه بالحصة المجانية..." style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.82rem; background:#f8fafc; font-family: 'Cairo', sans-serif;">
+                <input type="text" id="freeMeetUrl" placeholder="الصق رابط Google Meet أو Zoom هنا (مطلوب إنشاء الدرس)..." style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.82rem; background:#f8fafc; font-family: 'Cairo', sans-serif;">
             </div>
         </div>
 
@@ -10728,6 +10728,13 @@ function updateUI() {
         }
 
         const freeMeetUrlVal = document.getElementById('freeMeetUrl') ? document.getElementById('freeMeetUrl').value.trim() : '';
+        if (isFree && !freeMeetUrlVal) {
+            showToast('⚠️ يجب إضافة رابط البث المباشر (Google Meet أو Zoom) لإنشاء العرض المجاني', 'error');
+            if (document.getElementById('freeMeetUrl')) {
+                document.getElementById('freeMeetUrl').focus();
+            }
+            return;
+        }
 
         const reqBody = JSON.stringify({
             teacher_id: teacherId,

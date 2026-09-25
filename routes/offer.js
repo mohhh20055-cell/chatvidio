@@ -384,23 +384,31 @@ router.post('/offer/create', authenticate, authorize(['teacher']), upload.single
             });
         }
 
-        // ✅ التحقق من رابط البث المباشر المدخل اختيارياً للحصة المجانية (Google Meet أو Zoom)
+        // ✅ التحقق الإجباري من رابط البث المباشر (Google Meet أو Zoom) للعروض المجانية
         let freeRoomDetails = null;
         if (isFreeOffer) {
             const customMeet = req.body.meet_url || req.body.stream_url;
-            if (customMeet) {
-                const formatted = formatMeetOrZoomUrl(customMeet);
-                if (formatted) {
-                    const isZoom = formatted.includes('zoom.us') || formatted.includes('zoom.com');
-                    freeRoomDetails = {
-                        url: formatted,
-                        room_name: formatted,
-                        platform: isZoom ? 'zoom' : 'google_meet',
-                        is_free: true,
-                        is_custom: true
-                    };
-                }
+            if (!customMeet || typeof customMeet !== 'string' || !customMeet.trim()) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'عذراً، يجب إضافة رابط البث المباشر (Google Meet) أولاً لإنشاء العرض المجاني'
+                });
             }
+            const formatted = formatMeetOrZoomUrl(customMeet.trim());
+            if (!formatted) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'رابط البث المباشر غير صالح. يرجى إدخال رابط Google Meet أو Zoom صحيح (مثال: https://meet.google.com/xxx-yyyy-zzz)'
+                });
+            }
+            const isZoom = formatted.includes('zoom.us') || formatted.includes('zoom.com');
+            freeRoomDetails = {
+                url: formatted,
+                room_name: formatted,
+                platform: isZoom ? 'zoom' : 'google_meet',
+                is_free: true,
+                is_custom: true
+            };
         }
 
         // ✅ إدخال الدرس في قاعدة البيانات
