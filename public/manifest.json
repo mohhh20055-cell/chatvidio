@@ -1,0 +1,34 @@
+{
+  "name": "ZoomDz",
+  "short_name": "ZoomDz",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b172a",
+  "theme_color": "#0b172a",
+  "description": "منصة ZoomDz الرائدة للتدريس والتواصل المرئي المباشر بين الطلبة والأساتذة (بديل زووم التعليمي الأول في الجزائر)",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon-48x48.png",
+      "sizes": "48x48",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "/images/zoomdz.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/zoomdz-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

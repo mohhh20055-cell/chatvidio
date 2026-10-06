@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>سياسة الخصوصية وحماية البيانات | ZoomDz</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #0f5cbf;
+      --primary-dark: #093c80;
+      --primary-light: #e8f0fe;
+      --success: #10b981;
+      --success-light: #ecfdf5;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      --radius: 16px;
+      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Cairo', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.8;
+      padding: 24px 16px 60px;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 40px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+    .back-nav {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 24px;
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 0.95rem;
+      transition: gap 0.2s ease;
+    }
+    .back-nav:hover { gap: 12px; }
+    .header-section {
+      text-align: center;
+      padding-bottom: 28px;
+      margin-bottom: 32px;
+      border-bottom: 2px solid var(--border);
+    }
+    .shield-icon {
+      width: 72px;
+      height: 72px;
+      background: var(--primary-light);
+      color: var(--primary);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      margin: 0 auto 16px;
+    }
+    h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--primary-dark);
+      margin-bottom: 10px;
+    }
+    .last-updated {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    /* Highlight Assurance Banner */
+    .guarantee-banner {
+      background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+      border: 2px solid #a7f3d0;
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 36px;
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+    }
+    .guarantee-icon {
+      font-size: 2.2rem;
+      color: var(--success);
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+    .guarantee-content h3 {
+      color: #065f46;
+      font-size: 1.25rem;
+      margin-bottom: 8px;
+      font-weight: 800;
+    }
+    .guarantee-content p {
+      color: #047857;
+      font-size: 0.98rem;
+      font-weight: 600;
+      line-height: 1.7;
+    }
+
+    .policy-section {
+      margin-bottom: 32px;
+    }
+    .policy-section h2 {
+      color: var(--primary);
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .policy-section h2 i {
+      font-size: 1.1rem;
+      opacity: 0.9;
+    }
+    .policy-section p {
+      color: #334155;
+      font-size: 1rem;
+      margin-bottom: 12px;
+      text-align: justify;
+    }
+    .policy-list {
+      list-style: none;
+      padding: 0;
+      margin: 12px 0 16px;
+    }
+    .policy-list li {
+      position: relative;
+      padding-right: 28px;
+      margin-bottom: 10px;
+      color: #334155;
+    }
+    .policy-list li::before {
+      content: "\f00c";
+      font-family: "Font Awesome 6 Free";
+      font-weight: 900;
+      position: absolute;
+      right: 0;
+      top: 2px;
+      color: var(--primary);
+      font-size: 0.85rem;
+    }
+
+    .callout-box {
+      background: #f1f5f9;
+      border-right: 4px solid var(--primary);
+      padding: 16px 20px;
+      border-radius: 8px 0 0 8px;
+      margin: 16px 0;
+      font-size: 0.95rem;
+      color: #1e293b;
+    }
+
+    .contact-card {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      margin-top: 36px;
+    }
+    .contact-card a {
+      color: var(--primary);
+      font-weight: 700;
+      text-decoration: none;
+      font-size: 1.05rem;
+    }
+    .contact-card a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 640px) {
+      .container { padding: 24px 18px; }
+      h1 { font-size: 1.6rem; }
+      .guarantee-banner { flex-direction: column; text-align: center; align-items: center; }
+    }
+  </style>
+    <script src="/js/mobile-navbar-swipe.js"></script>
+</head>
+<body>
+  <div class="container">
+    <a class="back-nav" href="/">
+      <i class="fas fa-arrow-right"></i> العودة إلى الصفحة الرئيسية
+    </a>
+
+    <header class="header-section">
+      <div class="shield-icon">
+        <i class="fas fa-user-shield"></i>
+      </div>
+      <h1>سياسة الخصوصية وحماية بيانات المستخدمين</h1>
+      <p class="last-updated"><i class="far fa-calendar-alt"></i> آخر تحديث: أغسطس 2026 | منصة ZoomDz التعليمية</p>
+    </header>
+
+    <!-- ضمان الحذف الفوري للوثائق والصور -->
+    <div class="guarantee-banner" id="privacy-guarantee">
+      <div class="guarantee-icon">
+        <i class="fas fa-shield-check"></i>
+      </div>
+      <div class="guarantee-content">
+        <h3>ضمان الخصوصية التامة والحذف الفوري للوثائق والصور</h3>
+        <p>
+          نلتزم في <strong>ZoomDz</strong> بأعلى معايير الأمان والسرية، ونطمئن جميع مستخدمينا وأساتذتنا الكرام بأننا <strong>لا نحتفظ بأي وثائق شخصية أو صور إثبات هوية على الإطلاق</strong>. جميع الصور والوثائق الثبوتية المرسلة لغرض التحقق يتم <strong>حذفها نهائياً وفورياً من خوادمنا بمجرد مراجعة طلب الأستاذ (سواء تم قبوله أو رفضه)</strong> دون الاحتفاظ بأي نسخة رقمية.
+        </p>
+      </div>
+    </div>
+
+    <!-- 1. مقدمة -->
+    <section class="policy-section">
+      <h2><i class="fas fa-info-circle"></i> 1. التزامنا بحماية خصوصيتك</h2>
+      <p>
+        نحن في منصة <strong>ZoomDz</strong> نضع خصوصية وأمان طلابنا وأساتذتنا على رأس أولوياتنا. تهدف سياسة الخصوصية هذه إلى توضيح كيفية تعاملنا مع البيانات بأقصى درجات الشفافية والمسؤولية والأمان.
+      </p>
+    </section>
+
+    <!-- 2. سياسة معالجة وحذف وثائق وصور التحقق -->
+    <section class="policy-section">
+      <h2><i class="fas fa-id-card"></i> 2. معالجة وحذف وثائق ومستندات التحقق للأساتذة</h2>
+      <p>
+        حرصاً على سلامة وسرية بيانات الأساتذة المتقدمين للانضمام إلى المنصة:
+      </p>
+      <ul class="policy-list">
+        <li><strong>الغرض الوحيد:</strong> تُستخدم الوثائق الثبوتية أو صور الشهادات فقط للتحقق من هوية وكفاءة الأستاذ لضمان جودة التعليم وأمان الطلاب.</li>
+        <li><strong>الحذف الفوري والنهائي:</strong> بمجرد قيام الإدارة بمراجعة الملف واتخاذ القرار (<strong>سواء بقبول الطلب أو رفضه</strong>)، يتم <strong>مسح وحذف جميع ملفات وصور التحقق فوراً</strong> وبشكل قطعي وغير قابل للاسترجاع من جميع قواعد البيانات والخوادم السحابية.</li>
+        <li><strong>انعدام التخزين الدائم:</strong> لا نقوم بأي عملية أرشفة أو تخزين طويل الأمد للصور الشخصية أو وثائق الهوية الحساسة.</li>
+      </ul>
+      <div class="callout-box">
+        <i class="fas fa-lock"></i> <strong>تأكيد تقني:</strong> لا يمتلك أي طرف ثالث أو موظف غير مصرح له حق الوصول لتلك المستندات أثناء فترة المراجعة الوجيزة، وتتم عملية الحذف آلياً ومباشرة بعد البت في الطلب.
+      </div>
+    </section>
+
+    <!-- 3. البيانات الأساسية اللازمة للتشغيل -->
+    <section class="policy-section">
+      <h2><i class="fas fa-database"></i> 3. البيانات الأساسية للخدمة وكيفية استخدامها</h2>
+      <p>
+        نجمع فقط الحد الأدنى الضروري من البيانات لتشغيل الحساب وتقديم الدروس:
+      </p>
+      <ul class="policy-list">
+        <li><strong>بيانات الحساب:</strong> الاسم، البريد الإلكتروني، ورقم الهاتف لإنشاء الحساب والتواصل بشأن الحصص.</li>
+        <li><strong>البيانات التعليمية:</strong> المواد والدروس المختارة، المستوى الدراسي، والمواعيد التعليمية.</li>
+        <li><strong>العمليات المالية:</strong> سجل الشحن والحجوزات لضمان حقوق الأستاذ والطالب داخل النظام المحمي.</li>
+      </ul>
+    </section>
+
+    <!-- 4. عدم بيع أو مشاركة البيانات -->
+    <section class="policy-section">
+      <h2><i class="fas fa-handshake-slash"></i> 4. حظر مشاركة أو بيع البيانات</h2>
+      <p>
+        <strong>نؤكد بشكل قاطع:</strong> منصة ZoomDz لا تقوم إطلاقاً ببيع، تأجير، أو مشاركة بيانات المستخدمين أو معلومات الاتصال مع أي شركات إعلانية أو جهات خارجية. جميع بياناتك تُستخدم حصرياً لتمكينك من تلقي الدروس وتقديمها.
+      </p>
+    </section>
+
+    <!-- 5. أمان البث المباشر والمحادثات -->
+    <section class="policy-section">
+      <h2><i class="fas fa-video"></i> 5. أمان البث المباشر والحصص التفاعلية</h2>
+      <p>
+        تتم إدارة غرف الحصص والبث المباشر عبر قنوات مشفرة وآمنة، ولا يتم تسجيل أو مشاركة المحادثات الخاصة خارج إطار الضوابط التعليمية لحماية حقوق وخصوصية المشاركين.
+      </p>
+    </section>
+
+    <!-- 6. حقوق المستخدم والتحكم في البيانات -->
+    <section class="policy-section">
+      <h2><i class="fas fa-user-check"></i> 6. حقوقك الكاملة في تعديل وحذف بياناتك</h2>
+      <p>
+        يحق لك في أي وقت:
+      </p>
+      <ul class="policy-list">
+        <li>تعديل بياناتك الشخصية من خلال إعدادات حسابك.</li>
+        <li>طلب حذف حسابك وجميع بياناتك المرتبطة به نهائياً في أي وقت.</li>
+        <li>الاستفسار عن أي بند يخص أمانك الرقمي وخصوصيتك.</li>
+      </ul>
+    </section>
+
+    <!-- التواصل -->
+    <div class="contact-card">
+      <h3 style="color: var(--primary-dark); margin-bottom: 8px;">هل لديك أي استفسار حول خصوصيتك؟</h3>
+      <p style="color: var(--text-muted); margin-bottom: 12px;">نحن هنا دائماً للإجابة على جميع تساؤلاتك وضمان راحة بالك وأمانك التام.</p>
+      <a href="mailto:contact@zoomdz.com"><i class="fas fa-envelope"></i> mohhh20055@gmail.com</a>
+    </div>
+  </div>
+<script>
+// الشبكة - حالة الاتصال بالانترنت
+window.addEventListener("online", function() {
+    if (typeof showToast === "function") {
+        showToast("✅ تم الاتصال بالإنترنت", "success");
+        setTimeout(() => window.location.reload(), 1500);
+    } else {
+        const msg = document.createElement("div");
+        msg.innerHTML = "✅ تم الاتصال بالإنترنت";
+        msg.style.cssText = "position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#10b981; color:white; padding:12px 24px; border-radius:8px; font-weight:bold; z-index:999999; box-shadow:0 4px 12px rgba(0,0,0,0.2); font-family:Cairo,sans-serif;";
+        document.body.appendChild(msg);
+        setTimeout(() => window.location.reload(), 1500);
+    }
+});
+
+window.addEventListener("offline", function() {
+    if (typeof showToast === "function") {
+        showToast("❌ فقد الاتصال بالإنترنت", "error");
+    } else {
+        const msg = document.createElement("div");
+        msg.id = "offline-toast-msg";
+        msg.innerHTML = "❌ فقد الاتصال بالإنترنت";
+        msg.style.cssText = "position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#ef4444; color:white; padding:12px 24px; border-radius:8px; font-weight:bold; z-index:999999; box-shadow:0 4px 12px rgba(0,0,0,0.2); font-family:Cairo,sans-serif;";
+        document.body.appendChild(msg);
+        setTimeout(() => {
+            if (document.getElementById("offline-toast-msg")) {
+                document.getElementById("offline-toast-msg").remove();
+            }
+        }, 3000);
+    }
+});
+</script>
+</body>
+</html>
