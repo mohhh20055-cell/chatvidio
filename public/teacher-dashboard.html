@@ -14849,6 +14849,10 @@ function updateUI() {
         <i class="fas fa-book-open"></i>
         <span>التمارين</span>
     </button>
+    <button class="mobile-bottom-item" data-section="memorization" onclick="showSection('memorization')" style="color: #059669; font-weight: 800;">
+        <i class="fas fa-microphone-lines" style="color: #059669;"></i>
+        <span>المحفظ الذكي</span>
+    </button>
     <button class="mobile-bottom-item" data-section="groups" onclick="showSection('groups')">
         <i class="fas fa-users" style="color: #3b82f6;"></i>
         <span>المجموعات</span>
@@ -14917,6 +14921,14 @@ function updateUI() {
             <div class="item-content">
                 <i class="fas fa-video" style="color:var(--primary);"></i>
                 <span>دروس الزملاء الاساتذة</span>
+            </div>
+            <i class="fas fa-chevron-left" style="font-size:0.8rem; opacity:0.5;"></i>
+        </div>
+
+        <div class="mobile-drawer-menu-item" onclick="showSection('memorization'); closeMobileDrawer();" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(5, 150, 105, 0.16)); border: 1px solid rgba(16, 185, 129, 0.3);">
+            <div class="item-content">
+                <i class="fas fa-microphone-lines" style="color:#059669;"></i>
+                <span style="font-weight:800; color:#059669;">المحفظ والنطق الذكي 🎙️</span>
             </div>
             <i class="fas fa-chevron-left" style="font-size:0.8rem; opacity:0.5;"></i>
         </div>
