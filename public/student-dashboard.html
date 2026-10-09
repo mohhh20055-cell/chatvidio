@@ -3886,6 +3886,10 @@
                 <i class="fas fa-book-open"></i>
                 <span class="tab-label">التمارين والحلول</span>
             </button>
+            <button class="sidebar-nav-item nav-tab" data-section="memorization" onclick="showSection('memorization')" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.2)); border: 1.5px solid rgba(16, 185, 129, 0.4); color: #059669; font-weight: 900;">
+                <i class="fas fa-microphone-lines"></i>
+                <span class="tab-label">المحفظ الذكي 🎙️</span>
+            </button>
             <button class="sidebar-nav-item nav-tab" data-section="offers" onclick="showSection('offers')">
                 <i class="fas fa-calendar-alt"></i>
                 <span class="tab-label">ZoomDz Live</span>
@@ -3924,6 +3928,10 @@
             <button class="sidebar-nav-item nav-tab" data-section="profile" onclick="showSection('profile')">
                 <i class="fas fa-user-circle" style="color: #0284c7;"></i>
                 <span class="tab-label">ملفي الشخصي 👤</span>
+            </button>
+            <button class="sidebar-nav-item nav-tab" data-section="ai-assistant" onclick="showSection('ai-assistant')" style="background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(37, 99, 235, 0.16)); border: 1px solid rgba(56, 189, 248, 0.3); color: #0284c7; font-weight: 800;">
+                <i class="fas fa-robot" style="color:#0284c7;"></i>
+                <span class="tab-label">المساعد الذكي 🤖</span>
             </button>
             <button class="sidebar-nav-item nav-tab" data-section="community-channels" onclick="showSection('community-channels')" style="background: linear-gradient(135deg, rgba(2, 132, 199, 0.08), rgba(3, 105, 161, 0.12)); border: 1px solid rgba(2, 132, 199, 0.25); color: #0284c7; font-weight: 800;">
                 <i class="fas fa-bullhorn" style="color:#0284c7;"></i>
@@ -14740,6 +14748,14 @@ window.addEventListener("offline", function() {
                 <div id="memoHiddenBadge" style="display: none; background: #f59e0b; color: #0f172a; padding: 2px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 900;">🔒 وضع التسميع الخفي مفعل</div>
             </div>
             <p id="memoTargetTextDisplay" style="font-size: 1.15rem; font-weight: 700; line-height: 1.6; margin-bottom: 10px;" dir="ltr">Welcome to ZoomDZ, the ultimate e-learning platform for students across Algeria.</p>
+            <!-- Word-by-word progression controls (Level 1: الكلمات) -->
+            <div id="memoWordControls" style="display: none; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap;">
+                <span id="memoWordCounter" style="font-size: 0.78rem; color: #38bdf8; font-weight: 800;"></span>
+                <div style="display: flex; gap: 6px; margin-right: auto;">
+                    <button type="button" onclick="prevMemoWord()" style="background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.25); padding: 4px 12px; border-radius: 8px; font-weight: 700; font-size: 0.75rem; cursor: pointer; font-family: 'Cairo';">‹ الكلمة السابقة</button>
+                    <button type="button" onclick="nextMemoWord()" style="background: #10b981; color: white; border: none; padding: 4px 12px; border-radius: 8px; font-weight: 700; font-size: 0.75rem; cursor: pointer; font-family: 'Cairo';">الكلمة التالية ›</button>
+                </div>
+            </div>
             <div id="memoTranslationDisplay" style="font-size: 0.88rem; color: #94a3b8; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">الترجمة: مرحباً بك في ZoomDZ، منصة التعلم الإلكتروني المثالية للطلاب في جميع أنحاء الجزائر.</div>
         </div>
 
@@ -14753,6 +14769,17 @@ window.addEventListener("offline", function() {
                 <span style="font-weight: 700; color: #10b981; display: block; margin-bottom: 4px;"><i class="fas fa-waveform"></i> ما تنطقه الآن (في الوقت الفعلي):</span>
                 <span id="memoLiveTextContent">جاري الاستماع...</span>
             </div>
+            <!-- Real-Time Colored Target Sentence (Karaoke-style highlighting while reading) -->
+            <div id="memoLiveTargetWrap" style="margin-top: 16px; padding: 14px; background: white; border-radius: 12px; border: 1.5px solid #cbd5e1; display: none; text-align: right; font-size: 1.02rem; line-height: 2.5;" dir="ltr">
+                <span style="font-weight: 700; color: #2563eb; display: block; margin-bottom: 6px;"><i class="fas fa-palette"></i> الجملة التي تقرأها الآن (تلوين فوري أثناء القراءة):</span>
+                <span id="memoLiveTargetWords"></span>
+                <div style="margin-top: 10px; display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.72rem; color: #64748b; font-weight: 700;">
+                    <span><span style="color:#166534;">■</span> نطقته صحيحاً</span>
+                    <span><span style="color:#991b1b;">■</span> خطأ أو مفقود</span>
+                    <span><span style="color:#2563eb;">■</span> الكلمة الحالية</span>
+                    <span><span style="color:#94a3b8;">■</span> لم تنطق بعد</span>
+                </div>
+            </div>
             <div id="memoCoachAlert" style="margin-top: 12px; display: none; padding: 10px; background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; border-radius: 10px; font-weight: 800; font-size: 0.85rem;"></div>
         </div>
 
@@ -14764,6 +14791,14 @@ window.addEventListener("offline", function() {
             </div>
             <div id="memoComparisonWords" style="display: flex; flex-wrap: wrap; gap: 8px; font-size: 1.05rem; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; line-height: 2;" dir="ltr"></div>
             <p style="font-size: 0.78rem; color: #64748b; margin-top: 10px;">💡 انقر على أي كلمة باللون الأحمر للاستماع إلى نطقها الصحيح.</p>
+            <!-- Smart Level Progression Banner: كلمات ← جمل بسيطة ← نصوص متقدمة -->
+            <div id="memoProgressionBanner" style="display: none; margin-top: 14px; padding: 14px 16px; background: linear-gradient(135deg, #ecfdf5, #d1fae5); border: 1.5px solid #6ee7b7; border-radius: 12px; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+                <div>
+                    <div id="memoProgressionText" style="font-weight: 800; color: #065f46; font-size: 0.9rem;">🎉 أداء ممتاز! أنت جاهز للانتقال إلى المستوى الأصعب.</div>
+                    <div style="font-size: 0.75rem; color: #047857; margin-top: 2px;">التدريج الذكي: مستوى الكلمات ← جمل بسيطة ← نصوص متقدمة</div>
+                </div>
+                <button type="button" onclick="advanceMemoLevel()" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 10px; font-weight: 800; font-size: 0.8rem; cursor: pointer; font-family: 'Cairo';">⬆️ انتقل للمستوى الأصعب</button>
+            </div>
         </div>
 
         <!-- Session History Section -->
@@ -14811,10 +14846,25 @@ window.addEventListener("offline", function() {
         let currentMemoMode = 'english';
         let currentMemoLevel = 'words'; // 'words', 'sentences', 'advanced'
         let currentMemoPresetIndex = 0;
+        let currentMemoWordIndex = 0; // word-by-word progression inside Level 1 (الكلمات)
         let isMemoRecording = false;
         let memoRecognition = null;
         let isHiddenMemoMode = false;
         let customMemoLessons = [];
+
+        // Level order for smart graduation from easiest (words) to hardest (advanced)
+        const MEMO_LEVEL_ORDER = ['words', 'sentences', 'advanced'];
+        const MEMO_LEVEL_LABELS = { words: 'مستوى الكلمات', sentences: 'الجمل البسيطة', advanced: 'النصوص المتقدمة' };
+
+        function escapeMemoHtml(value) {
+            if (value === null || value === undefined) return '';
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
 
         const MEMO_LEVELS_DATA = {
             words: {
@@ -14854,6 +14904,7 @@ window.addEventListener("offline", function() {
                 const savedCustom = localStorage.getItem('zoomdz_custom_memo_lessons');
                 if (savedCustom) customMemoLessons = JSON.parse(savedCustom);
             } catch(e) {}
+            currentMemoWordIndex = 0;
             renderMemoPresets();
             renderMemoTargetContent();
             renderMemoSessionHistory();
@@ -14862,6 +14913,7 @@ window.addEventListener("offline", function() {
         function switchMemoMode(mode) {
             currentMemoMode = mode;
             currentMemoPresetIndex = 0;
+            currentMemoWordIndex = 0;
             document.getElementById('memoEngBtn').style.background = mode === 'english' ? '#2563eb' : '#f1f5f9';
             document.getElementById('memoEngBtn').style.color = mode === 'english' ? 'white' : '#334155';
             document.getElementById('memoArBtn').style.background = mode === 'arabic' ? '#2563eb' : '#f1f5f9';
@@ -14869,11 +14921,14 @@ window.addEventListener("offline", function() {
             renderMemoPresets();
             renderMemoTargetContent();
             document.getElementById('memoResultCard').style.display = 'none';
+            const liveWrap = document.getElementById('memoLiveTargetWrap');
+            if (liveWrap) liveWrap.style.display = 'none';
         }
 
         function setMemoLevel(level) {
             currentMemoLevel = level;
             currentMemoPresetIndex = 0;
+            currentMemoWordIndex = 0;
             ['words', 'sentences', 'advanced'].forEach(lvl => {
                 const btn = document.getElementById('memoLevel' + lvl.charAt(0).toUpperCase() + lvl.slice(1));
                 if (btn) {
@@ -14892,6 +14947,7 @@ window.addEventListener("offline", function() {
             const btn = document.getElementById('memoHiddenModeToggle');
             const badge = document.getElementById('memoHiddenBadge');
             const targetEl = document.getElementById('memoTargetTextDisplay');
+            const wordControls = document.getElementById('memoWordControls');
             const item = getCurrentMemoItem();
 
             if (btn) {
@@ -14900,6 +14956,7 @@ window.addEventListener("offline", function() {
                 btn.innerHTML = isHiddenMemoMode ? '<i class="fas fa-eye"></i> إلغاء وضع التسميع الخفي' : '<i class="fas fa-eye-slash"></i> وضع التسميع الخفي (من الذاكرة)';
             }
             if (badge) badge.style.display = isHiddenMemoMode ? 'block' : 'none';
+            if (wordControls) wordControls.style.display = 'none';
             if (targetEl) {
                 if (isHiddenMemoMode) {
                     targetEl.textContent = '🔒 وضع التسميع الخفي مفعل. اختبر حفظك الآن وتلْو أو اقرأ الدرس من الذاكرة دون رؤية النص!';
@@ -14927,6 +14984,76 @@ window.addEventListener("offline", function() {
             return list[currentMemoPresetIndex] || list[0];
         }
 
+        // Determine the currently active practice target.
+        // مستوى 1 (الكلمات): practice ONE word at a time, then progress to the next word.
+        function isMemoWordMode() {
+            return currentMemoLevel === 'words' && currentMemoPresetIndex < 1000 && !isHiddenMemoMode;
+        }
+
+        function getCurrentMemoWordList() {
+            const item = getCurrentMemoItem();
+            return (item.text || '').split(/\s+/).filter(w => w.length > 0);
+        }
+
+        function getCurrentMemoTargetText() {
+            const item = getCurrentMemoItem();
+            if (isMemoWordMode()) {
+                const words = getCurrentMemoWordList();
+                const safeIndex = Math.min(Math.max(currentMemoWordIndex, 0), Math.max(words.length - 1, 0));
+                return {
+                    text: words.length > 0 ? words[safeIndex] : (item.text || ''),
+                    isWordMode: words.length > 0,
+                    wordIndex: safeIndex,
+                    totalWords: words.length,
+                    isLastWord: words.length > 0 && safeIndex >= words.length - 1,
+                    item: item
+                };
+            }
+            return { text: item.text || '', isWordMode: false, item: item };
+        }
+
+        function nextMemoWord() { changeMemoWord(1); }
+        function prevMemoWord() { changeMemoWord(-1); }
+
+        function changeMemoWord(direction) {
+            const words = getCurrentMemoWordList();
+            if (words.length === 0) return;
+            let next = currentMemoWordIndex + direction;
+            if (next < 0) next = 0;
+            if (next > words.length - 1) next = words.length - 1;
+            if (next === currentMemoWordIndex) return;
+            currentMemoWordIndex = next;
+            renderMemoTargetContent();
+            const resultCard = document.getElementById('memoResultCard');
+            if (resultCard) resultCard.style.display = 'none';
+        }
+
+        // Smart graduation: move to the next harder level (كلمات ← جمل ← نصوص متقدمة)
+        function advanceMemoLevel() {
+            const idx = MEMO_LEVEL_ORDER.indexOf(currentMemoLevel);
+            if (idx >= 0 && idx < MEMO_LEVEL_ORDER.length - 1) {
+                setMemoLevel(MEMO_LEVEL_ORDER[idx + 1]);
+            }
+            const banner = document.getElementById('memoProgressionBanner');
+            if (banner) banner.style.display = 'none';
+        }
+
+        function showMemoProgressionBanner(isFinalLevel) {
+            const banner = document.getElementById('memoProgressionBanner');
+            const text = document.getElementById('memoProgressionText');
+            const btn = banner ? banner.querySelector('button') : null;
+            if (!banner) return;
+            banner.style.display = 'flex';
+            if (text) {
+                text.textContent = isFinalLevel
+                    ? '🏆 رائع! لقد أتممت أعلى مستوى بصورة ممتازة. لقد أتقنت هذا الدرس بالكامل!'
+                    : '🎉 أداء ممتاز! لقد أتممت هذا المستوى بنجاح — أنت جاهز للانتقال إلى المستوى الأصعب.';
+            }
+            if (btn) {
+                btn.style.display = isFinalLevel ? 'none' : 'inline-block';
+            }
+        }
+
         function renderMemoPresets() {
             const container = document.getElementById('memoPresetsContainer');
             if (!container) return;
@@ -14943,6 +15070,7 @@ window.addEventListener("offline", function() {
 
         function selectMemoPreset(idx) {
             currentMemoPresetIndex = idx;
+            currentMemoWordIndex = 0;
             renderMemoPresets();
             renderMemoTargetContent();
             document.getElementById('memoResultCard').style.display = 'none';
@@ -14953,20 +15081,37 @@ window.addEventListener("offline", function() {
             const label = document.getElementById('memoModeLabel');
             const targetEl = document.getElementById('memoTargetTextDisplay');
             const transEl = document.getElementById('memoTranslationDisplay');
+            const wordControls = document.getElementById('memoWordControls');
+            const wordCounter = document.getElementById('memoWordCounter');
+            const target = getCurrentMemoTargetText();
 
             if (label) label.textContent = currentMemoMode === 'english' ? ('English Pronunciation Mode - ' + currentMemoLevel) : ('وضع الحفظ والتلاوة العربية - ' + currentMemoLevel);
             if (targetEl) {
                 if (isHiddenMemoMode) {
                     targetEl.textContent = '🔒 وضع التسميع الخفي مفعل. اختبر حفظك الآن وتلْو أو اقرأ الدرس من الذاكرة دون رؤية النص!';
                     targetEl.style.color = '#fbbf24';
+                    targetEl.style.fontSize = '1.15rem';
+                    targetEl.setAttribute('dir', currentMemoMode === 'english' ? 'ltr' : 'rtl');
+                } else if (target.isWordMode) {
+                    // Level 1: display ONE word at a time for focused pronunciation practice
+                    targetEl.textContent = target.text;
+                    targetEl.style.color = 'white';
+                    targetEl.style.fontSize = '2.1rem';
+                    targetEl.style.fontWeight = '900';
+                    targetEl.setAttribute('dir', currentMemoMode === 'english' ? 'ltr' : 'rtl');
+                    if (wordCounter) wordCounter.textContent = 'كلمة ' + (target.wordIndex + 1) + ' من ' + target.totalWords + ' — انطق الكلمة ثم تقدم تلقائياً';
+                    if (wordControls) wordControls.style.display = 'flex';
                 } else {
                     targetEl.textContent = item.text;
                     targetEl.style.color = 'white';
+                    targetEl.style.fontSize = '1.15rem';
+                    targetEl.style.fontWeight = '700';
                     targetEl.setAttribute('dir', currentMemoMode === 'english' ? 'ltr' : 'rtl');
+                    if (wordControls) wordControls.style.display = 'none';
                 }
             }
             if (transEl) {
-                if (currentMemoMode === 'english' && item.translation && !isHiddenMemoMode) {
+                if (currentMemoMode === 'english' && item.translation && !isHiddenMemoMode && !target.isWordMode) {
                     transEl.style.display = 'block';
                     transEl.textContent = 'الترجمة: ' + item.translation;
                 } else {
@@ -15018,6 +15163,7 @@ window.addEventListener("offline", function() {
 
             closeCustomMemoModal();
             currentMemoPresetIndex = 1000 + (customMemoLessons.length - 1);
+            currentMemoWordIndex = 0;
             renderMemoPresets();
             renderMemoTargetContent();
             if (titleInput) titleInput.value = '';
@@ -15037,6 +15183,88 @@ window.addEventListener("offline", function() {
                 cleaned = sanitizeArabicText(cleaned);
             }
             return cleaned.split(/\s+/).filter(w => w.length > 0);
+        }
+
+        // ===== REAL-TIME LIVE COLORING ENGINE =====
+        // Positional comparison of what the student reads against the current target text,
+        // so every target word is colored live (أخضر: صحيح، أحمر: خطأ، أزرق: قيد النطق، رمادي: قادم)
+        function computeMemoLiveComparison(finalText, interimText) {
+            const target = getCurrentMemoTargetText();
+            const rawWords = (target.text || '').split(/\s+/).filter(w => w.length > 0);
+            const cleanPerRaw = rawWords.map(w => tokenizeText(w, currentMemoMode)[0] || null);
+            const finalClean = tokenizeText(finalText, currentMemoMode);
+            const interimClean = tokenizeText(interimText, currentMemoMode);
+
+            let cleanPos = 0;
+            const result = [];
+            for (let i = 0; i < rawWords.length; i++) {
+                const clean = cleanPerRaw[i];
+                if (!clean) {
+                    result.push({ word: rawWords[i], status: 'skip' });
+                    continue;
+                }
+                if (cleanPos < finalClean.length) {
+                    result.push({ word: rawWords[i], status: finalClean[cleanPos] === clean ? 'correct' : 'wrong' });
+                } else if (interimClean.length > 0 && cleanPos < finalClean.length + interimClean.length) {
+                    // Words covered by the interim result = currently being spoken (highlight blue)
+                    result.push({ word: rawWords[i], status: 'current' });
+                } else {
+                    result.push({ word: rawWords[i], status: 'pending' });
+                }
+                cleanPos++;
+            }
+            return result;
+        }
+
+        // Render the target sentence being read, with live color coding
+        function renderMemoLiveTarget(finalText, interimText) {
+            const wrap = document.getElementById('memoLiveTargetWrap');
+            const box = document.getElementById('memoLiveTargetWords');
+            if (!wrap || !box) return;
+            if (isHiddenMemoMode) {
+                wrap.style.display = 'block';
+                box.innerHTML = '<span style="color:#92400e; font-weight:700; font-size:0.9rem; background:#fef3c7; padding:6px 12px; border-radius:8px; display:inline-block;">🔒 وضع التسميع الخفي مفعل — النص مخفي أثناء الاختبار من الذاكرة. تابع التلاوة!</span>';
+                wrap.setAttribute('dir', currentMemoMode === 'english' ? 'ltr' : 'rtl');
+                return;
+            }
+            const comparison = computeMemoLiveComparison(finalText, interimText);
+            const dir = currentMemoMode === 'english' ? 'ltr' : 'rtl';
+            wrap.setAttribute('dir', dir);
+            box.setAttribute('dir', dir);
+            box.innerHTML = comparison.map(c => {
+                const safe = escapeMemoHtml(c.word);
+                if (c.status === 'correct') {
+                    return `<span style="display:inline-block; padding:3px 10px; margin:2px; border-radius:8px; background:#dcfce7; color:#166534; border:1px solid #bbf7d0; font-weight:800;">${safe}</span>`;
+                }
+                if (c.status === 'wrong') {
+                    return `<span style="display:inline-block; padding:3px 10px; margin:2px; border-radius:8px; background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; font-weight:800; text-decoration:line-through;">${safe}</span>`;
+                }
+                if (c.status === 'current') {
+                    return `<span style="display:inline-block; padding:3px 10px; margin:2px; border-radius:8px; color:#1d4ed8; background:#dbeafe; border:1.5px solid #60a5fa; font-weight:900;">${safe}</span>`;
+                }
+                return `<span style="display:inline-block; padding:3px 10px; margin:2px; border-radius:8px; color:#94a3b8; font-weight:600;">${safe}</span>`;
+            }).join('');
+        }
+
+        // Render the spoken text itself, colored (final words green, interim word blue)
+        function renderMemoLiveSpoken(finalText, interimText) {
+            const el = document.getElementById('memoLiveTextContent');
+            if (!el) return;
+            const f = (finalText || '').trim();
+            const i = (interimText || '').trim();
+            if (!f && !i) {
+                el.textContent = 'جاري الاستماع...';
+                return;
+            }
+            let html = '';
+            if (f) {
+                html += f.split(/\s+/).map(w => `<span style="background:#dcfce7; color:#166534; padding:2px 7px; border-radius:6px; font-weight:700;">${escapeMemoHtml(w)}</span>`).join(' ');
+            }
+            if (i) {
+                html += (f ? ' ' : '') + `<span style="background:#dbeafe; color:#1d4ed8; padding:2px 7px; border-radius:6px; font-weight:800; font-style:italic;">${escapeMemoHtml(i)}</span>`;
+            }
+            el.innerHTML = html;
+            el.setAttribute('dir', currentMemoMode === 'english' ? 'ltr' : 'rtl');
         }
 
         function toggleMemoSpeechRecording() {
@@ -15063,13 +15291,19 @@ window.addEventListener("offline", function() {
                 const btn = document.getElementById('memoRecordBtn');
                 const status = document.getElementById('memoActionStatus');
                 const transcriptBox = document.getElementById('memoLiveTranscript');
+                const liveTargetWrap = document.getElementById('memoLiveTargetWrap');
                 const liveTextContent = document.getElementById('memoLiveTextContent');
                 const coachAlert = document.getElementById('memoCoachAlert');
 
                 if (btn) { btn.style.background = '#dc2626'; btn.innerHTML = '<i class="fas fa-stop"></i>'; }
                 if (status) status.textContent = '🎙️ جاري الاستماع في الوقت الفعلي... انطق النص الآن';
                 if (transcriptBox) transcriptBox.style.display = 'block';
+                if (liveTargetWrap) liveTargetWrap.style.display = 'block';
                 if (coachAlert) coachAlert.style.display = 'none';
+
+                // Render the initial target sentence (all words pending) so coloring starts immediately
+                renderMemoLiveTarget('', '');
+                if (liveTextContent) liveTextContent.textContent = 'جاري الاستماع...';
 
                 let finalTranscript = '';
 
@@ -15083,15 +15317,17 @@ window.addEventListener("offline", function() {
                         }
                     }
 
-                    const currentSpoken = (finalTranscript + interim).trim();
-                    if (liveTextContent) {
-                        liveTextContent.textContent = currentSpoken || 'جاري التحدث...';
-                    }
+                    const finalSoFar = finalTranscript.trim();
+                    const interimTrimmed = interim.trim();
+
+                    // Real-time colored rendering: the sentence being read + the spoken words
+                    renderMemoLiveSpoken(finalSoFar, interimTrimmed);
+                    renderMemoLiveTarget(finalSoFar, interimTrimmed);
 
                     // Real-time live coaching check against target words
-                    const item = getCurrentMemoItem();
-                    const targetClean = tokenizeText(item.text, currentMemoMode);
-                    const spokenClean = tokenizeText(currentSpoken, currentMemoMode);
+                    const target = getCurrentMemoTargetText();
+                    const targetClean = tokenizeText(target.text, currentMemoMode);
+                    const spokenClean = tokenizeText(finalSoFar + ' ' + interimTrimmed, currentMemoMode);
 
                     if (spokenClean.length > 0) {
                         const lastSpokenWord = spokenClean[spokenClean.length - 1];
@@ -15110,6 +15346,7 @@ window.addEventListener("offline", function() {
                 recognition.onend = () => {
                     isMemoRecording = false;
                     if (btn) { btn.style.background = '#10b981'; btn.innerHTML = '<i class="fas fa-microphone"></i>'; }
+                    if (liveTargetWrap) liveTargetWrap.style.display = 'none';
                     if (finalTranscript.trim()) {
                         evaluateMemoSpeech(finalTranscript.trim());
                     }
@@ -15119,6 +15356,7 @@ window.addEventListener("offline", function() {
                     console.error('Speech recognition error', e);
                     isMemoRecording = false;
                     if (btn) { btn.style.background = '#10b981'; btn.innerHTML = '<i class="fas fa-microphone"></i>'; }
+                    if (liveTargetWrap) liveTargetWrap.style.display = 'none';
                     if (status) status.textContent = 'حدث خطأ في التسجيل الصوتي أو تم رفض الميكروفون.';
                 };
 
@@ -15131,7 +15369,8 @@ window.addEventListener("offline", function() {
 
         function evaluateMemoSpeech(spokenText) {
             const item = getCurrentMemoItem();
-            const targetText = item.text;
+            const target = getCurrentMemoTargetText();
+            const targetText = target.text;
             const targetWordsRaw = targetText.split(/\s+/);
             const targetClean = tokenizeText(targetText, currentMemoMode);
             const spokenClean = tokenizeText(spokenText, currentMemoMode);
@@ -15169,16 +15408,38 @@ window.addEventListener("offline", function() {
             if (wordsBox) {
                 wordsBox.innerHTML = comparison.map(c => {
                     if (c.status === 'correct') {
-                        return `<span style="padding: 3px 8px; background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; border-radius: 8px; font-weight: 700;">${c.word}</span>`;
+                        return `<span style="padding: 3px 8px; background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; border-radius: 8px; font-weight: 700;">${escapeMemoHtml(c.word)}</span>`;
                     } else {
-                        return `<span onclick="speakMemoWord('${c.word.replace(/'/g, "")}')" style="padding: 3px 8px; background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; border-radius: 8px; font-weight: 700; text-decoration: line-through; cursor: pointer;" title="انقر للاستماع للنطق الصحيح (أخطأت في هذه الكلمة)">${c.word}</span>`;
+                        return `<span onclick="speakMemoWord('${c.word.replace(/'/g, "")}')" style="padding: 3px 8px; background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; border-radius: 8px; font-weight: 700; text-decoration: line-through; cursor: pointer;" title="انقر للاستماع للنطق الصحيح (أخطأت في هذه الكلمة)">${escapeMemoHtml(c.word)}</span>`;
                     }
                 }).join(' ');
             }
 
-            // Check level unlock celebration
+            // Smart progression: word mastered or level passed → guide to harder content
+            const levelIdx = MEMO_LEVEL_ORDER.indexOf(currentMemoLevel);
+            const isFinalLevel = levelIdx >= MEMO_LEVEL_ORDER.length - 1;
             if (finalAccuracy >= 80) {
-                alert('🎉 ممتاز جداً! لقد تجاوزت نسبة 80% في هذا الدرس ويمكنك الانتقال إلى مستوى أصعب أو درس جديد.');
+                if (target.isWordMode) {
+                    showMemoProgressionBanner(target.isLastWord ? isFinalLevel : true);
+                } else {
+                    showMemoProgressionBanner(isFinalLevel);
+                }
+            } else {
+                const banner = document.getElementById('memoProgressionBanner');
+                if (banner) banner.style.display = 'none';
+            }
+
+            // ===== Word-by-word auto progression (مستوى 1: يبدأ بالكلمة ثم ينتقل للتي بعدها) =====
+            if (target.isWordMode) {
+                if (finalAccuracy >= 80) {
+                    if (!target.isLastWord) {
+                        // النجاح: الانتقال تلقائياً إلى الكلمة التالية
+                        setTimeout(() => { changeMemoWord(1); }, 1100);
+                    }
+                } else {
+                    // الخطأ: إعادة سماع النطق الصحيح للكلمة
+                    setTimeout(() => { speakMemoWord(targetText); }, 700);
+                }
             }
 
             // Save to Session History
@@ -15186,7 +15447,9 @@ window.addEventListener("offline", function() {
                 id: 'memo-' + Date.now(),
                 mode: currentMemoMode,
                 level: currentMemoLevel,
-                title: item.title,
+                title: target.isWordMode
+                    ? `${item.title} (كلمة ${target.wordIndex + 1}/${target.totalWords})`
+                    : item.title,
                 targetText: targetText,
                 transcript: spokenText,
                 accuracy: finalAccuracy,
@@ -15234,8 +15497,8 @@ window.addEventListener("offline", function() {
                         </div>
                     </div>
                     <div style="font-size: 0.8rem; color: #475569; background: white; padding: 8px; border-radius: 8px; border: 1px solid #cbd5e1;">
-                        <b>النص:</b> ${s.targetText}<br>
-                        <b>ما قراه الطالب:</b> "${s.transcript}"
+                        <b>النص:</b> ${escapeMemoHtml(s.targetText)}<br>
+                        <b>ما قراه الطالب:</b> "${escapeMemoHtml(s.transcript)}"
                     </div>
                 </div>
             `).join('');
