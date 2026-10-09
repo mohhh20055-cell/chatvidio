@@ -1,0 +1,1842 @@
+const logger = require('../utils/logger');
+const { getViewCount, syncItemViews } = require('../utils/viewsTracker');
+// ============================================================
+// مسارات الدروس - Offer Routes (معدل بالكامل مع دعم نظام البث والرصيد المعلق)
+// ============================================================
+
+const express = require('express');
+const router = express.Router();
+const { body, param, validationResult } = require('express-validator');
+const crypto = require('crypto');
+
+const { supabase } = require('../config/database');
+const { authenticate, authorize } = require('../middleware/auth');
+const { getOne, insert, update, loadLocalTeacherFollowers } = require('../utils/helpers');
+const { getPublicImageUrl, uploadToSupabase } = require('../utils/upload');
+const multer = require('multer');
+const upload = multer({ 
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }
+});
+const { processStreamPayments, archiveStreamLog } = require('../utils/streamVerification');
+const { sendPushNotification } = require('../utils/notification');
+const { calculateBookingRefundDetails } = require('../utils/refundCalculator');
+const { generateFreeStreamRoom, generateGoogleMeetRoom, formatGoogleMeetUrl, formatMeetOrZoomUrl, createGoogleMeetRoomViaApi, GOOGLE_MEET_HOST_CREATE_URL } = require('../utils/googleMeet');
+
+// ✅ دالة مساعدة لحساب واسترجاع الوقت المتبقي للبث
+function calculateOfferRemainingSeconds(offer) {
+    if (!offer) return 0;
+    let sec = null;
+    if (offer.remaining_seconds !== undefined && offer.remaining_seconds !== null && !isNaN(Number(offer.remaining_seconds))) {
+        sec = Number(offer.remaining_seconds);
+    }
+
+    if (sec !== null) {
+        return Math.max(0, sec);
+    }
+
+    if (offer.status === 'live' && !offer.is_paused && offer.stream_started_at) {
+        const startedAt = new Date(offer.stream_started_at).getTime();
+        const nowTime = Date.now();
+        const elapsed = Math.floor((nowTime - startedAt) / 1000);
+        const total = offer.total_seconds || ((offer.duration || offer.duration_minutes || 60) * 60);
+        return Math.max(0, total - elapsed);
+    }
+
+    return (offer.duration || offer.duration_minutes || 60) * 60;
+}
+
+// ✅ دالة لمعالجة وتنسيق موعد الحصة للحفظ في قاعدة البيانات بدقة مع منع إنقاص ساعة
+function formatOfferDateForDB(inputDate) {
+    if (!inputDate) return new Date().toISOString();
+    if (typeof inputDate === 'string') {
+        const trimmed = inputDate.trim();
+        const match = trimmed.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}(?::\d{2})?)/);
+        if (match) {
+            const timePart = match[2].length === 5 ? `${match[2]}:00` : match[2];
+            return `${match[1]}T${timePart}`;
+        }
+    }
+    const d = new Date(inputDate);
+    return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+}
+
+function parseOfferStartDate(dateStr) {
+    if (!dateStr) return new Date();
+    if (typeof dateStr === 'string') {
+        const trimmed = dateStr.trim();
+        if (!trimmed.endsWith('Z') && !/[+-]\d{2}(:\d{2})?$/.test(trimmed)) {
+            const normalized = trimmed.replace(' ', 'T');
+            return new Date(`${normalized}+01:00`);
+        }
+        return new Date(trimmed);
+    }
+    return new Date(dateStr);
+}
+
+function parseOfferPlanAndSchedule(offer) {
+    if (!offer) {
+        return { parsedSchedule: [], scheduleLength: 0, totalSessions: 1, planType: '1_day' };
+    }
+    let parsedSchedule = [];
+    if (Array.isArray(offer.sessions_schedule)) {
+        parsedSchedule = offer.sessions_schedule;
+    } else if (typeof offer.sessions_schedule === 'string') {
+        try {
+            const parsed = JSON.parse(offer.sessions_schedule);
+            if (Array.isArray(parsed)) parsedSchedule = parsed;
+        } catch (e) {
+            parsedSchedule = [];
+        }
+    }
+    const scheduleLength = parsedSchedule.length;
+    const totalSessions = Math.max(1, Number(offer.total_sessions) || 0, scheduleLength);
+    const planType = (offer.plan_type && offer.plan_type !== 'null' && offer.plan_type !== 'undefined')
+        ? String(offer.plan_type)
+        : (totalSessions > 1 ? '1_month' : '1_day');
+
+    return {
+        parsedSchedule,
+        scheduleLength,
+        totalSessions,
+        planType
+    };
+}
+
+// ============================================================
+// ✅ إنشاء درس جديد (مع دعم نظام البث والرصيد المعلق)
+// ============================================================
+router.post('/offer/create', authenticate, authorize(['teacher']), upload.single('thumbnail'), [
+    body('subject_name').notEmpty().withMessage('اسم المادة مطلوب').isLength({ max: 100 }),
+    body('duration').isInt({ min: 1, max: 240 }).withMessage('المدة غير صالحة (1-240 دقيقة)'),
+    body('offer_date').notEmpty().withMessage('تاريخ الدرس مطلوب').isISO8601().withMessage('تاريخ غير صالح'),
+    body('price').isFloat({ min: 0, max: 1000000 }).withMessage('السعر غير صالح'),
+    body('is_free').optional().isBoolean().withMessage('is_free يجب أن يكون true أو false'),
+    body('education_level').optional().isString().withMessage('المستوى التعليمي يجب أن يكون نصاً')
+], async (req, res) => {
+    try {
+        // ✅ التحقق من صحة المدخلات
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            console.log('❌ أخطاء في التحقق:', errors.array());
+            return res.status(400).json({ 
+                success: false, 
+                error: errors.array()[0].msg,
+                errors: errors.array() 
+            });
+        }
+
+        const { 
+            subject_name, 
+            duration, 
+            offer_date, 
+            price, 
+            is_free = false, 
+            education_level = null,
+            max_students = 20,
+            plan_type = '1_day',
+            total_sessions = 1,
+            sessions_schedule = null,
+            stream_platform = null
+        } = req.body;
+
+        const parsedPrice = parseFloat(price || 0);
+        const isFreeOffer = (is_free === true || is_free === 'true' || is_free === 1 || is_free === '1' || req.body.type === 'free') && parsedPrice === 0;
+        const parsedDuration = parseInt(duration);
+        const parsedMaxStudents = parseInt(max_students || 20);
+        const parsedTotalSessions = Math.max(1, parseInt(total_sessions || 1));
+        const normalizedPlanType = ['1_day', '1_month', '3_months', '6_months', 'single'].includes(plan_type) ? plan_type : (parsedTotalSessions > 1 ? '1_month' : '1_day');
+
+        // 🔥 مدة الدرس يجب أن تكون بين 60 دقيقة (ساعة واحدة) و 240 دقيقة (4 ساعات)
+        if (isNaN(parsedDuration) || parsedDuration < 60) {
+            return res.status(400).json({
+                success: false,
+                error: 'أقل مدة للدرس هي ساعة واحدة (60 دقيقة)'
+            });
+        }
+        if (parsedDuration > 240) {
+            return res.status(400).json({
+                success: false,
+                error: 'الحد الأقصى لمدة الدرس هو 4 ساعات (240 دقيقة)'
+            });
+        }
+
+        // 🔥 سعر الدرس المدفوع يجب أن يكون 250 دج على الأقل للحصة الواحدة
+        if (!isFreeOffer) {
+            if (isNaN(parsedPrice) || parsedPrice < 250) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'سعر الدرس المدفوع يجب أن يكون 250 دج على الأقل للحصة الواحدة'
+                });
+            }
+        }
+
+        // 💰 حسابات الرسوم والمبالغ الإجمالية للخطة
+        // رسوم المنصة = 50 دج لكل 45 دقيقة
+        let streamFeePer45Min = 50;
+        try {
+            const { data: revSettings } = await supabase
+                .from('platform_settings')
+                .select('value')
+                .eq('key', 'revenue_settings')
+                .maybeSingle();
+            if (revSettings && revSettings.value) {
+                const val = parseFloat(revSettings.value.stream_platform_fee_per_45_min);
+                if (!isNaN(val)) streamFeePer45Min = val;
+            }
+        } catch (e) {
+            console.error('Error fetching stream platform fee:', e.message);
+        }
+
+        const platformFeePerSession = isFreeOffer ? 0 : Math.round((parsedDuration / 45) * streamFeePer45Min);
+        const totalPlatformFee = platformFeePerSession * parsedTotalSessions;
+        const totalTeacherPrice = isFreeOffer ? 0 : Math.round(parsedPrice * parsedTotalSessions);
+        const totalStudentPrice = totalTeacherPrice + totalPlatformFee;
+
+        // 🔥 قيود العرض المجاني: 60 دقيقة كحد أقصى، و20 طالب كحد أقصى
+        if (isFreeOffer) {
+            if (parsedDuration > 60) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'العرض المجاني متاح لمدة أقصاها ساعة واحدة (60 دقيقة)'
+                });
+            }
+            if (parsedMaxStudents > 20) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'العرض المجاني يتسع لـ 20 شخصاً كحد أقصى'
+                });
+            }
+        }
+
+        // ✅ استخدام teacher_id من التوكن
+        const teacher_id = req.user.userId;
+
+        if (teacher_id === -1 || teacher_id === '-1' || req.user.is_guest) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك بإنشاء درس (حساب زائر)' });
+        }
+
+        // ✅ معالجة موعد الحصة بدقة مع الحفاظ على التوقيت الفعلي بالجزائر ومنع إنقاص ساعة
+        let offerDateFormatted;
+        try {
+            if (offer_date) {
+                offerDateFormatted = formatOfferDateForDB(offer_date);
+            } else {
+                offerDateFormatted = formatOfferDateForDB(new Date().toISOString());
+            }
+        } catch (e) {
+            offerDateFormatted = formatOfferDateForDB(new Date().toISOString());
+        }
+
+        const { data: recentOffer, error: recentOfferError } = await supabase
+            .from('offers')
+            .select('id')
+            .eq('teacher_id', teacher_id)
+            .eq('subject_name', subject_name?.trim())
+            .eq('offer_date', offerDateFormatted)
+            .limit(1)
+            .maybeSingle();
+
+        if (!recentOfferError && recentOffer) {
+            return res.status(409).json({
+                success: false,
+                error: 'يوجد درس مشابه تم إنشاؤه بالفعل، الرجاء الانتظار قليلاً قبل المحاولة مرة أخرى'
+            });
+        }
+
+        console.log('📝 محاولة إنشاء درس للأستاذ:', teacher_id);
+        console.log('📚 المادة:', subject_name);
+
+        // ✅ التحقق من وجود الأستاذ في جدول teachers
+        const { data: teacher, error: teacherError } = await supabase
+            .from('teachers')
+            .select('id, full_name, status, specialization, teaching_level, balance')
+            .eq('id', teacher_id)
+            .single();
+
+        if (teacherError || !teacher) {
+            logger.error('❌ الأستاذ غير موجود:', teacherError?.message);
+            return res.status(404).json({ 
+                success: false, 
+                error: 'الأستاذ غير موجود في النظام' 
+            });
+        }
+
+        console.log('👨‍🏫 الأستاذ:', teacher.full_name);
+        console.log('📊 الحالة:', teacher.status);
+
+        // ✅ التحقق من أن الحساب معتمد
+        if (teacher.status !== 'approved') {
+            return res.status(403).json({ 
+                success: false, 
+                error: 'حسابك غير معتمد بعد، يرجى الانتظار حتى مراجعة الإدارة' 
+            });
+        }
+
+        // ✅ العروض المجانية (أقصى مدة 60 دقيقة و20 طالب) مجانية 100% بدون أي رسوم سيرفر على الأستاذ
+        let sessionCost = 0;
+
+        // ✅ التحقق من وجود المستوى التعليمي للأستاذ
+        if (!teacher.teaching_level && !education_level) {
+            return res.status(400).json({
+                success: false,
+                error: 'يرجى تحديد المستوى التعليمي للدرس أو تحديث ملفك الشخصي بالمستوى الذي تدرسه'
+            });
+        }
+
+        // ✅ استخدام مستوى الأستاذ إذا لم يتم تحديد مستوى للدرس
+        const finalEducationLevel = education_level || teacher.teaching_level;
+
+        // ✅ حساب الوقت الكلي بالثواني
+        const totalSeconds = parseInt(duration) * 60;
+
+        // ✅ خصم الرصيد إذا كان الدرس مجانياً وللأستاذ رصيد كافٍ
+        if (isFreeOffer && sessionCost > 0) {
+            const currentTeacherBalance = parseFloat(teacher.balance) || 0;
+            const newBalance = currentTeacherBalance - sessionCost;
+            
+            const { error: updateError } = await supabase
+                .from('teachers')
+                .update({ balance: newBalance })
+                .eq('id', teacher_id);
+
+            if (updateError) {
+                logger.error('❌ فشل خصم تكلفة الدرس المجاني من الأستاذ:', updateError.message);
+                return res.status(500).json({
+                    success: false,
+                    error: 'فشل خصم تكلفة الدرس المجاني من حسابك: ' + updateError.message
+                });
+            }
+
+            try {
+                await insert('wallet_transactions', {
+                    teacher_id: teacher_id,
+                    amount: sessionCost,
+                    type: 'fees',
+                    status: 'completed',
+                    description: `خصم رسوم السيرفر لإنشاء حصة مجانية لمادة "${subject_name.trim()}" لمدة ${duration} دقيقة (50 دج لكل 45 دقيقة)`,
+                    created_at: new Date().toISOString()
+                });
+            } catch (txnError) {
+                console.warn('⚠️ تنبيه: فشل تسجيل معاملة خصم رسوم الحصة المجانية:', txnError.message);
+            }
+            
+            teacher.balance = newBalance;
+        }
+
+        // ✅ إنشاء كلمات المرور والغرفة
+        const room_name = `stream_${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;
+        const defaultPassword = crypto.randomBytes(4).toString('hex').toUpperCase();
+
+        let thumbnailUrl = req.body.thumbnail_url || null;
+        if (req.file) {
+            try {
+                const uploadRes = await uploadToSupabase(req.file, 'thumbnails');
+                if (uploadRes && uploadRes.url) {
+                    thumbnailUrl = uploadRes.url;
+                }
+            } catch (upErr) {
+                logger.warn('⚠️ فشل رفع الصورة المصغرة للدرس:', upErr.message);
+            }
+        }
+
+        // 📅 إعداد وجدول الحصص بالتفصيل
+        let parsedSchedule = [];
+        if (sessions_schedule) {
+            try {
+                parsedSchedule = typeof sessions_schedule === 'string' ? JSON.parse(sessions_schedule) : sessions_schedule;
+                if (!Array.isArray(parsedSchedule)) parsedSchedule = [];
+            } catch (e) {
+                parsedSchedule = [];
+            }
+        }
+
+        // إذا لم يتم توفير جدول مفصل، نقوم بتوليد المواعيد تلقائياً بناءً على تاريخ البداية
+        if (parsedSchedule.length === 0) {
+            for (let i = 1; i <= parsedTotalSessions; i++) {
+                // للأيام العادية أسبوعياً أو يومياً
+                const sessionDate = new Date(offerDateUTC.getTime() + ((i - 1) * 7 * 24 * 60 * 60 * 1000));
+                parsedSchedule.push({
+                    session_number: i,
+                    title: `الحصة ${i}: ${subject_name.trim()}`,
+                    session_date: sessionDate.toISOString(),
+                    duration: parsedDuration,
+                    status: 'upcoming',
+                    completed_at: null,
+                    teacher_released_amount: 0,
+                    is_escrow_released: false
+                });
+            }
+        } else {
+            // تنسيق الحصص والتأكد من صحتها
+            parsedSchedule = parsedSchedule.map((s, idx) => {
+                const rawDate = s.session_date || s.date;
+                return {
+                    session_number: s.session_number || (idx + 1),
+                    title: s.title || `الحصة ${idx + 1}: ${subject_name.trim()}`,
+                    session_date: rawDate ? formatOfferDateForDB(rawDate) : formatOfferDateForDB(new Date(Date.now() + (idx * 7 * 24 * 60 * 60 * 1000)).toISOString()),
+                    duration: parseInt(s.duration || parsedDuration),
+                    status: s.status || 'upcoming',
+                    completed_at: s.completed_at || null,
+                    teacher_released_amount: 0,
+                    is_escrow_released: false
+                };
+            });
+        }
+
+        // ✅ التحقق الإجباري من رابط البث المباشر (Google Meet أو Zoom) للعروض المجانية
+        let freeRoomDetails = null;
+        if (isFreeOffer) {
+            const customMeet = req.body.meet_url || req.body.stream_url;
+            if (!customMeet || typeof customMeet !== 'string' || !customMeet.trim()) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'عذراً، يجب إضافة رابط البث المباشر (Google Meet) أولاً لإنشاء العرض المجاني'
+                });
+            }
+            const formatted = formatMeetOrZoomUrl(customMeet.trim());
+            if (!formatted) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'رابط البث المباشر غير صالح. يرجى إدخال رابط Google Meet أو Zoom صحيح (مثال: https://meet.google.com/xxx-yyyy-zzz)'
+                });
+            }
+            const isZoom = formatted.includes('zoom.us') || formatted.includes('zoom.com');
+            freeRoomDetails = {
+                url: formatted,
+                room_name: formatted,
+                platform: isZoom ? 'zoom' : 'google_meet',
+                is_free: true,
+                is_custom: true
+            };
+        }
+
+        // ✅ إدخال الدرس في قاعدة البيانات
+        const newOffer = {
+            teacher_id: teacher_id,
+            subject_name: subject_name.trim(),
+            duration: parsedDuration,
+            offer_date: offerDateFormatted,
+            price: isFreeOffer ? 0 : parsedPrice,
+            is_free: isFreeOffer,
+            room_name: isFreeOffer && freeRoomDetails ? freeRoomDetails.room_name : room_name,
+            room_password: defaultPassword,
+            stream_url: null, // لا يتم تفعيل رابط البث النشط إلا بعد بدء الأستاذ للبث فعلياً
+            meet_url: isFreeOffer && freeRoomDetails ? freeRoomDetails.url : null,
+            stream_platform: isFreeOffer ? (freeRoomDetails ? freeRoomDetails.platform : 'google_meet') : (stream_platform || 'agora'),
+            status: 'upcoming',
+            education_level: finalEducationLevel,
+            thumbnail_url: thumbnailUrl,
+            image_url: thumbnailUrl,
+            booked_count: 0,
+            plan_type: normalizedPlanType,
+            total_sessions: parsedTotalSessions,
+            session_duration: parsedDuration,
+            price_per_session: isFreeOffer ? 0 : parsedPrice,
+            platform_fee_per_session: platformFeePerSession,
+            total_platform_fee: totalPlatformFee,
+            total_teacher_price: totalTeacherPrice,
+            total_student_price: totalStudentPrice,
+            completed_sessions_count: 0,
+            sessions_schedule: parsedSchedule,
+            total_released_amount: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+
+        console.log('💾 إدخال الدرس:', newOffer);
+
+        let insertedOffer = null;
+        const { data: dbOffer, error: insertError } = await supabase
+            .from('offers')
+            .insert(newOffer)
+            .select()
+            .single();
+
+        if (insertError) {
+            console.error('❌ خطأ في إدخال الدرس:', insertError);
+            return res.status(500).json({ 
+                success: false, 
+                error: 'الرجاء تحديث قاعدة البيانات وتشغيل كود SQL الخاص بالاشتراكات (schema_stream_subscription_plans.sql) في Supabase.' 
+            });
+        }
+        
+        insertedOffer = dbOffer;
+
+        if (!insertedOffer) {
+            return res.status(500).json({ 
+                success: false, 
+                error: 'فشل إنشاء الدرس، يرجى المحاولة مرة أخرى' 
+            });
+        }
+
+        // 📝 إدخال الحصص المجدولة في جدول stream_sessions
+        try {
+            const streamSessionsToInsert = parsedSchedule.map(s => ({
+                offer_id: insertedOffer.id,
+                teacher_id: teacher_id,
+                session_number: s.session_number,
+                title: s.title,
+                session_date: s.session_date,
+                duration_minutes: s.duration || parsedDuration,
+                price_per_session: isFreeOffer ? 0 : parsedPrice,
+                platform_fee: platformFeePerSession,
+                status: 'upcoming',
+                is_escrow_released: false,
+                teacher_released_amount: 0,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            }));
+
+            await supabase.from('stream_sessions').insert(streamSessionsToInsert);
+        } catch (ssErr) {
+            console.warn('⚠️ تنبيه: تعذر إدخال stream_sessions:', ssErr.message);
+        }
+
+        console.log('✅ تم إنشاء الدرس بنجاح:', insertedOffer.id);
+
+        // ✅ إشعار المتابعين بموعد الدرس بدقة
+        try {
+            let allFollowers = [];
+            const { data: followers } = await supabase
+                .from('teacher_followers')
+                .select('follower_id')
+                .eq('teacher_id', teacher_id)
+                .eq('follower_type', 'student');
+            
+            if (followers) {
+                followers.forEach(f => {
+                    allFollowers.push({ follower_id: parseInt(f.follower_id) });
+                });
+            }
+
+            try {
+                const localList = await loadLocalTeacherFollowers();
+                localList.forEach(f => {
+                    if (parseInt(f.teacher_id) === parseInt(teacher_id) && f.follower_type === 'student') {
+                        const exists = allFollowers.some(existing => existing.follower_id === parseInt(f.follower_id));
+                        if (!exists) {
+                            allFollowers.push({ follower_id: parseInt(f.follower_id) });
+                        }
+                    }
+                });
+            } catch (lErr) {}
+            
+            if (allFollowers.length > 0) {
+                // تنسيق موعد البث بالتفصيل بتوقيت الجزائر
+                const offerDateObj = new Date(offerDateFormatted);
+                const algeriaDateFormatted = !isNaN(offerDateObj.getTime())
+                    ? offerDateObj.toLocaleString('ar-DZ', { 
+                        timeZone: 'Africa/Algiers', 
+                        weekday: 'long', 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric', 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                    })
+                    : offerDateFormatted;
+
+                const notifTitle = isFreeOffer ? '🎁 حصة مجانية جديدة عبر Google Meet!' : '📢 حصة جديدة من أستاذك!';
+                const notifMessage = isFreeOffer
+                    ? `أعلن الأستاذ ${teacher.full_name} عن حصة مجانية في مادة "${subject_name.trim()}" عبر Google Meet! موعد البدء بالتحديد: ${algeriaDateFormatted}. البث مفتوح ومجاني للجميع 🚀`
+                    : `قام الأستاذ ${teacher.full_name} بإضافة حصة جديدة: "${subject_name.trim()}". موعد البدء: ${algeriaDateFormatted}.`;
+
+                for (const f of allFollowers) {
+                    await insert('notifications', {
+                        user_id: f.follower_id,
+                        user_type: 'student',
+                        title: notifTitle,
+                        message: notifMessage,
+                        offer_id: insertedOffer.id,
+                        is_read: false,
+                        created_at: new Date().toISOString()
+                    });
+                    
+                    // إرسال إشعار الدفع إذا كان مفعلاً
+                    const { data: student } = await supabase.from('students').select('push_subscription').eq('id', f.follower_id).single();
+                    if (student && student.push_subscription) {
+                        await sendPushNotification(student, notifTitle, notifMessage);
+                    }
+                }
+            }
+        } catch (e) {
+            logger.error('❌ خطأ في إرسال إشعارات المتابعين:', e);
+        }
+
+        // ✅ إرجاع النتيجة
+        res.json({ 
+            success: true, 
+            message: 'تم إنشاء الدرس بنجاح',
+            room_name: room_name,
+            default_password: defaultPassword,
+            total_seconds: totalSeconds,
+            offer: {
+                id: insertedOffer.id,
+                teacher_id: insertedOffer.teacher_id,
+                subject_name: insertedOffer.subject_name,
+                duration: insertedOffer.duration,
+                offer_date: insertedOffer.offer_date,
+                price: insertedOffer.price,
+                is_free: insertedOffer.is_free,
+                status: insertedOffer.status,
+                education_level: insertedOffer.education_level,
+                room_name: insertedOffer.room_name,
+                room_password: insertedOffer.room_password,
+                total_seconds: insertedOffer.total_seconds,
+                remaining_seconds: insertedOffer.remaining_seconds,
+                created_at: insertedOffer.created_at
+            }
+        });
+
+    } catch (error) {
+        logger.error('❌ خطأ في إنشاء الدرس:', error.message);
+        logger.error('📚 Stack:', error.stack);
+        res.status(500).json({ 
+            success: false, 
+            error: 'حدث خطأ في الخادم أثناء إنشاء الدرس: ' + error.message 
+        });
+    }
+});
+
+// ============================================================
+// ✅ تحديث درس (مع دعم تحديث حالة البث)
+// ============================================================
+router.put('/offer/update/:offer_id', authenticate, authorize(['teacher']), upload.single('thumbnail'), [
+    param('offer_id').isInt().withMessage('معرف الدرس غير صالح'),
+    body('subject_name').optional().isString().withMessage('اسم المادة يجب أن يكون نصاً'),
+    body('duration').optional().isInt({ min: 1, max: 360 }).withMessage('المدة غير صالحة (1-360 دقيقة)'),
+    body('offer_date').optional().isISO8601().withMessage('تاريخ غير صالح'),
+    body('price').optional().isFloat({ min: 0 }).withMessage('السعر غير صالح'),
+    body('is_free').optional().isBoolean().withMessage('is_free يجب أن يكون true أو false'),
+    body('education_level').optional().isString().withMessage('المستوى التعليمي يجب أن يكون نصاً'),
+    body('status').optional().isIn(['upcoming', 'live', 'paused', 'completed']).withMessage('حالة غير صالحة')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const offer_id = parseInt(req.params.offer_id);
+        const teacher_id = req.user.userId;
+
+        // ✅ التحقق من وجود الدرس
+        const offer = await getOne('offers', 'id', offer_id);
+        if (!offer) {
+            return res.status(404).json({ success: false, error: 'الدرس غير موجود' });
+        }
+
+        if (teacher_id === -1 || teacher_id === '-1' || req.user.is_guest || offer.teacher_id !== teacher_id) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك بتحديث هذا الدرس' });
+        }
+
+        // ✅ تحضير بيانات التحديث
+        const updateData = {};
+        const allowedFields = ['subject_name', 'duration', 'offer_date', 'price', 'is_free', 'education_level', 'status'];
+
+        for (const field of allowedFields) {
+            if (req.body[field] !== undefined && req.body[field] !== null) {
+                if (field === 'duration') {
+                    updateData[field] = parseInt(req.body[field]);
+                } else if (field === 'price') {
+                    updateData[field] = parseFloat(req.body[field]);
+                } else if (field === 'is_free') {
+                    updateData[field] = req.body[field] === true || req.body[field] === 'true';
+                } else if (field === 'offer_date') {
+                    updateData[field] = formatOfferDateForDB(req.body[field]);
+                } else {
+                    updateData[field] = req.body[field];
+                }
+            }
+        }
+
+        const willBeFree = updateData.is_free !== undefined ? updateData.is_free : offer.is_free;
+        const targetPrice = updateData.price !== undefined ? updateData.price : offer.price;
+        const targetDuration = updateData.duration !== undefined ? updateData.duration : offer.duration;
+        const targetMaxStudents = req.body.max_students !== undefined ? parseInt(req.body.max_students) : 20;
+
+        if (!willBeFree) {
+            if (isNaN(targetPrice) || targetPrice <= 0) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'سعر العرض المدفوع يجب أن يكون أكبر من 0'
+                });
+            }
+        } else {
+            updateData.price = 0;
+            if (targetDuration > 60) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'العرض المجاني متاح لمدة أقصاها ساعة واحدة (60 دقيقة)'
+                });
+            }
+            if (targetMaxStudents > 20) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'العرض المجاني يتسع لـ 20 شخصاً كحد أقصى'
+                });
+            }
+        }
+
+        if (willBeFree) {
+            const customMeet = req.body.meet_url || req.body.stream_url;
+            if (customMeet) {
+                const formatted = formatMeetOrZoomUrl(customMeet);
+                if (formatted) {
+                    const isZoom = formatted.includes('zoom.us') || formatted.includes('zoom.com');
+                    updateData.stream_platform = isZoom ? 'zoom' : 'google_meet';
+                    updateData.meet_url = formatted;
+                    updateData.stream_url = formatted;
+                    updateData.room_name = formatted;
+                }
+            }
+        }
+
+        if (req.file) {
+            try {
+                const uploadRes = await uploadToSupabase(req.file, 'thumbnails');
+                if (uploadRes && uploadRes.url) {
+                    updateData.thumbnail_url = uploadRes.url;
+                    updateData.image_url = uploadRes.url;
+                }
+            } catch (upErr) {
+                logger.warn('⚠️ فشل تحديث الصورة المصغرة للدرس:', upErr.message);
+            }
+        } else if (req.body.thumbnail_url) {
+            updateData.thumbnail_url = req.body.thumbnail_url;
+            updateData.image_url = req.body.thumbnail_url;
+        }
+
+        updateData.updated_at = new Date().toISOString();
+
+        console.log('📝 تحديث الدرس:', offer_id, updateData);
+
+        const { data: updatedOffer, error: updateError } = await supabase
+            .from('offers')
+            .update(updateData)
+            .eq('id', offer_id)
+            .select()
+            .single();
+
+        if (updateError) {
+            logger.error('❌ خطأ في تحديث الدرس:', updateError);
+            return res.status(500).json({ success: false, error: updateError.message });
+        }
+
+        res.json({
+            success: true,
+            message: 'تم تحديث الدرس بنجاح',
+            offer: updatedOffer
+        });
+    } catch (error) {
+        logger.error('❌ خطأ في تحديث الدرس:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
+// ✅ تعديل موعد حصة معينة في جدول الدروس (أو تعديل الموعد الرئيسي)
+// ============================================================
+router.put('/offer/:offer_id/session/:session_number/date', authenticate, authorize(['teacher']), async (req, res) => {
+    try {
+        const offer_id = parseInt(req.params.offer_id);
+        const session_number = parseInt(req.params.session_number) || 1;
+        const { session_date } = req.body;
+        const teacher_id = req.user.userId;
+
+        if (!session_date) {
+            return res.status(400).json({ success: false, error: 'تاريخ موعد الحصة مطلوب' });
+        }
+
+        // ✅ التحقق من وجود الدرس وتأكيد الملكية للأستاذ
+        const offer = await getOne('offers', 'id', offer_id);
+        if (!offer) {
+            return res.status(404).json({ success: false, error: 'الدرس غير موجود' });
+        }
+
+        if (teacher_id === -1 || teacher_id === '-1' || req.user.is_guest || offer.teacher_id !== teacher_id) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك بتعديل موعد هذا الدرس' });
+        }
+
+        const formattedDate = formatOfferDateForDB(session_date);
+
+        // ✅ 1. تحديث حقل offer_date إذا كانت الحصة الأولى (أو إذا كان عرضاً من حصة واحدة)
+        const updateData = {};
+        if (session_number === 1) {
+            updateData.offer_date = formattedDate;
+        }
+
+        // ✅ 2. تحديث جدول الحصص المخزن في sessions_schedule
+        const { parsedSchedule, totalSessions } = parseOfferPlanAndSchedule(offer);
+        let scheduleUpdated = false;
+
+        const updatedSchedule = parsedSchedule.map(s => {
+            if (s.session_number === session_number) {
+                scheduleUpdated = true;
+                return {
+                    ...s,
+                    session_date: formattedDate,
+                    date: formattedDate // للحفاظ على التوافق التام مع الصيغتين
+                };
+            }
+            return s;
+        });
+
+        // إذا لم يكن هناك جدول بعد أو لم نجد الرقم، نقوم بالتحديث أو الإضافة
+        if (!scheduleUpdated) {
+            // إضافة الحصة كاحتياط
+            updatedSchedule.push({
+                session_number: session_number,
+                title: `الحصة ${session_number}: ${offer.subject_name}`,
+                session_date: formattedDate,
+                date: formattedDate,
+                duration: offer.duration || 60,
+                status: 'upcoming',
+                completed_at: null,
+                teacher_released_amount: 0,
+                is_escrow_released: false
+            });
+        }
+
+        updateData.sessions_schedule = updatedSchedule;
+        updateData.updated_at = new Date().toISOString();
+
+        // تحديث في جدول offers
+        const { error: offerUpdateErr } = await supabase
+            .from('offers')
+            .update(updateData)
+            .eq('id', offer_id);
+
+        if (offerUpdateErr) {
+            logger.error('❌ خطأ في تحديث جدول الحصص:', offerUpdateErr);
+            return res.status(500).json({ success: false, error: 'فشل في تحديث موعد الحصة: ' + offerUpdateErr.message });
+        }
+
+        // ✅ 3. تحديث موعد الحصة في جدول stream_sessions إن وجد لمنع التناقض
+        try {
+            const { error: ssUpdateErr } = await supabase
+                .from('stream_sessions')
+                .update({ 
+                    session_date: formattedDate,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('offer_id', offer_id)
+                .eq('session_number', session_number);
+
+            if (ssUpdateErr) {
+                logger.warn('⚠️ تنبيه: لم يتم العثور أو فشل تحديث stream_sessions:', ssUpdateErr.message);
+            }
+        } catch (ssErr) {
+            logger.warn('⚠️ تنبيه: خطأ أثناء تحديث جدول stream_sessions:', ssErr.message);
+        }
+
+        res.json({
+            success: true,
+            message: 'تم تحديث موعد الحصة بنجاح',
+            offer_date: session_number === 1 ? formattedDate : offer.offer_date
+        });
+
+    } catch (error) {
+        logger.error('❌ خطأ في تعديل موعد الحصة:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
+// ✅ جلب جميع الدروس القادمة (مع فلتر المستوى التعليمي)
+// ============================================================
+router.get('/offers', async (req, res) => {
+    try {
+        const now = new Date().toISOString();
+        
+        let query = supabase
+            .from('offers')
+            .select('*')
+            .neq('status', 'cancelled')
+            .order('offer_date', { ascending: true });
+
+        // ✅ فلتر حسب المستوى التعليمي مع دعم المجموعات العامة مثل جميع مستويات المتوسط
+        if (req.query.education_level) {
+            const level = req.query.education_level;
+            if (level !== 'all') {
+                const middleLevels = ['1ere_am', '2eme_am', '3eme_am', '4eme_am', 'bem'];
+                const primaryLevels = ['primary_1', 'primary_2', 'primary_3', 'primary_4', 'primary_5', '5eme_pri'];
+                const secondaryLevels = ['1ere_as', '2eme_as', '3eme_as', 'bac'];
+                const universityLevels = ['1ere_uni', '2eme_uni', '3eme_uni', 'master', 'doctorat'];
+
+                let levelsToCheck = [level];
+                if (middleLevels.includes(level)) {
+                    levelsToCheck.push('middle_all');
+                } else if (level === 'middle_all') {
+                    levelsToCheck = [...middleLevels, 'middle_all'];
+                } else if (primaryLevels.includes(level)) {
+                    levelsToCheck.push('primary_all');
+                } else if (level === 'primary_all') {
+                    levelsToCheck = [...primaryLevels, 'primary_all'];
+                } else if (secondaryLevels.includes(level)) {
+                    levelsToCheck.push('secondary_all');
+                } else if (level === 'secondary_all') {
+                    levelsToCheck = [...secondaryLevels, 'secondary_all'];
+                } else if (universityLevels.includes(level)) {
+                    levelsToCheck.push('university');
+                } else if (level === 'university') {
+                    levelsToCheck = [...universityLevels, 'university'];
+                }
+
+                query = query.in('education_level', levelsToCheck);
+            }
+        }
+
+        const { data: rawOffers, error } = await query;
+
+        if (error) throw error;
+
+        // ✅ إظهار جميع الدروس المتاحة والبث المباشر في المنصة وإخفاء الدروس الملغاة فقط
+        const offers = (rawOffers || []).filter(offer => {
+            if (offer.status === 'cancelled') {
+                return false;
+            }
+            return true;
+        });
+
+        if (!offers || offers.length === 0) {
+            return res.json([]);
+        }
+
+        // ✅ جلب معلومات المعلمين
+        let streamFeePer45Min = 50;
+        try {
+            const { data: revSettings } = await supabase
+                .from('platform_settings')
+                .select('value')
+                .eq('key', 'revenue_settings')
+                .maybeSingle();
+            if (revSettings && revSettings.value) {
+                const val = parseFloat(revSettings.value.stream_platform_fee_per_45_min);
+                if (!isNaN(val)) streamFeePer45Min = val;
+            }
+        } catch (e) {
+            console.error('Error fetching stream platform fee in list route:', e.message);
+        }
+
+        const teacherIds = [...new Set(offers.map(o => o.teacher_id))];
+        const { data: teachers, error: teachersError } = await supabase
+            .from('teachers')
+            .select('id, full_name, specialization, profile_image, profile_url')
+            .in('id', teacherIds);
+
+        if (teachersError) {
+            logger.error('خطأ في جلب بيانات المعلمين:', teachersError.message);
+        }
+
+        const teachersMap = {};
+        if (teachers) {
+            for (const teacher of teachers) {
+                teachersMap[teacher.id] = teacher;
+            }
+        }
+
+        // ✅ تنسيق البيانات
+        const formatted = offers.map(offer => {
+            const teacher = teachersMap[offer.teacher_id] || {};
+
+            // ✅ حساب الوقت المتبقي للدروس المباشرة
+            const remainingSeconds = calculateOfferRemainingSeconds(offer);
+
+            const views = getViewCount('offer', offer.id, offer.views_count || offer.views || 0);
+            const { parsedSchedule, totalSessions, planType } = parseOfferPlanAndSchedule(offer);
+            const sessionDuration = offer.session_duration || offer.duration || 60;
+            const pricePerSession = parseFloat(offer.price_per_session || offer.price || 0);
+            const isFree = (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && pricePerSession === 0;
+            const platformFeePerSession = isFree ? 0 : (offer.platform_fee_per_session || Math.round((sessionDuration / 45) * streamFeePer45Min));
+            const totalPlatformFee = isFree ? 0 : (offer.total_platform_fee || (platformFeePerSession * totalSessions));
+            const totalTeacherPrice = isFree ? 0 : (offer.total_teacher_price || (pricePerSession * totalSessions));
+            const totalStudentPrice = isFree ? 0 : (offer.total_student_price || (totalTeacherPrice + totalPlatformFee));
+
+            return {
+                id: offer.id,
+                teacher_id: offer.teacher_id,
+                subject_name: offer.subject_name,
+                duration: sessionDuration,
+                duration_minutes: sessionDuration,
+                session_duration: sessionDuration,
+                offer_date: offer.offer_date,
+                price: pricePerSession,
+                price_per_session: pricePerSession,
+                is_free: isFree,
+                plan_type: planType,
+                session_number: offer.session_number || (Number(offer.completed_sessions_count || 0) + 1),
+                session_date: offer.session_date || offer.offer_date,
+                total_sessions: totalSessions,
+                platform_fee_per_session: platformFeePerSession,
+                total_platform_fee: totalPlatformFee,
+                total_teacher_price: totalTeacherPrice,
+                total_student_price: totalStudentPrice,
+                completed_sessions_count: Number(offer.completed_sessions_count ?? offer.completed_sessions ?? 0),
+                completed_sessions: Number(offer.completed_sessions ?? offer.completed_sessions_count ?? 0),
+                sessions_schedule: parsedSchedule,
+                total_released_amount: offer.total_released_amount || 0,
+                actual_duration: offer.actual_duration || 0,
+                actual_live_seconds: offer.actual_live_seconds || 0,
+                stream_active: Boolean(offer.stream_active),
+                status: offer.status,
+                education_level: offer.education_level,
+                room_password: offer.room_password || null,
+                room_name: offer.room_name || null,
+                stream_url: offer.stream_url || null,
+                meet_url: offer.meet_url || (offer.stream_url && offer.stream_url.includes('meet.google.com') ? offer.stream_url : null),
+                stream_platform: isFree ? 'google_meet' : (offer.stream_platform || 'agora'),
+                total_seconds: offer.total_seconds || (sessionDuration * 60),
+                remaining_seconds: remainingSeconds,
+                is_paused: offer.is_paused || false,
+                booked_count: offer.booked_count || 0,
+                views_count: views,
+                views: views,
+                thumbnail_url: offer.thumbnail_url || offer.image_url || null,
+                image_url: offer.thumbnail_url || offer.image_url || null,
+                created_at: offer.created_at,
+                updated_at: offer.updated_at,
+                stream_started_at: offer.stream_started_at || null,
+                teacher_name: teacher.full_name || 'غير معروف',
+                teacher_specialization: teacher.specialization || '',
+                teacher_profile_image: teacher.profile_url || getPublicImageUrl('profiles', 'teachers', teacher.profile_image),
+            };
+        });
+
+        res.json(formatted);
+    } catch (error) {
+        logger.error('خطأ في جلب الدروس:', error.message);
+        res.status(500).json([]);
+    }
+});
+
+// ============================================================
+// ✅ جلب الدروس المباشرة
+// ============================================================
+router.get('/live-offers', async (req, res) => {
+    try {
+        const { data: offers, error } = await supabase
+            .from('offers')
+            .select('*')
+            .in('status', ['live', 'teacher_ready'])
+            .order('offer_date', { ascending: false })
+            .limit(50);
+
+        if (error) throw error;
+
+        if (!offers || offers.length === 0) {
+            return res.json([]);
+        }
+
+        // ✅ جلب معلومات المعلمين
+        const teacherIds = [...new Set(offers.map(o => o.teacher_id))];
+        const { data: teachers, error: teachersError } = await supabase
+            .from('teachers')
+            .select('id, full_name, specialization, profile_image, profile_url')
+            .in('id', teacherIds);
+
+        if (teachersError) {
+            logger.error('خطأ في جلب بيانات المعلمين:', teachersError.message);
+        }
+
+        const teachersMap = {};
+        if (teachers) {
+            for (const teacher of teachers) {
+                teachersMap[teacher.id] = teacher;
+            }
+        }
+
+        const formatted = offers.map(offer => {
+            const teacher = teachersMap[offer.teacher_id] || {};
+
+            // ✅ حساب الوقت المتبقي
+            const remainingSeconds = calculateOfferRemainingSeconds(offer);
+
+            return {
+                id: offer.id,
+                teacher_id: offer.teacher_id,
+                subject_name: offer.subject_name,
+duration: offer.duration,
+  duration_minutes: offer.duration_minutes || offer.session_duration || offer.duration || 60,
+  offer_date: offer.offer_date,
+  session_date: offer.session_date || offer.offer_date || null,
+  price: offer.price,
+                is_free: (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && parseFloat(offer.price || 0) === 0,
+                status: offer.status,
+                education_level: offer.education_level,
+                stream_url: offer.stream_url || null,
+                meet_url: offer.meet_url || (offer.stream_url && offer.stream_url.includes('meet.google.com') ? offer.stream_url : null),
+                stream_platform: ((offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && parseFloat(offer.price || 0) === 0) ? 'google_meet' : (offer.stream_platform || 'agora'),
+                room_password: offer.room_password || null,
+                room_name: offer.room_name || null,
+                total_seconds: offer.total_seconds || (offer.duration * 60),
+                remaining_seconds: remainingSeconds,
+                is_paused: offer.is_paused || false,
+                booked_count: offer.booked_count || 0,
+                created_at: offer.created_at,
+                teacher_name: teacher.full_name || 'غير معروف',
+                teacher_specialization: teacher.specialization || '',
+                teacher_profile_image: teacher.profile_url || getPublicImageUrl('profiles', 'teachers', teacher.profile_image)
+            };
+        });
+
+        res.json(formatted);
+    } catch (error) {
+        logger.error('خطأ في جلب الدروس المباشرة:', error.message);
+        res.status(500).json([]);
+    }
+});
+
+// ============================================================
+// ✅ جلب درس محدد (مع معلومات البث والرصيد المعلق)
+// ============================================================
+router.get(['/offer/:offer_id', '/teacher/offer/:offer_id'], async (req, res) => {
+    try {
+        const offer_id = parseInt(req.params.offer_id);
+        
+        const { data: offer, error } = await supabase
+            .from('offers')
+            .select('*')
+            .eq('id', offer_id)
+            .single();
+
+        if (error || !offer) {
+            return res.status(404).json({ success: false, error: 'الدرس غير موجود' });
+        }
+
+        let streamFeePer45Min = 50;
+        try {
+            const { data: revSettings } = await supabase
+                .from('platform_settings')
+                .select('value')
+                .eq('key', 'revenue_settings')
+                .maybeSingle();
+            if (revSettings && revSettings.value) {
+                const val = parseFloat(revSettings.value.stream_platform_fee_per_45_min);
+                if (!isNaN(val)) streamFeePer45Min = val;
+            }
+        } catch (e) {
+            console.error('Error fetching stream platform fee in details route:', e.message);
+        }
+
+        // ✅ جلب معلومات المعلم
+        const { data: teacher, error: teacherError } = await supabase
+            .from('teachers')
+            .select('id, full_name, specialization, profile_image, profile_url')
+            .eq('id', offer.teacher_id)
+            .single();
+
+        if (teacherError) {
+            logger.error('خطأ في جلب بيانات المعلم:', teacherError.message);
+        }
+
+        // ✅ جلب عدد الطلاب المسجلين
+        const { data: studentRows, error: countError } = await supabase
+            .from('sessions')
+            .select('student_id')
+            .eq('offer_id', offer_id)
+            .in('payment_status', ['paid', 'pending_stream', 'completed']);
+
+        const studentsCount = new Set((studentRows || []).map(row => row.student_id).filter(Boolean)).size;
+        if (countError) {
+            logger.error('خطأ في جلب عدد الطلاب:', countError.message);
+        }
+
+        // ✅ جلب الرصيد المعلق الإجمالي
+        const { data: pendingData, error: pendingError } = await supabase
+            .from('sessions')
+            .select('payment_amount')
+            .eq('offer_id', offer_id)
+            .eq('payment_status', 'pending_stream');
+
+        let totalPendingBalance = 0;
+        if (!pendingError && pendingData) {
+            totalPendingBalance = pendingData.reduce((sum, s) => sum + (s.payment_amount || 0), 0);
+        }
+
+        // ✅ حساب الوقت المتبقي
+        const remainingSeconds = calculateOfferRemainingSeconds(offer);
+        const { parsedSchedule, totalSessions, planType } = parseOfferPlanAndSchedule(offer);
+        const sessionDuration = offer.session_duration || offer.duration_minutes || offer.duration || 60;
+        const pricePerSession = parseFloat(offer.price_per_session || offer.price || 0);
+        const isFree = (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && pricePerSession === 0;
+        const platformFeePerSession = isFree ? 0 : (offer.platform_fee_per_session || Math.round((sessionDuration / 45) * streamFeePer45Min));
+        const totalPlatformFee = isFree ? 0 : (offer.total_platform_fee || (platformFeePerSession * totalSessions));
+        const totalTeacherPrice = isFree ? 0 : (offer.total_teacher_price || (pricePerSession * totalSessions));
+        const totalStudentPrice = isFree ? 0 : (offer.total_student_price || (totalTeacherPrice + totalPlatformFee));
+
+        res.json({
+            id: offer.id,
+            teacher_id: offer.teacher_id,
+            subject_name: offer.subject_name,
+            duration: sessionDuration,
+            session_duration: sessionDuration,
+            offer_date: offer.offer_date,
+            price: pricePerSession,
+            price_per_session: pricePerSession,
+            is_free: isFree,
+            plan_type: planType,
+            session_number: offer.session_number || (Number(offer.completed_sessions_count || 0) + 1),
+            total_sessions: totalSessions,
+            completed_sessions: Number(offer.completed_sessions ?? offer.completed_sessions_count ?? 0),
+            completed_sessions_count: Number(offer.completed_sessions_count ?? offer.completed_sessions ?? 0),
+            session_date: offer.session_date || offer.offer_date || null,
+            duration_minutes: sessionDuration,
+            status: offer.status || 'upcoming',
+            platform_fee_per_session: platformFeePerSession,
+            total_platform_fee: totalPlatformFee,
+            total_teacher_price: totalTeacherPrice,
+            total_student_price: totalStudentPrice,
+            sessions_schedule: parsedSchedule,
+            total_released_amount: offer.total_released_amount || 0,
+            actual_duration: offer.actual_duration || 0,
+            actual_live_seconds: offer.actual_live_seconds || 0,
+            stream_active: Boolean(offer.stream_active),
+            education_level: offer.education_level,
+            stream_url: offer.stream_url || null,
+            meet_url: offer.meet_url || (offer.stream_url && offer.stream_url.includes('meet.google.com') ? offer.stream_url : null),
+            stream_platform: isFree ? 'google_meet' : (offer.stream_platform || 'agora'),
+            room_password: offer.room_password || null,
+            room_name: offer.room_name || null,
+            total_seconds: offer.total_seconds || (sessionDuration * 60),
+            remaining_seconds: remainingSeconds,
+            is_paused: offer.is_paused || false,
+            booked_count: offer.booked_count || 0,
+            views_count: getViewCount('offer', offer.id, offer.views_count || offer.views || 0),
+            views: getViewCount('offer', offer.id, offer.views_count || offer.views || 0),
+            total_pending_balance: totalPendingBalance,
+            created_at: offer.created_at,
+            updated_at: offer.updated_at,
+            stream_started_at: offer.stream_started_at || null,
+            completed_at: offer.completed_at || null,
+            teacher_name: teacher?.full_name || 'غير معروف',
+            teacher_specialization: teacher?.specialization || '',
+            teacher_profile_image: teacher?.profile_url || getPublicImageUrl('profiles', 'teachers', teacher?.profile_image),
+            students_count: studentsCount || 0
+        });
+    } catch (error) {
+        logger.error('خطأ في جلب الدرس:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// ✅ جلب دروس الأستاذ (للوحة التحكم)
+// ============================================================
+router.get('/teacher/offers/:teacher_id', authenticate, authorize(['teacher']), async (req, res) => {
+    try {
+        const teacher_id = parseInt(req.params.teacher_id);
+        
+        if (req.user.userId !== teacher_id) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك' });
+        }
+
+        let streamFeePer45Min = 50;
+        try {
+            const { data: revSettings } = await supabase
+                .from('platform_settings')
+                .select('value')
+                .eq('key', 'revenue_settings')
+                .maybeSingle();
+            if (revSettings && revSettings.value) {
+                const val = parseFloat(revSettings.value.stream_platform_fee_per_45_min);
+                if (!isNaN(val)) streamFeePer45Min = val;
+            }
+        } catch (e) {
+            console.error('Error fetching stream platform fee in teacher offers route:', e.message);
+        }
+
+        const { data: offers, error: offersError } = await supabase
+            .from('offers')
+            .select('*')
+            .eq('teacher_id', teacher_id)
+            .order('offer_date', { ascending: false });
+
+        if (offersError) throw offersError;
+
+        if (!offers || offers.length === 0) {
+            return res.json([]);
+        }
+
+        const offerIds = offers.map(offer => offer.id);
+        const { data: subscriptions, error: subscriptionsError } = await supabase
+            .from('stream_subscriptions')
+            .select('offer_id, session_number, plan_type, total_sessions, completed_sessions, status, created_at')
+            .in('offer_id', offerIds)
+            .order('session_number', { ascending: true });
+
+        if (subscriptionsError) {
+            logger.warn('تعذر جلب بيانات اشتراكات الحصص:', subscriptionsError.message);
+        }
+
+        const { data: streamSessions, error: streamSessionsError } = await supabase
+            .from('stream_sessions')
+            .select('offer_id, session_number, title, session_date, duration_minutes, price_per_session, status, stream_url, completed_at, actual_duration_seconds')
+            .in('offer_id', offerIds)
+            .order('session_number', { ascending: true });
+        if (streamSessionsError) logger.warn('تعذر جلب جلسات البث:', streamSessionsError.message);
+
+        const subscriptionByOffer = new Map();
+        for (const subscription of subscriptions || []) {
+            if (!subscriptionByOffer.has(subscription.offer_id)) subscriptionByOffer.set(subscription.offer_id, subscription);
+        }
+        const streamByOffer = new Map();
+        for (const session of streamSessions || []) {
+            if (!streamByOffer.has(session.offer_id)) streamByOffer.set(session.offer_id, session);
+        }
+
+        const formatted = offers.map(offer => {
+            const subscription = subscriptionByOffer.get(offer.id);
+            const streamSession = streamByOffer.get(offer.id);
+            
+            const { parsedSchedule, totalSessions, planType } = parseOfferPlanAndSchedule(offer);
+
+            // ✅ حساب الوقت المتبقي
+            const remainingSeconds = calculateOfferRemainingSeconds(offer);
+            const views = getViewCount('offer', offer.id, offer.views_count || offer.views || 0);
+            const sessionDuration = offer.session_duration || offer.duration_minutes || offer.duration || 60;
+            const pricePerSession = parseFloat(offer.price_per_session || offer.price || 0);
+            const isFree = (offer.is_free === true || offer.is_free === 'true' || offer.is_free === 1) && pricePerSession === 0;
+            const platformFeePerSession = isFree ? 0 : (offer.platform_fee_per_session || Math.round((sessionDuration / 45) * streamFeePer45Min));
+            const totalPlatformFee = isFree ? 0 : (offer.total_platform_fee || (platformFeePerSession * totalSessions));
+            const totalTeacherPrice = isFree ? 0 : (offer.total_teacher_price || (pricePerSession * totalSessions));
+            const totalStudentPrice = isFree ? 0 : (offer.total_student_price || (totalTeacherPrice + totalPlatformFee));
+
+            return {
+                id: offer.id,
+                teacher_id: offer.teacher_id,
+                subject_name: offer.subject_name,
+                duration: sessionDuration,
+                duration_minutes: sessionDuration,
+                session_duration: sessionDuration,
+                offer_date: offer.offer_date,
+                price: pricePerSession,
+                price_per_session: pricePerSession,
+                is_free: isFree,
+                plan_type: planType,
+                session_number: offer.session_number || streamSession?.session_number || (Number(offer.completed_sessions_count || 0) + 1),
+                session_date: streamSession?.session_date || offer.session_date || offer.offer_date,
+                total_sessions: totalSessions,
+                platform_fee_per_session: platformFeePerSession,
+                total_platform_fee: totalPlatformFee,
+                total_teacher_price: totalTeacherPrice,
+                total_student_price: totalStudentPrice,
+                completed_sessions_count: Number(offer.completed_sessions_count ?? 0),
+                completed_sessions: Number(offer.completed_sessions_count ?? 0),
+                sessions_schedule: parsedSchedule,
+                total_released_amount: offer.total_released_amount || 0,
+                actual_duration: offer.actual_duration || 0,
+                actual_live_seconds: offer.actual_live_seconds || 0,
+                stream_active: Boolean(offer.stream_active),
+                status: offer.status,
+                education_level: offer.education_level,
+                room_name: offer.room_name || null,
+                room_password: offer.room_password || null,
+                stream_url: offer.stream_url || null,
+                meet_url: offer.meet_url || (offer.stream_url && offer.stream_url.includes('meet.google.com') ? offer.stream_url : null),
+                stream_platform: isFree ? 'google_meet' : (offer.stream_platform || 'agora'),
+                total_seconds: offer.total_seconds || (sessionDuration * 60),
+                remaining_seconds: remainingSeconds,
+                is_paused: offer.is_paused || false,
+                booked_count: offer.booked_count || 0,
+                views_count: views,
+                views: views,
+                thumbnail_url: offer.thumbnail_url || null,
+                image_url: offer.image_url || offer.thumbnail_url || null,
+                created_at: offer.created_at,
+                updated_at: offer.updated_at,
+                stream_started_at: offer.stream_started_at || null
+            };
+        });
+
+        res.json(formatted);
+    } catch (error) {
+        logger.error('خطأ في جلب دروس الأستاذ:', error.message);
+        res.status(500).json([]);
+    }
+});
+
+// ============================================================
+// ✅ جلب جدول حصص البث المجدولة لدرس معين
+// ============================================================
+router.get(['/offer/:offer_id/sessions', '/teacher/offer/:offer_id/sessions'], async (req, res) => {
+    try {
+        const offer_id = parseInt(req.params.offer_id);
+        const { data: offer, error: offerError } = await supabase
+            .from('offers')
+            .select('id, subject_name, plan_type, total_sessions, session_duration, price_per_session, sessions_schedule, completed_sessions_count, actual_duration, stream_active')
+            .eq('id', offer_id)
+            .single();
+
+        if (offerError || !offer) {
+            return res.status(404).json({ success: false, error: 'الدرس غير موجود' });
+        }
+
+        const { parsedSchedule, totalSessions, planType } = parseOfferPlanAndSchedule(offer);
+
+        // جلب من جدول stream_sessions إن وجد، وإلا إرجاع sessions_schedule المخزن
+        const { data: streamSessions, error: ssError } = await supabase
+            .from('stream_sessions')
+            .select('*')
+            .eq('offer_id', offer_id)
+            .order('session_number', { ascending: true });
+
+        // تصفية وتفادي تكرار الحصص (Deduplicate streamSessions by session_number)
+        const uniqueSessionsMap = new Map();
+        if (streamSessions && streamSessions.length > 0) {
+            streamSessions.forEach(s => {
+                if (!uniqueSessionsMap.has(s.session_number)) {
+                    uniqueSessionsMap.set(s.session_number, s);
+                } else {
+                    const existing = uniqueSessionsMap.get(s.session_number);
+                    if (s.status === 'completed' || s.is_escrow_released) {
+                        uniqueSessionsMap.set(s.session_number, s);
+                    }
+                }
+            });
+        }
+
+        const sessions = uniqueSessionsMap.size > 0 
+            ? Array.from(uniqueSessionsMap.values()).sort((a, b) => a.session_number - b.session_number)
+            : parsedSchedule;
+
+        res.json({
+            success: true,
+            offer_id: offer.id,
+            offer: {
+                ...offer,
+                plan_type: planType,
+                total_sessions: totalSessions,
+                sessions_schedule: parsedSchedule
+            },
+            plan_type: planType,
+            total_sessions: totalSessions,
+            completed_sessions_count: Number(offer.completed_sessions_count || 0),
+            sessions: sessions
+        });
+    } catch (error) {
+        logger.error('خطأ في جلب حصص الدرس:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
+// ✅ حذف درس
+// ============================================================
+router.delete('/offer/delete/:offer_id', authenticate, authorize(['teacher']), [
+    param('offer_id').isInt().withMessage('معرف الدرس غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const offer_id = parseInt(req.params.offer_id);
+        const teacher_id = req.user.userId;
+
+        const offer = await getOne('offers', 'id', offer_id);
+        if (!offer) {
+            return res.status(404).json({ success: false, error: 'الدرس غير موجود' });
+        }
+
+        if (teacher_id === -1 || teacher_id === '-1' || req.user.is_guest || offer.teacher_id !== teacher_id) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك بحذف هذا الدرس' });
+        }
+
+        // ✅ التحقق مما إذا كان العرض منتهياً بالكامل لجميع الحصص
+        const isEnded = Boolean(
+            offer.status === 'ended' || 
+            (offer.completed_sessions_count !== null && 
+             offer.completed_sessions_count !== undefined && 
+             offer.total_sessions !== null && 
+             offer.total_sessions !== undefined && 
+             offer.completed_sessions_count >= offer.total_sessions)
+        );
+
+        if (!isEnded) {
+            // ✅ منع حذف الدرس إذا كان هناك طلاب مشتركين فيه (للدروس غير المنتهية فقط)
+            const { data: activeSessions } = await supabase
+                .from('sessions')
+                .select('id, student_id, payment_amount, teacher_earned, refunded_amount, payment_status')
+                .eq('offer_id', offer_id)
+                .in('payment_status', ['paid', 'pending_stream']);
+
+            const { data: activeSubs } = await supabase
+                .from('stream_subscriptions')
+                .select('id')
+                .eq('offer_id', offer_id)
+                .eq('status', 'active');
+
+            if ((activeSessions && activeSessions.length > 0) || (activeSubs && activeSubs.length > 0)) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'لا يمكن حذف الدرس لوجود طلاب مشتركين فيه. يرجى إلغاء حجز جميع الطلاب المشتركين أولاً من قائمة الطلاب قبل حذف الدرس.'
+                });
+            }
+
+            // ✅ منع حذف الدرس إذا بدأت الحصة الأولى بالفعل أو تم إتمامها (للدروس غير المنتهية فقط)
+            const { hasOfferSessionsStarted } = require('../utils/refundCalculator');
+            const { hasStarted, reason } = await hasOfferSessionsStarted({ offer });
+            if (hasStarted) {
+                return res.status(400).json({
+                    success: false,
+                    error: `لا يمكن حذف الدرس لأن الحصة الأولى قد بدأت بالفعل أو انتهت. (${reason})`
+                });
+            }
+        }
+
+        try {
+            // استرداد كامل للطلاب عند حذف الدرس من قبل الأستاذ عبر نظام البث
+            await processStreamPayments(offer_id, true);
+        } catch (refundError) {
+            logger.error('❌ خطأ أثناء معالجة الاستردادات عند الحذف:', refundError.message);
+        }
+
+        // ✅ أرشفة وسجل تفاصيل البث المحذوف كدليل قاطع للمدير قبل الحذف
+        try {
+            await archiveStreamLog(offer_id, 'deleted', teacher_id);
+        } catch (archErr) {
+            logger.error('⚠️ خطأ في أرشفة الدرس المحذوف:', archErr.message);
+        }
+
+        // ✅ حذف البيانات المرتبطة
+        const tables = [
+            'active_stream', 
+            'waiting_room', 
+            'student_room_passwords', 
+            'stream_verification', 
+            'stream_chat_messages', 
+            'stream_mutes',
+            'sessions'
+        ];
+        for (const table of tables) {
+            try {
+                await supabase.from(table).delete().eq('offer_id', offer_id);
+            } catch (e) {
+                logger.error(`خطأ في حذف بيانا�� ${table}:`, e.message);
+            }
+        }
+
+        // ✅ حذف الإشعارات المرتبطة
+        try {
+            await supabase.from('notifications').delete().eq('offer_id', offer_id);
+        } catch (e) {
+            logger.error('خطأ في حذف الإشعارات:', e.message);
+        }
+
+        // ✅ حذف الدرس
+        const { error: deleteError } = await supabase
+            .from('offers')
+            .delete()
+            .eq('id', offer_id);
+
+        if (deleteError) {
+            logger.error('❌ خطأ في حذف الدرس:', deleteError);
+            return res.status(500).json({ success: false, error: deleteError.message });
+        }
+
+        res.json({ 
+            success: true, 
+            message: 'تم حذف الدرس بنجاح'
+        });
+    } catch (error) {
+        logger.error('خطأ في حذف الدرس:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// ✅ جلب قائمة الطلاب الحاديين/المسجلين في درس معين (للأستاذ)
+// ============================================================
+router.get(['/offer/:offer_id/students', '/teacher/offer/:offer_id/students'], authenticate, authorize(['teacher', 'admin']), [
+    param('offer_id').isInt().withMessage('معرف الدرس غير صالح')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const offer_id = parseInt(req.params.offer_id);
+        const offer = await getOne('offers', 'id', offer_id);
+
+        if (!offer) {
+            return res.status(404).json({ success: false, error: 'الدرس غير موجود' });
+        }
+
+        // التحقق من الملكية إذا كان المستخدم أستاذ
+        if (req.user.role === 'teacher' && offer.teacher_id !== req.user.userId) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك برؤية طلاب هذا الدرس' });
+        }
+
+        const { data: sessions, error: sessionsError } = await supabase
+            .from('sessions')
+            .select(`
+                id,
+                student_id,
+                offer_id,
+                payment_status,
+                payment_amount,
+                created_at,
+                students:student_id (
+                    id,
+                    full_name,
+                    email,
+                    phone,
+                    education_level,
+                    profile_image,
+                    profile_url
+                )
+            `)
+            .eq('offer_id', offer_id)
+            .in('payment_status', ['paid', 'pending_stream'])
+            .order('created_at', { ascending: false });
+
+        if (sessionsError) {
+            logger.error('خطأ في جلب طلاب الدرس:', sessionsError.message);
+            return res.status(500).json({ success: false, error: 'حدث خطأ في قاعدة البيانات' });
+        }
+
+        const students = await Promise.all((sessions || []).map(async (s) => {
+            const studentInfo = s.students || {};
+            let profileImg = studentInfo.profile_url || studentInfo.profile_image;
+            if (profileImg && !profileImg.startsWith('http')) {
+                profileImg = getPublicImageUrl('profiles', 'students', profileImg);
+            }
+
+            // حساب المبلغ المسترد الصافي بدقة لكل طالب
+            const refundDetails = await calculateBookingRefundDetails({
+                session: s,
+                offer,
+                studentId: s.student_id
+            });
+
+            return {
+                session_id: s.id,
+                student_id: s.student_id,
+                student_name: studentInfo.full_name || 'طالب منصة',
+                student_email: studentInfo.email || '',
+                student_phone: studentInfo.phone || 'غير متوفر',
+                student_education_level: studentInfo.education_level || 'غير محدد',
+                profile_image: profileImg,
+                payment_status: s.payment_status,
+                payment_amount: s.payment_amount || 0,
+                refundable_amount: refundDetails.netRefundAmount,
+                base_amount: refundDetails.baseRefundableWithoutFee,
+                platform_fee: refundDetails.platformFee,
+                previously_refunded: refundDetails.previouslyRefunded,
+                refund_details: refundDetails.details,
+                booked_at: s.created_at
+            };
+        }));
+
+        return res.json({
+            success: true,
+            offer: {
+                id: offer.id,
+                subject_name: offer.subject_name,
+                booked_count: students.length
+            },
+            students: students
+        });
+    } catch (error) {
+        logger.error('خطأ في جلب قائمة طلاب الدرس:', error.message);
+        return res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ============================================================
+// ✅ جلب مستويات التعليم المتاحة (للفلترة)
+// ============================================================
+router.get('/education-levels', async (req, res) => {
+    try {
+        const { data: offers, error } = await supabase
+            .from('offers')
+            .select('education_level')
+            .not('education_level', 'is', null)
+            .neq('education_level', '');
+
+        if (error) throw error;
+
+        const levels = [...new Set(offers.map(o => o.education_level).filter(Boolean))];
+
+        const levelMap = {
+            'primary_all': 'التعليم الابتدائي',
+            'primary_1': 'السنة الأولى ابتدا��ي',
+            'primary_2': 'السنة الثانية ابتدائي',
+            'primary_3': 'السنة الثالثة ابتدائي',
+            'primary_4': 'السنة الرابعة ابتدائي',
+            'primary_5': 'السنة الخامسة ابتدائي',
+            '5eme_pri': 'خامسة ابتدائي',
+            'middle_all': 'التعليم المتوسط',
+            '1ere_am': 'أولى متوسط',
+            '2eme_am': 'ثانية متوسط',
+            '3eme_am': 'ثالثة متوسط',
+            '4eme_am': 'رابعة متوسط (BEM)',
+            'bem': 'رابعة متوسط (BEM)',
+            'secondary_all': 'التعليم الثانوي',
+            '1ere_as': 'أولى ثانوي',
+            '2eme_as': 'ثانية ثانوي',
+            '3eme_as': 'ثالثة ثانوي (BAC)',
+            'bac': 'ثالثة ثانوي (BAC)',
+            'university': 'تع��ي�� جامعي / عالي',
+            '1ere_uni': 'أولى جامعي (L1)',
+            '2eme_uni': 'ثانية جامعي (L2)',
+            '2ere_uni': 'ثانية جامعي (L2)',
+            '3eme_uni': 'ثالثة جامعي (L3)',
+            '3ere_uni': 'ثالثة جامعي (L3)',
+            'master': 'ماستر',
+            'doctorat': 'دكتوراه',
+            'other': 'مستوى آخر'
+        };
+
+        const formattedLevels = levels.map(level => ({
+            value: level,
+            label: levelMap[level] || level
+        }));
+
+        res.json(formattedLevels);
+    } catch (error) {
+        logger.error('خطأ في جلب مستويات التعليم:', error.message);
+        res.status(500).json([]);
+    }
+});
+
+// ============================================================
+// ✅ عدد الدروس المباشرة الجديدة غير المشاهدة
+// ============================================================
+router.get('/unread-count', async (req, res) => {
+    try {
+        const { last_viewed } = req.query;
+
+        let query = supabase
+            .from('offers')
+            .select('id', { count: 'exact', head: true });
+
+        if (last_viewed && last_viewed !== 'null' && last_viewed !== 'undefined' && last_viewed !== '') {
+            query = query.gt('created_at', last_viewed);
+        } else {
+            const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+            query = query.gt('created_at', oneDayAgo);
+        }
+
+        const { count, error: countErr } = await query;
+        if (countErr && countErr.code !== 'PGRST116') throw countErr;
+
+        res.json({
+            success: true,
+            unread_count: count || 0
+        });
+    } catch (error) {
+        logger.error('Error getting unread offers count:', error.message);
+        res.json({ success: true, unread_count: 0 });
+    }
+});
+
+// ============================================================
+// ✅ تحديث أو حفظ رابط Google Meet للدرس وإشعار الطلاب فوراً
+// ============================================================
+router.post('/:id/update-meet-url', authenticate, authorize(['teacher', 'admin']), async (req, res) => {
+    try {
+        const offerId = req.params.id;
+        const { meet_url, notify_students } = req.body;
+        const teacherId = req.user.userId;
+
+        const { data: offer, error: fetchErr } = await supabase
+            .from('offers')
+            .select('*')
+            .eq('id', offerId)
+            .single();
+
+        if (fetchErr || !offer) {
+            return res.status(404).json({ success: false, error: 'الدرس غير موجود' });
+        }
+
+        if (req.user.role === 'teacher' && parseInt(offer.teacher_id) !== parseInt(teacherId)) {
+            return res.status(403).json({ success: false, error: 'غير مصرح لك بتعديل هذا الدرس' });
+        }
+
+        const formattedUrl = formatMeetOrZoomUrl(meet_url);
+        if (!formattedUrl) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'الرابط غير صالح. يرجى إدخال رابط Google Meet صحيح أو رابط غرفة Zoom.' 
+            });
+        }
+
+        const isZoom = formattedUrl.includes('zoom.us') || formattedUrl.includes('zoom.com');
+        const updateData = {
+            meet_url: formattedUrl,
+            stream_url: formattedUrl,
+            room_name: formattedUrl,
+            stream_platform: isZoom ? 'zoom' : 'google_meet',
+            updated_at: new Date().toISOString()
+        };
+
+        const { error: updateErr } = await supabase
+            .from('offers')
+            .update(updateData)
+            .eq('id', offerId);
+
+        if (updateErr) {
+            return res.status(500).json({ success: false, error: 'تعذر حفظ رابط Google Meet في قاعدة البيانات' });
+        }
+
+        // إشعار الطلاب والمتابعين بالرابط الحقيقي
+        if (notify_students !== false) {
+            try {
+                const teacher = await getOne('teachers', 'id', offer.teacher_id);
+                const teacherName = teacher ? teacher.full_name : 'الأستاذ';
+                const notifTitle = '🔗 تم تحديد رابط Google Meet للحصة!';
+                const notifMessage = `أضاف الأستاذ ${teacherName} رابط Google Meet لحصة "${offer.subject_name}". رابط الدخول: ${formattedUrl}`;
+
+                const targetStudents = new Set();
+                const { data: followers } = await supabase
+                    .from('teacher_followers')
+                    .select('follower_id')
+                    .eq('teacher_id', offer.teacher_id)
+                    .eq('follower_type', 'student');
+                if (followers) followers.forEach(f => targetStudents.add(parseInt(f.follower_id)));
+
+                const { data: booked } = await supabase
+                    .from('sessions')
+                    .select('student_id')
+                    .eq('offer_id', offerId);
+                if (booked) booked.forEach(b => targetStudents.add(parseInt(b.student_id)));
+
+                for (const sId of targetStudents) {
+                    await supabase.from('notifications').insert({
+                        user_id: sId,
+                        user_type: 'student',
+                        title: notifTitle,
+                        message: notifMessage,
+                        offer_id: offerId,
+                        is_read: false,
+                        created_at: new Date().toISOString()
+                    });
+                    const { data: student } = await supabase.from('students').select('push_subscription').eq('id', sId).single();
+                    if (student && student.push_subscription) {
+                        sendPushNotification(student, notifTitle, notifMessage).catch(() => {});
+                    }
+                }
+            } catch (e) {
+                console.error('Error sending update notifications:', e);
+            }
+        }
+
+        res.json({
+            success: true,
+            meet_url: formattedUrl,
+            message: '✅ تم حفظ رابط Google Meet وإشعار الطلاب بنجاح!'
+        });
+    } catch (error) {
+        logger.error('Error updating meet url:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+router.parseOfferPlanAndSchedule = parseOfferPlanAndSchedule;
+router.calculateOfferRemainingSeconds = calculateOfferRemainingSeconds;
+module.exports = router;
