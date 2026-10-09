@@ -9,8 +9,22 @@ const multer = require('multer');
 
 const upload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 10 * 1024 * 1024 }
+    limits: { fileSize: 25 * 1024 * 1024 } // 25MB — متوافق مع التحقق في الواجهة
 });
+
+// ✅ معالج أخطاء رفع الملفات (حجم كبير، نوع غير مدعوم...) بدون إعادة تحميل الصفحة
+function handleUploadErrors(err, req, res, next) {
+    if (err) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({ error: 'حجم الملف كبير جداً، الحد الأقصى المسموح به هو 25 ميغابايت' });
+        }
+        if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+            return res.status(400).json({ error: 'حقل الملف غير متوقع، يرجى إعادة المحاولة' });
+        }
+        return res.status(400).json({ error: err.message || 'فشل رفع الملف، يرجى المحاولة مرة أخرى' });
+    }
+    next();
+}
 
 // Middleware للتوثيق الاختياري (للضيوف والزوار)
 function optionalAuth(req, res, next) {
@@ -743,7 +757,7 @@ router.get('/:id/messages', optionalAuth, async (req, res) => {
 });
 
 // رفع ملف PDF أو مرفق للمجموعة
-router.post('/:id/upload-file', authenticate, upload.single('file'), async (req, res) => {
+router.post('/:id/upload-file', authenticate, upload.single('file'), handleUploadErrors, async (req, res) => {
     const groupId = req.params.id;
     const userId = req.user.userId;
     const role = req.user.role;
@@ -816,7 +830,7 @@ router.post('/:id/upload-file', authenticate, upload.single('file'), async (req,
 });
 
 // إرسال رسالة للمجموعة (أستاذ أو طالب نشط) مع دعم ملفات PDF المرفقة
-router.post('/:id/messages', authenticate, upload.single('file'), async (req, res) => {
+router.post('/:id/messages', authenticate, upload.single('file'), handleUploadErrors, async (req, res) => {
     const groupId = req.params.id;
     let { message, file_url, file_name, file_size, file_type, audio_url, audio_duration, message_type, reply_to_id, reply_to_text, reply_to_sender } = req.body || {};
     const userId = req.user.userId;

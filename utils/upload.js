@@ -102,8 +102,11 @@ async function uploadToSupabase(file, folder, oldFileName = null) {
                 mimeType = 'image/jpeg';
                 logger.info(`تم ضغط صورة الملف الشخصي إلى ${Math.round(fileBuffer.length / 1024)}KB`);
             } catch (sharpErr) {
-                logger.error('فشل ضغط الصورة باستخدام sharp:', sharpErr.message);
-                throw new Error('تعذر ضغط الصورة قبل التخزين');
+                // ✅ لا نفشل الرفع إذا تعذر الضغط — نستخدم الصورة الأصلية كما هي
+                logger.warn('تعذر ضغط الصورة، سيتم رفعها بالجودة الأصلية:', sharpErr.message);
+                if (!fileBuffer || fileBuffer.length === 0) {
+                    throw new Error('الملف تالف أو غير صحيح');
+                }
             }
         }
 

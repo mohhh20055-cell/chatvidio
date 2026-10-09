@@ -1,36 +1,36 @@
-# Dependencies
+# ===== Dependencies =====
 node_modules/
+npm-debug.log*
+yarn-error.log*
+package-lock.json.bak
 
-# Build output
-dist/
-build/
-app/build/
-.gradle/
-
-# Environment files (contains secrets)
+# ===== Secrets — NEVER commit these =====
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+*.pem
+*.key
+service-account*.json
 
-# Logs
-logs/*.log
+# ===== Uploads / user generated content =====
+public/uploads/
+uploads/
+!public/uploads/.gitkeep
 
-# OS files
+# ===== Logs & temp =====
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+
+# ===== OS =====
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# IDE
-.vscode/
-.idea/
-
-# Gradle wrapper jar is kept (needed for build)
-# Keystore files
-*.keystore
-debug.keystore
-
-# APK/AAB artifacts
-*.apk
-*.aab
-public/downloads/*.apk
-node-compile-cache/
-*.hm
+# ===== Local tooling / test artifacts =====
+test-server.js
+cleanup-*.js
+check-*.js
+fix-*.js
