@@ -6350,6 +6350,7 @@
 
         if (section === 'profile') updateProfileSection();
         else if (section === 'community-channels') loadCommunityChannels();
+        else if (section === 'memorization') initMemorizationTool();
         else if (section === 'offers') loadOffers();
         else if (section === 'exercises') loadExercises();
         else if (section === 'posts') {
@@ -15246,8 +15247,8 @@ window.addEventListener("offline", function() {
                 renderMemoSessionHistory();
             }
         }
-    </script>
-        // Initialize when section is shown
+
+        // Initialize when DOM loads
         document.addEventListener('DOMContentLoaded', () => {
             initMemorizationTool();
         });
