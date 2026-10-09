@@ -3654,6 +3654,9 @@
                     <i class="fas fa-book-open"></i>
                     <span class="tab-label">التمارين والحلول</span>
                 </button>
+                <button class="nav-tab" data-section="memorization" onclick="showSection('memorization')" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.2)); border: 1.5px solid rgba(16, 185, 129, 0.4); color: #059669; font-weight: 900;">
+                    <i class="fas fa-microphone-lines"></i> المحفظ الذكي 🎙️
+                </button>
                 <button class="nav-tab" data-section="offers" onclick="showSection('offers')">
                     <i class="fas fa-calendar-alt"></i>
                     <span class="tab-label">ZoomDz Live</span>
@@ -14694,25 +14697,41 @@ window.addEventListener("offline", function() {
 </script>
 \n
     <!-- ================================================================ -->
-    <!-- ✅ SMART MEMORIZATION & PRONUNCIATION TOOL SECTION -->
+    <!-- ✅ ADVANCED SMART MEMORIZATION & PRONUNCIATION TOOL SECTION -->
     <!-- ================================================================ -->
     <div id="memorizationSection" class="dashboard-section card" style="display: none; padding: 24px; max-width: 950px; margin: 20px auto;" dir="rtl">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
             <div>
                 <h2 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-microphone-lines" style="color: #10b981;"></i> المحفظ الذكي وتصحيح النطق الصوتي (ZoomDZ)
+                    <i class="fas fa-microphone-lines" style="color: #10b981;"></i> المحفظ الذكي وتصحيح النطق الصوتي التفاعلي (ZoomDZ)
                 </h2>
-                <p style="font-size: 0.85rem; color: #64748b;">تحدث وصحح نطقك بالإنجليزية أو احفظ نصوص التاريخ والجغرافيا والتربية الإسلامية مع حفظ الجلسات في سجلك وتخزينها في قاعدة البيانات.</p>
+                <p style="font-size: 0.85rem; color: #64748b;">تدريج ذكي يبدأ بالكلمات ثم الجمل البسيطة فالدورات والنصوص المتقدمة، مع التلوين في الوقت الفعلي ووضع التسميع الخفي من الذاكرة وإضافة ملفات PDF أو النصوص الخاصة بك.</p>
             </div>
-            <div style="display: flex; gap: 8px;">
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                 <button onclick="switchMemoMode('english')" id="memoEngBtn" style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 0.8rem; cursor: pointer; font-family: 'Cairo';">وضع الإنجليزية</button>
                 <button onclick="switchMemoMode('arabic')" id="memoArBtn" style="background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 0.8rem; cursor: pointer; font-family: 'Cairo';">وضع الحفظ العربي</button>
+                <button onclick="openCustomMemoModal()" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 0.8rem; cursor: pointer; font-family: 'Cairo'; display: inline-flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-file-pdf"></i> إضافة نص/PDF مخصص
+                </button>
+            </div>
+        </div>
+
+        <!-- Difficulty Levels Bar -->
+        <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; background: #f8fafc; padding: 12px; border-radius: 14px; border: 1px solid #e2e8f0;">
+            <span style="font-size: 0.85rem; font-weight: 800; color: #334155;"><i class="fas fa-layer-group" style="color: #2563eb;"></i> مستوى التدريج:</span>
+            <button onclick="setMemoLevel('words')" id="memoLevelWords" style="padding: 6px 14px; border-radius: 10px; border: 1.5px solid #2563eb; background: #2563eb; color: white; font-weight: 700; font-size: 0.78rem; cursor: pointer;">1. مستوى الكلمات</button>
+            <button onclick="setMemoLevel('sentences')" id="memoLevelSentences" style="padding: 6px 14px; border-radius: 10px; border: 1.5px solid #cbd5e1; background: white; color: #334155; font-weight: 700; font-size: 0.78rem; cursor: pointer;">2. جمل بسيطة</button>
+            <button onclick="setMemoLevel('advanced')" id="memoLevelAdvanced" style="padding: 6px 14px; border-radius: 10px; border: 1.5px solid #cbd5e1; background: white; color: #334155; font-weight: 700; font-size: 0.78rem; cursor: pointer;">3. نصوص متقدمة</button>
+            <div style="margin-right: auto; display: flex; align-items: center; gap: 8px;">
+                <button onclick="toggleHiddenMemorizationMode()" id="memoHiddenModeToggle" style="background: #fef3c7; color: #d97706; border: 1.5px solid #f59e0b; padding: 6px 12px; border-radius: 10px; font-weight: 800; font-size: 0.78rem; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
+                    <i class="fas fa-eye-slash"></i> وضع التسميع الخفي (من الذاكرة)
+                </button>
             </div>
         </div>
 
         <!-- Presets Selector -->
         <div style="margin-bottom: 16px;">
-            <label style="font-size: 0.82rem; font-weight: 700; color: #334155; margin-bottom: 6px; display: block;">اختر نصاً للتمرن عليه:</label>
+            <label style="font-size: 0.82rem; font-weight: 700; color: #334155; margin-bottom: 6px; display: block;">اختر نصاً أو درساً للتمرن عليه:</label>
             <div id="memoPresetsContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px;">
                 <!-- Populated via JS -->
             </div>
@@ -14720,18 +14739,25 @@ window.addEventListener("offline", function() {
 
         <!-- Target Text Box -->
         <div style="background: #0f172a; color: white; border-radius: 16px; padding: 22px; margin-bottom: 20px; position: relative; overflow: hidden;">
-            <div id="memoModeLabel" style="font-size: 0.75rem; font-weight: 700; color: #38bdf8; margin-bottom: 6px; text-transform: uppercase;">English Pronunciation Mode</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <div id="memoModeLabel" style="font-size: 0.75rem; font-weight: 700; color: #38bdf8; text-transform: uppercase;">English Pronunciation Mode</div>
+                <div id="memoHiddenBadge" style="display: none; background: #f59e0b; color: #0f172a; padding: 2px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 900;">🔒 وضع التسميع الخفي مفعل</div>
+            </div>
             <p id="memoTargetTextDisplay" style="font-size: 1.15rem; font-weight: 700; line-height: 1.6; margin-bottom: 10px;" dir="ltr">Welcome to ZoomDZ, the ultimate e-learning platform for students across Algeria.</p>
             <div id="memoTranslationDisplay" style="font-size: 0.88rem; color: #94a3b8; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">الترجمة: مرحباً بك في ZoomDZ، منصة التعلم الإلكتروني المثالية للطلاب في جميع أنحاء الجزائر.</div>
         </div>
 
-        <!-- Recorder Stage -->
+        <!-- Recorder Stage with Real-Time Highlighting -->
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; text-align: center; margin-bottom: 20px;">
-            <div id="memoActionStatus" style="font-weight: 800; color: #1e293b; font-size: 0.95rem; margin-bottom: 16px;">اضغط على الزر وابدأ القراءة بصوت عالٍ</div>
+            <div id="memoActionStatus" style="font-weight: 800; color: #1e293b; font-size: 0.95rem; margin-bottom: 16px;">اضغط على الزر وابدأ القراءة بصوت عالٍ (يتم التلوين والتحليل في الوقت الفعلي)</div>
             <button id="memoRecordBtn" onclick="toggleMemoSpeechRecording()" style="width: 72px; height: 72px; border-radius: 50%; background: #10b981; color: white; border: none; font-size: 1.6rem; cursor: pointer; box-shadow: 0 8px 20px rgba(16,185,129,0.35); display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s;">
                 <i class="fas fa-microphone"></i>
             </button>
-            <div id="memoLiveTranscript" style="margin-top: 16px; padding: 12px; background: white; border-radius: 10px; border: 1px solid #cbd5e1; display: none; text-align: right; font-size: 0.88rem; color: #334155;"></div>
+            <div id="memoLiveTranscript" style="margin-top: 16px; padding: 14px; background: white; border-radius: 12px; border: 1.5px solid #cbd5e1; display: none; text-align: right; font-size: 0.92rem; color: #334155; line-height: 1.8;">
+                <span style="font-weight: 700; color: #10b981; display: block; margin-bottom: 4px;"><i class="fas fa-waveform"></i> ما تنطقه الآن (في الوقت الفعلي):</span>
+                <span id="memoLiveTextContent">جاري الاستماع...</span>
+            </div>
+            <div id="memoCoachAlert" style="margin-top: 12px; display: none; padding: 10px; background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; border-radius: 10px; font-weight: 800; font-size: 0.85rem;"></div>
         </div>
 
         <!-- Results Box -->
@@ -14748,7 +14774,7 @@ window.addEventListener("offline", function() {
         <div style="background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 22px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
                 <h3 style="font-size: 1rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 6px;">
-                    <i class="fas fa-history" style="color: #10b981;"></i> سجل الجلسات السابقة للطالب
+                    <i class="fas fa-history" style="color: #10b981;"></i> سجل الجلسات السابقة وتدرج الطالب في الحفظ
                 </h3>
                 <button onclick="clearMemoSessionHistory()" style="background: #fee2e2; color: #dc2626; border: none; padding: 5px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 700; cursor: pointer;">مسح السجل</button>
             </div>
@@ -14757,26 +14783,81 @@ window.addEventListener("offline", function() {
             </div>
         </div>
     </div>
+
+    <!-- Custom Text / PDF Import Modal -->
+    <div id="customMemoModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15,23,42,0.7); z-index: 100000; justify-content: center; align-items: center; padding: 16px;">
+        <div style="background: white; max-width: 550px; width: 100%; border-radius: 20px; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);" dir="rtl">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="font-size: 1.1rem; font-weight: 800; color: #0f172a;"><i class="fas fa-file-pdf" style="color: #10b981;"></i> إضافة نص أو محفظ PDF مخصص للدرس</h3>
+                <button onclick="closeCustomMemoModal()" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <div style="margin-bottom: 14px;">
+                <label style="font-size: 0.82rem; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">عنوان الدرس أو النص:</label>
+                <input type="text" id="customMemoTitle" placeholder="مثال: درس العلوم الطبيعية - الوراثة" style="width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 10px; outline: none; font-family: 'Cairo';" />
+            </div>
+            <div style="margin-bottom: 14px;">
+                <label style="font-size: 0.82rem; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">رفع ملف (ملف نصي أو استخراج محتوى PDF):</label>
+                <input type="file" id="customMemoFile" accept=".txt,.pdf,.doc,.docx" onchange="handleCustomMemoFileUpload(event)" style="width: 100%; padding: 8px; border: 1px dashed #cbd5e1; border-radius: 10px; background: #f8fafc;" />
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label style="font-size: 0.82rem; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">أو لصق النص المراد حفظه وتسميعه:</label>
+                <textarea id="customMemoTextContent" rows="5" placeholder="ألصق النص هنا..." style="width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 10px; outline: none; font-family: 'Cairo'; resize: vertical;"></textarea>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button onclick="closeCustomMemoModal()" style="background: #f1f5f9; color: #334155; border: none; padding: 8px 16px; border-radius: 10px; font-weight: 700; cursor: pointer;">إلغاء</button>
+                <button onclick="saveCustomMemoLesson()" style="background: #10b981; color: white; border: none; padding: 8px 20px; border-radius: 10px; font-weight: 800; cursor: pointer;">حفظ وبدء التسميع الآلي</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // ZoomDZ Smart Memorization & Pronunciation Tool Engine
+        // ZoomDZ Advanced Smart Memorization & Pronunciation Tool Engine
         let currentMemoMode = 'english';
+        let currentMemoLevel = 'words'; // 'words', 'sentences', 'advanced'
         let currentMemoPresetIndex = 0;
         let isMemoRecording = false;
         let memoRecognition = null;
+        let isHiddenMemoMode = false;
+        let customMemoLessons = [];
 
-        const MEMO_ENGLISH_PRESETS = [
-            { title: 'Welcome & Introduction', text: 'Welcome to ZoomDZ, the ultimate e-learning platform for students across Algeria.', translation: 'مرحباً بك في ZoomDZ، منصة التعلم الإلكتروني المثالية للطلاب في جميع أنحاء الجزائر.' },
-            { title: 'Daily English Practice', text: 'Practice makes perfect when learning English pronunciation and mastering speaking skills.', translation: 'الممارسة تؤدي إلى الإتقان عند تعلم النطق باللغة الإنجليزية وإتقان مهارات التحدث.' },
-            { title: 'Inspirational Quote', text: 'Education is the most powerful weapon which you can use to change the world.', translation: 'التعليم هو السلاح الأقوى الذي يمكنك استخدامه لتغيير العالم.' }
-        ];
-
-        const MEMO_ARABIC_PRESETS = [
-            { title: 'تاريخ الجزائر: اندلاع الثورة', text: 'اندلعت الثورة الجزائرية الكبرى في أول نوفمبر عام 1954 ضد الاستعمار الفرنسي لتحقيق الاستقلال واسترجاع السيادة الوطنية.', category: 'تاريخ' },
-            { title: 'جغرافيا الجزائر: التضاريس والمناخ', text: 'تتميز الجزائر بتنوع جغرافي كبير يضم شريطاً ساحلياً خصباً وسهولاً عليا داخلية والصحراء الكبرى الشاسعة.', category: 'جغرافيا' },
-            { title: 'تربية إسلامية: مكارم الأخلاق', text: 'قال رسول الله صلى الله عليه وسلم إنما بعثت لأتمم مكارم الأخلاق، وحثنا الدين الإسلامي على الصدق والأمانة وبر الوالدين.', category: 'تربية إسلامية' }
-        ];
+        const MEMO_LEVELS_DATA = {
+            words: {
+                english: [
+                    { title: 'Level 1: Basic Words', text: 'Education Student Teacher School Knowledge Book Science Learning Success.', translation: 'مفردات أساسية: تعليم، طالب، أستاذ، مدرسة، معرفة، كتاب، علوم، تعلم، نجاح.' },
+                    { title: 'Level 1: Core Verbs', text: 'Read Write Speak Listen Learn Practice Memorize Understand Think Success.', translation: 'أفعال أساسية: اقرأ، اكتب، تحدث، استمع، تعلم، مارس، احفظ، افهم، فكر، نجاح.' }
+                ],
+                arabic: [
+                    { title: 'مستوى 1: كلمات تاريخية مفتاحية', text: 'الثورة الاستعمار الاستقلال السيادة الحرية النصر الجزائر نوفمبر.', category: 'تاريخ' },
+                    { title: 'مستوى 1: قيم وتربية إسلامية', text: 'الصدق الأمانة البر التقوى الأخلاق الإحسان الإخلاص الصبر.', category: 'تربية إسلامية' }
+                ]
+            },
+            sentences: {
+                english: [
+                    { title: 'Level 2: Simple Sentences', text: 'I am a student at ZoomDZ. We learn English every single day with professional teachers.', translation: 'أنا طالب في منصة ZoomDZ. نتعلم الإنجليزية كل يوم مع أساتذة محترفين.' },
+                    { title: 'Level 2: Pronunciation Sentences', text: 'Speaking English fluently requires daily practice and listening to native speakers.', translation: 'التحدث بالإنجليزية بطلاقة يتطلب ممارسة يومية والاستماع إلى متحدثين أصليين.' }
+                ],
+                arabic: [
+                    { title: 'مستوى 2: جمل تاريخية بسيطة', text: 'اندلعت الثورة الجزائرية الكبرى في أول نوفمبر 1954 لتحقيق الاستقلال.', category: 'تاريخ' },
+                    { title: 'مستوى 2: آيات وحكم قصيرة', text: 'قال الله تعالى وقل رب زدني علما. إن مع العسر يسرا.', category: 'تربية إسلامية' }
+                ]
+            },
+            advanced: {
+                english: [
+                    { title: 'Level 3: Advanced Passages', text: 'Welcome to ZoomDZ, the ultimate e-learning platform for students across Algeria. Practice makes perfect when learning English pronunciation and mastering speaking skills.', translation: 'مرحباً بك في ZoomDZ، منصة التعلم الإلكتروني المثالية للطلاب في الجزائر. الممارسة تؤدي إلى الإتقان.' },
+                    { title: 'Level 3: Inspirational Speech', text: 'Education is the most powerful weapon which you can use to change the world. Knowledge empowers every single individual.', translation: 'التعليم هو السلاح الأقوى الذي يمكنك استخدامه لتغيير العالم. المعرفة تمكن كل فرد.' }
+                ],
+                arabic: [
+                    { title: 'مستوى 3: نصوص التاريخ الكبرى', text: 'اندلعت الثورة الجزائرية الكبرى في أول نوفمبر عام 1954 ضد الاستعمار الفرنسي لتحقيق الاستقلال واسترجاع السيادة الوطنية وبناء الجزائر الحرة.', category: 'تاريخ' },
+                    { title: 'مستوى 3: جغرافيا وتربية', text: 'تتميز الجزائر بتنوع جغرافي كبير يضم شريطاً ساحلياً خصباً وسهولاً عليا داخلية والصحراء الكبرى الشاسعة ومكارم الأخلاق.', category: 'جغرافيا وعامة' }
+                ]
+            }
+        };
 
         function initMemorizationTool() {
+            try {
+                const savedCustom = localStorage.getItem('zoomdz_custom_memo_lessons');
+                if (savedCustom) customMemoLessons = JSON.parse(savedCustom);
+            } catch(e) {}
             renderMemoPresets();
             renderMemoTargetContent();
             renderMemoSessionHistory();
@@ -14794,18 +14875,71 @@ window.addEventListener("offline", function() {
             document.getElementById('memoResultCard').style.display = 'none';
         }
 
+        function setMemoLevel(level) {
+            currentMemoLevel = level;
+            currentMemoPresetIndex = 0;
+            ['words', 'sentences', 'advanced'].forEach(lvl => {
+                const btn = document.getElementById('memoLevel' + lvl.charAt(0).toUpperCase() + lvl.slice(1));
+                if (btn) {
+                    btn.style.background = lvl === level ? '#2563eb' : 'white';
+                    btn.style.color = lvl === level ? 'white' : '#334155';
+                    btn.style.borderColor = lvl === level ? '#2563eb' : '#cbd5e1';
+                }
+            });
+            renderMemoPresets();
+            renderMemoTargetContent();
+            document.getElementById('memoResultCard').style.display = 'none';
+        }
+
+        function toggleHiddenMemorizationMode() {
+            isHiddenMemoMode = !isHiddenMemoMode;
+            const btn = document.getElementById('memoHiddenModeToggle');
+            const badge = document.getElementById('memoHiddenBadge');
+            const targetEl = document.getElementById('memoTargetTextDisplay');
+            const item = getCurrentMemoItem();
+
+            if (btn) {
+                btn.style.background = isHiddenMemoMode ? '#f59e0b' : '#fef3c7';
+                btn.style.color = isHiddenMemoMode ? '#0f172a' : '#d97706';
+                btn.innerHTML = isHiddenMemoMode ? '<i class="fas fa-eye"></i> إلغاء وضع التسميع الخفي' : '<i class="fas fa-eye-slash"></i> وضع التسميع الخفي (من الذاكرة)';
+            }
+            if (badge) badge.style.display = isHiddenMemoMode ? 'block' : 'none';
+            if (targetEl) {
+                if (isHiddenMemoMode) {
+                    targetEl.textContent = '🔒 وضع التسميع الخفي مفعل. اختبر حفظك الآن وتلْو أو اقرأ الدرس من الذاكرة دون رؤية النص!';
+                    targetEl.style.color = '#fbbf24';
+                } else {
+                    targetEl.textContent = item.text;
+                    targetEl.style.color = 'white';
+                }
+            }
+        }
+
+        function getCurrentMemoList() {
+            if (currentMemoPresetIndex >= 1000 && customMemoLessons.length > 0) {
+                return customMemoLessons;
+            }
+            const lvlMap = MEMO_LEVELS_DATA[currentMemoLevel] || MEMO_LEVELS_DATA.words;
+            return currentMemoMode === 'english' ? lvlMap.english : lvlMap.arabic;
+        }
+
         function getCurrentMemoItem() {
-            const list = currentMemoMode === 'english' ? MEMO_ENGLISH_PRESETS : MEMO_ARABIC_PRESETS;
+            if (currentMemoPresetIndex >= 1000 && customMemoLessons.length > 0) {
+                return customMemoLessons[currentMemoPresetIndex - 1000] || customMemoLessons[0];
+            }
+            const list = getCurrentMemoList();
             return list[currentMemoPresetIndex] || list[0];
         }
 
         function renderMemoPresets() {
             const container = document.getElementById('memoPresetsContainer');
             if (!container) return;
-            const list = currentMemoMode === 'english' ? MEMO_ENGLISH_PRESETS : MEMO_ARABIC_PRESETS;
-            container.innerHTML = list.map((item, idx) => `
-                <button onclick="selectMemoPreset(${idx})" style="text-align: right; padding: 10px 14px; border-radius: 12px; border: 1.5px solid ${idx === currentMemoPresetIndex ? '#10b981' : '#cbd5e1'}; background: ${idx === currentMemoPresetIndex ? '#ecfdf5' : '#ffffff'}; cursor: pointer; font-family: 'Cairo'; transition: all 0.2s;">
-                    <div style="font-weight: 800; font-size: 0.85rem; color: #0f172a; margin-bottom: 2px;">${item.title}</div>
+            const list = getCurrentMemoList();
+            const allItems = [...customMemoLessons.map((item, idx) => ({ ...item, isCustom: true, customIndex: idx + 1000 })), ...list];
+
+            container.innerHTML = allItems.map((item, idx) => `
+                <button onclick="selectMemoPreset(${item.isCustom ? item.customIndex : idx})" style="text-align: right; padding: 10px 14px; border-radius: 12px; border: 1.5px solid ${idx === currentMemoPresetIndex ? '#10b981' : '#cbd5e1'}; background: ${idx === currentMemoPresetIndex ? '#ecfdf5' : '#ffffff'}; cursor: pointer; font-family: 'Cairo'; transition: all 0.2s;">
+                    <div style="font-weight: 800; font-size: 0.85rem; color: #0f172a; margin-bottom: 2px;">${item.isCustom ? '⭐ [مخصص] ' : ''}${item.title}</div>
                     <div style="font-size: 0.75rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" dir="${currentMemoMode === 'english' ? 'ltr' : 'rtl'}">${item.text}</div>
                 </button>
             `).join('');
@@ -14824,19 +14958,75 @@ window.addEventListener("offline", function() {
             const targetEl = document.getElementById('memoTargetTextDisplay');
             const transEl = document.getElementById('memoTranslationDisplay');
 
-            if (label) label.textContent = currentMemoMode === 'english' ? 'English Pronunciation Mode' : 'وضع الحفظ والتلاوة العربية';
+            if (label) label.textContent = currentMemoMode === 'english' ? ('English Pronunciation Mode - ' + currentMemoLevel) : ('وضع الحفظ والتلاوة العربية - ' + currentMemoLevel);
             if (targetEl) {
-                targetEl.textContent = item.text;
-                targetEl.setAttribute('dir', currentMemoMode === 'english' ? 'ltr' : 'rtl');
+                if (isHiddenMemoMode) {
+                    targetEl.textContent = '🔒 وضع التسميع الخفي مفعل. اختبر حفظك الآن وتلْو أو اقرأ الدرس من الذاكرة دون رؤية النص!';
+                    targetEl.style.color = '#fbbf24';
+                } else {
+                    targetEl.textContent = item.text;
+                    targetEl.style.color = 'white';
+                    targetEl.setAttribute('dir', currentMemoMode === 'english' ? 'ltr' : 'rtl');
+                }
             }
             if (transEl) {
-                if (currentMemoMode === 'english' && item.translation) {
+                if (currentMemoMode === 'english' && item.translation && !isHiddenMemoMode) {
                     transEl.style.display = 'block';
                     transEl.textContent = 'الترجمة: ' + item.translation;
                 } else {
                     transEl.style.display = 'none';
                 }
             }
+        }
+
+        function openCustomMemoModal() {
+            const modal = document.getElementById('customMemoModal');
+            if (modal) modal.style.display = 'flex';
+        }
+
+        function closeCustomMemoModal() {
+            const modal = document.getElementById('customMemoModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function handleCustomMemoFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+                const textA = document.getElementById('customMemoTextContent');
+                const titleA = document.getElementById('customMemoTitle');
+                if (textA) textA.value = content;
+                if (titleA && !titleA.value) titleA.value = file.name.replace(/\.[^/.]+$/, '');
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        function saveCustomMemoLesson() {
+            const titleInput = document.getElementById('customMemoTitle');
+            const textInput = document.getElementById('customMemoTextContent');
+            const title = titleInput ? titleInput.value.trim() : '';
+            const text = textInput ? textInput.value.trim() : '';
+
+            if (!title || !text) {
+                alert('يرجى إدخال عنوان الدرس والنص أو ملف PDF المراد حفظه.');
+                return;
+            }
+
+            const newLesson = { title, text, category: 'مخصص' };
+            customMemoLessons.push(newLesson);
+            try {
+                localStorage.setItem('zoomdz_custom_memo_lessons', JSON.stringify(customMemoLessons));
+            } catch(e) {}
+
+            closeCustomMemoModal();
+            currentMemoPresetIndex = 1000 + (customMemoLessons.length - 1);
+            renderMemoPresets();
+            renderMemoTargetContent();
+            if (titleInput) titleInput.value = '';
+            if (textInput) textInput.value = '';
+            alert('✨ تمت إضافة الدرس المخصص بنجاح وبدء التسميع الآلي!');
         }
 
         function sanitizeArabicText(text) {
@@ -14870,25 +15060,63 @@ window.addEventListener("offline", function() {
                 const recognition = new SpeechRecognitionAPI();
                 memoRecognition = recognition;
                 recognition.lang = currentMemoMode === 'english' ? 'en-US' : 'ar-SA';
-                recognition.interimResults = false;
+                recognition.interimResults = true; // Real-time interim results
                 recognition.maxAlternatives = 1;
 
                 isMemoRecording = true;
                 const btn = document.getElementById('memoRecordBtn');
                 const status = document.getElementById('memoActionStatus');
                 const transcriptBox = document.getElementById('memoLiveTranscript');
+                const liveTextContent = document.getElementById('memoLiveTextContent');
+                const coachAlert = document.getElementById('memoCoachAlert');
 
                 if (btn) { btn.style.background = '#dc2626'; btn.innerHTML = '<i class="fas fa-stop"></i>'; }
-                if (status) status.textContent = 'جاري الاستماع... انطق النص الآن بصوت واضح';
-                if (transcriptBox) { transcriptBox.style.display = 'block'; transcriptBox.textContent = 'جاري الاستماع...'; }
+                if (status) status.textContent = '🎙️ جاري الاستماع في الوقت الفعلي... انطق النص الآن';
+                if (transcriptBox) transcriptBox.style.display = 'block';
+                if (coachAlert) coachAlert.style.display = 'none';
+
+                let finalTranscript = '';
 
                 recognition.onresult = (event) => {
-                    const spoken = event.results[0][0].transcript;
+                    let interim = '';
+                    for (let i = event.resultIndex; i < event.results.length; ++i) {
+                        if (event.results[i].isFinal) {
+                            finalTranscript += event.results[i][0].transcript + ' ';
+                        } else {
+                            interim += event.results[i][0].transcript;
+                        }
+                    }
+
+                    const currentSpoken = (finalTranscript + interim).trim();
+                    if (liveTextContent) {
+                        liveTextContent.textContent = currentSpoken || 'جاري التحدث...';
+                    }
+
+                    // Real-time live coaching check against target words
+                    const item = getCurrentMemoItem();
+                    const targetClean = tokenizeText(item.text, currentMemoMode);
+                    const spokenClean = tokenizeText(currentSpoken, currentMemoMode);
+
+                    if (spokenClean.length > 0) {
+                        const lastSpokenWord = spokenClean[spokenClean.length - 1];
+                        const expectedNextWord = targetClean[spokenClean.length - 1];
+                        if (expectedNextWord && lastSpokenWord !== expectedNextWord) {
+                            if (coachAlert) {
+                                coachAlert.style.display = 'block';
+                                coachAlert.textContent = `⚠️ تنبيه محفظ آلي: كلمة "${lastSpokenWord}" قد تكون غير مطابقة. الصحيح هو "${expectedNextWord}". واصل القراءة!`;
+                            }
+                        } else {
+                            if (coachAlert) coachAlert.style.display = 'none';
+                        }
+                    }
+                };
+
+                recognition.onend = () => {
                     isMemoRecording = false;
                     if (btn) { btn.style.background = '#10b981'; btn.innerHTML = '<i class="fas fa-microphone"></i>'; }
-                    if (status) status.textContent = 'تم التقاط الصوت وتحليله بنجاح!';
-                    if (transcriptBox) transcriptBox.textContent = 'ما قمت بنطقه: "' + spoken + '"';
-                    evaluateMemoSpeech(spoken);
+                    if (finalTranscript.trim()) {
+                        evaluateMemoSpeech(finalTranscript.trim());
+                    }
                 };
 
                 recognition.onerror = (e) => {
@@ -14896,11 +15124,6 @@ window.addEventListener("offline", function() {
                     isMemoRecording = false;
                     if (btn) { btn.style.background = '#10b981'; btn.innerHTML = '<i class="fas fa-microphone"></i>'; }
                     if (status) status.textContent = 'حدث خطأ في التسجيل الصوتي أو تم رفض الميكروفون.';
-                };
-
-                recognition.onend = () => {
-                    isMemoRecording = false;
-                    if (btn) { btn.style.background = '#10b981'; btn.innerHTML = '<i class="fas fa-microphone"></i>'; }
                 };
 
                 recognition.start();
@@ -14952,15 +15175,21 @@ window.addEventListener("offline", function() {
                     if (c.status === 'correct') {
                         return `<span style="padding: 3px 8px; background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; border-radius: 8px; font-weight: 700;">${c.word}</span>`;
                     } else {
-                        return `<span onclick="speakMemoWord('${c.word.replace(/'/g, "")}')" style="padding: 3px 8px; background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; border-radius: 8px; font-weight: 700; text-decoration: line-through; cursor: pointer;" title="انقر للاستماع للنطق الصحيح">${c.word}</span>`;
+                        return `<span onclick="speakMemoWord('${c.word.replace(/'/g, "")}')" style="padding: 3px 8px; background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; border-radius: 8px; font-weight: 700; text-decoration: line-through; cursor: pointer;" title="انقر للاستماع للنطق الصحيح (أخطأت في هذه الكلمة)">${c.word}</span>`;
                     }
                 }).join(' ');
+            }
+
+            // Check level unlock celebration
+            if (finalAccuracy >= 80) {
+                alert('🎉 ممتاز جداً! لقد تجاوزت نسبة 80% في هذا الدرس ويمكنك الانتقال إلى مستوى أصعب أو درس جديد.');
             }
 
             // Save to Session History
             const newSession = {
                 id: 'memo-' + Date.now(),
                 mode: currentMemoMode,
+                level: currentMemoLevel,
                 title: item.title,
                 targetText: targetText,
                 transcript: spokenText,
@@ -15002,7 +15231,7 @@ window.addEventListener("offline", function() {
             listEl.innerHTML = history.map(s => `
                 <div style="padding: 12px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 0.85rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
-                        <span style="font-weight: 800; color: #0f172a;">${s.title} (${s.mode === 'english' ? 'إنجليزية' : 'عربي'})</span>
+                        <span style="font-weight: 800; color: #0f172a;">${s.title} (${s.mode === 'english' ? 'إنجليزية' : 'عربي'} - مستوى: ${s.level || 'words'})</span>
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <span style="color: #64748b; font-size: 0.75rem;">${s.date}</span>
                             <span style="background: ${s.accuracy >= 80 ? '#dcfce7' : s.accuracy >= 50 ? '#fef3c7' : '#fee2e2'}; color: ${s.accuracy >= 80 ? '#166534' : s.accuracy >= 50 ? '#92400e' : '#991b1b'}; padding: 2px 8px; border-radius: 6px; font-weight: 800; font-size: 0.75rem;">الدقة: ${s.accuracy}%</span>
@@ -15022,7 +15251,7 @@ window.addEventListener("offline", function() {
                 renderMemoSessionHistory();
             }
         }
-
+    </script>
         // Initialize when section is shown
         document.addEventListener('DOMContentLoaded', () => {
             initMemorizationTool();
