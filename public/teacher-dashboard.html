@@ -16246,7 +16246,7 @@ function updateUI() {
                                 <div id="msgBubble_${m.id}"
                                      class="${(m.message_type === 'audio' || m.file_type === 'audio' || m.audio_url) ? 'has-audio-player' : ''}"
                                      ondblclick="showGroupMsgEmojiPicker(event, '${m.id}')"
-                                     oncontextmenu="handleGroupMsgLongPress(event, '${m.id}', true)"
+                                     oncontextmenu="handleGroupMsgLongPress(event, '${m.id}', activeChatGroupIsOwner)"
                                      ontouchstart="startGroupMsgTouchTimer(event, '${m.id}', true)"
                                      ontouchend="clearGroupMsgTouchTimer()"
                                      ontouchmove="clearGroupMsgTouchTimer()"
@@ -16255,7 +16255,7 @@ function updateUI() {
                                     
                                     ${(m.message_type === 'audio' || m.file_type === 'audio' || m.audio_url)
                                         ? (typeof window.renderVoiceMessageHtml === 'function'
-                                            ? window.renderVoiceMessageHtml(m, isSelf, { canDelete: true, deleteJs: `confirmDeleteGroupMessage(event, '${m.id}')` })
+                                            ? window.renderVoiceMessageHtml(m, isSelf, { canDelete: activeChatGroupIsOwner, deleteJs: `confirmDeleteGroupMessage(event, '${m.id}')` })
                                             : `<audio controls src="${m.audio_url || m.file_url}"></audio>`)
                                         : (m.file_url ? renderPdfAttachmentHtml(m.file_url, m.file_name, m.file_size, isSelf) : '')}
                                     ${m.message ? `<p style="margin: 0; font-size: 0.88rem; white-space: pre-wrap; line-height: 1.45; text-align: right; word-break: break-word;">${formatMessageLinks(m.message, isSelf)}</p>` : ''}
@@ -16268,9 +16268,11 @@ function updateUI() {
                                          <button onclick="startGroupReplyToMessage('${m.id}', '${escapeHtml(m.sender_name)}', '${escapeHtml(m.message || "مرفق")}')" title="رد على الرسالة" style="background: transparent; border: none; padding: 0 4px; color: ${isSelf ? 'rgba(255,255,255,0.85)' : '#64748b'}; cursor: pointer; font-size: 0.72rem; opacity: 0.85; transition: opacity 0.2s;" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.85'">
                                              <i class="fas fa-reply"></i> رد
                                          </button>
-                                        <button onclick="confirmDeleteGroupMessage(event, '${m.id}')" title="حذف الرسالة من المجموعة" style="background: ${isSelf ? 'rgba(239, 68, 68, 0.3)' : '#fef2f2'}; color: ${isSelf ? '#ffffff' : '#dc2626'}; border: 1px solid ${isSelf ? 'rgba(239, 68, 68, 0.5)' : '#fca5a5'}; border-radius: 6px; padding: 3px 8px; font-size: 0.72rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.08);" onmouseenter="this.style.transform='scale(1.08)'" onmouseleave="this.style.transform='scale(1)'">
-                                            <i class="fas fa-trash-alt"></i> <span>حذف</span>
-                                        </button>
+${activeChatGroupIsOwner ? `
+                    <button onclick="confirmDeleteGroupMessage(event, '${m.id}')" title="حذف الرسالة من المجموعة" style="background: ${isSelf ? 'rgba(239, 68, 68, 0.3)' : '#fef2f2'}; color: ${isSelf ? '#ffffff' : '#dc2626'}; border: 1px solid ${isSelf ? 'rgba(239, 68, 68, 0.5)' : '#fca5a5'}; border-radius: 6px; padding: 3px 8px; font-size: 0.72rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.08);" onmouseenter="this.style.transform='scale(1.08)'" onmouseleave="this.style.transform='scale(1)'">
+                    <i class="fas fa-trash-alt"></i> <span>حذف</span>
+                    </button>
+                    ` : ''}
                                     </div>
 
                                     ${renderMsgReactionsHtml(m.id, m.reactions)}
@@ -16393,6 +16395,7 @@ function updateUI() {
         }
 
         async function confirmDeleteGroupMessage(event, msgId) {
+            if (!activeChatGroupIsOwner) { if (typeof showToast === 'function') showToast('حذف الرسائل متاح لمسؤول المجموعة فقط.', 'error'); return; }
             if (event) event.stopPropagation();
             if (!confirm('هل أنت متأكد من رغبتك في حذف هذه الرسالة من المجموعة؟')) return;
 
@@ -16417,6 +16420,7 @@ function updateUI() {
         }
 
         function showGroupMsgActionSheet(msgId, canDelete) {
+            if (!activeChatGroupIsOwner) canDelete = false;
             let backdrop = document.getElementById('groupMsgActionBackdrop');
             if (!backdrop) {
                 backdrop = document.createElement('div');

@@ -12890,7 +12890,7 @@ function speakMemoPraise() {
     if (!('speechSynthesis' in window)) return;
     try {
         window.speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance('ممتاز! لقد نجحت في الاختبار، أنت تتقدم في المستوى. أحسنت، استمر هكذا.');
+        const u = new SpeechSynthesisUtterance('ممتاز');
         u.lang = 'ar-SA';
         u.rate = 0.95;
         u.pitch = 1.05;

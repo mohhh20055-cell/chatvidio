@@ -1029,7 +1029,10 @@ router.post('/:id/messages', authenticate, upload.single('file'), handleUploadEr
     }
 });
 
-// حذف رسالة في المجموعة (صاحب/مالك المجموعة أو صاحب الرسالة - طالب أو أستاذ - في أي مجموعة)
+// حذف رسالة في المجموعة — مسؤول المجموعة فقط.
+// ملاحظات أمنية:
+//   1) الرسالة يجب أن تنتمي فعلاً للمجموعة المذكورة في الرابط، وإلا
+//      أمكن حذف رسالة من مجموعة أخرى بمجرد تمرير رقمها.
 router.delete('/:groupId/messages/:messageId', authenticate, async (req, res) => {
     const { groupId, messageId } = req.params;
     const userId = req.user?.userId || req.user?.id;
@@ -1042,7 +1045,7 @@ router.delete('/:groupId/messages/:messageId', authenticate, async (req, res) =>
         const numericMsgId = parseInt(messageId, 10);
         const checkMsgId = isNaN(numericMsgId) ? messageId : numericMsgId;
 
-        // البحث عن الرسالة
+        // 1) جلب الرسالة
         let { data: msg } = await supabase
             .from('group_messages')
             .select('*')
@@ -1062,18 +1065,33 @@ router.delete('/:groupId/messages/:messageId', authenticate, async (req, res) =>
             return res.json({ success: true, message: 'تم حذف الرسالة مسبقاً' });
         }
 
-        // التحقق من مالك المجموعة
+        // 2) التأكد أن الرسالة من هذه المجموعة
+        if (String(msg.group_id) !== String(checkGroupId)) {
+            return res.status(403).json({ error: 'هذه الرسالة لا تتبع هذه المجموعة.' });
+        }
+
+        // 3) جلب المجموعة
         const { data: group } = await supabase
             .from('groups')
             .select('*')
             .eq('id', checkGroupId)
             .maybeSingle();
 
-        const isGroupOwner = (group && role === 'teacher' && String(group.teacher_id) === String(userId)) || role === 'admin';
-        const isMsgSender = String(msg.sender_id) === String(userId) && (String(msg.sender_type || '').toLowerCase() === role || !msg.sender_type);
+        if (!group) {
+            return res.status(404).json({ error: 'المجموعة غير موجودة' });
+        }
 
-        if (!isGroupOwner && !isMsgSender) {
-            return res.status(403).json({ error: 'غير مصرح لك بحذف هذه الرسالة! يحق فقط لصاحب الرسالة (طالب أو أستاذ) أو مالك المجموعة حذفها.' });
+        // 4) الصلاحية لمسؤول المجموعة فقط.
+        //    ملاحظة: معرّفات الطلاب والأساتذة متسلسلة منفصلة، لذا لا بد من
+        //    مطابقة النوع أيضاً، وإلا لصاحب معرّف 5 حذف رسائل صاحب معرّف 5.
+        const isPlatformAdmin = role === 'admin';
+        const isGroupOwner = role === 'teacher'
+            && group.teacher_id !== null
+            && group.teacher_id !== undefined
+            && String(group.teacher_id) === String(userId);
+
+        if (!isGroupOwner && !isPlatformAdmin) {
+            return res.status(403).json({ error: 'حذف الرسائل من متاح لمسؤول المجموعة فقط.' });
         }
 
         const { error } = await supabase
