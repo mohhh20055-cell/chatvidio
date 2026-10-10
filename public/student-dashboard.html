@@ -4766,31 +4766,27 @@
             </div>
         </div>
 
-        <!-- ===== DAILY MEMORIZATION PLAN: 10 WORDS + 1 SENTENCE PER DAY ===== -->
+        <!-- ===== DAILY MEMORIZATION PLAN: 3 WORDS + 1 NEW SENTENCE PER DAY ===== -->
         <div id="memoDailyPlanBox" style="margin-bottom: 16px; background: linear-gradient(135deg, #ffffff, #f8fafc); border: 1.5px solid #c7d2fe; border-radius: 16px; padding: 16px;">
             <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;">
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <span style="width: 38px; height: 38px; border-radius: 11px; background: linear-gradient(135deg,#6366f1,#8b5cf6); color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 1.05rem;"><i class="fas fa-calendar-check"></i></span>
                     <div>
                         <div style="font-weight: 900; color: #0f172a; font-size: 0.95rem;">📅 خطة الحفظ اليومية</div>
-                        <div style="font-size: 0.72rem; color: #64748b;">10 كلمات + جملة واحدة كل يوم — يُفتح المزيد في اليوم التالي</div>
+                        <div style="font-size: 0.72rem; color: #64748b;">3 كلمات + جملة جديدة كل يوم — يُفتح المزيد في اليوم التالي</div>
+                        <div style="font-size: 0.7rem; color: #10b981; margin-top: 3px; font-weight: 700;"><i class="fas fa-file-pdf"></i> لتحفظ نصك أو درسك الخاص: ارفع ملف PDF من زر «إضافة نص/PDF مخصص» بالأعلى.</div>
                     </div>
                 </div>
                 <div id="memoDailyProgressPill" style="padding: 6px 14px; border-radius: 20px; background: #eef2ff; color: #4338ca; font-weight: 800; font-size: 0.78rem; border: 1px solid #c7d2fe;">اليوم 1</div>
             </div>
 
-            <!-- Domain Selector -->
-            <div style="margin-bottom: 14px;">
-                <div style="font-size: 0.78rem; font-weight: 800; color: #334155; margin-bottom: 7px;"><i class="fas fa-icons" style="color:#6366f1;"></i> اختر المجال الذي تريد تعلم كلماته:</div>
-                <div id="memoDomainChips" style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <!-- Populated via JS -->
-                </div>
-            </div>
+            
 
             <!-- Today's Words -->
+                <div style="font-size: 0.72rem; font-weight: 800; color: #4338ca; margin-bottom: 6px;"><i class="fas fa-language" style="color:#6366f1;"></i> مجموعة اليوم: <span id="memoDailyTrackLabel">الإنجليزية</span></div>
             <div style="margin-bottom: 14px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px; flex-wrap: wrap; gap: 4px;">
-                    <span style="font-size: 0.78rem; font-weight: 800; color: #334155;"><i class="fas fa-spell-check" style="color:#10b981;"></i> كلمات اليوم (<span id="memoDailyWordsCount">0/10</span>)</span>
+                    <span style="font-size: 0.78rem; font-weight: 800; color: #334155;"><i class="fas fa-spell-check" style="color:#10b981;"></i> كلمات اليوم (<span id="memoDailyWordsCount">0/3</span>)</span>
                     <span style="font-size: 0.7rem; color: #64748b;">انقر على الكلمة لسماعها ثم انطقها — يتم التصحيح تلقائياً</span>
                 </div>
                 <div id="memoDailyWordsGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px;">
@@ -4809,7 +4805,7 @@
             <!-- Day Complete Banner -->
             <div id="memoDailyCompleteBanner" style="display: none; margin-top: 14px; padding: 13px 16px; background: linear-gradient(135deg, #ecfdf5, #d1fae5); border: 1.5px solid #6ee7b7; border-radius: 12px; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
                 <div style="font-weight: 800; color: #065f46; font-size: 0.88rem;">🎉 أحسنت! لقد أكملت خطة اليوم بالكامل.</div>
-                <button type="button" onclick="advanceMemoDailyDay()" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 10px; font-weight: 800; font-size: 0.78rem; cursor: pointer; font-family: 'Cairo';">⬆️ افتح خطة اليوم التالي (10 كلمات + جملة)</button>
+                <button type="button" onclick="advanceMemoDailyDay()" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 10px; font-weight: 800; font-size: 0.78rem; cursor: pointer; font-family: 'Cairo';">⬆️ افتح خطة اليوم التالي (3 كلمات + جملة)</button>
             </div>
         </div>
 
@@ -7051,7 +7047,7 @@
         const userImage = userData.profile_image || userData.profile_url || '/images/default-avatar.svg';
 
         const navName = document.getElementById('navProfileName');
-        if (navName) navName.textContent = userName.split(' ')[0];
+        if (navName) navName.textContent = userName.split(', ')[0];
         setImgWithFallback(document.getElementById('navProfileImg'), userImage);
 
         const sidebarName = document.getElementById('sidebarName');
@@ -7117,7 +7113,7 @@
             if (trimmed.endsWith('Z') || /[+-]\d{2}(:\d{2})?$/.test(trimmed)) {
                 return new Date(trimmed);
             }
-            const iso = trimmed.replace(' ', 'T');
+            const iso = trimmed.replace(', ', 'T');
             return new Date(`${iso}+01:00`);
         }
         return new Date(dateStr);
@@ -11725,7 +11721,7 @@
             const formattedHashtags = rawHashtags.split(/\s+/)
                 .filter(tag => tag)
                 .map(tag => tag.startsWith('#') ? tag : `#${tag}`)
-                .join(' ');
+                .join(', ');
             if (formattedHashtags && !content.includes(formattedHashtags)) {
                 content = content ? `${content}\n\n${formattedHashtags}` : formattedHashtags;
             }
@@ -13710,8 +13706,8 @@
             if (!dateVal) return '';
             try {
                 let str = String(dateVal).trim();
-                if (str.includes(' ') && !str.includes('T')) {
-                    str = str.replace(' ', 'T');
+                if (str.includes(', ') && !str.includes('T')) {
+                    str = str.replace(', ', 'T');
                 }
                 if (!str.endsWith('Z') && !/[+-]\d{2}(:\d{2})?$/.test(str)) {
                     str += 'Z';
@@ -14087,7 +14083,7 @@
                     </div>
 
                     <div style="display: flex; justify-content: space-around; background: #f8fafc; padding: 10px; border-radius: 14px; border: 1px solid #e2e8f0; margin-bottom: 14px;">
-                        ${['👍', '❤️', '😂', '😮', ' ', '👏', '🔥'].map(emoji => `
+                        ${['👍', '❤️', '😂', '😮', ', ', '👏', '🔥'].map(emoji => `
                             <span onclick="sendGroupMsgReaction('${msgId}', '${emoji}'); hideGroupMsgActionSheet();" style="font-size: 1.5rem; cursor: pointer; transition: transform 0.15s;" onmouseenter="this.style.transform='scale(1.3)'" onmouseleave="this.style.transform='scale(1)'">${emoji}</span>
                         `).join('')}
                     </div>
@@ -14981,7 +14977,7 @@ window.addEventListener("offline", function() {
         const MEMO_LEVELS_DATA = {
             words: {
                 english: [
-                    { title: 'Level 1: Basic Words', text: 'Education Student Teacher School Knowledge Book Science Learning Success.', translation: 'مفردات أساسية: تعليم، طالب، أستاذ، مدرسة، معرفة، كتاب، علوم، تعلم، نجاح.' },
+                    { title: 'Level 1: Basic Words', text: 'Education Student Teacher School Knowledge Book Science Learning Success Progress.', translation: 'مفردات أساسية: تعليم، طالب، أستاذ، مدرسة، معرفة، كتاب، علوم، تعلم، نجاح، تقدم.' },
                     { title: 'Level 1: Core Verbs', text: 'Read Write Speak Listen Learn Practice Memorize Understand Think Success.', translation: 'أفعال أساسية: اقرأ، اكتب، تحدث، استمع، تعلم، مارس، احفظ، افهم، فكر، نجاح.' }
                 ],
                 arabic: [
@@ -15014,14 +15010,16 @@ window.addEventListener("offline", function() {
         // ================================================================
         // 📅 DAILY MEMORIZATION PLAN — 10 WORDS + 1 SENTENCE PER DAY
         // ================================================================
-        const MEMO_DAILY_WORDS_PER_DAY = 10;
+        // ================================================================
+        // 📅 DAILY MEMORIZATION PLAN — 3 WORDS + 1 NEW SENTENCE EVERY DAY
+        // ================================================================
+        // لتغيير عدد الكلمات: غيّر هذه القيمة فقط (مثلاً 10 لكل يوم)
+        const MEMO_DAILY_WORDS_PER_DAY = 3;
 
-        const MEMO_DAILY_DOMAINS = [
-            {
-                id: 'english',
-                name: 'الإنجليزية (مفردات عامة)',
-                icon: 'fa-language',
-                color: '#2563eb',
+        // المحتوى اليومي لكل لغة (بدون اختيار مجال)
+        const MEMO_DAILY_TRACKS = {
+            english: {
+                name: 'الإنجليزية',
                 lang: 'en-US',
                 words: [
                     'Education', 'Student', 'Teacher', 'School', 'Knowledge', 'Book', 'Science', 'Learning', 'Success', 'Practice',
@@ -15044,19 +15042,34 @@ window.addEventListener("offline", function() {
                     'Mistakes are proof that you are trying to improve yourself.'
                 ]
             },
-            {
-                id: 'history',
-                name: 'تاريخ الجزائر',
-                icon: 'fa-landmark',
-                color: '#b45309',
+            arabic: {
+                name: 'اللغة العربية',
                 lang: 'ar-SA',
                 words: [
                     'الثورة', 'الاستعمار', 'الاستقلال', 'السيادة', 'الحرية', 'النصر', 'الجزائر', 'نوفمبر', 'الأحرار', 'الشهداء',
                     'القائد', 'المعركة', 'الجيش', 'الوطني', 'الوحدة', 'التحرير', 'التاريخ', 'الشعب', 'الكفاح', 'التضحية',
-                    'الذاكرة', 'المقاومة', 'الاحتلال', 'العلم', 'الجامعة', 'الجمهورية', 'الدستور', 'الأمير', 'ابن باديس', 'العقيد',
-                    'الأمم', 'السياسي', 'الاجتماعي', 'الاقتصاد', 'الثقافة', 'الحضارة', 'الأصالة', 'الهوية', 'الانتماء', 'الولاء',
-                    'الذكرى', 'الوطنية', 'التضامن', 'الإيثار', 'الكرامة', 'العزة', 'الرفعة', 'المجد', 'الخلود', 'الشهادة',
-                    'الراية', 'التنمية', 'الفداء', 'الأمل', 'الغد', 'البناء', 'السياسة', 'الدبلوماسية', 'الوفاء', 'المناضل'
+                    'الذاكرة', 'المقاومة', 'الاحتلال', 'الجامعة', 'الجمهورية', 'الدستور', 'الأمير', 'الأمم', 'السياسي', 'الاقتصاد',
+                    'الثقافة', 'الحضارة', 'الأصالة', 'الهوية', 'الانتماء', 'الولاء', 'الذكرى', 'الوطنية', 'التضامن', 'الإيثار',
+                    'الكرامة', 'العزة', 'المجد', 'الخلود', 'الشهادة', 'التنمية', 'الفداء', 'الأمل', 'الغد', 'البناء',
+                    'السياسة', 'الدبلوماسية', 'الوفاء', 'المناضل', 'الصحراء', 'الساحل', 'الجبل', 'الهضاب', 'الوادي', 'النهر',
+                    'المناخ', 'الأمطار', 'الحرارة', 'التضاريس', 'السهول', 'العاصمة', 'الولاية', 'الحدود', 'البحر', 'المتوسط',
+                    'الأطلس', 'التل', 'الجنوب', 'الشمال', 'الشرق', 'الغرب', 'القارة', 'الإقليم', 'السكان', 'الكثافة',
+                    'الثروة', 'البترول', 'الغاز', 'الفوسفات', 'الزراعة', 'القمح', 'الشعير', 'الزيتون', 'التمور', 'النخيل',
+                    'المراعي', 'الغابات', 'السدود', 'الموارد', 'البيئة', 'الواحة', 'الكثبان', 'الخلية', 'النواة', 'الوراثة',
+                    'الجين', 'الكروموسوم', 'النبات', 'التغذية', 'الضوء', 'الماء', 'الأكسجين', 'الكربون', 'الطاقة', 'القوة',
+                    'الحركة', 'السرعة', 'الكتلة', 'الوزن', 'الجاذبية', 'المادة', 'الحالة', 'التفاعل', 'العنصر', 'الذرة',
+                    'الجزيء', 'الكائن', 'التكاثر', 'النمو', 'الدماغ', 'القلب', 'الرئة', 'الدم', 'العضلات', 'العظام',
+                    'الجهاز', 'الهضمي', 'الدوري', 'العصبي', 'التنفس', 'التمثيل', 'الضوئي', 'الوظيفة', 'الإنزيم', 'البروتين',
+                    'الصدق', 'الأمانة', 'البر', 'التقوى', 'الأخلاق', 'الإحسان', 'الإخلاص', 'الصبر', 'الشكر', 'التواضع',
+                    'الرحمة', 'العدل', 'السلام', 'الوالدين', 'الرحم', 'العلم', 'العبادة', 'الدعاء', 'الذكر', 'الصلاة',
+                    'الصوم', 'الزكاة', 'الحج', 'النية', 'الاجتهاد', 'الأدب', 'الحلم', 'العفو', 'التعاون', 'الأخوة',
+                    'المحبة', 'الطاعة', 'الإيمان', 'الخشوع', 'الاستغفار', 'التوبة', 'النصيحة', 'الحياء', 'الرقق', 'الرحمن',
+                    'الفطرة', 'السنة', 'القرآن', 'المسجد', 'الطهارة', 'الصدقة', 'الكرم', 'الرجاء', 'اليقين', 'التوكل',
+                    'الرضا', 'الزهد', 'القناعة', 'الحفظ', 'الجوار', 'البرية', 'الاسم', 'الفعل', 'الحرف',
+                    'الجملة', 'الإعراب', 'المبتدأ', 'الخبر', 'الفاعل', 'المفعول', 'النعت', 'البدل', 'الشعر', 'النثر',
+                    'القصيدة', 'البيت', 'القافية', 'الرواية', 'القصة', 'المسرحية', 'المقال', 'المعجم', 'المعنى',
+                    'السياق', 'البلاغة', 'التشبيه', 'الاستعارة', 'الكناية', 'الجناس', 'الطباق', 'الأسلوب', 'النحو', 'الصرف',
+                    'الإملاء', 'الخط', 'الهمزة', 'الكلمة', 'الجذر', 'التلقين'
                 ],
                 sentences: [
                     'اندلعت الثورة الجزائرية الكبرى في أول نوفمبر عام 1954 ضد الاستعمار الفرنسي.',
@@ -15068,114 +15081,36 @@ window.addEventListener("offline", function() {
                     'يجب على كل طالب أن يحفظ تواريخ وطنه ليسير على درب الأجداد.',
                     'الكفاح المسلح كان نتاج إرادة شعب رفض الاستعمار بكل قواه.',
                     'سطر الشهداء بدمائهم أروع صفحات في تاريخ البشرية.',
-                    'الذاكرة الوطنية درسٌ حيّ للأجيال القادمة.'
-                ]
-            },
-            {
-                id: 'geography',
-                name: 'جغرافيا الجزائر',
-                icon: 'fa-globe-africa',
-                color: '#059669',
-                lang: 'ar-SA',
-                words: [
-                    'الجزائر', 'الصحراء', 'الساحل', 'الجبل', 'الهضاب', 'الوادي', 'النهر', 'المناخ', 'الأمطار', 'الحرارة',
-                    'التضاريس', 'الشريط', 'السهول', 'العاصمة', 'الولاية', 'الحدود', 'البحر', 'المتوسط', 'الأطلس', 'التل',
-                    'الجنوب', 'الشمال', 'الشرق', 'الغرب', 'القارة', 'الإقليم', 'السكان', 'الكثافة', 'الثروة', 'البترول',
-                    'الغاز', 'الفوسفات', 'الحديد', 'الزراعة', 'القمح', 'الشعير', 'الزيتون', 'التمور', 'النخيل', 'المراعي',
-                    'الغابات', 'السدود', 'الموارد', 'البيئة', 'الواحة', 'الكثبان', 'الرمال', 'الهضاب العليا', 'الشاطئ', 'الجزيرة',
-                    'المرتفعات', 'المجرى', 'المصب', 'السبخة', 'الجبلية', 'الساحلية', 'الداخلية', 'الحزام', 'الامتداد', 'الموقع'
-                ],
-                sentences: [
+                    'الذاكرة الوطنية درسٌ حيّ للأجيال القادمة.',
                     'تتميز الجزائر بتنوع جغرافي كبير يضم شريطاً ساحلياً خصباً.',
                     'تحتوي الصحراء الجزائرية على مساحات واسعة من الكثبان الرملية.',
                     'يمتد ساحل الجزائر على البحر الأبيض المتوسط لمسافات طويلة.',
-                    'تشكل سلسلة جبال الأطلس التلي حاجزاً طبيعياً بين الساحل والصحراء.',
+                    'تشكل سلسلة جبال الأطلس التلي حاجزاً طبيعياً بين الساحل وال الصحراء.',
                     'تعتبر الزراعة من أهم الأنشطة الاقتصادية في منطقة السهول.',
-                    'يسعى الجزائر إلى حماية بيئته من مخاطر التصحر والزحف العمراني.',
-                    'تنويع التضاريس يمنح الجزائر مناخاً متنوعاً بين الشمال والجنوب.',
-                    'تُعد الموارد الطبيعية كالنفط والغاز من ثروات الدولة الحرجة.'
-                ]
-            },
-            {
-                id: 'science',
-                name: 'علوم طبيعية',
-                icon: 'fa-flask',
-                color: '#7c3aed',
-                lang: 'ar-SA',
-                words: [
-                    'الخلية', 'النواة', 'الغشاء', 'الوراثة', 'الجين', 'الكروموسوم', 'النبات', 'التغذية', 'الضوء', 'الماء',
-                    'الأكسجين', 'الكربون', 'الطاقة', 'القوة', 'الحركة', 'السرعة', 'التسارع', 'الكتلة', 'الوزن', 'الجاذبية',
-                    'المادة', 'الحالة', 'الصلبة', 'السائلة', 'الغازية', 'التفاعل', 'المركب', 'العنصر', 'الذرة', 'الجزيء',
-                    'الكائن', 'التكاثر', 'النمو', 'الدماغ', 'القلب', 'الرئة', 'الدم', 'العضلات', 'العظام', 'الجهاز',
-                    'الهضمي', 'الدوري', 'العصبي', 'التنفس', 'التمثيل', 'الضوئي', 'البيئة', 'التوازن', 'النظام', 'الوظيفة',
-                    'الإنزيم', 'البروتين', 'الحمض', 'القاعدة', 'الأيون', 'التبخر', 'التكاثف', 'الانصهار', 'الذوبان', 'الضغط'
-                ],
-                sentences: [
                     'الخلية هي الوحدة الأساسية لبناء جميع الكائنات الحية.',
                     'تقوم النباتات بعملية التمثيل الضوئي لإنتاج الغذاء والأكسجين.',
                     'ينقل الدم المواد الغذائية والأكسجين إلى جميع خلايا الجسم.',
                     'تتكون المادة من ذرات صغيرة تتحد لتكون الجزيئات.',
                     'تؤثر الجاذبية على حركة الأجسام وسقوطها نحو الأرض.',
-                    'يحافظ الإنسان على توازن البيئة بالحفاظ على الماء والهواء النقي.',
-                    'الإنزيمات تسرّع التفاعلات الحيوية داخل الخلية الحية.',
-                    'التحولات الفيزيائية والكيميائية تغيّر تركيب المواد وخصائصها.'
-                ]
-            },
-            {
-                id: 'islamic',
-                name: 'تربية إسلامية',
-                icon: 'fa-mosque',
-                color: '#0d9488',
-                lang: 'ar-SA',
-                words: [
-                    'الصدق', 'الأمانة', 'البر', 'التقوى', 'الأخلاق', 'الإحسان', 'الإخلاص', 'الصبر', 'الشكر', 'التواضع',
-                    'الرحمة', 'العدل', 'السلام', 'الوالدين', 'الرحم', 'العلم', 'العبادة', 'الدعاء', 'الذكر', 'الصلاة',
-                    'الصوم', 'الزكاة', 'الحج', 'النية', 'الاجتهاد', 'الأدب', 'الحلم', 'العفو', 'الإيثار', 'التعاون',
-                    'الأخوة', 'المحبة', 'الطاعة', 'الإيمان', 'الخشوع', 'الاستغفار', 'التوبة', 'النصيحة', 'الحياء', 'الوقار',
-                    'الرفق', 'الرحمن', 'الخير', 'الفطرة', 'السنة', 'القرآن', 'المسجد', 'الطهارة', 'الصدقة', 'الكرم',
-                    'الرجاء', 'اليقين', 'التوكل', 'الرضا', 'الزهد', 'القناعة', 'الحفظ', 'الجوار', 'البرية', 'النصر'
-                ],
-                sentences: [
                     'قال رسول الله صلى الله عليه وسلم إنما بعثت لأتمم مكارم الأخلاق.',
                     'الصدق يهدي إلى البر والبر يهدي إلى الجنة.',
                     'بر الوالدين من أحب الأعمال إلى الله تعالى.',
                     'طلب العلم فريضة على كل مسلم ومسلمة.',
                     'إن مع العسر يسرا كما وعد الله عباده الصابرين.',
-                    'الرحمة بالضعفاء من صفات المؤمن الحق.',
-                    'التواضع من شيم المؤمنين وحسن الخلق.',
-                    'المؤمن القوي خير وأحب إلى الله من المؤمن الضعيف.'
-                ]
-            },
-            {
-                id: 'arabic',
-                name: 'لغة عربية وأدب',
-                icon: 'fa-book',
-                color: '#db2777',
-                lang: 'ar-SA',
-                words: [
-                    'الاسم', 'الفعل', 'الحرف', 'الجملة', 'الإعراب', 'المبتدأ', 'الخبر', 'الفاعل', 'المفعول', 'النعت',
-                    'البدل', 'الإضافة', 'الشعر', 'النثر', 'القصيدة', 'البيت', 'الوزن', 'القافية', 'الرواية', 'القصة',
-                    'المسرحية', 'المقال', 'المعجم', 'المعنى', 'السياق', 'البلاغة', 'التشبيه', 'الاستعارة', 'الكناية', 'الجناس',
-                    'الطباق', 'المقابلة', 'السجع', 'الأسلوب', 'التعبير', 'النحو', 'الصرف', 'الإملاء', 'الخط', 'الهمزة',
-                    'التاء', 'المربوطة', 'الألف', 'اللام', 'الياء', 'الواو', 'الهمزات', 'التشكيل', 'الكلمة', 'الجذر',
-                    'التلقين', 'الحفظ', 'الاسترسال', 'المحسوب', 'المتعلق', 'العلامة', 'النبر', 'الحروف', 'المفرد', 'المشتق'
-                ],
-                sentences: [
                     'العربية لغة القرآن الكريم ولغة الحضارة والعلوم.',
                     'تتكون الجملة الاسمية من مبتدأ وخبر يوافقانه في الإعراب.',
                     'الشعر العربي بحر نظامي يقاس عليه وزن القصائد.',
                     'البلاغة علم يبحث عن وجوه تحسين الكلام وإفصاحه.',
                     'قراءة الكتب توسع المدارك وتغني المعجم اللغوي للطالب.',
-                    'من أحسن قراءته أحسن فهمه وأتقن كتابته.',
                     'التشكيل يوضّح الحركات ولا يغيّر أصل الكلمة في المعنى.',
                     'التاء المربوطة تُنطق هاء عند الوقف على آخر الكلمة.'
                 ]
             }
-        ];
+        };
 
-        let memoDailyPlan = null;       // { domain, currentDay, maxUnlockedDay, dayProgress, completedDays, startedAt, lastOpenDate }
-        let activeDailyWordIndex = -1;  // index of the daily word currently being practiced
-        let activeDailySentenceText = ''; // the daily sentence being practiced
+        let memoDailyPlan = null;
+        let activeDailyWordIndex = -1;
+        let activeDailySentenceText = '';
 
         function memoTodayKey() {
             const d = new Date();
@@ -15183,24 +15118,25 @@ window.addEventListener("offline", function() {
         }
 
         function getMemoDailyStorageKey() {
+            const mode = currentMemoMode === 'arabic' ? 'arabic' : 'english';
+            let uid = 'guest';
             try {
                 const u = JSON.parse(localStorage.getItem('userData') || '{}');
-                if (u && u.id && u.id !== -1) return 'zoomdz_memo_daily_plan_' + u.id;
+                if (u && u.id && u.id !== -1) uid = u.id;
             } catch (e) {}
-            return 'zoomdz_memo_daily_plan_guest';
+            return 'zoomdz_memo_daily_plan_' + uid + '_' + mode;
         }
 
-        function getMemoDailyDomain(domainId) {
-            return MEMO_DAILY_DOMAINS.find(d => d.id === domainId) || MEMO_DAILY_DOMAINS[0];
+        function getMemoDailyTrack() {
+            return (currentMemoMode === 'arabic') ? MEMO_DAILY_TRACKS.arabic : MEMO_DAILY_TRACKS.english;
         }
 
-        function createDefaultMemoDailyPlan(domainId) {
+        function createDefaultMemoDailyPlan() {
             return {
-                domain: domainId || MEMO_DAILY_DOMAINS[0].id,
                 currentDay: 1,
                 maxUnlockedDay: 1,
-                dayProgress: {},      // { dayNumber: { words: {wordIdx: 'correct'|'wrong'}, sentence: 'correct'|'wrong'|null } }
-                completedDays: [],    // [dayNumber, ...]
+                dayProgress: {},
+                completedDays: [],
                 startedAt: new Date().toISOString(),
                 lastOpenDate: memoTodayKey()
             };
@@ -15211,14 +15147,14 @@ window.addEventListener("offline", function() {
                 const saved = localStorage.getItem(getMemoDailyStorageKey());
                 if (saved) {
                     memoDailyPlan = JSON.parse(saved);
-                    if (!memoDailyPlan || !memoDailyPlan.domain) memoDailyPlan = createDefaultMemoDailyPlan();
+                    if (!memoDailyPlan || typeof memoDailyPlan.currentDay !== 'number') memoDailyPlan = createDefaultMemoDailyPlan();
                 } else {
                     memoDailyPlan = createDefaultMemoDailyPlan();
                 }
             } catch (e) {
                 memoDailyPlan = createDefaultMemoDailyPlan();
             }
-            // يوم جديد + اليوم السابق مكتمل => فتح خطة اليوم التالي تلقائياً
+            // يوم جديد + اكتمال الخطة السابقة => فتح اليوم التالي تلقائياً
             const today = memoTodayKey();
             if (memoDailyPlan.lastOpenDate !== today) {
                 memoDailyPlan.lastOpenDate = today;
@@ -15232,102 +15168,69 @@ window.addEventListener("offline", function() {
         }
 
         function saveMemoDailyPlan() {
-            try {
-                localStorage.setItem(getMemoDailyStorageKey(), JSON.stringify(memoDailyPlan));
-            } catch (e) {}
+            try { localStorage.setItem(getMemoDailyStorageKey(), JSON.stringify(memoDailyPlan)); } catch (e) {}
         }
 
         function getMemoDailyWords(day) {
-            const domain = getMemoDailyDomain(memoDailyPlan ? memoDailyPlan.domain : null);
+            const track = getMemoDailyTrack();
             const start = (day - 1) * MEMO_DAILY_WORDS_PER_DAY;
-            const slice = domain.words.slice(start, start + MEMO_DAILY_WORDS_PER_DAY);
-            if (slice.length === 0) {
-                // إذا نفدت كلمات المجموعة نعيد التدوير من البداية
-                return domain.words.slice(0, MEMO_DAILY_WORDS_PER_DAY);
-            }
-            return slice;
+            if (start >= track.words.length) return track.words.slice(0, MEMO_DAILY_WORDS_PER_DAY);
+            return track.words.slice(start, start + MEMO_DAILY_WORDS_PER_DAY);
         }
 
         function getMemoDailySentence(day) {
-            const domain = getMemoDailyDomain(memoDailyPlan ? memoDailyPlan.domain : null);
-            const idx = (day - 1) % domain.sentences.length;
-            return domain.sentences[idx];
+            const track = getMemoDailyTrack();
+            return track.sentences[(day - 1) % track.sentences.length];
         }
 
         function getMemoDailyDayProgress(day) {
-    // لا ننشئ سجلاً فارغاً أثناء القراءة — السجل يُنشأ فقط عند أول نتيجة حقيقية
-    return memoDailyPlan.dayProgress[day] || { words: {}, sentence: null };
-}
+            return memoDailyPlan.dayProgress[day] || { words: {}, sentence: null };
+        }
 
-function ensureMemoDailyDayProgress(day) {
-    if (!memoDailyPlan.dayProgress[day]) {
-        memoDailyPlan.dayProgress[day] = { words: {}, sentence: null };
-    }
-    return memoDailyPlan.dayProgress[day];
-}
+        function ensureMemoDailyDayProgress(day) {
+            if (!memoDailyPlan.dayProgress[day]) memoDailyPlan.dayProgress[day] = { words: {}, sentence: null };
+            return memoDailyPlan.dayProgress[day];
+        }
 
+        // اليوم مكتمل = كل الكلمات الثلاث صحيحة + تم أداء جملة اليوم
         function isMemoDailyDayComplete(day) {
             const words = getMemoDailyWords(day);
             const prog = memoDailyPlan.dayProgress[day];
             if (!prog) return false;
-            return words.every((w, i) => prog.words[i] === 'correct');
-        }
-
-        function renderMemoDomains() {
-            const container = document.getElementById('memoDomainChips');
-            if (!container || !memoDailyPlan) return;
-            container.innerHTML = MEMO_DAILY_DOMAINS.map(d => {
-                const active = memoDailyPlan.domain === d.id;
-                return `
-                    <button type="button" onclick="selectMemoDailyDomain('${d.id}')" style="padding: 8px 14px; border-radius: 12px; cursor: pointer; font-family: 'Cairo'; font-weight: 800; font-size: 0.76rem; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid ${active ? d.color : '#e2e8f0'}; background: ${active ? d.color + '18' : '#ffffff'}; color: ${active ? d.color : '#475569'};">
-                        <i class="fas ${d.icon}" style="color: ${d.color};"></i> ${d.name}
-                        ${active ? '<i class="fas fa-check-circle"></i>' : ''}
-                    </button>
-                `;
-            }).join('');
-        }
-
-        function selectMemoDailyDomain(domainId) {
-            if (!memoDailyPlan) return;
-            if (memoDailyPlan.domain === domainId) return;
-            if (!confirm('سيتم إعادة تعيين خطة الحفظ اليومية لتبدأ من اليوم الأول في المجال الجديد. هل تريد المتابعة؟')) return;
-            memoDailyPlan = createDefaultMemoDailyPlan(domainId);
-            saveMemoDailyPlan();
-            activeDailyWordIndex = -1;
-            activeDailySentenceText = '';
-            renderMemoDailyPlan();
+            const wordsOk = words.every(function (w, i) { return prog.words[i] === 'correct'; });
+            return wordsOk && !!prog.sentence;
         }
 
         function renderMemoDailyPlan() {
             if (!memoDailyPlan) loadMemoDailyPlan();
-            const domain = getMemoDailyDomain(memoDailyPlan.domain);
+            const track = getMemoDailyTrack();
             const day = memoDailyPlan.currentDay;
             const words = getMemoDailyWords(day);
             const prog = getMemoDailyDayProgress(day);
+            const doneCount = words.filter(function (w, i) { return prog.words[i] === 'correct'; }).length;
 
-            // Progress pill
             const pill = document.getElementById('memoDailyProgressPill');
-            if (pill) {
-                const doneCount = words.filter((w, i) => prog.words[i] === 'correct').length;
-                pill.textContent = 'اليوم ' + day + ' • ' + doneCount + '/' + MEMO_DAILY_WORDS_PER_DAY + ' كلمة';
-            }
+            if (pill) pill.textContent = 'اليوم ' + day + ' • ' + doneCount + '/' + MEMO_DAILY_WORDS_PER_DAY + ' كلمة';
 
-            // Domain chips
-            renderMemoDomains();
+            const trackLabel = document.getElementById('memoDailyTrackLabel');
+            if (trackLabel) trackLabel.textContent = track.name;
 
-            // Words grid
             const grid = document.getElementById('memoDailyWordsGrid');
             if (grid) {
-                grid.innerHTML = words.map((word, i) => {
+                grid.innerHTML = words.map(function (word, i) {
                     const st = prog.words[i];
                     const done = st === 'correct';
                     const wrong = st === 'wrong';
                     const bg = done ? '#ecfdf5' : wrong ? '#fef2f2' : '#ffffff';
                     const border = done ? '#6ee7b7' : wrong ? '#fca5a5' : '#e2e8f0';
                     const color = done ? '#065f46' : wrong ? '#b91c1c' : '#0f172a';
-                    const icon = done ? '<i class="fas fa-check-circle" style="color:#059669;"></i>' : wrong ? '<i class="fas fa-times-circle" style="color:#dc2626;"></i>' : '<i class="fas fa-volume-up" style="color:' + domain.color + ';"></i>';
+                    const icon = done
+                        ? '<i class="fas fa-check-circle" style="color:#059669;"></i>'
+                        : wrong
+                            ? '<i class="fas fa-times-circle" style="color:#dc2626;"></i>'
+                            : '<i class="fas fa-volume-up" style="color:#6366f1;"></i>';
                     return `
-                        <button type="button" onclick="startMemoDailyWord(${i})" style="padding: 12px 10px; border-radius: 12px; border: 1.5px solid ${border}; background: ${bg}; color: ${color}; font-weight: 800; font-size: 0.85rem; cursor: pointer; font-family: 'Cairo'; display: flex; flex-direction: column; align-items: center; gap: 5px; transition: all 0.2s;">
+                        <button type="button" onclick="startMemoDailyWord(${i})" style="padding: 14px 10px; border-radius: 12px; border: 1.5px solid ${border}; background: ${bg}; color: ${color}; font-weight: 800; font-size: 0.9rem; cursor: pointer; font-family: 'Cairo'; display: flex; flex-direction: column; align-items: center; gap: 5px;">
                             ${icon}
                             <span>${escapeMemoHtml(word)}</span>
                             <span style="font-size: 0.62rem; font-weight: 700; color: #94a3b8;">كلمة ${i + 1}</span>
@@ -15336,22 +15239,25 @@ function ensureMemoDailyDayProgress(day) {
                 }).join('');
             }
 
-            // Words count
             const counter = document.getElementById('memoDailyWordsCount');
-            if (counter) {
-                const doneCount = words.filter((w, i) => prog.words[i] === 'correct').length;
-                counter.textContent = doneCount + '/' + MEMO_DAILY_WORDS_PER_DAY;
-            }
+            if (counter) counter.textContent = doneCount + '/' + MEMO_DAILY_WORDS_PER_DAY;
 
-            // Sentence card
             const sentenceCard = document.getElementById('memoDailySentenceCard');
             if (sentenceCard) {
                 const sentence = getMemoDailySentence(day);
                 const sentenceDone = prog.sentence === 'correct';
+                const sentenceWrong = prog.sentence === 'wrong';
+                const stateColor = sentenceDone ? '#34d399' : (sentenceWrong ? '#f87171' : '#38bdf8');
+                const stateText = sentenceDone
+                    ? '✅ أحسنت! تم حفظ جملة اليوم'
+                    : (sentenceWrong ? '↩️ أعِد حفظ الجملة ثم جرّب مرة أخرى' : 'اقرأ الجملة من الذاكرة ثم انطقها:');
+                const sentenceDir = track.lang === 'ar-SA' ? 'rtl' : 'ltr';
                 sentenceCard.innerHTML = `
-                    <div style="flex: 1; min-width: 200px;">
-                        <div style="font-size: 0.68rem; color: #38bdf8; font-weight: 700; margin-bottom: 4px;">${sentenceDone ? '✅ تم حفظ الجملة بنجاح' : 'اقرأ الجملة من الذاكرة ثم انطقها:'}</div>
-                        <div style="font-size: 1rem; font-weight: 800; line-height: 1.7;" dir="${domain.lang === 'ar-SA' ? 'rtl' : 'ltr'}">${escapeMemoHtml(sentence)}</div>
+                    <div style="flex: 1; min-width: 220px;">
+                        <div style="font-size: 0.68rem; font-weight: 700; margin-bottom: 4px; color: ${stateColor};">
+                            ${stateText}
+                        </div>
+                        <div style="font-size: 1rem; font-weight: 800; line-height: 1.8;" dir="${sentenceDir}">${escapeMemoHtml(sentence)}</div>
                     </div>
                     <button type="button" onclick="startMemoDailySentence()" style="background: #10b981; color: white; border: none; padding: 10px 16px; border-radius: 10px; font-weight: 800; font-size: 0.78rem; cursor: pointer; font-family: 'Cairo'; display: inline-flex; align-items: center; gap: 6px;">
                         <i class="fas fa-microphone"></i> انطق الجملة
@@ -15359,14 +15265,13 @@ function ensureMemoDailyDayProgress(day) {
                 `;
             }
 
-            // Complete banner
             const banner = document.getElementById('memoDailyCompleteBanner');
             if (banner) {
                 const complete = isMemoDailyDayComplete(day);
                 banner.style.display = complete ? 'flex' : 'none';
                 if (complete && memoDailyPlan.completedDays.indexOf(day) === -1) {
                     memoDailyPlan.completedDays.push(day);
-                    memoDailyPlan.completedDays.sort((a, b) => a - b);
+                    memoDailyPlan.completedDays.sort(function (a, b) { return a - b; });
                     saveMemoDailyPlan();
                 }
             }
@@ -15375,44 +15280,38 @@ function ensureMemoDailyDayProgress(day) {
         function startMemoDailyWord(wordIndex) {
             activeDailyWordIndex = wordIndex;
             activeDailySentenceText = '';
-            syncMemoModeWithDomain();
-            // نضمن الانتقال إلى مستوى الكلمات وأن الهدف هو كلمة الخطة اليومية
             if (currentMemoLevel !== 'words') setMemoLevel('words');
             renderMemoTargetContent();
             const resultCard = document.getElementById('memoResultCard');
             if (resultCard) resultCard.style.display = 'none';
             const status = document.getElementById('memoActionStatus');
-            if (status) status.textContent = '🎯 كلمة الخطة اليومية: اضغط الميكروفون وانطق الكلمة';
+            if (status) status.textContent = '🎯 اضغط الميكروفون وانطق الكلمة — يتم تصحيحك تلقائياً';
         }
 
         function startMemoDailySentence() {
             activeDailyWordIndex = -1;
             activeDailySentenceText = getMemoDailySentence(memoDailyPlan.currentDay);
-            syncMemoModeWithDomain();
-            // نستخدم وضع الجمل البسيطة لاختبار الحفظ الكامل للجملة
             if (currentMemoLevel !== 'sentences') setMemoLevel('sentences');
             renderMemoTargetContent();
             const resultCard = document.getElementById('memoResultCard');
             if (resultCard) resultCard.style.display = 'none';
             const status = document.getElementById('memoActionStatus');
-            if (status) status.textContent = '🎯 جملة الخطة اليومية: اقرأ الجملة من الذاكرة وانطقها';
+            if (status) status.textContent = '🎯 اقرأ الجملة من الذاكرة ثم انطقها';
         }
 
         function markMemoDailyWordResult(wordIndex, ok) {
-    const day = memoDailyPlan.currentDay;
-    const prog = ensureMemoDailyDayProgress(day);
-    prog.words[wordIndex] = ok ? 'correct' : 'wrong';
-    saveMemoDailyPlan();
-    renderMemoDailyPlan();
-}
+            const prog = ensureMemoDailyDayProgress(memoDailyPlan.currentDay);
+            prog.words[wordIndex] = ok ? 'correct' : 'wrong';
+            saveMemoDailyPlan();
+            renderMemoDailyPlan();
+        }
 
         function markMemoDailySentenceResult(ok) {
-    const day = memoDailyPlan.currentDay;
-    const prog = ensureMemoDailyDayProgress(day);
-    prog.sentence = ok ? 'correct' : 'wrong';
-    saveMemoDailyPlan();
-    renderMemoDailyPlan();
-}
+            const prog = ensureMemoDailyDayProgress(memoDailyPlan.currentDay);
+            prog.sentence = ok ? 'correct' : 'wrong';
+            saveMemoDailyPlan();
+            renderMemoDailyPlan();
+        }
 
         function advanceMemoDailyDay() {
             const nextDay = memoDailyPlan.currentDay + 1;
@@ -15422,26 +15321,18 @@ function ensureMemoDailyDayProgress(day) {
             activeDailySentenceText = '';
             saveMemoDailyPlan();
             renderMemoDailyPlan();
-            showToast('🎉 تم فتح خطة اليوم ' + nextDay + ' — 10 كلمات وجملة جديدة!', 'success');
-        }
-
-        // مزامنة وضع النطق (إنجليزي/عربي) مع لغة المجال المختار في الخطة اليومية
-        function syncMemoModeWithDomain() {
-            if (!memoDailyPlan) return;
-            const domain = getMemoDailyDomain(memoDailyPlan.domain);
-            const targetMode = domain.lang === 'ar-SA' ? 'arabic' : 'english';
-            if (currentMemoMode !== targetMode) {
-                switchMemoMode(targetMode);
-            }
+            showToast('🎉 تم فتح خطة اليوم ' + nextDay + ' — 3 كلمات وجملة جديدة!', 'success');
         }
 
         // الانتقال إلى أول كلمة غير مكتملة في خطة اليوم
         function startMemoNextDailyWord() {
             const words = getMemoDailyWords(memoDailyPlan.currentDay);
             const prog = getMemoDailyDayProgress(memoDailyPlan.currentDay);
-            const nextIdx = words.findIndex((w, i) => prog.words[i] !== 'correct');
+            let nextIdx = -1;
+            for (let i = 0; i < words.length; i++) {
+                if (prog.words[i] !== 'correct') { nextIdx = i; break; }
+            }
             if (nextIdx === -1) {
-                // تم إكمال جميع كلمات اليوم
                 activeDailyWordIndex = -1;
                 activeDailySentenceText = '';
                 renderMemoTargetContent();
@@ -15450,7 +15341,13 @@ function ensureMemoDailyDayProgress(day) {
             startMemoDailyWord(nextIdx);
         }
 
-        function initMemorizationTool() {
+        // إعادة تحميل الخطة عند تبديل اللغة (إنجليزي / عربي)
+        function reloadMemoDailyPlan() {
+            activeDailyWordIndex = -1;
+            activeDailySentenceText = '';
+            loadMemoDailyPlan();
+            renderMemoDailyPlan();
+        }function initMemorizationTool() {
             try {
                 const savedCustom = localStorage.getItem('zoomdz_custom_memo_lessons');
                 if (savedCustom) customMemoLessons = JSON.parse(savedCustom);
@@ -15476,6 +15373,7 @@ function ensureMemoDailyDayProgress(day) {
             document.getElementById('memoResultCard').style.display = 'none';
             const liveWrap = document.getElementById('memoLiveTargetWrap');
             if (liveWrap) liveWrap.style.display = 'none';
+            if (typeof loadMemoDailyPlan === 'function') reloadMemoDailyPlan();
         }
 
         function setMemoLevel(level) {
@@ -15553,7 +15451,7 @@ function ensureMemoDailyDayProgress(day) {
             if (memoDailyPlan && activeDailyWordIndex >= 0) {
                 const words = getMemoDailyWords(memoDailyPlan.currentDay);
                 const idx = Math.min(Math.max(activeDailyWordIndex, 0), Math.max(words.length - 1, 0));
-                const domain = getMemoDailyDomain(memoDailyPlan.domain);
+                const track = getMemoDailyTrack();
                 return {
                     text: words[idx],
                     isWordMode: true,
@@ -15562,17 +15460,17 @@ function ensureMemoDailyDayProgress(day) {
                     isLastWord: idx >= words.length - 1,
                     isDaily: true,
                     dailyWordIndex: idx,
-                    item: { title: 'خطة اليوم ' + memoDailyPlan.currentDay + ' — ' + domain.name, text: words[idx] }
+                    item: { title: 'خطة اليوم ' + memoDailyPlan.currentDay + ' — ' + track.name, text: words[idx] }
                 };
             }
             if (memoDailyPlan && activeDailySentenceText) {
-                const domain = getMemoDailyDomain(memoDailyPlan.domain);
+                const track = getMemoDailyTrack();
                 return {
                     text: activeDailySentenceText,
                     isWordMode: false,
                     isDaily: true,
                     isDailySentence: true,
-                    item: { title: 'جملة اليوم ' + memoDailyPlan.currentDay + ' — ' + domain.name, text: activeDailySentenceText }
+                    item: { title: 'جملة اليوم ' + memoDailyPlan.currentDay + ' — ' + track.name, text: activeDailySentenceText }
                 };
             }
             const item = getCurrentMemoItem();
@@ -15709,18 +15607,136 @@ function ensureMemoDailyDayProgress(day) {
             if (modal) modal.style.display = 'none';
         }
 
-        function handleCustomMemoFileUpload(event) {
-            const file = event.target.files[0];
+                function decodePdfBytes(buf) {
+            const limit = Math.min(buf.length, 400);
+            let zeros = 0, pairs = Math.floor(limit / 2);
+            for (let k = 1; k < limit; k += 2) if (buf[k] === 0) zeros++;
+            if (pairs > 0 && (zeros / pairs) > 0.4) {
+                let s = '';
+                for (let k = 0; k + 1 < buf.length; k += 2) s += String.fromCharCode((buf[k] << 8) | buf[k + 1]);
+                return s;
+            }
+            try { return new TextDecoder('utf-8', { fatal: false }).decode(buf); }
+            catch (e) { let s = ''; for (let k = 0; k < buf.length; k++) s += String.fromCharCode(buf[k]); return s; }
+        }
+
+        // استخراج نصوص PDF من تدفقات المحتوى (Tj / TJ)
+        function extractPdfTextFromDecoded(decoded) {
+            let out = '';
+            const blocks = decoded.match(/BT[\s\S]{0,40000}?ET/g);
+            const source = blocks && blocks.length ? blocks.join('\n') : decoded;
+            const reStr = /\(((?:\\.|[^\\()])*)\)\s*(?:Tj|TJ)/g;
+            let m;
+            while ((m = reStr.exec(source)) !== null) {
+                const v = m[1].replace(/\\([nrtbf()\\])/g, function (_, c) {
+                    return ({ n: '\n', r: '', t: ', ', b: '', f: '', '(': '(', ')': ')', '\\': '\\' })[c] || c;
+                });
+                if (v.trim()) out += v + ', ';
+            }
+            const reHex = /<([0-9A-Fa-f\s]{4,})>\s*(?:Tj|TJ)/g;
+            while ((m = reHex.exec(source)) !== null) {
+                const hex = m[1].replace(/\s+/g, '');
+                let v = '';
+                for (let k = 0; k + 3 < hex.length; k += 4) {
+                    const code = parseInt(hex.substr(k, 4), 16);
+                    if (code > 31 && code !== 65533) v += String.fromCharCode(code);
+                }
+                if (v.trim()) out += v + ', ';
+            }
+            return out;
+        }
+
+        function findByteSeq(hay, needle, from) {
+            outer: for (let k = from; k <= hay.length - needle.length; k++) {
+                for (let j = 0; j < needle.length; j++) if (hay[k + j] !== needle[j]) continue outer;
+                return k;
+            }
+            return -1;
+        }
+
+        // أفضل محاولة لاستخراج نص ملف PDF (يدعم الملفات النصية المضغوطة)
+        async function extractPdfText(arrayBuffer) {
+            const raw = new Uint8Array(arrayBuffer);
+            const S = [115, 116, 114, 101, 97, 109];      // "stream"
+            const E = [101, 110, 100, 115, 116, 114, 101, 97, 109]; // "endstream"
+            let cursor = 0, out = '';
+            while (true) {
+                const s = findByteSeq(raw, S, cursor);
+                if (s === -1) break;
+                let start = s + 6;
+                if (raw[start] === 13) start++;
+                if (raw[start] === 10) start++;
+                const e = findByteSeq(raw, E, start);
+                if (e === -1) break;
+                cursor = e + 9;
+                const slice = raw.slice(start, e);
+                if (!slice.length) continue;
+                let decoded = '';
+                try {
+                    if (typeof DecompressionStream !== 'undefined') {
+                        const ds = new DecompressionStream('deflate');
+                        const ab = await new Response(new Blob([slice]).stream().pipeThrough(ds)).arrayBuffer();
+                        decoded = decodePdfBytes(new Uint8Array(ab));
+                    }
+                } catch (err) { decoded = ''; }
+                if (!decoded) decoded = decodePdfBytes(slice);
+                const txt = extractPdfTextFromDecoded(decoded);
+                if (txt && txt.trim()) out += txt + '\n';
+                if (out.length > 200000) break;
+            }
+            return out;
+        }
+
+        async function handleCustomMemoFileUpload(event) {
+            const input = event.target;
+            const file = input.files && input.files[0];
             if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const content = e.target.result;
-                const textA = document.getElementById('customMemoTextContent');
-                const titleA = document.getElementById('customMemoTitle');
-                if (textA) textA.value = content;
-                if (titleA && !titleA.value) titleA.value = file.name.replace(/\.[^/.]+$/, '');
-            };
-            reader.readAsText(file, 'UTF-8');
+            const textA = document.getElementById('customMemoTextContent');
+            const titleA = document.getElementById('customMemoTitle');
+            if (titleA && !titleA.value) titleA.value = file.name.replace(/\.[^/.]+$/, '');
+
+            const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+            const isText = /^text\//.test(file.type) || /(json|xml|csv|javascript)/.test(file.type)
+                || /\.(txt|md|csv|json|srt|vrt|html?)$/i.test(file.name);
+            const isImage = /^image\//.test(file.type);
+
+            try {
+                if (isText) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) { if (textA) textA.value = String(e.target.result || ''); };
+                    reader.onerror = function () { showToast('تعذر قراءة الملف — انسخ النص والصقه يدوياً.', 'error'); };
+                    reader.readAsText(file, 'UTF-8');
+                    return;
+                }
+
+                if (isPdf) {
+                    showToast('جارٍ استخراج النص من ملف PDF...');
+                    try {
+                        const extracted = await extractPdfText(await file.arrayBuffer());
+                        const clean = (extracted || '').replace(/\s+/g, ', ').trim();
+                        if (clean.length < 30) {
+                            showToast('تعذر استخراج نص من هذا الملف (غالباً صور ممسوحة ضوئياً). انسخ النص والصقه في المربع.', 'error');
+                            if (textA) textA.value = '';
+                        } else {
+                            if (textA) textA.value = clean;
+                            showToast('✅ تم استخراج النص من ملف PDF (' + clean.length + ' حرفاً)', 'success');
+                        }
+                    } catch (err) {
+                        showToast('تعذر قراءة ملف PDF — جرّب ملفاً نصياً أو انسخ النص يدوياً.', 'error');
+                    }
+                    return;
+                }
+
+                if (isImage) {
+                    showToast('الصور غير مدعومة لاستخراج النص — احفظ النص في ملف PDF أو TXT ثم ارفعه.', 'error');
+                    if (textA) textA.value = '';
+                    return;
+                }
+
+                showToast('صيغة غير مدعومة — ارفع ملف PDF أو ملف نصي.', 'error');
+            } finally {
+                try { input.value = ''; } catch (e) {}
+            }
         }
 
         function saveCustomMemoLesson() {
@@ -15771,7 +15787,7 @@ function ensureMemoDailyDayProgress(day) {
         // 6) الهمزة المنفردة تُحذف
         .replace(/\u0621/g, '')
         // 7) إزالة بقية علامات الترقيم مع الحفاظ على الحروف والأرقام
-        .replace(/[^\u0621-\u064Aa-zA-Z0-9\s]/g, ' ')
+        .replace(/[^\u0621-\u064Aa-zA-Z0-9\s]/g, ', ')
         .replace(/\s+/g, ' ')
         .trim();
 }
@@ -15858,7 +15874,7 @@ function ensureMemoDailyDayProgress(day) {
             }
             let html = '';
             if (f) {
-                html += f.split(/\s+/).map(w => `<span style="background:#dcfce7; color:#166534; padding:2px 7px; border-radius:6px; font-weight:700;">${escapeMemoHtml(w)}</span>`).join(' ');
+                html += f.split(/\s+/).map(w => `<span style="background:#dcfce7; color:#166534; padding:2px 7px; border-radius:6px; font-weight:700;">${escapeMemoHtml(w)}</span>`).join(', ');
             }
             if (i) {
                 html += (f ? ' ' : '') + `<span style="background:#dbeafe; color:#1d4ed8; padding:2px 7px; border-radius:6px; font-weight:800; font-style:italic;">${escapeMemoHtml(i)}</span>`;
@@ -15885,7 +15901,7 @@ function ensureMemoDailyDayProgress(day) {
                 memoRecognition = recognition;
                 let memoRecogLang = currentMemoMode === 'english' ? 'en-US' : 'ar-SA';
                 if (memoDailyPlan && (activeDailyWordIndex >= 0 || activeDailySentenceText)) {
-                    memoRecogLang = getMemoDailyDomain(memoDailyPlan.domain).lang;
+                    memoRecogLang = getMemoDailyTrack().lang;
                 }
                 recognition.lang = memoRecogLang;
                 recognition.interimResults = true; // Real-time interim results
@@ -15915,7 +15931,7 @@ function ensureMemoDailyDayProgress(day) {
                     let interim = '';
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
                         if (event.results[i].isFinal) {
-                            finalTranscript += event.results[i][0].transcript + ' ';
+                            finalTranscript += event.results[i][0].transcript + ', ';
                         } else {
                             interim += event.results[i][0].transcript;
                         }
@@ -16016,7 +16032,7 @@ function ensureMemoDailyDayProgress(day) {
                     } else {
                         return `<span onclick="speakMemoWord('${c.word.replace(/'/g, "")}')" style="padding: 3px 8px; background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; border-radius: 8px; font-weight: 700; text-decoration: line-through; cursor: pointer;" title="انقر للاستماع للنطق الصحيح (أخطأت في هذه الكلمة)">${escapeMemoHtml(c.word)}</span>`;
                     }
-                }).join(' ');
+                }).join(', ');
             }
 
             // Smart progression: word mastered or level passed → guide to harder content
@@ -16085,7 +16101,7 @@ function ensureMemoDailyDayProgress(day) {
             const utterance = new SpeechSynthesisUtterance(word);
             let memoLang = currentMemoMode === 'english' ? 'en-US' : 'ar-SA';
             if (memoDailyPlan && (activeDailyWordIndex >= 0 || activeDailySentenceText)) {
-                memoLang = getMemoDailyDomain(memoDailyPlan.domain).lang;
+                memoLang = getMemoDailyTrack().lang;
             }
             utterance.lang = memoLang;
             utterance.rate = 0.9;
