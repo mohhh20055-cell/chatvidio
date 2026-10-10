@@ -4776,6 +4776,11 @@
                     <i class="fas fa-microphone"></i>
                 </button>
                 <div id="memoActionStatus" style="font-size: 0.86rem; font-weight: 700; color: #64748b; text-align: center; min-height: 1.4em;"></div>
+                <div id="memoPasteBox" style="display: none; margin-top: 14px; padding: 12px; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 12px; text-align: right;">
+                    <div style="font-size: 0.76rem; font-weight: 800; color: #334155; margin-bottom: 6px;"><i class="fas fa-file-alt"></i> الصق نص الدرس هنا (اختياري — يمكنك رفع PDF من زر رفع ملف)</div>
+                    <textarea id="memoPasteText" rows="4" placeholder="الصق نص الدرس كاملاً هنا..." style="width:100%; padding:10px; border-radius:10px; border:1.5px solid #cbd5e1; font-family: inherit; font-size:0.82rem; margin-bottom: 8px;"></textarea>
+                    <button type="button" onclick="useMemoPasteText()" style="background: #2563eb; color: white; border: none; padding: 9px 18px; border-radius: 10px; font-weight: 800; font-size: 0.8rem; cursor: pointer; font-family: inherit;">استخدم هذا النص للتسميع</button>
+                </div>
                 <div id="memoDifficultyLabel" style="font-size: 0.72rem; font-weight: 800; color: #7c3aed; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 10px; padding: 4px 10px; margin-top: 6px; display: inline-block;">المستوى 1 — سهل</div>
                 <div id="memoChallengeBox" style="display: none; margin-top: 14px; padding: 12px; background: #f5f3ff; border: 1.5px solid #c4b5fd; border-radius: 12px;">
                     <div style="font-size: 0.78rem; font-weight: 800; color: #5b21b6; margin-bottom: 6px;"><i class="fas fa-brain"></i> المرحلة الثالثة — تحدٍّ جديد من كلماتك المُتقنة</div>
@@ -13152,7 +13157,8 @@ let memoMastered = [];              // الكلمات المُتقنة (تُقر
 let memoChallengeQueue = [];         // تحديات جُماني القادمة
 let memoChallengeIndex = 0;
 let memoDifficulty = 1;             // 1..5
-let memoRetryFrom = null;           // عند الخطأ: نتابع من الكلمة التي أخطأ فيها
+let memoRetryFrom = null;
+        let memoLastRecitation = null;           // عند الخطأ: نتابع من الكلمة التي أخطأ فيها
 let memoSessionStats = { correct: 0, wrong: 0 };
 
 const MEMO_GEMINI_KEY = (typeof MEMO_AI_CONFIG !== 'undefined' && MEMO_AI_CONFIG && MEMO_AI_CONFIG.geminiKey) || '';
@@ -13458,6 +13464,179 @@ function handleMemoChallengeResult(ok) {
                 renderMemoChallenge();
             }
         }
+        // ============================================================================
+// 🎯 TEXT RECITATION COMPARISON ENGINE
+//    يقارن النص المنطوق بالنص الأصلي كلمة بكلمة بالترتيب،
+//    ويقف عند أول اختلاف ويحدّد "رقم آخر كلمة صحيحة متتالية".
+// ============================================================================
+
+// ---------- تطبيع الكلمة للمقارنة ----------
+// نتجاهل التشكيل وصور الألف/الياء/الواو والتاء المربوطة (ة = هـ)
+// لأن الهدف اختبار الحفظ من الذاكرة لا دقة الإملاء.
+function memoNormalizeWord(word, lang) {
+    if (word === null || word === undefined) return '';
+    let w = String(word).toLowerCase();
+    // إزالة كل ما ليس حرفاً أو رقماً
+    w = w.replace(/[^\p{L}\p{N}]+/gu, '');
+    if (!w) return '';
+
+    if (lang === 'ar-SA' || /[\u0600-\u06FF]/.test(w)) {
+        w = w
+            .replace(/[\u064B-\u0652\u0670\u0640]/g, '')        // تشكيل + تطويل
+            .replace(/[\u0622\u0623\u0625\u0627\u0671]/g, '\u0627') // أ إ آ ٱ → ا
+            .replace(/[\u0629\u0647\u0647]/g, '\u0647')          // ة → ه
+            .replace(/[\u0649\u064A\u0626]/g, '\u064A')          // ى ي ئ → ي
+            .replace(/[\u0648\u0624]/g, '\u0648')                // و ؤ → و
+            .replace(/\u0621/g, '');                             // ء → حذف
+    }
+    return w;
+}
+
+// تقطيع النص إلى كلمات مع الإبقاء على النص الأصلي لكل كلمة
+function memoSplitWords(text) {
+    if (!text) return [];
+    return String(text).split(/\s+/).filter(function (w) { return w.length > 0; });
+}
+
+/**
+ * مقارنة النص المنطوق بالنص الأصلي.
+ * @param {string} originalText          النص الأصلي للدرس
+ * @param {string} userSpeechTranscript  ما نطقه المستخدم فعلياً
+ * @param {string} lang                  'ar-SA' أو 'en-US' ...
+ * @returns {{success:boolean, last_correct_word_index:number,
+ *            error_word_in_original:string, user_wrong_pronunciation:string}}
+ */
+function memoCompareRecitation(originalText, userSpeechTranscript, lang) {
+    const originalWords = memoSplitWords(originalText);      // [{raw}] كنص خام
+    const spokenWords = memoSplitWords(userSpeechTranscript);
+
+    // حالة: لم ينطق شيئاً
+    if (!originalWords.length) {
+        return { success: false, last_correct_word_index: -1,
+                 error_word_in_original: '', user_wrong_pronunciation: '' };
+    }
+
+    let i = 0;              // مؤشر الكلمة في النص الأصلي
+    let j = 0;              // مؤشر الكلمة في نص المستخدم
+    let lastCorrect = -1;   // آخر كلمة صحيحة متتالية
+
+    while (i < originalWords.length && j < spokenWords.length) {
+        const want = memoNormalizeWord(originalWords[i], lang);
+        const got  = memoNormalizeWord(spokenWords[j], lang);
+
+        // الكلمات الفارغة لا تُحتسب
+        if (!want) { i++; continue; }
+        if (!got)  { j++; continue; }
+
+        if (want === got) {
+            lastCorrect = i;
+            i++;
+            j++;
+        } else {
+            // أول اختلاف = نقطة الخطأ. نتوقف فوراً.
+            return {
+                success: false,
+                last_correct_word_index: lastCorrect,
+                error_word_in_original: originalWords[i],
+                user_wrong_pronunciation: spokenWords[j]
+            };
+        }
+    }
+
+    // انتهى النص الأصلي بالكامل ولا يوجد خطأ = نجاح 100%
+    if (lastCorrect === originalWords.length - 1) {
+        return { success: true, last_correct_word_index: lastCorrect,
+                 error_word_in_original: '', user_wrong_pronunciation: '' };
+    }
+
+    // المستخدم توقّف قبل النهاية (سقطت كلمة أو انتهى كلامه)
+    return {
+        success: false,
+        last_correct_word_index: lastCorrect,
+        error_word_in_original: originalWords[i] || '',
+        user_wrong_pronunciation: ''
+    };
+}
+
+// ---------- تلوين النص مع التوقف عند الخطأ ----------
+// صحيح → أخضر، خطأ/مفقود → أحمر، والباقي بعد نقطة الخطأ → رمادي (لم يُقرأ بعد)
+function memoColorizeRecitation(originalText, userSpeechTranscript, lang, lastIndex) {
+    const words = memoSplitWords(originalText);
+    const spoken = memoSplitWords(userSpeechTranscript);
+    const dir = (lang === 'ar-SA' || /[\u0600-\u06FF]/.test(originalText || '')) ? 'rtl' : 'ltr';
+
+    return words.map(function (raw, idx) {
+        const clean = memoNormalizeWord(raw, lang);
+        if (!clean) return escapeMemoHtml(raw);
+
+        let status = 'pending';
+        if (idx <= lastIndex) {
+            status = 'correct';
+        } else if (idx === lastIndex + 1) {
+            status = 'error';
+        }
+
+        const style =
+            status === 'correct'
+                ? 'background:#22c55e;color:#ffffff;border:1px solid #16a34a;'
+                : status === 'error'
+                    ? 'background:#ef4444;color:#ffffff;border:1px solid #dc2626;'
+                    : 'background:#334155;color:#94a3b8;border:1px solid #475569;opacity:0.6;';
+
+        const mark = status === 'correct' ? '✓' : (status === 'error' ? '✗' : '');
+
+        return '<span dir="' + dir + '" data-wi="' + idx + '" style="display:inline-block;padding:4px 10px;margin:3px;border-radius:9px;font-weight:800;' + style + '">' + escapeMemoHtml(raw) + (mark ? ' ' + mark : '') + '</span>';
+    }).join('');
+}
+
+// ---------- واجهة برمجية تُرجع JSON نظيف ----------
+// تُستخدم من زر "تحقق من التسميع" ومن اختبارات النظام.
+function memoRecitationReport(originalText, userSpeechTranscript, lang) {
+    let result;
+    try {
+        result = memoCompareRecitation(originalText, userSpeechTranscript, lang);
+    } catch (e) {
+        result = { success: false, last_correct_word_index: -1,
+                   error_word_in_original: '', user_wrong_pronunciation: '' };
+    }
+    // نحدّث العرض بالتلوين
+    try {
+        const el = document.getElementById('memoTargetTextDisplay');
+        if (el && originalText) {
+            el.innerHTML = memoColorizeRecitation(originalText, userSpeechTranscript, lang || currentMemoMode, result.last_correct_word_index);
+            el.style.fontSize = '1.15rem';
+            el.style.lineHeight = '2';
+        }
+    } catch (e) {}
+    
+    try { if (typeof memoLastRecitation !== 'undefined') memoLastRecitation = result; } catch (e) {}
+        // سطر الحالة يعكس نتيجة المقارنة
+    try {
+        const st = document.getElementById('memoActionStatus');
+        if (st) {
+            if (result.success) st.textContent = 'أحسنت! قرأت الدرس كاملاً 🎉';
+            else if (result.last_correct_word_index === -1) st.textContent = 'ابدأ من أول كلمة: ' + (result.error_word_in_original || '');
+            else st.textContent = 'توقفنا عند: ' + (result.error_word_in_original || '') + ' — أكمل من هنا';
+        }
+    } catch (e) {}
+return result;
+}
+
+                function useMemoPasteText() {
+            const ta = document.getElementById('memoPasteText');
+            const text = ta ? ta.value.trim() : '';
+            if (!text) return;
+            const title = 'نص ملصوق';
+            const lesson = { title: title, text: text, category: 'مخصص' };
+            customMemoLessons.push(lesson);
+            try { localStorage.setItem('zoomdz_custom_memo_lessons', JSON.stringify(customMemoLessons)); } catch (e) {}
+            currentMemoPresetIndex = 1000 + (customMemoLessons.length - 1);
+            renderMemoTargetContent();
+            const box = document.getElementById('memoPasteBox');
+            if (box) box.style.display = 'none';
+            if (ta) ta.value = '';
+        }
+
         function toggleMemoMic() {
     if (isMemoRecording) {
         if (memoRecognition) { try { memoRecognition.stop(); } catch (e) {} }
@@ -13472,6 +13651,8 @@ function handleMemoChallengeResult(ok) {
 }
 
         function initMemorizationTool() {
+            const pb = document.getElementById('memoPasteBox');
+            if (pb) pb.style.display = 'block';
             try {
                 const savedCustom = localStorage.getItem('zoomdz_custom_memo_lessons');
                 if (savedCustom) customMemoLessons = JSON.parse(savedCustom);
@@ -13554,13 +13735,24 @@ function handleMemoChallengeResult(ok) {
             return currentMemoMode === 'english' ? lvlMap.english : lvlMap.arabic;
         }
 
-        function getCurrentMemoItem() {
+                function getCurrentMemoItem() {
             if (currentMemoPresetIndex >= 1000 && customMemoLessons.length > 0) {
                 return customMemoLessons[currentMemoPresetIndex - 1000] || customMemoLessons[0];
             }
             const list = getCurrentMemoList();
             return list[currentMemoPresetIndex] || list[0];
         }
+
+        // النص الكامل للدرس المرفوع/الملصوق (وليس كلمة واحدة)
+        function getRecitationText() {
+            if (currentMemoPresetIndex >= 1000 && customMemoLessons.length > 0) {
+                const lesson = customMemoLessons[currentMemoPresetIndex - 1000] || customMemoLessons[0];
+                return (lesson && lesson.text) || '';
+            }
+            return '';
+        }
+
+        
 
         // Determine the currently active practice target.
         // مستوى 1 (الكلمات): practice ONE word at a time, then progress to the next word.
@@ -14287,7 +14479,50 @@ function handleMemoChallengeResult(ok) {
             if (recorder) recorder.style.display = 'block';
         }
 
-                        function evaluateMemoSpeech(spokenText) {
+                                function evaluateMemoSpeech(spokenText) {
+            const recitation = getRecitationText();
+
+            // ===== وضع التسميع: مقارنة النص الكامل كلمة بكلمة =====
+            if (recitation) {
+                const lang = currentMemoMode === 'arabic' ? 'ar-SA' : getMemoDailyTrack().lang;
+                const res = memoCompareRecitation(recitation, spokenText, lang);
+                memoLastRecitation = res;
+                memoColorizeRecitation(recitation, spokenText, lang, res.last_correct_word_index);
+
+                const status = document.getElementById('memoActionStatus');
+                if (status) {
+                    status.textContent = res.success
+                        ? 'أحسنت! قرأت الدرس كاملاً'
+                        : 'توقفنا عند: ' + (res.error_word_in_original || '') + ' — أكمل من هنا';
+                }
+
+                // نخزّن المحاولة في قاعدة البيانات
+                try {
+                    if (typeof apiFetch === 'function') {
+                        apiFetch('/api/student/memo-attempt', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                stage: 'listen', itemType: 'sentence',
+                                target: recitation, spoken: spokenText,
+                                correct: res.success,
+                                matched: res.last_correct_word_index + 1,
+                                total: memoSplitWords(recitation).length,
+                                wrongWords: res.error_word_in_original ? [res.error_word_in_original] : [],
+                                lang: currentMemoMode
+                            })
+                        }).catch(function () {});
+                    }
+                } catch (e) {}
+
+                if (res.success) {
+                    markMemoMastered(res.error_word_in_original || 'lesson');
+                    speakMemoPraise();
+                }
+                return;
+            }
+
+            // ===== وضع الكلمات (الطابور القصير) =====
             const stage = typeof memoStage !== 'undefined' ? memoStage : 'listen';
             const item = stage === 'challenge' ? getMemoChallengeTarget() : getMemoQueueTarget();
             let targetText = item ? item.text : '';
@@ -14305,20 +14540,15 @@ function handleMemoChallengeResult(ok) {
                 return;
             }
 
-            // المرحلة 1: تصحيح بالأحمر لكلمة أخطأ فيها الطالب
             let matchedUpTo = renderMemoWordByWord(targetText, spokenClean);
             if (matchedUpTo < 0) matchedUpTo = -1;
-
             let missing = 0;
             for (let k = matchedUpTo + 1; k < targetClean.length; k++) missing++;
             if (matchedUpTo === -1) missing = targetClean.length;
-
             const ok = missing === 0;
-            // نكمل من حيث أخطأ بدل إعادة الجملة من الأول
             if (typeof memoRetryFrom !== 'undefined') {
                 if (!ok) memoRetryFrom = Math.max(memoRetryFrom, matchedUpTo + 1);
             }
-
             if (stage === 'challenge') {
                 handleMemoChallengeResult(ok);
             } else {
