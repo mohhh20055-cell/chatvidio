@@ -16159,6 +16159,27 @@ function stopMemoForToday() {
             el.setAttribute('dir', currentMemoMode === 'english' ? 'ltr' : 'rtl');
         }
 
+                // رسائل عربية واضحة لكل نوع خطأ في التعرف على الكلام
+        function getMemoSpeechErrorMessage(code) {
+            switch (String(code)) {
+                case 'not-allowed':
+                case 'service-not-allowed':
+                    return '🚫 لم يُسمح باستخدام الميكروفون. اضغط على أيقونة القفل 🔒 بجانب عنوان الموقع ثم اسمح بالميكروفون، وأعد تحميل الصفحة.';
+                case 'audio-capture':
+                    return '🎤 لم يتم العثور على ميكروفون. تأكد من توصيل الميكروفون واختياره من إعدادات المتصفح.';
+                case 'network':
+                    return '📡 انقطع الاتصال بخدمة التعرف على الصوت. تحقق من الإنترنت ثم أعد المحاولة — أو اقرأ بصوت أعلى وأقرب من الميكروفون.';
+                case 'no-speech':
+                    return '🤫 لم أسمع أي صوت. اضغط الميكروفون وتحدث بصوت واضح بعد تشغيله.';
+                case 'aborted':
+                    return '⏹️ تم إيقاف التسجيل. اضغط الميكروفون للمحاولة من جديد.';
+                case 'language-not-supported':
+                    return '🌐 اللغة المختارة غير مدعومة في هذا المتصفح. جرّب لغة أخرى من القائمة.';
+                default:
+                    return '⚠️ خطأ في التعرف على الصوت (' + String(code) + '). تأكد من السماح بالميكروفون واتصال الإنترنت ثم أعد المحاولة.';
+            }
+        }
+
         function toggleMemoSpeechRecording() {
             const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRecognitionAPI) {
@@ -16181,6 +16202,7 @@ function stopMemoForToday() {
                 }
                 recognition.lang = memoRecogLang;
                 recognition.interimResults = true; // Real-time interim results
+                recognition.continuous = true;   // نتابع الاستماع حتى لا تُقطع الجملة
                 recognition.maxAlternatives = 1;
 
                 isMemoRecording = true;
@@ -16249,14 +16271,23 @@ function stopMemoForToday() {
                 };
 
                 recognition.onerror = (e) => {
-                    console.error('Speech recognition error', e);
+                    // تشخيص دقيق: نوع الخطأ الحقيقي بدل طباعة كائن الحدث فقط
+                    const code = (e && (e.error || e.code || e.message)) || 'unknown';
+                    const errName = (e && e.name) ? e.name : 'SpeechRecognitionErrorEvent';
+                    logAppError('Memo Speech Recognition Error', 'code=' + String(code) + ' name=' + String(errName), null, null);
                     isMemoRecording = false;
                     if (btn) { btn.style.background = '#10b981'; btn.innerHTML = '<i class="fas fa-microphone"></i>'; }
                     if (liveTargetWrap) liveTargetWrap.style.display = 'none';
-                    if (status) status.textContent = 'حدث خطأ في التسجيل الصوتي أو تم رفض الميكروفون.';
+                    if (status) status.textContent = getMemoSpeechErrorMessage(code);
+                    showToast(getMemoSpeechErrorMessage(code), 'error');
                 };
 
-                recognition.start();
+                try {
+                    recognition.start();
+                } catch (startErr) {
+                    isMemoRecording = false;
+                    if (status) status.textContent = getMemoSpeechErrorMessage('not-allowed');
+                }
             } catch (err) {
                 console.error(err);
                 isMemoRecording = false;
