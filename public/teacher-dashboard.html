@@ -3,6 +3,129 @@
 <html lang="ar" dir="rtl">
 <head>
     <script>
+// ============================================================================
+// Front end for the typing indicator. Identical on both dashboards so the two
+// sides behave the same.
+//   - typing in the box tells the other person "يكتب الآن"
+//   - sending, clearing or going idle turns it off
+//   - a short poll shows the peer's dots while they type
+// ============================================================================
+
+// مؤشراتConversation المستعملة حالياً
+let chatTypingPeer = { id: null, type: null };      // الشخص الآخر في المحادثة المفتوحة
+let chatTypingTimer = null;                          // مؤقّت الإيقاف بعد السكون
+let chatTypingPoll = null;                           // مؤقّت الاستعلام
+let chatTypingLastSent = 0;                          // آخر مرة أرسلنا فيها
+let chatTypingMyFlag = false;                        // هل نحن نكتب الآن؟
+
+function chatTypingApiBase() {
+    return (typeof API_BASE_URL !== 'undefined' && API_BASE_URL)
+        ? API_BASE_URL + '/api/messages'
+        : '/api/messages';
+}
+
+function chatTypingAuthHeaders() {
+    try {
+        if (typeof getAuthToken === 'function') {
+            const t = getAuthToken();
+            if (t) return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + t };
+        }
+    } catch (e) {}
+    return { 'Content-Type': 'application/json' };
+}
+
+// آخر مرة كُتب فيها في مربّع الرسالة
+function chatTypingOnInput() {
+    const peer = chatTypingPeer;
+    if (!peer.id) return;
+    const ta = document.getElementById('messageInput');
+    const hasText = ta && String(ta.value || '').trim().length > 0;
+    if (!hasText) { chatTypingStop(); return; }
+
+    const now = Date.now();
+    // لا نغرق الخادم: إشارة كل ثانيتين كحد أقصى
+    if (!chatTypingMyFlag || (now - chatTypingLastSent) > 2000) {
+        chatTypingSend(true);
+    }
+
+    // إيقاف تلقائي بعد ثلاث ثوانٍ من السكون
+    if (chatTypingTimer) clearTimeout(chatTypingTimer);
+    chatTypingTimer = setTimeout(chatTypingStop, 3000);
+}
+
+function chatTypingSend(isTyping) {
+    const peer = chatTypingPeer;
+    if (!peer.id) return;
+    if (typeof fetchWithAuth === 'function') {
+        fetchWithAuth(chatTypingApiBase() + '/typing', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                peer_id: peer.id,
+                peer_type: peer.type,
+                is_typing: !!isTyping
+            })
+        }).catch(function () {});
+    }
+    chatTypingMyFlag = !!isTyping;
+    chatTypingLastSent = Date.now();
+}
+
+function chatTypingStop() {
+    if (chatTypingTimer) { clearTimeout(chatTypingTimer); chatTypingTimer = null; }
+    if (chatTypingMyFlag) chatTypingSend(false);
+}
+
+// بدّل المحادثة المفتوحة وابدأ/وقف الاستعلام
+function chatTypingWatch(peerId, peerType, peerName) {
+    chatTypingStop();
+    if (chatTypingPoll) { clearInterval(chatTypingPoll); chatTypingPoll = null; }
+    chatTypingPeer = { id: peerId || null, type: peerType || null, name: peerName || '' };
+    chatTypingRender(false);
+    if (!peerId) return;
+    chatTypingPoll = setInterval(chatTypingAsk, 2500);
+    chatTypingAsk();
+}
+
+function chatTypingAsk() {
+    const peer = chatTypingPeer;
+    if (!peer.id) return;
+    const myId = (typeof teacherId !== 'undefined' && teacherId) ? teacherId : ((typeof currentUserId !== 'undefined' && currentUserId) || null);
+    const myType = 'teacher';
+    if (!myId || Number(myId) < 1) return;
+
+    const url = chatTypingApiBase() + '/typing/' + myId + '/' + myType + '/' + peer.id + '/' + peer.type;
+    if (typeof fetchWithAuth === 'function') {
+        fetchWithAuth(url).then(function (r) { return r.json(); })
+            .then(function (d) { chatTypingRender(!!(d && d.is_typing)); })
+            .catch(function () {});
+    }
+}
+
+// النقاط الثلاث المتحركة + الاسم
+function chatTypingRender(isTyping) {
+    const box = document.getElementById('chatTypingIndicator');
+    if (!box) return;
+    if (!isTyping) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    const peer = chatTypingPeer;
+    const name = (peer && peer.name) ? peer.name : 'الطرف الآخر';
+    box.style.display = 'flex';
+    box.innerHTML =
+        '<span style="display:inline-flex;align-items:center;gap:5px;font-size:0.78rem;font-weight:800;color:#64748b;">' +
+        '<span style="display:inline-flex;gap:3px;align-items:center;">' +
+        '<span class="chat-typing-dot" style="width:6px;height:6px;border-radius:50%;background:#94a3b8;display:inline-block;"></span>' +
+        '<span class="chat-typing-dot" style="width:6px;height:6px;border-radius:50%;background:#94a3b8;display:inline-block;"></span>' +
+        '<span class="chat-typing-dot" style="width:6px;height:6px;border-radius:50%;background:#94a3b8;display:inline-block;"></span>' +
+        '</span>' +
+        escapeHtml(name) + ' يكتب الآن…' +
+        '</span>';
+}
+
+// أوقف كل شيء عند مغادرة الصفحة
+window.addEventListener('beforeunload', function () { chatTypingStop(); });
+    </script>
+
+    <script>
         (function() {
             function handleGlobalError(errorMsg) {
                 try {
@@ -3604,6 +3727,16 @@
         pointer-events: none;
     }
     </style>
+<style>
+        @keyframes chatTypingBounce {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.45; }
+            30% { transform: translateY(-4px); opacity: 1; }
+        }
+        .chat-typing-dot { animation: chatTypingBounce 1.2s infinite ease-in-out; }
+        .chat-typing-dot:nth-child(2) { animation-delay: 0.18s; }
+        .chat-typing-dot:nth-child(3) { animation-delay: 0.36s; }
+        #chatTypingIndicator { min-height: 20px; }
+    </style>
 </head>
 <body>
 <!-- ===== PLATFORM PRELOADER SPLASH SCREEN ===== -->
@@ -4290,9 +4423,10 @@
                     </div>
                     <button type="button" class="reply-bar-dismiss" onclick="cancelChatReply()" title="إلغاء الرد"><i class="fas fa-times"></i></button>
                 </div>
+                <div id="chatTypingIndicator" style="display: none; padding: 6px 4px 2px; direction: rtl;"></div>
                 <div class="chat-input-area">
                     <button type="button" class="btn-record" id="recordBtn" onclick="toggleRecording()"><i class="fas fa-microphone"></i></button>
-                    <input type="text" id="messageInput" placeholder="اكتب رسالتك..." onkeypress="if(event.key==='Enter') sendMessageToTeacher()">
+                    <input type="text" id="messageInput" placeholder="اكتب رسالتك..." onkeypress="if(event.key==='Enter') sendMessageToTeacher()" oninput="chatTypingOnInput()">
                     <button onclick="sendMessageToTeacher()"><i class="fas fa-paper-plane"></i> إرسال</button>
                 </div>
             </div>
@@ -9395,6 +9529,7 @@ function updateUI() {
     function startChatWithUser(otherId, otherName, otherImage, otherType = 'teacher') {
         if (checkGuestAction && checkGuestAction()) return;
         currentChatTeacher = { id: otherId, name: otherName, image: otherImage || '/images/default-avatar.svg', type: otherType };
+        chatTypingWatch(otherId, otherType, otherName);
         document.getElementById('conversationsList').style.display = 'none';
         document.getElementById('chatView').style.display = 'block';
 
@@ -9739,6 +9874,7 @@ function updateUI() {
             });
             const data = await res.json();
             if (data.success) {
+                chatTypingStop();
                 document.getElementById('messageInput').value = '';
                 cancelChatReply();
                 await loadConversationMessages(currentChatTeacher.id, receiverType);
@@ -9802,6 +9938,7 @@ function updateUI() {
     }
 
     function backToConversations() {
+        chatTypingWatch(null, null);
         currentChatTeacher = null;
         document.getElementById('chatView').style.display = 'none';
         document.getElementById('conversationsList').style.display = 'block';

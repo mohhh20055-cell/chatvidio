@@ -19,6 +19,9 @@ const memoryReactions = new Map(); // message_id -> [{ user_id, user_type, emoji
 const memoryReplies = new Map(); // message_id -> { reply_to_id, reply_to_text, reply_to_sender }
 // ذاكرة مؤقتة للمرفقات والصور
 const memoryAttachments = new Map(); // message_id -> { file_url, file_name, file_size, file_type }
+// حالة "يكتب الآن" لكل محادثة، احتياطاً إن لم يكن الجدول موجوداً
+const memoryTyping = new Map(); // "aType:aId|bType:bId" -> { typing, at }
+const TYPING_TTL_MS = 8000; // بعدها تُعتبر الكتابة متوقفة تلقائياً
 
 const multer = require('multer');
 const { uploadToSupabase } = require('../utils/upload');
@@ -807,6 +810,131 @@ router.get('/blocked-students', authenticate, async (req, res) => {
         res.json({ success: true, blocked_ids: Array.from(blockedIds) });
     } catch (error) {
         logger.error('خطأ في جلب قائمة المحظورين:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+// ================================================================
+// مؤشر الكتابة: "يكتب الآن"
+// المفتاح متماثل بين الطرفين حتى لا يهم من بدأ المحادثة.
+// ================================================================
+function typingKey(aType, aId, bType, bId) {
+    const pair = [
+        aType + ':' + aId,
+        bType + ':' + bId
+    ].sort();
+    return pair.join('|');
+}
+
+function pruneTyping() {
+    const now = Date.now();
+    for (const [k, v] of memoryTyping) {
+        if (now - v.at > TYPING_TTL_MS) memoryTyping.delete(k);
+    }
+}
+
+router.post('/typing', authenticate, [
+    body('peer_id').isInt().withMessage('معرف الطرف الآخر غير صالح'),
+    body('peer_type').isIn(['student', 'teacher']).withMessage('نوع الطرف الآخر غير صالح'),
+    body('is_typing').isBoolean().withMessage('قيمة is_typing غير صالحة')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const userId = req.user.userId;
+        const userType = req.user.role;
+        const peerId = parseInt(req.body.peer_id, 10);
+        const peerType = req.body.peer_type;
+        const isTyping = !!req.body.is_typing;
+
+        // لا يمكن التلاعب بمؤشر كتابة شخص آخر
+        if (String(userId) === String(peerId) && userType === peerType) {
+            return res.status(400).json({ success: false, error: 'محادثة غير صالحة' });
+        }
+
+        const key = typingKey(userType, userId, peerType, peerId);
+        const at = Date.now();
+
+        // 1) قاعدة البيانات
+        try {
+            const row = {
+                conversation_key: key,
+                user_id: userId,
+                user_type: userType,
+                is_typing: isTyping,
+                updated_at: new Date(at).toISOString()
+            };
+            const { error } = await supabase
+                .from('message_typing')
+                .upsert(row, { onConflict: 'conversation_key,user_id,user_type' });
+            if (error && !error.message?.includes('does not exist')) {
+                throw new Error(error.message);
+            }
+        } catch (e) {
+            console.warn('⚠️ جدول message_typing غير متاح، يتم الحفظ في الذاكرة:', e.message);
+        }
+
+        // 2) الذاكرة (يعمل دائماً)
+        if (isTyping) {
+            memoryTyping.set(key, { typing: true, at: at });
+        } else {
+            memoryTyping.delete(key);
+        }
+        pruneTyping();
+
+        res.json({ success: true });
+    } catch (error) {
+        logger.error('خطأ في تحديث حالة الكتابة:', error.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+    }
+});
+
+router.get('/typing/:user_id/:user_type/:other_id/:other_type', authenticate, async (req, res) => {
+    try {
+        const meId = parseInt(req.params.user_id, 10);
+        const meType = req.params.user_type;
+        const peerId = parseInt(req.params.other_id, 10);
+        const peerType = req.params.other_type;
+
+        if (String(req.user.userId) !== String(meId) || req.user.role !== meType) {
+            return res.status(403).json({ success: false, error: 'غير مصرح' });
+        }
+
+        const key = typingKey(meType, meId, peerType, peerId);
+        const now = Date.now();
+        let isTyping = false;
+
+        // 1) قاعدة البيانات
+        try {
+            const { data, error } = await supabase
+                .from('message_typing')
+                .select('is_typing, updated_at')
+                .eq('conversation_key', key)
+                .eq('user_id', peerId)
+                .eq('user_type', peerType)
+                .maybeSingle();
+
+            if (!error && data && data.is_typing) {
+                const seen = new Date(data.updated_at).getTime();
+                if (!isNaN(seen) && (now - seen) < TYPING_TTL_MS) isTyping = true;
+            }
+        } catch (e) {
+            console.warn('⚠️ تعذّرت قراءة حالة الكتابة من القاعدة:', e.message);
+        }
+
+        // 2) الذاكرة
+        if (!isTyping) {
+            pruneTyping();
+            const mem = memoryTyping.get(key);
+            if (mem && mem.typing && (now - mem.at) < TYPING_TTL_MS) isTyping = true;
+        }
+
+        res.json({ success: true, is_typing: isTyping });
+    } catch (error) {
+        logger.error('خطأ في قراءة حالة الكتابة:', error.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
     }
 });
