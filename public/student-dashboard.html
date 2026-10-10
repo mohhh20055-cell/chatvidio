@@ -4787,9 +4787,9 @@
             <!-- النص الذي لصقه الطالب -->
             <div id="memoTextInputBox" style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 16px; padding: 14px; margin-bottom: 14px;">
                 <div style="font-size: 0.78rem; font-weight: 800; color: #334155; margin-bottom: 8px;">
-                    <i class="fas fa-file-alt"></i> الصق نص الدرس هنا — سيقرأه النظام ويقارن ما تنطقه به
+                    <i class="fas fa-file-alt"></i> الصق نص الدرس هنا — يقارنه النظام بما تنطقه أو تكتبه
                 </div>
-                <textarea id="memoTextInput" rows="6" placeholder="الصق نص الدرس كاملاً هنا…" oninput="onMemoTextInput()" style="width:100%; padding:12px; border-radius:12px; border:1.5px solid #cbd5e1; font-family: inherit; font-size:0.88rem; line-height:1.9; resize:vertical;"></textarea>
+                <textarea id="memoTextInput" rows="6" placeholder="الصق نص الدرس كاملاً هنا — لنتحقق من تسميعه أو كتابته…" oninput="onMemoTextInput()" style="width:100%; padding:12px; border-radius:12px; border:1.5px solid #cbd5e1; font-family: inherit; font-size:0.88rem; line-height:1.9; resize:vertical;"></textarea>
                 <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap; align-items:center;">
                     <button type="button" onclick="startMemoRecitation()" style="background:#2563eb; color:white; border:none; padding:10px 20px; border-radius:10px; font-weight:800; font-size:0.85rem; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:6px;">
                         <i class="fas fa-play"></i> ابدأ التسميع
@@ -14842,5 +14842,71 @@ function onMemoTypingInput() {
         });
     </script>
     
+    <!-- ===== MOBILE BOTTOM NAV WITH SCROLL BUTTONS ===== -->
+    <div class="mobile-bottom-nav-wrapper">
+        <button type="button" class="mobile-bottom-scroll-btn right" onclick="scrollBottomNav('right')" title="التمرير لليمين" aria-label="التمرير لليمين">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+        <div class="mobile-bottom-nav" id="mobileBottomNav">
+            <button class="mobile-bottom-item" data-section="offers" onclick="showSection('offers')">
+                <i class="fas fa-calendar-alt"></i>
+                <span>ZoomDz Live</span>
+            </button>
+            <button class="mobile-bottom-item active" data-section="exercises" onclick="showSection('exercises')">
+                <i class="fas fa-book-open"></i>
+                <span>التمارين</span>
+            </button>
+            <button class="mobile-bottom-item" data-section="posts" onclick="showSection('posts')">
+                <i class="fas fa-newspaper"></i>
+                <span>المنشورات</span>
+                <span id="mobilePostsBadge" style="display:none; position:absolute; top:4px; right:18px; background:#ef4444; color:white; border-radius:50%; width:16px; height:16px; font-size:0.65rem; font-weight:800; display:flex; align-items:center; justify-content:center;">0</span>
+            </button>
+            <button class="mobile-bottom-item" data-section="messages" onclick="showSection('messages')">
+                <i class="fab fa-facebook-messenger" style="color: #0084ff;"></i>
+                <span>الرسائل</span>
+            </button>
+            <button class="mobile-bottom-item" data-section="groups" onclick="showSection('groups')">
+                <i class="fas fa-users" style="color: #3b82f6;"></i>
+                <span>المجموعات</span>
+                <span class="nav-badge" id="mobileGroupsBadgeBottom" style="display:none; background:#ef4444; color:white; padding:2px 6px; border-radius:10px; font-size:0.65rem; font-weight:800; position:absolute; top:4px; right:12px;">0</span>
+            </button>
+            <button class="mobile-bottom-item" data-section="packages" onclick="showSection('packages')">
+                <i class="fas fa-boxes-stacked"></i>
+                <span>الباقات</span>
+            </button>
+            <button class="mobile-bottom-item" data-section="community-channels" onclick="showSection('community-channels')">
+                <i class="fas fa-bullhorn" style="color:#38bdf8;"></i>
+                <span>المجتمع</span>
+            </button>
+            <button class="mobile-bottom-item" data-section="memorization" onclick="showSection('memorization')" style="color: #059669; font-weight: 800;">
+                <i class="fas fa-microphone-lines" style="color: #059669;"></i>
+                <span>المحفظ الذكي</span>
+            </button>
+            <button class="mobile-bottom-item" data-section="ai-assistant" onclick="showSection('ai-assistant')">
+                <i class="fas fa-robot" style="color:#38bdf8;"></i>
+                <span>المساعد الذكي</span>
+            </button>
+            <button class="mobile-bottom-item" data-section="teachers" onclick="showSection('teachers')">
+                <i class="fas fa-chalkboard-user"></i>
+                <span>الأساتذة</span>
+            </button>
+            <button class="mobile-bottom-item" data-section="courses" onclick="showSection('courses')">
+                <i class="fas fa-play-circle"></i>
+                <span>الدورات</span>
+            </button>
+            <button class="mobile-bottom-item" data-section="transactions" onclick="showSection('transactions')">
+                <i class="fas fa-history"></i>
+                <span>المعاملات</span>
+            </button>
+            <button class="mobile-bottom-item" data-section="referral" onclick="showSection('referral')">
+                <i class="fas fa-link"></i>
+                <span>الإحالة</span>
+            </button>
+        </div>
+        <button type="button" class="mobile-bottom-scroll-btn left" onclick="scrollBottomNav('left')" title="التمرير لليسار" aria-label="التمرير لليسار">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+    </div>
+
 </body>
 </html>
