@@ -4764,9 +4764,14 @@
         <div id="memoPracticeArea">
             <div id="memoTargetBox" style="background: #0f172a; border: 2px solid transparent; border-radius: 16px; padding: 26px 18px; margin-bottom: 14px; text-align: center;">
                 <div id="memoTargetTextDisplay" style="font-size: 2rem; font-weight: 900; line-height: 1.6; color: white; word-break: break-word;">—</div>
+                <div id="memoWordMeaning" style="display: none; margin-top: 10px; font-size: 0.92rem; font-weight: 700; color: #86efac;"></div>
             </div>
             <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 6px 0 4px;">
                 <div id="memoRecordPulse" style="display: none; width: 78px; height: 78px; border-radius: 50%; background: radial-gradient(circle, #ef4444 0%, #fca5a5 70%, transparent 100%);"></div>
+                <button type="button" id="memoSpeakBtn" onclick="speakMemoCurrent()" title="استمع للكلمة" style="display: inline-flex; background: #e0f2fe; color: #0369a1; border: 1.5px solid #7dd3fc; width: 58px; height: 58px; border-radius: 50%; font-size: 1.3rem; cursor: pointer; align-items: center; justify-content: center;">
+                    <i class="fas fa-volume-up"></i>
+                </button>
+                
                 <button type="button" id="memoRecordBtn" onclick="toggleMemoMic()" style="background: #10b981; color: white; border: none; width: 76px; height: 76px; border-radius: 50%; font-size: 2rem; cursor: pointer; display: flex; align-items: center; justify-content: center;">
                     <i class="fas fa-microphone"></i>
                 </button>
@@ -12784,16 +12789,20 @@ let memoMemoryStep = null;     // 'words' | 'sentence' | null
         }
 
 // ---------- تغيير اللغة ----------
-function changeMemoLanguage(lang) {
-    if (!MEMO_DAILY_TRACKS[lang]) return;
-    if (currentMemoMode === lang) return;
-    switchMemoMode(lang);
-    memoPhase = 'words';
-    memoMemoryStep = null;
-    const sel = document.getElementById('memoLanguageSelect');
-    if (sel) sel.value = lang;
-    speakMemoTrackName();
-}
+        function changeMemoLanguage(lang) {
+            if (!MEMO_DAILY_TRACKS[lang]) return;
+            const sel0 = document.getElementById('memoLanguageSelect');
+            if (sel0) sel0.value = lang;
+            if (currentMemoMode === lang) return;
+            switchMemoMode(lang);
+            // خطة جديدة للّغة الجديدة + إعادة بناء الطابور فوراً
+            try {
+                loadMemoDailyPlan();
+            } catch (e) {}
+            buildMemoQueue();
+            renderMemoQueueTarget();
+            speakMemoTrackName();
+        }
 
 function speakMemoTrackName() {
     if (!('speechSynthesis' in window)) return;
@@ -13011,28 +13020,47 @@ function getMemoQueueTarget() {
 }
 
 // عرض العنصر الحالي فقط (بلا نسبة ولا تفاصيل)
-function renderMemoQueueTarget() {
-    const el = document.getElementById('memoTargetTextDisplay');
-    const status = document.getElementById('memoActionStatus');
-    if (!el) return;
-    const item = getMemoQueueTarget();
-    if (!item) {
-        el.textContent = '—';
-        el.style.fontSize = '1.6rem';
-        if (status) status.textContent = '';
-        return;
-    }
-    el.textContent = item.text;
-    el.style.fontSize = item.type === 'word' ? '2rem' : '1.35rem';
-    el.style.fontWeight = '900';
-    el.style.lineHeight = '1.7';
-    el.setAttribute('dir', getMemoDailyTrack().lang === 'ar-SA' ? 'rtl' : 'ltr');
-    if (status) {
-        status.textContent = memoLastResult === 'retry'
-            ? 'أعد القراءة'
-            : (item.type === 'word' ? 'انطق الكلمة' : 'انطق الجملة');
-    }
-}
+        function renderMemoQueueTarget() {
+            const el = document.getElementById('memoTargetTextDisplay');
+            const status = document.getElementById('memoActionStatus');
+            const meaningEl = document.getElementById('memoWordMeaning');
+            const btnEl = document.getElementById('memoSpeakBtn');
+            if (!el) return;
+            const item = getMemoQueueTarget();
+            if (!item) {
+                el.textContent = '—';
+                el.style.fontSize = '1.6rem';
+                if (status) status.textContent = '';
+                if (meaningEl) meaningEl.textContent = '';
+                if (btnEl) btnEl.style.display = 'none';
+                return;
+            }
+            el.textContent = item.text;
+            el.style.fontSize = item.type === 'word' ? '2rem' : '1.3rem';
+            el.style.fontWeight = '900';
+            el.style.lineHeight = '1.7';
+            el.setAttribute('dir', getMemoDailyTrack().lang === 'ar-SA' ? 'rtl' : 'ltr');
+            // شرح الكلمة بالعربية
+            if (meaningEl) {
+                const m = item.type === 'word' ? getMemoWordMeaning(item.text) : '';
+                meaningEl.textContent = m ? 'المعنى: ' + m : (item.type === 'sentence' ? 'جملة من كلماتك' : '');
+                meaningEl.style.display = m || item.type === 'sentence' ? 'block' : 'none';
+            }
+            if (btnEl) btnEl.style.display = 'inline-flex';
+            if (status) {
+                status.textContent = memoLastResult === 'retry'
+                    ? 'أعد القراءة'
+                    : (item.type === 'word' ? 'انطق الكلمة' : 'انطق الجملة');
+            }
+        }
+
+        // نطق الكلمة الحالية عند الضغط على زر الصوت
+        function speakMemoCurrent() {
+            const item = getMemoQueueTarget();
+            if (!item) return;
+            speakMemoWord(item.text);
+        }
+
 
 // نتيجة التقييم: انتقال تلقائي أو طلب الإعادة (بلا أرقام)
 function handleMemoQueueResult(ok) {
@@ -13734,6 +13762,7 @@ function toggleMemoMic() {
                 recognition.maxAlternatives = 1;
 
                 memoHeardAnything = false;
+                finalTranscript = '';
                 clearMemoSilenceTimer();
                 isMemoRecording = true;
                 const btn = document.getElementById('memoRecordBtn');
@@ -13757,40 +13786,39 @@ function toggleMemoMic() {
                 let finalTranscript = '';
 
                 recognition.onresult = (event) => {
+                    // اجمع ما نُطق: النهائي forcefully + المؤقت
                     let interim = '';
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
+                        const chunk = event.results[i][0].transcript;
                         if (event.results[i].isFinal) {
-                            finalTranscript += event.results[i][0].transcript + ', ';
+                            finalTranscript += chunk + ' ';
                         } else {
-                            interim += event.results[i][0].transcript;
+                            interim += chunk + ' ';
                         }
                     }
-
-                    // evidence热量: العميل نطق شيئاً — نراقب هل سيتوقف؟
-                    if ((finalSoFar || interimTrimmed)) { memoHeardAnything = true; scheduleMemoAutoStop(); }
 
                     const finalSoFar = finalTranscript.trim();
                     const interimTrimmed = interim.trim();
 
-                    // Real-time colored rendering: the sentence being read + the spoken words
+                    // نسمع صوتاً — نؤقّت إيقاف الميكروفون بعد الصمت
+                    if (finalSoFar || interimTrimmed) {
+                        memoHeardAnything = true;
+                        scheduleMemoAutoStop();
+                    }
+
+                    // عرض ملوّن فوري
                     renderMemoLiveSpoken(finalSoFar, interimTrimmed);
                     renderMemoLiveTarget(finalSoFar, interimTrimmed);
 
-                    // Real-time live coaching check against target words
-                    const target = getCurrentMemoTargetText();
-                    const targetClean = tokenizeText(target.text, currentMemoMode);
-                    const spokenClean = tokenizeText(finalSoFar + ' ' + interimTrimmed, currentMemoMode);
-
-                    if (spokenClean.length > 0) {
-                        const lastSpokenWord = spokenClean[spokenClean.length - 1];
-                        const expectedNextWord = targetClean[spokenClean.length - 1];
-                        if (expectedNextWord && lastSpokenWord !== expectedNextWord) {
-                            if (coachAlert) {
-                                coachAlert.style.display = 'block';
-                                coachAlert.textContent = `⚠️ تنبيه محفظ آلي: كلمة "${lastSpokenWord}" قد تكون غير مطابقة. الصحيح هو "${expectedNextWord}". واصل القراءة!`;
-                            }
-                        } else {
-                            if (coachAlert) coachAlert.style.display = 'none';
+                    // تحقق مبكر: إذا نطق الطالب العنصر كاملاً ننهي فوراً
+                    const qItem = getMemoQueueTarget();
+                    if (qItem && (finalSoFar || interimTrimmed)) {
+                        const need = tokenizeText(qItem.text, currentMemoMode);
+                        const got = tokenizeText(finalSoFar + ' ' + interimTrimmed, currentMemoMode);
+                        if (need.length && got.length >= need.length) {
+                            clearMemoSilenceTimer();
+                            try { recognition.stop(); } catch (e) {}
+                            return;
                         }
                     }
                 };
@@ -13798,14 +13826,18 @@ function toggleMemoMic() {
                 recognition.onend = () => {
                     clearMemoSilenceTimer();
                     memoHeardAnything = false;
+                    isMemoRecording = false;
                     if (btn) { btn.style.background = '#10b981'; btn.innerHTML = '<i class="fas fa-microphone"></i>'; }
                     setMemoListeningState(false);
-                    if (liveTargetWrap && !isMemoRecording) liveTargetWrap.style.display = 'none';
-                    if (finalTranscript.trim()) {
-                        evaluateMemoSpeech(finalTranscript.trim());
+                    const heard = finalTranscript.trim();
+                    finalTranscript = '';
+                    if (heard) {
+                        evaluateMemoSpeech(heard);
+                    } else {
+                        const st = document.getElementById('memoActionStatus');
+                        if (st) st.textContent = 'انطق الكلمة';
                     }
                 };
-
                 recognition.onerror = (e) => {
                     // تشخيص دقيق: نوع الخطأ الحقيقي بدل طباعة كائن الحدث فقط
                     const code = (e && (e.error || e.code || e.message)) || 'unknown';
