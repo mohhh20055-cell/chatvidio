@@ -1548,4 +1548,117 @@ router.post('/rate-teacher', authenticate, authorize(['student']), [
     }
 });
 
+
+// =====================================================================
+// 🎯 Smart Memorization — Adaptive Engine API
+//    Stage 2: store a mastered word   |   Stage 3: log challenges
+// =====================================================================
+router.post('/memo-progress', authenticate, async (req, res) => {
+    try {
+        const studentId = String(req.user.userId ?? req.user.id);
+        const { word, lang, level, difficulty, meaning_ar, source } = req.body || {};
+        if (!word) {
+            return res.status(400).json({ error: 'الكلمة مطلوبة' });
+        }
+        const langCode = lang || 'en-US';
+        const lv = Math.max(1, Math.min(5, parseInt(difficulty || level || 1, 10) || 1));
+
+        // المرحلة الثانية: إضافة/تحديث الكلمة في قائمة المتقنة
+        const { error: upErr } = await supabase
+            .from('memo_mastered_words')
+            .upsert({
+                student_id: studentId,
+                lang: langCode,
+                word: String(word).slice(0, 255),
+                meaning_ar: meaning_ar || null,
+                difficulty: lv,
+                source: source || 'lesson',
+                last_seen_at: new Date().toISOString()
+            }, { onConflict: 'student_id,lang,word' });
+        if (upErr) throw upErr;
+
+        // تحديث المستوى
+        await supabase
+            .from('memo_student_level')
+            .upsert({
+                student_id: studentId,
+                lang: langCode,
+                total_words: 1,
+                current_streak: 1,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'student_id,lang' });
+
+        res.json({ success: true, word, lang: langCode, difficulty: lv });
+    } catch (e) {
+        console.error('memo-progress error:', e.message);
+        res.status(500).json({ error: 'تعذر حفظ التقدم' });
+    }
+});
+
+// تسجيل محاولة (المرحلة الأولى) مع الكلمات الخاطئة بالأحمر
+router.post('/memo-attempt', authenticate, async (req, res) => {
+    try {
+        const studentId = String(req.user.userId ?? req.user.id);
+        const { spoken, target, correct, matched, total, wrongWords, lang, stage, itemType, difficulty } = req.body || {};
+        const langCode = lang || 'en-US';
+
+        const { error } = await supabase.from('memo_attempts').insert({
+            student_id: studentId,
+            lang: langCode,
+            stage: stage || 'listen',
+            item_type: itemType || 'word',
+            target_text: String(target || ''),
+            spoken_text: String(spoken || ''),
+            is_correct: !!correct,
+            matched_words: matched || 0,
+            total_words: total || 1,
+            wrong_words: Array.isArray(wrongWords) ? wrongWords : null,
+            difficulty: Math.max(1, Math.min(5, parseInt(difficulty || 1, 10) || 1))
+        });
+        if (error) throw error;
+
+        // خطأ يصفّر السلسلة
+        if (!correct) {
+            const { data } = await supabase
+                .from('memo_student_level')
+                .select('current_streak')
+                .eq('student_id', studentId).eq('lang', langCode).maybeSingle();
+            await supabase.from('memo_student_level')
+                .upsert({
+                    student_id: studentId,
+                    lang: langCode,
+                    wrong_count: 1,
+                    current_streak: 0,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'student_id,lang' });
+        }
+
+        res.json({ success: true });
+    } catch (e) {
+        console.error('memo-attempt error:', e.message);
+        res.status(500).json({ error: 'تعذر تسجيل المحاولة' });
+    }
+});
+
+// جلب الكلمات المُتقنة (للتحدي الجديد)
+router.get('/memo-mastered', authenticate, async (req, res) => {
+    try {
+        const studentId = String(req.user.userId ?? req.user.id);
+        const lang = req.query.lang || 'en-US';
+        const { data, error } = await supabase
+            .from('memo_mastered_words')
+            .select('word, meaning_ar, difficulty, correct_count, wrong_count')
+            .eq('student_id', studentId)
+            .eq('lang', lang)
+            .order('last_seen_at', { ascending: false })
+            .limit(50);
+        if (error) throw error;
+        res.json({ success: true, words: data || [] });
+    } catch (e) {
+        console.error('memo-mastered error:', e.message);
+        res.status(500).json({ error: 'تعذر جلب الكلمات' });
+    }
+});
+
+
 module.exports = router;

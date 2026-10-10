@@ -4776,6 +4776,13 @@
                     <i class="fas fa-microphone"></i>
                 </button>
                 <div id="memoActionStatus" style="font-size: 0.86rem; font-weight: 700; color: #64748b; text-align: center; min-height: 1.4em;"></div>
+                <div id="memoDifficultyLabel" style="font-size: 0.72rem; font-weight: 800; color: #7c3aed; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 10px; padding: 4px 10px; margin-top: 6px; display: inline-block;">المستوى 1 — سهل</div>
+                <div id="memoChallengeBox" style="display: none; margin-top: 14px; padding: 12px; background: #f5f3ff; border: 1.5px solid #c4b5fd; border-radius: 12px;">
+                    <div style="font-size: 0.78rem; font-weight: 800; color: #5b21b6; margin-bottom: 6px;"><i class="fas fa-brain"></i> المرحلة الثالثة — تحدٍّ جديد من كلماتك المُتقنة</div>
+                    <div id="memoGeminiState" style="font-size: 0.7rem; color: #94a3b8; margin-bottom: 8px;">⚪ بدون مفتاح — نستخدم أسلوبنا المدمج</div>
+                    <input id="memoGeminiKeyInput" type="password" placeholder="مفتاح Gemini (اختياري)" onchange="setMemoGeminiKey(this.value)" style="width:100%; padding:9px 12px; border-radius:10px; border:1.5px solid #ddd6fe; font-size:0.8rem; font-family: inherit; margin-bottom: 8px;">
+                    <div style="font-size: 0.68rem; color: #7c3aed; line-height: 1.7;">أكمل هذا التحدي لرفع صعوبتك تلقائياً.</div>
+                </div>
             </div>
         </div>
         <div id="memoHiddenModeRow" style="display: none; margin-top: 12px; text-align: center;">
@@ -12799,7 +12806,9 @@ let memoMemoryStep = null;     // 'words' | 'sentence' | null
             try {
                 loadMemoDailyPlan();
             } catch (e) {}
-            buildMemoQueue();
+            loadMemoMastered();
+            buildMemoQueue();;
+            memoStage = 'listen';
             renderMemoQueueTarget();
             speakMemoTrackName();
         }
@@ -13035,7 +13044,7 @@ function getMemoQueueTarget() {
                 if (btnEl) btnEl.style.display = 'none';
                 return;
             }
-            el.textContent = item.text;
+            el.innerHTML = escapeMemoHtml(item.text);
             el.style.fontSize = item.type === 'word' ? '2rem' : '1.3rem';
             el.style.fontWeight = '900';
             el.style.lineHeight = '1.7';
@@ -13063,51 +13072,52 @@ function getMemoQueueTarget() {
 
 
 // نتيجة التقييم: انتقال تلقائي أو طلب الإعادة (بلا أرقام)
-function handleMemoQueueResult(ok) {
-    const item = getMemoQueueTarget();
-    if (!item) return;
-    const prog = ensureMemoDailyDayProgress(memoDailyPlan.currentDay);
+        function handleMemoQueueResult(ok, matchedUpTo) {
+            const item = getMemoQueueTarget();
+            if (!item) return;
+            const prog = ensureMemoDailyDayProgress(memoDailyPlan.currentDay);
 
-    if (ok) {
-        if (item.type === 'word') {
-            const words = getMemoDailyWords(memoDailyPlan.currentDay);
-            const wordIdx = words.indexOf(item.text);
-            if (wordIdx !== -1) prog.words[wordIdx] = 'correct';
-        } else {
-            prog.sentence = 'correct';
+            if (ok) {
+                if (item.type === 'word') {
+                    const words = getMemoDailyWords(memoDailyPlan.currentDay);
+                    const wordIdx = words.indexOf(item.text);
+                    if (wordIdx !== -1) prog.words[wordIdx] = 'correct';
+                    // المرحلة الثانية: تُحفظ الكلمة في قائمة المتقنة + قاعدة البيانات
+                    markMemoMastered(item.text);
+                } else {
+                    prog.sentence = 'correct';
+                    markMemoMastered(item.text);
+                }
+                saveMemoDailyPlan();
+
+                if (memoQueueIndex < memoQueue.length - 1) {
+                    memoQueueIndex++;
+                    memoLastResult = null;
+                    renderMemoQueueTarget();
+                    speakMemoWord(getMemoQueueTarget().text);
+                    return;
+                }
+
+                memoLastResult = 'ok';
+                memoQueueIndex = memoQueue.length;
+                speakMemoPraise();
+                // المرحلة الثالثة: تحدٍّ جديد من الكلمات المُتقنة
+                memoFinishDayToChallenge();
+                return;
+            }
+
+            // خطأ: نكمل من الكلمة التي أخطأ فيها بدل إعادة الكل من الأول
+            memoLastResult = 'retry';
+            if (item.type === 'word') {
+                const words = getMemoDailyWords(memoDailyPlan.currentDay);
+                const wordIdx = words.indexOf(item.text);
+                if (wordIdx !== -1) prog.words[wordIdx] = 'wrong';
+            }
+            saveMemoDailyPlan();
+            const status = document.getElementById('memoActionStatus');
+            if (status) status.textContent = 'أكمل من الكلمة الحمراء';
+            speakMemoWord(item.text);
         }
-        saveMemoDailyPlan();
-
-        if (memoQueueIndex < memoQueue.length - 1) {
-            memoQueueIndex++;
-            memoLastResult = null;
-            renderMemoQueueTarget();
-            speakMemoWord(getMemoQueueTarget().text);
-            return;
-        }
-        // أنهى كل شيء
-        memoLastResult = 'ok';
-        memoQueueIndex = memoQueue.length;
-        const el = document.getElementById('memoTargetTextDisplay');
-        const status = document.getElementById('memoActionStatus');
-        if (el) { el.textContent = '✅'; el.style.fontSize = '3rem'; }
-        if (status) status.textContent = '';
-        speakMemoPraise();
-        return;
-    }
-
-    // خطأ: أعد الكلمة نفسها بلا أي نسبة
-    memoLastResult = 'retry';
-    if (item.type === 'word') {
-        const words = getMemoDailyWords(memoDailyPlan.currentDay);
-        const wordIdx = words.indexOf(item.text);
-        if (wordIdx !== -1) prog.words[wordIdx] = 'wrong';
-    }
-    saveMemoDailyPlan();
-    const status = document.getElementById('memoActionStatus');
-    if (status) status.textContent = 'أعد القراءة';
-    speakMemoWord(item.text);
-}
 
 // زر الميكروفون: يبدأ/يوقف الاستماع (أحمر أثناء الاستماع)
         // ===== إنهاء الاستماع تلقائياً بعد توقّف الطالب عن الكلام =====
@@ -13128,7 +13138,327 @@ function handleMemoQueueResult(ok) {
             }, 1500);
         }
 
-function toggleMemoMic() {
+// ============================================================================
+// 🔄 ADAPTIVE MEMORIZATION ENGINE
+//    Stage 1  LISTEN & ASSESS  → يقارن المنطوق بالمطلوب كلمة بكلمة
+//    Stage 2  UPDATE & STORE   → يضيف الكلمة إلى "المتقنة" في قاعدة البيانات
+//    Stage 3  NEW CHALLENGE    → Gemini يولّد كلمة/جملة جديدة من متقنه، ثم يرفع الصعوبة
+// ============================================================================
+
+// ---------- إعدادات ----------//
+let memoStage = 'listen';           // listen | challenge | done
+let memoGeminiReady = false;         // هل جُماني مهيأ؟
+let memoMastered = [];              // الكلمات المُتقنة (تُقرأ من التخزين/قاعدة البيانات)
+let memoChallengeQueue = [];         // تحديات جُماني القادمة
+let memoChallengeIndex = 0;
+let memoDifficulty = 1;             // 1..5
+let memoRetryFrom = null;           // عند الخطأ: نتابع من الكلمة التي أخطأ فيها
+let memoSessionStats = { correct: 0, wrong: 0 };
+
+const MEMO_GEMINI_KEY = (typeof MEMO_AI_CONFIG !== 'undefined' && MEMO_AI_CONFIG && MEMO_AI_CONFIG.geminiKey) || '';
+const MEMO_GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+
+// ---------- المفتاح: يُضبط مرة واحدة من الواجهة ----------//
+try { var _k = localStorage.getItem('zoomdz_gemini_key'); if (_k) setMemoGeminiKey(_k); } catch (e) {}
+        function setMemoGeminiKey(key) {
+    try {
+        localStorage.setItem('zoomdz_gemini_key', key || '');
+    } catch (e) {}
+    memoGeminiReady = !!key;
+    const box = document.getElementById('memoGeminiState');
+    if (box) {
+        box.textContent = key ? '✅ جُماني جاهز' : '⚪ بدون مفتاح — نستخدم أسلوبنا المدمج';
+        box.style.color = key ? '#059669' : '#94a3b8';
+    }
+}
+
+// ---------- قائمة الكلمات المُتقنة (المرحلة الثانية) ----------//
+function memoMasteredKey() {
+    let uid = 'guest';
+    try {
+        const u = JSON.parse(localStorage.getItem('userData') || '{}');
+        if (u && u.id && u.id !== -1) uid = u.id;
+    } catch (e) {}
+    return 'zoomdz_memo_mastered_' + uid + '_' + currentMemoMode;
+}
+
+function loadMemoDifficulty() { try { memoDifficulty = parseInt(localStorage.getItem('zoomdz_memo_difficulty') || '1', 10) || 1; } catch (e) {} }
+        function saveMemoDifficulty() { try { localStorage.setItem('zoomdz_memo_difficulty', String(memoDifficulty)); } catch (e) {} }
+        function loadMemoMastered() {
+    try {
+        memoMastered = JSON.parse(localStorage.getItem(memoMasteredKey()) || '[]');
+        if (!Array.isArray(memoMastered)) memoMastered = [];
+    } catch (e) { memoMastered = []; }
+    return memoMastered;
+}
+
+function saveMemoMastered() {
+    try { localStorage.setItem(memoMasteredKey(), JSON.stringify(memoMastered)); } catch (e) {}
+}
+
+// تُستدعى عند نجاح أي كلمة → تضاف إلى المتقنة + إلى سجل قاعدة البيانات
+function markMemoMastered(word) {
+    if (!word) return;
+    const w = String(word).trim();
+    if (!w) return;
+    if (memoMastered.indexOf(w) === -1) {
+        memoMastered.push(w);
+        saveMemoMastered();
+    }
+    // مزامنة مع الخادم (قاعدة البيانات) — دون تعطيل الواجهة إن فشل
+    try {
+        if (typeof apiFetch === 'function') {
+            apiFetch('/api/student/memo-progress', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ word: w, lang: currentMemoMode, level: memoDifficulty })
+            }).catch(function () {});
+        }
+    } catch (e) {}
+}
+
+// ---------- التصحيح بالأحمر: أكمل من حيث أخطأ (بدون إعادة الجملة) ----------//
+function renderMemoWordByWord(targetText, spokenClean) {
+    const el = document.getElementById('memoTargetTextDisplay');
+    if (!el) return;
+    if (!targetText) { el.innerHTML = ''; return; }
+
+    const raw = String(targetText).split(/\s+/).filter(Boolean);
+    const clean = raw.map(function (w) { return tokenizeText(w, currentMemoMode)[0] || ''; });
+    const pool = spokenClean.slice();
+    let matchedUpTo = -1;
+
+    const html = raw.map(function (w, i) {
+        const c = clean[i];
+        let hit = -1;
+        if (c) { hit = pool.indexOf(c); }
+        let cls, mark;
+        if (hit !== -1) {
+            pool.splice(hit, 1);
+            cls = 'background:#22c55e;color:#ffffff;border:1px solid #16a34a;';
+            mark = '✓';
+            matchedUpTo = i;
+        } else {
+            cls = 'background:#ef4444;color:#ffffff;border:1px solid #dc2626;';
+            mark = '✗';
+        }
+        const dir = getMemoDailyTrack().lang === 'ar-SA' ? 'rtl' : 'ltr';
+        return '<span dir="' + dir + '" style="display:inline-block;padding:4px 10px;margin:3px;border-radius:9px;font-weight:800;' + cls + '">' + escapeMemoHtml(w) + ' ' + mark + '</span>';
+    }).join('');
+
+    el.innerHTML = html;
+    el.style.fontSize = raw.length > 4 ? '1.15rem' : '1.7rem';
+    el.style.lineHeight = '2';
+    return matchedUpTo;
+}
+
+// ---------- جُماني: يولّد كلمة أو جملة من المتقنة ----------//
+async function memoAskGemini(task) {
+    // task: 'word' | 'sentence'
+    if (!MEMO_GEMINI_KEY) throw new Error('no-key');
+    const lang = getMemoDailyTrack().lang;
+    const known = memoMastered.slice(-25);
+    const prompt =
+        task === 'word'
+            ? 'From these English/French/Spanish/German/Turkish/Arabic words a student has already mastered: [' + known.join(', ') + ']. '
+              + 'Create ONE brand-new word in the SAME language. Reply with ONLY: NEWWORD|Arabic meaning of that word|simple Arabic sentence using it (max 12 words).'
+            : 'From these words a student has already mastered: [' + known.join(', ') + ']. '
+              + 'Create ONE simple sentence (max 12 words) in the SAME language that naturally uses 3 of them. '
+              + 'Reply with ONLY: SENTENCE|Arabic meaning of the sentence.';
+
+    const res = await fetch(MEMO_GEMINI_URL + '?key=' + encodeURIComponent(MEMO_GEMINI_KEY), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.8, maxOutputTokens: 200 }
+        })
+    });
+    if (!res.ok) throw new Error('gemini-' + res.status);
+    const data = await res.json();
+    const text = (data.candidates && data.candidates[0] &&
+        data.candidates[0].content && data.candidates[0].content.parts &&
+        data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) || '';
+    const raw = String(text).trim();
+    if (!raw) throw new Error('empty');
+    const parts = raw.split('|').map(function (s) { return String(s).trim(); });
+    return parts;
+}
+
+// بديل مدمج بدون مفتاح: نركّب ourselves من الكلمات المُتقنة
+function memoComposeFallback(task) {
+    const known = memoMastered.slice();
+    if (!known.length) return null;
+    const track = getMemoDailyTrack();
+    const isAr = track.lang === 'ar-SA';
+    const pick = function (n) {
+        const arr = known.slice(-n * 2);
+        const out = [];
+        for (let i = 0; i < n && arr.length; i++) out.push(arr[Math.floor(Math.random() * arr.length)]);
+        return out;
+    };
+
+    if (task === 'word') {
+        // نطلب من الطالب قراءة تركيبة من كلمتين متقنتين + إ为我们
+        const two = pick(2);
+        if (two.length < 2) return null;
+        const joined = isAr ? (two[0] + ' و' + two[1]) : (two[0] + ' and ' + two[1]);
+        return [joined, '', isAr
+            ? 'اقرأ التركيبة السابقة'
+            : 'Read the combination above'].join('|');
+    }
+
+    const three = pick(3);
+    if (three.length < 3) return null;
+    const text = isAr
+        ? 'تعلمت هذه الكلمات: ' + three.join('، ') + ' — وسأكررها الآن.'
+        : 'I have learned these words: ' + three.join(', ') + ' — and I will repeat them now.';
+    const meaning = isAr ? 'جملة مركّبة من كلمات أتقنتها' : 'A sentence built from words you mastered';
+    return [text, meaning, ''].join('|');
+}
+
+// ---------- المرحلة الثالثة: التحدي الجديد ----------//
+function memoDifficultyLabel() {
+    return ['', 'سهل', 'متوسط', 'متقدم', 'صعب', 'تحدٍّ كبير'][memoDifficulty] || 'متوسط';
+}
+
+async function buildMemoChallenge() {
+    loadMemoMastered();
+    memoChallengeQueue = [];
+    const track = getMemoDailyTrack();
+
+    // 1) كلمة جديدة من جُماني إن توفر المفتاح، وإلا تركيبة من متقنه
+    if (memoMastered.length >= 2) {
+        try {
+            if (MEMO_GEMINI_KEY) {
+                const p = await memoAskGemini('word');
+                if (p && p[0]) {
+                    memoChallengeQueue.push({ type: 'new-word', text: p[0], meaning: p[1] || '', hint: p[2] || '' });
+                }
+            } else {
+                const raw = memoComposeFallback('word');
+                if (raw) {
+                    const p = raw.split('|');
+                    memoChallengeQueue.push({ type: 'new-word', text: p[0], meaning: p[1] || '', hint: p[2] || '' });
+                }
+            }
+        } catch (e) { /* نكمل بدون جُماني */ }
+    }
+
+    // 2) جملة جديدة من جُماني أو مدمجة
+    try {
+        let sentence = '';
+        let meaning = '';
+        if (MEMO_GEMINI_KEY) {
+            const p = await memoAskGemini('sentence');
+            if (p && p[0]) { sentence = p[0]; meaning = p[1] || ''; }
+        } else {
+            const raw = memoComposeFallback('sentence');
+            if (raw) { const p = raw.split('|'); sentence = p[0]; meaning = p[1] || ''; }
+        }
+        if (sentence) memoChallengeQueue.push({ type: 'new-sentence', text: sentence, meaning: meaning, hint: '' });
+    } catch (e) {}
+
+    // 3) الكلمات المُتقنة سابقاً (للمراجعة) +Today's words
+    memoMastered.slice(-3).forEach(function (w) {
+        memoChallengeQueue.push({ type: 'review-word', text: w, meaning: getMemoWordMeaning(w), hint: '' });
+    });
+    getMemoDailyWords(memoDailyPlan ? memoDailyPlan.currentDay : 1).forEach(function (w) {
+        memoChallengeQueue.push({ type: 'review-word', text: w, meaning: getMemoWordMeaning(w), hint: '' });
+    });
+
+    memoChallengeIndex = 0;
+    renderMemoChallenge();
+}
+
+function getMemoChallengeTarget() {
+    return memoChallengeQueue[memoChallengeIndex] || null;
+}
+
+function renderMemoChallenge() {
+    const el = document.getElementById('memoTargetTextDisplay');
+    const meaningEl = document.getElementById('memoWordMeaning');
+    const status = document.getElementById('memoActionStatus');
+    const boxEl = document.getElementById('memoChallengeBox');
+    if (boxEl) boxEl.style.display = (typeof memoStage !== 'undefined' && memoStage === 'challenge') ? 'block' : 'none';
+    const lvlEl = document.getElementById('memoDifficultyLabel');
+    const item = getMemoChallengeTarget();
+    if (lvlEl) lvlEl.textContent = 'المستوى ' + memoDifficulty + ' — ' + memoDifficultyLabel();
+    if (!el) return;
+    if (!item) {
+        el.textContent = '✅';
+        el.style.fontSize = '3rem';
+        if (status) status.textContent = 'أحسنت! أنهيت التحدي.';
+        return;
+    }
+    el.textContent = item.text;
+    el.style.fontSize = item.type === 'new-word' || item.type === 'review-word' ? '1.9rem' : '1.2rem';
+    el.style.fontWeight = '900';
+    el.setAttribute('dir', getMemoDailyTrack().lang === 'ar-SA' ? 'rtl' : 'ltr');
+    if (meaningEl) {
+        meaningEl.textContent = item.meaning ? ('المعنى: ' + item.meaning) : '';
+        meaningEl.style.display = item.meaning ? 'block' : 'none';
+    }
+    if (status) {
+        status.textContent = item.type === 'review-word' ? 'راجع كلمة أتقنتها'
+            : (item.type === 'new-word' ? 'كلمة جديدة — انطقها' : 'جملة جديدة — انطقها');
+    }
+}
+
+// نتيجة التحدي: نجح → التالي + صعوبة أكبر، فشل → أعد نفس التحدي
+function handleMemoChallengeResult(ok) {
+    const item = getMemoChallengeTarget();
+    if (!item) return;
+    if (ok) {
+        memoSessionStats.correct++;
+        if (item.type === 'new-word' || item.type === 'new-sentence') {
+            markMemoMastered(item.text);
+        }
+        memoChallengeIndex++;
+        // رفع الصعوبة تدريجياً
+        if (memoDifficulty < 5 && memoSessionStats.correct % 2 === 0) memoDifficulty++;
+        if (memoChallengeIndex >= memoChallengeQueue.length) {
+            renderMemoChallenge();
+            speakMemoPraise();
+            return;
+        }
+        renderMemoChallenge();
+        speakMemoWord(getMemoChallengeTarget().text);
+        return;
+    }
+    memoSessionStats.wrong++;
+    const st = document.getElementById('memoActionStatus');
+    if (st) st.textContent = 'أعد القراءة';
+    speakMemoWord(item.text);
+}
+
+// الانتقال من الاستماع إلى التحدي بعد إنهاء Today's words
+        async function memoFinishDayToChallenge() {
+            memoStage = 'challenge';
+            memoSessionStats = { correct: 0, wrong: 0 };
+            const box = document.getElementById('memoChallengeBox');
+            if (box) box.style.display = 'block';
+            const lvl = document.getElementById('memoDifficultyLabel');
+            if (lvl) lvl.textContent = 'المستوى ' + memoDifficulty + ' — ' + memoDifficultyLabel();
+            const st = document.getElementById('memoActionStatus');
+            if (st) st.textContent = 'جُماني يحضّر التحدي الجديد...';
+            try {
+                await buildMemoChallenge();
+            } catch (e) {
+                // نكمل بأسلوبنا المدمج إن فشل جُماني
+                loadMemoMastered();
+                memoChallengeQueue = [];
+                memoMastered.slice(-3).forEach(function (w) {
+                    memoChallengeQueue.push({ type: 'review-word', text: w, meaning: getMemoWordMeaning(w) });
+                });
+                getMemoDailyWords(memoDailyPlan ? memoDailyPlan.currentDay : 1).forEach(function (w) {
+                    memoChallengeQueue.push({ type: 'review-word', text: w, meaning: getMemoWordMeaning(w) });
+                });
+                memoChallengeIndex = 0;
+                renderMemoChallenge();
+            }
+        }
+        function toggleMemoMic() {
     if (isMemoRecording) {
         if (memoRecognition) { try { memoRecognition.stop(); } catch (e) {} }
         return;
@@ -13957,38 +14287,42 @@ function toggleMemoMic() {
             if (recorder) recorder.style.display = 'block';
         }
 
-                function evaluateMemoSpeech(spokenText) {
-            // نقيس student's ما قاله مقابل العنصر الحالي في الطابور
-            const queueItem = getMemoQueueTarget();
-            let targetText = queueItem ? queueItem.text : '';
+                        function evaluateMemoSpeech(spokenText) {
+            const stage = typeof memoStage !== 'undefined' ? memoStage : 'listen';
+            const item = stage === 'challenge' ? getMemoChallengeTarget() : getMemoQueueTarget();
+            let targetText = item ? item.text : '';
             if (!targetText) {
                 const t0 = getCurrentMemoTargetText();
-                targetText = t0.text || '';
+                targetText = (t0 && t0.text) || '';
             }
+            if (!targetText) return;
+
             const targetClean = tokenizeText(targetText, currentMemoMode);
             const spokenClean = tokenizeText(spokenText, currentMemoMode);
-
-            if (!targetClean.length || !spokenClean.length) {
-                handleMemoQueueResult(false);
+            if (!spokenClean.length) {
+                if (stage === 'challenge') handleMemoChallengeResult(false);
+                else handleMemoQueueResult(false);
                 return;
             }
 
-            // كم كلمة من الكلمات المطلوبة سمعناها
-            let correctCount = 0;
-            const remaining = spokenClean.slice();
-            targetClean.forEach(function (w) {
-                const at = remaining.indexOf(w);
-                if (at !== -1) { correctCount++; remaining.splice(at, 1); }
-            });
+            // المرحلة 1: تصحيح بالأحمر لكلمة أخطأ فيها الطالب
+            let matchedUpTo = renderMemoWordByWord(targetText, spokenClean);
+            if (matchedUpTo < 0) matchedUpTo = -1;
 
-            const accuracy = Math.round((correctCount / targetClean.length) * 100);
+            let missing = 0;
+            for (let k = matchedUpTo + 1; k < targetClean.length; k++) missing++;
+            if (matchedUpTo === -1) missing = targetClean.length;
 
-            // كلمة واحدة: Success إن نطقها، أما الجملة: 80% success
-            const ok = targetClean.length === 1 ? accuracy >= 60 : accuracy >= 80;
-            try {
-                handleMemoQueueResult(ok);
-            } catch (e) {
-                handleMemoQueueResult(false);
+            const ok = missing === 0;
+            // نكمل من حيث أخطأ بدل إعادة الجملة من الأول
+            if (typeof memoRetryFrom !== 'undefined') {
+                if (!ok) memoRetryFrom = Math.max(memoRetryFrom, matchedUpTo + 1);
+            }
+
+            if (stage === 'challenge') {
+                handleMemoChallengeResult(ok);
+            } else {
+                handleMemoQueueResult(ok, matchedUpTo);
             }
         }
 
