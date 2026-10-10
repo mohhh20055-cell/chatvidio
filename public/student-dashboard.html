@@ -3644,7 +3644,18 @@
         z-index: 2;
         pointer-events: none;
     }
-    </style>
+    
+        /* ===== MEMORIZER: listening animations ===== */
+        @keyframes memoBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.25; }
+        }
+        @keyframes memoPulse {
+            0% { transform: scale(0.85); opacity: 0.85; }
+            70% { transform: scale(1.35); opacity: 0; }
+            100% { transform: scale(1.35); opacity: 0; }
+        }
+</style>
 </head>
 <body>
 <!-- ===== PLATFORM PRELOADER SPLASH SCREEN ===== -->
@@ -4757,6 +4768,10 @@
                 <select id="memoLanguageSelect" onchange="changeMemoLanguage(this.value)" style="width: 100%; padding: 12px 14px; border-radius: 12px; border: 2px solid #cbd5e1; background: #ffffff; color: #0f172a; font-weight: 800; font-size: 0.9rem; font-family: 'Cairo'; cursor: pointer;">
                     <option value="english">🇬🇧 الإنجليزية</option>
                     <option value="arabic">🇩🇿 اللغة العربية</option>
+                    <option value="french">🇫🇷 الفرنسية</option>
+                    <option value="spanish">🇪🇸 الإسبانية</option>
+                    <option value="german">🇩🇪 الألمانية</option>
+                    <option value="turkish">🇹🇷 التركية</option>
                 </select>
             </div>
             <button type="button" id="memoChoiceUploadBtn" onclick="selectMemoChoice('upload')" style="flex: 1; min-width: 150px; padding: 14px 18px; border-radius: 14px; border: 2px solid #10b981; background: #ffffff; color: #059669; font-weight: 800; font-size: 0.92rem; cursor: pointer; font-family: 'Cairo'; display: flex; align-items: center; justify-content: center; gap: 8px;">
@@ -4833,34 +4848,60 @@
             </div>
         </div>
         <!-- Recorder / target / results (shared by both options) -->
+                <!-- ===== RECORDER: MICROPHONE FIRST, THEN TARGET, THEN LIVE TRANSCRIPT ===== -->
         <div id="memoRecorderArea" style="display: none;">
-            <div style="background: #0f172a; border-radius: 16px; padding: 18px; margin-bottom: 14px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
+            <!-- 1) شريط الميكروفون في الأعلى -->
+            <div id="memoMicBar" style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap; background: linear-gradient(135deg, #ffffff, #f8fafc); border: 1.5px solid #e2e8f0; border-radius: 16px; padding: 14px 16px; margin-bottom: 12px; position: relative; overflow: hidden;">
+                <div id="memoRecordPulse" style="display: none; width: 74px; height: 74px; border-radius: 50%; flex-shrink: 0; background: radial-gradient(circle, #ef4444 0%, #fca5a5 70%, transparent 100%);"></div>
+                <button type="button" id="memoRecordBtn" onclick="toggleMemoSpeechRecording()" style="background: #ef4444; color: white; border: none; width: 68px; height: 68px; border-radius: 50%; font-size: 1.8rem; cursor: pointer; box-shadow: 0 8px 22px rgba(239, 68, 68, 0.35); transition: all 0.2s; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-microphone"></i>
+                </button>
+                <div style="flex: 1; min-width: 180px;">
+                    <div id="memoListenBadge" style="display: none; align-items: center; gap: 6px; margin-bottom: 4px;">
+                        <span style="display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #ef4444; animation: memoBlink 1s infinite;"></span>
+                        <span style="font-size: 0.7rem; font-weight: 900; color: #ef4444; letter-spacing: 0.4px;">جاري الاستماع الآن</span>
+                    </div>
+                    <div id="memoActionStatus" style="font-size: 0.88rem; font-weight: 800; color: #334155; line-height: 1.6;">اضغط على الزر وابدأ القراءة بصوت عالٍ</div>
+                </div>
+            </div>
+
+            <!-- 2) النص المطلوب: يتغيّر لونه أثناء الاستماع -->
+            <div id="memoTargetBox" style="background: #0f172a; border: 2px solid transparent; border-radius: 16px; padding: 18px; margin-bottom: 12px; transition: border-color 0.3s, box-shadow 0.3s, background 0.3s;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
                     <div id="memoModeLabel" style="font-size: 0.75rem; font-weight: 700; color: #38bdf8; text-transform: uppercase; letter-spacing: 0.5px;">English Pronunciation Mode</div>
                     <div id="memoHiddenBadge" style="display: none; background: #f59e0b; color: #0f172a; padding: 2px 8px; border-radius: 6px; font-size: 0.68rem; font-weight: 800;">وضع مخفي</div>
                 </div>
-                <p id="memoTargetTextDisplay" style="font-size: 1.15rem; font-weight: 700; line-height: 1.6; margin-bottom: 10px; color: white;">—</p>
-                <div id="memoLiveTargetWrap" style="display: none; margin-bottom: 12px;">
-                    <div style="font-size: 0.68rem; color: #64748b; margin-bottom: 6px; font-weight: 700;"><i class="fas fa-eye"></i> ما تقرؤه الآن (يُلوَّن مباشرة):</div>
-                    <div id="memoLiveTargetWords" style="font-size: 1rem; line-height: 2.1; font-weight: 700;"></div>
-                    <div style="display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.66rem; color: #94a3b8; margin-top: 8px;">
-                        <span><span style="display:inline-block;padding:2px 8px;border-radius:6px;background:#dcfce7;color:#166534;font-weight:800;">مقروء</span> صحيح</span>
-                        <span><span style="display:inline-block;padding:2px 8px;border-radius:6px;background:#fee2e2;color:#991b1b;font-weight:800;">مقروء</span> خطأ</span>
-                        <span><span style="display:inline-block;padding:2px 8px;border-radius:6px;background:#dbeafe;color:#1e40af;font-weight:800;">مقروء</span> قيد النطق</span>
-                        <span><span style="display:inline-block;padding:2px 8px;border-radius:6px;background:#e2e8f0;color:#334155;font-weight:800;">لم يُقرأ</span> بعد</span>
-                    </div>
-                </div>
+                <p id="memoTargetTextDisplay" style="font-size: 1.15rem; font-weight: 700; line-height: 1.8; margin-bottom: 10px; color: white; min-height: 2.2em;">—</p>
                 <div id="memoTranslationDisplay" style="font-size: 0.82rem; color: #94a3b8; display: none;"></div>
             </div>
-            <div style="text-align: center; padding: 18px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px;">
-                <div id="memoRecordPulse" style="display: none; width: 74px; height: 74px; border-radius: 50%; margin: 0 auto 12px; background: radial-gradient(circle, #ef4444 0%, #fca5a5 70%, transparent 100%); animation: memoPulse 1.1s infinite;"></div>
-                <button type="button" id="memoRecordBtn" onclick="toggleMemoSpeechRecording()" style="background: #ef4444; color: white; border: none; width: 74px; height: 74px; border-radius: 50%; font-size: 1.9rem; cursor: pointer; box-shadow: 0 8px 22px rgba(239, 68, 68, 0.35); transition: all 0.2s;">
-                    <i class="fas fa-microphone"></i>
-                </button>
-                <div id="memoActionStatus" style="margin-top: 12px; font-size: 0.86rem; font-weight: 700; color: #334155;">اضغط على الزر وابدأ القراءة بصوت عالٍ</div>
-                <div id="memoResultCard" style="display: none; margin-top: 14px; text-align: right;"></div>
+
+            <!-- 3) ما يقوله الطالب كلمة بكلمة -->
+            <div id="memoLiveTranscript" style="display: none; background: #ffffff; border: 2px dashed #cbd5e1; border-radius: 14px; padding: 14px 16px; margin-bottom: 12px;">
+                <div style="font-size: 0.7rem; font-weight: 800; color: #64748b; margin-bottom: 8px;"><i class="fas fa-waveform-lines" style="color:#10b981;"></i> ما تنطقه أنت (مباشر):</div>
+                <div id="memoLiveTextContent" style="font-size: 1rem; line-height: 2; font-weight: 700; color: #0f172a; min-height: 1.8em;"></div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; font-size: 0.66rem; color: #94a3b8; margin-top: 8px;">
+                    <span><span style="display:inline-block;padding:2px 8px;border-radius:6px;background:#22c55e;color:#ffffff;font-weight:800;">مكتملة</span> كلمة uttered</span>
+                    <span><span style="display:inline-block;padding:2px 8px;border-radius:6px;background:#3b82f6;color:#ffffff;font-weight:800;">جارية</span> قيد النطق</span>
+                </div>
             </div>
-            <div style="margin-top: 16px;">
+
+            <!-- 4) المقارنة الملوّنة بين النص المطلوب وما تقرؤه -->
+            <div id="memoLiveTargetWrap" style="display: none; background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 14px 16px; margin-bottom: 12px;">
+                <div style="font-size: 0.7rem; color: #64748b; margin-bottom: 8px; font-weight: 700;"><i class="fas fa-eye"></i> النص المطلوب (يُلوَّن مباشرة أثناء قراءتك):</div>
+                <div id="memoLiveTargetWords" style="font-size: 1rem; line-height: 2.1; font-weight: 700;"></div>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.66rem; color: #94a3b8; margin-top: 8px;">
+                    <span><span style="display:inline-block;padding:2px 8px;border-radius:6px;background:#dcfce7;color:#166534;font-weight:800;">مقروء</span> صحيح</span>
+                    <span><span style="display:inline-block;padding:2px 8px;border-radius:6px;background:#fee2e2;color:#991b1b;font-weight:800;">مقروء</span> خطأ</span>
+                    <span><span style="display:inline-block;padding:2px 8px;border-radius:6px;background:#dbeafe;color:#1e40af;font-weight:800;">جارية</span> قيد النطق</span>
+                    <span><span style="display:inline-block;padding:2px 8px;border-radius:6px;background:#e2e8f0;color:#334155;font-weight:800;">لم تُقرأ</span> بعد</span>
+                </div>
+            </div>
+
+            <div id="memoCoachAlert" style="display: none; background: #fef3c7; border: 1.5px solid #fbbf24; border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; font-size: 0.8rem; font-weight: 700; color: #92400e; line-height: 1.7;"></div>
+
+            <div id="memoResultCard" style="display: none; margin-top: 4px;"></div>
+
+            <div style="margin-top: 14px;">
                 <div style="font-size: 0.82rem; font-weight: 800; color: #334155; margin-bottom: 8px;"><i class="fas fa-history"></i> سجل جلساتك السابقة</div>
                 <div id="memoSessionHistoryList" style="font-size: 0.8rem; color: #64748b;"></div>
             </div>
@@ -15058,6 +15099,87 @@ window.addEventListener("offline", function() {
         // ================================================================
         // 📅 DAILY MEMORIZATION PLAN — 10 WORDS + 1 SENTENCE PER DAY
         // ================================================================
+        // ===== مجموعات لغات إضافية (مع الشرح العربي لكل كلمة) =====
+        const MEMO_EXTRA_TRACKS = {
+            french: {
+                name: 'الفرنسية',
+                lang: 'fr-FR',
+                words: [
+                    'Bonjour', 'Merci', 'Chapeau', 'Maison', 'Famille', 'Ami', 'Amour', 'Enfant',
+                    'École', 'Livre', 'Apprendre', 'Écrire', 'Parler', 'Écouter', 'Mémoriser', 'Comprendre', 'Grand', 'Petit',
+                    'Jour', 'Nuit', 'Temps', 'Travail', 'Vie', 'Eau', 'Nourriture', 'Ville', 'Pays', 'Monde', 'Lumière',
+                    'Couleur', 'Rouge', 'Bleu', 'Vert', 'Blanc', 'Beau', 'Bon', 'Grand Prix'
+                ].filter(function (w) { return w && typeof w === 'string'; }),
+                sentences: [
+                    "Bonjour, je m'appelle un étudiant de ZoomDZ.",
+                    "Merci beaucoup pour votre aide avec la prononciation.",
+                    "Aujourd'hui, j'ai appris trois nouveaux mots français.",
+                    "La France est un pays très beau et très ancien.",
+                    "Je veux améliorer mon français par la pratique quotidienne.",
+                    "Apprendre une langue demande du temps et de la patience."
+                ]
+            },
+            spanish: {
+                name: 'الإسبانية',
+                lang: 'es-ES',
+                words: [
+                    'Hola', 'Gracias', 'Casa', 'Familia', 'Amigo', 'Amor', 'Niño', 'Escuela', 'Libro', 'Aprender',
+                    'Escribir', 'Hablar', 'Escuchar', 'Memorizar', 'Comprender', 'Grande', 'Pequeño', 'Día', 'Noche',
+                    'Tiempo', 'Trabajo', 'Vida', 'Agua', 'Comida', 'Ciudad', 'País', 'Mundo', 'Luz', 'Color',
+                    'Rojo', 'Azul', 'Verde', 'Blanco', 'Hermoso', 'Bueno', 'Siempre', 'Nunca', 'Mejor', 'Ahora'
+                ],
+                sentences: [
+                    "Hola, soy un estudiante de ZoomDZ.",
+                    "Muchas gracias por ayudarme con la pronunciación.",
+                    "Hoy aprendí tres palabras nuevas en español.",
+                    "España es un país muy hermoso con mucha historia.",
+                    "Quiero mejorar mi español con práctica diaria.",
+                    "Aprender un idioma requiere tiempo y paciencia."
+                ]
+            },
+            german: {
+                name: 'الألمانية',
+                lang: 'de-DE',
+                words: [
+                    'Hallo', 'Danke', 'Haus', 'Familie', 'Freund', 'Liebe', 'Kind', 'Schule', 'Buch', 'Lernen',
+                    'Schreiben', 'Sprechen', 'Hören', 'Auswendig', 'Verstehen', 'Groß', 'Klein', 'Tag', 'Nacht',
+                    'Zeit', 'Arbeit', 'Leben', 'Wasser', 'Essen', 'Stadt', 'Land', 'Welt', 'Licht', 'Farbe',
+                    'Rot', 'Blau', 'Grün', 'Weiß', 'Schön', 'Gut', 'Immer', 'Nie', 'Besser', 'Freundlich'
+                ],
+                sentences: [
+                    "Hallo, ich bin ein Student von ZoomDZ.",
+                    "Vielen Dank für die Hilfe bei der Aussprache.",
+                    "Heute habe ich drei neue deutsche Wörter gelernt.",
+                    "Deutschland ist ein sehr schönes Land.",
+                    "Ich möchte mein Deutsch durch tägliche Übung verbessern.",
+                    "Eine Sprache zu lernen braucht Zeit und Geduld."
+                ]
+            },
+            turkish: {
+                name: 'التركية',
+                lang: 'tr-TR',
+                words: [
+                    'Merhaba', 'Teşekkür', 'Ev', 'Aile', 'Arkadaş', 'Sevgi', 'Çocuk', 'Okul', 'Kitap', 'Öğrenmek',
+                    'Yazmak', 'Konuşmak', 'Dinlemek', 'Ezberlemek', 'Anlamak', 'Büyük', 'Küçük', 'Gün', 'Gece',
+                    'Zaman', 'İş', 'Hayat', 'Su', 'Yemek', 'Şehir', 'Ülke', 'Dünya', 'Işık', 'Renk',
+                    'Kırmızı', 'Mavi', 'Yeşil', 'Beyaz', 'Güzel', 'İyi', 'Güneş', 'Deniz', 'Yıldız', 'Kalp'
+                ],
+                sentences: [
+                    "Merhaba, ZoomDZ öğrencisiyim.",
+                    "Telaffuz konusunda yardımcı olduğunuz için teşekkürler.",
+                    "Bugün üç yeni Türkçe kelime öğrendim.",
+                    "Türkiye çok güzel ve eski bir ülkedir.",
+                    "Günlük pratik ile Türkçemi geliştirmek istiyorum.",
+                    "Bir dil öğrenmek zaman ve sabır ister."
+                ]
+            }
+        };
+        // تُدمج اللغات الإضافية في مصدر المحتوى بعد تعريف MEMO_DAILY_TRACKS
+        function memoMergeExtraTracks() {
+            ['french', 'spanish', 'german', 'turkish'].forEach(function (k) {
+                MEMO_DAILY_TRACKS[k] = MEMO_EXTRA_TRACKS[k];
+            });
+        }
         // ================================================================
         // 📅 DAILY MEMORIZATION PLAN — 3 WORDS + 1 NEW SENTENCE EVERY DAY
         // ================================================================
@@ -15156,6 +15278,8 @@ window.addEventListener("offline", function() {
             }
         };
 
+        memoMergeExtraTracks();
+
         let memoDailyPlan = null;
         let activeDailyWordIndex = -1;
         let activeDailySentenceText = '';
@@ -15176,7 +15300,8 @@ window.addEventListener("offline", function() {
         }
 
         function getMemoDailyTrack() {
-            return (currentMemoMode === 'arabic') ? MEMO_DAILY_TRACKS.arabic : MEMO_DAILY_TRACKS.english;
+            const key = MEMO_DAILY_TRACKS[currentMemoMode] ? currentMemoMode : 'english';
+            return MEMO_DAILY_TRACKS[key];
         }
 
         function createDefaultMemoDailyPlan() {
@@ -15461,7 +15586,7 @@ function selectMemoChoice(choice) {
 
 // ---------- تغيير اللغة ----------
 function changeMemoLanguage(lang) {
-    if (lang !== 'english' && lang !== 'arabic') return;
+    if (!MEMO_DAILY_TRACKS[lang]) return;
     if (currentMemoMode === lang) return;
     switchMemoMode(lang);
     memoPhase = 'words';
@@ -15498,8 +15623,49 @@ const MEMO_WORD_MEANINGS = {
     Classroom: 'صف دراسي'
 };
 
+const MEMO_EXTRA_MEANINGS = {
+            'Bonjour': 'مرحباً / صباح الخير', 'Merci': 'شكراً', 'Chapeau': 'قبعة', 'Maison': 'بيت', 'Famille': 'عائلة',
+            'Ami': 'صديق', 'Amour': 'حب', 'Enfant': 'طفل', 'École': 'مدرسة', 'Livre': 'كتاب',
+            'Apprendre': 'يتعلم', 'Écrire': 'يكتب', 'Parler': 'يتكلم', 'Écouter': 'يستمع', 'Mémoriser': 'يحفظ',
+            'Comprendre': 'يفهم', 'Grand': 'كبير', 'Petit': 'صغير', 'Jour': 'يوم', 'Nuit': 'ليل',
+            'Temps': 'وقت', 'Travail': 'عمل', 'Vie': 'حياة', 'Eau': 'ماء', 'Nourriture': 'طعام',
+            'Ville': 'مدينة', 'Pays': 'بلد', 'Monde': 'عالم', 'Lumière': 'ضوء', 'Couleur': 'لون',
+            'Rouge': 'أحمر', 'Bleu': 'أزرق', 'Vert': 'أخضر', 'Blanc': 'أبيض', 'Beau': 'جميل',
+            'Bon': 'جيد',
+            'Hola': 'مرحباً', 'Casa': 'بيت', 'Amigo': 'صديق', 'Amor': 'حب', 'Niño': 'طفل',
+            'Escuela': 'مدرسة', 'Libro': 'كتاب', 'Aprender': 'يتعلم', 'Escribir': 'يكتب', 'Hablar': 'يتكلم',
+            'Escuchar': 'يستمع', 'Memorizar': 'يحفظ', 'Comprender': 'يفهم', 'Grande': 'كبير', 'Pequeño': 'صغير',
+            'Día': 'يوم', 'Noche': 'ليل', 'Tiempo': 'وقت', 'Trabajo': 'عمل', 'Vida': 'حياة',
+            'Agua': 'ماء', 'Comida': 'طعام', 'Ciudad': 'مدينة', 'País': 'بلد', 'Mundo': 'عالم',
+            'Luz': 'ضوء', 'Color': 'لون', 'Rojo': 'أحمر', 'Azul': 'أزرق', 'Verde': 'أخضر',
+            'Blanco': 'أبيض', 'Hermoso': 'جميل', 'Bueno': 'جيد',
+            'Hallo': 'مرحباً', 'Danke': 'شكراً', 'Haus': 'بيت', 'Freund': 'صديق', 'Liebe': 'حب',
+            'Kind': 'طفل', 'Schule': 'مدرسة', 'Buch': 'كتاب', 'Lernen': 'يتعلم', 'Schreiben': 'يكتب',
+            'Familie': 'عائلة',
+            'Sprechen': 'يتكلم', 'Hören': 'يستمع', 'Auswendig': 'حفظاً', 'Verstehen': 'يفهم', 'Groß': 'كبير',
+            'Klein': 'صغير', 'Tag': 'يوم', 'Nacht': 'ليل', 'Arbeit': 'عمل', 'Leben': 'حياة',
+            'Wasser': 'ماء', 'Essen': 'طعام', 'Stadt': 'مدينة', 'Land': 'بلد', 'Welt': 'عالم',
+            'Licht': 'ضوء', 'Farbe': 'لون', 'Rot': 'أحمر', 'Blau': 'أزرق', 'Grün': 'أخضر',
+            'Weiß': 'أبيض', 'Schön': 'جميل', 'Gut': 'جيد', 'Freundlich': 'ودود',
+            'Merhaba': 'مرحباً', 'Teşekkür': 'شكراً', 'Ev': 'بيت', 'Arkadaş': 'صديق', 'Sevgi': 'حب',
+            'Çocuk': 'طفل', 'Okul': 'مدرسة', 'Kitap': 'كتاب', 'Öğrenmek': 'يتعلم', 'Yazmak': 'يكتب',
+            'Konuşmak': 'يتكلم', 'Dinlemek': 'يستمع', 'Ezberlemek': 'يحفظ', 'Anlamak': 'يفهم',
+            'Büyük': 'كبير', 'Küçük': 'صغير', 'Gün': 'يوم', 'Gece': 'ليل', 'Zaman': 'وقت',
+            'İş': 'عمل', 'Hayat': 'حياة', 'Su': 'ماء', 'Yemek': 'طعام', 'Şehir': 'مدينة',
+            'Ülke': 'بلد', 'Dünya': 'عالم', 'Işık': 'ضوء', 'Renk': 'لون', 'Kırmızı': 'أحمر',
+            'Mavi': 'أزرق', 'Yeşil': 'أخضر', 'Beyaz': 'أبيض', 'Güzel': 'جميل', 'İyi': 'جيد',
+                    'Grand Prix': 'الجائزة الكبرى',
+            'Gracias': 'شكراً', 'Familia': 'عائلة', 'Siempre': 'دائماً', 'Nunca': 'أبداً', 'Mejor': 'أفضل',
+            'Zeit': 'وقت', 'Immer': 'دائماً', 'Nie': 'أبداً', 'Besser': 'أفضل',
+            'Her zaman': 'دائماً', 'Asla': 'أبداً', 'Daha iyi': 'أفضل', 'Sevgi dolu': 'مملوء بالحب',
+            'Aile': 'عائلة',
+                    'Ahora': 'الآن',
+            'Schönste': 'الأجمل',
+            'Güneş': 'شمس', 'Deniz': 'بحر', 'Yıldız': 'نجمة', 'Kalp': 'قلب',
+        };
+
 function getMemoWordMeaning(word) {
-    return MEMO_WORD_MEANINGS[word] || '';
+    return MEMO_WORD_MEANINGS[word] || MEMO_EXTRA_MEANINGS[word] || '';
 }
 
 // ---------- الجملة المركبة من الكلمات الثلاث ----------
@@ -16160,6 +16326,41 @@ function stopMemoForToday() {
         }
 
                 // رسائل عربية واضحة لكل نوع خطأ في التعرف على الكلام
+                // تغيير لون النص المطلوب أثناء الاستماع (أخضر متوهج + إطار نابض)
+        function setMemoListeningState(on) {
+            const box = document.getElementById('memoTargetBox');
+            const badge = document.getElementById('memoListenBadge');
+            const pulse = document.getElementById('memoRecordPulse');
+            const target = document.getElementById('memoTargetTextDisplay');
+            const transcript = document.getElementById('memoLiveTranscript');
+            const liveWrap = document.getElementById('memoLiveTargetWrap');
+            if (badge) badge.style.display = on ? 'flex' : 'none';
+            if (pulse) {
+                pulse.style.display = on ? 'block' : 'none';
+                if (on) pulse.style.animation = 'memoPulse 1.2s infinite';
+            }
+            if (box) {
+                if (on) {
+                    box.style.background = 'linear-gradient(135deg, #052e16, #064e3b)';
+                    box.style.borderColor = '#22c55e';
+                    box.style.boxShadow = '0 0 0 4px rgba(34,197,94,0.18)';
+                } else {
+                    box.style.background = '#0f172a';
+                    box.style.borderColor = 'transparent';
+                    box.style.boxShadow = 'none';
+                }
+            }
+            if (target && on) target.style.color = '#86efac';
+            if (transcript) {
+                transcript.style.display = on ? 'block' : 'none';
+                if (!on) {
+                    const c = document.getElementById('memoLiveTextContent');
+                    if (c) c.innerHTML = '';
+                }
+            }
+            if (liveWrap) liveWrap.style.display = on ? 'block' : 'none';
+        }
+
         function getMemoSpeechErrorMessage(code) {
             switch (String(code)) {
                 case 'not-allowed':
@@ -16214,6 +16415,7 @@ function stopMemoForToday() {
                 const coachAlert = document.getElementById('memoCoachAlert');
 
                 if (btn) { btn.style.background = '#dc2626'; btn.innerHTML = '<i class="fas fa-stop"></i>'; }
+                setMemoListeningState(true);
                 if (status) status.textContent = '🎙️ جاري الاستماع في الوقت الفعلي... انطق النص الآن';
                 if (transcriptBox) transcriptBox.style.display = 'block';
                 if (liveTargetWrap) liveTargetWrap.style.display = 'block';
@@ -16264,7 +16466,8 @@ function stopMemoForToday() {
                 recognition.onend = () => {
                     isMemoRecording = false;
                     if (btn) { btn.style.background = '#10b981'; btn.innerHTML = '<i class="fas fa-microphone"></i>'; }
-                    if (liveTargetWrap) liveTargetWrap.style.display = 'none';
+                    setMemoListeningState(false);
+                    if (liveTargetWrap && !isMemoRecording) liveTargetWrap.style.display = 'none';
                     if (finalTranscript.trim()) {
                         evaluateMemoSpeech(finalTranscript.trim());
                     }
@@ -16277,7 +16480,7 @@ function stopMemoForToday() {
                     logAppError('Memo Speech Recognition Error', 'code=' + String(code) + ' name=' + String(errName), null, null);
                     isMemoRecording = false;
                     if (btn) { btn.style.background = '#10b981'; btn.innerHTML = '<i class="fas fa-microphone"></i>'; }
-                    if (liveTargetWrap) liveTargetWrap.style.display = 'none';
+                    setMemoListeningState(false);
                     if (status) status.textContent = getMemoSpeechErrorMessage(code);
                     showToast(getMemoSpeechErrorMessage(code), 'error');
                 };
