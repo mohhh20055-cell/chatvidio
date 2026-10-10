@@ -13438,67 +13438,60 @@ function memoCompareRecitation(originalText, userSpeechTranscript, lang) {
 
 // ---------- تلوين النص مع التوقف عند الخطأ ----------
 // صحيح → أخضر، خطأ/مفقود → أحمر، والباقي بعد نقطة الخطأ → رمادي (لم يُقرأ بعد)
-function memoColorizeRecitation(originalText, userSpeechTranscript, lang, lastIndex) {
-    const words = memoSplitWords(originalText);
-    const spoken = memoSplitWords(userSpeechTranscript);
-    const dir = (lang === 'ar-SA' || /[\u0600-\u06FF]/.test(originalText || '')) ? 'rtl' : 'ltr';
+        function memoColorizeRecitation(originalText, userSpeechTranscript, lang, lastIndex) {
+            const words = memoSplitWords(originalText);
+            const dir = memoTextDirection(originalText, lang);
 
-    return words.map(function (raw, idx) {
-        const clean = memoNormalizeWord(raw, lang);
-        if (!clean) return escapeMemoHtml(raw);
+            return words.map(function (raw, idx) {
+                const clean = memoNormalizeWord(raw, lang);
+                if (!clean) return escapeMemoHtml(raw);
 
-        let status = 'pending';
-        if (idx <= lastIndex) {
-            status = 'correct';
-        } else if (idx === lastIndex + 1) {
-            status = 'error';
+                let status = 'pending';
+                if (idx <= lastIndex) {
+                    status = 'correct';
+                } else if (idx === lastIndex + 1) {
+                    status = 'error';
+                }
+
+                const style =
+                    status === 'correct'
+                        ? 'background:#22c55e;color:#ffffff;border:1px solid #16a34a;'
+                        : status === 'error'
+                            ? 'background:#ef4444;color:#ffffff;border:2px solid #b91c1c;'
+                            : 'background:#334155;color:#94a3b8;border:1px solid #475569;opacity:0.6;';
+
+                const mark = status === 'correct' ? '✓' : (status === 'error' ? '✗' : '');
+
+                return '<span dir="' + dir + '" data-wi="' + idx + '" style="display:inline-block;padding:4px 10px;margin:3px;border-radius:9px;font-weight:800;' + style + '">' +
+                    memoNumberBadge(idx) + escapeMemoHtml(raw) + (mark ? ' ' + mark : '') + '</span>';
+            }).join('');
         }
-
-        const style =
-            status === 'correct'
-                ? 'background:#22c55e;color:#ffffff;border:1px solid #16a34a;'
-                : status === 'error'
-                    ? 'background:#ef4444;color:#ffffff;border:1px solid #dc2626;'
-                    : 'background:#334155;color:#94a3b8;border:1px solid #475569;opacity:0.6;';
-
-        const mark = status === 'correct' ? '✓' : (status === 'error' ? '✗' : '');
-
-        return '<span dir="' + dir + '" data-wi="' + idx + '" style="display:inline-block;padding:4px 10px;margin:3px;border-radius:9px;font-weight:800;' + style + '">' + escapeMemoHtml(raw) + (mark ? ' ' + mark : '') + '</span>';
-    }).join('');
-}
 
 // ---------- واجهة برمجية تُرجع JSON نظيف ----------
 // تُستخدم من زر "تحقق من التسميع" ومن اختبارات النظام.
-function memoRecitationReport(originalText, userSpeechTranscript, lang) {
-    let result;
-    try {
-        result = memoCompareRecitation(originalText, userSpeechTranscript, lang);
-    } catch (e) {
-        result = { success: false, last_correct_word_index: -1,
-                   error_word_in_original: '', user_wrong_pronunciation: '' };
-    }
-    // نحدّث العرض بالتلوين
-    try {
-        const el = document.getElementById('memoTargetTextDisplay');
-        if (el && originalText) {
-            el.innerHTML = memoColorizeRecitation(originalText, userSpeechTranscript, lang || currentMemoMode, result.last_correct_word_index);
-            el.style.fontSize = '1.15rem';
-            el.style.lineHeight = '2';
+        function memoRecitationReport(originalText, userSpeechTranscript, lang) {
+            let result;
+            try {
+                result = memoCompareRecitation(originalText, userSpeechTranscript, lang);
+            } catch (e) {
+                result = { success: false, last_correct_word_index: -1,
+                           error_word_in_original: '', user_wrong_pronunciation: '' };
+            }
+
+            try {
+                const el = document.getElementById('memoTargetTextDisplay');
+                if (el && originalText) {
+                    el.innerHTML = memoColorizeRecitation(originalText, userSpeechTranscript,
+                        lang || memoDetectedLang, result.last_correct_word_index);
+                    el.style.fontSize = '0.95rem';
+                    el.style.lineHeight = '2.2';
+                }
+            } catch (e) {}
+
+            try { if (typeof memoLastRecitation !== 'undefined') memoLastRecitation = result; } catch (e) {}
+            memoSetVerdict(result);
+            return result;
         }
-    } catch (e) {}
-    
-    try { if (typeof memoLastRecitation !== 'undefined') memoLastRecitation = result; } catch (e) {}
-        // سطر الحالة يعكس نتيجة المقارنة
-    try {
-        const st = document.getElementById('memoActionStatus');
-        if (st) {
-            if (result.success) st.textContent = 'أحسنت! قرأت الدرس كاملاً 🎉';
-            else if (result.last_correct_word_index === -1) st.textContent = 'ابدأ من أول كلمة: ' + (result.error_word_in_original || '');
-            else st.textContent = 'توقفنا عند: ' + (result.error_word_in_original || '') + ' — أكمل من هنا';
-        }
-    } catch (e) {}
-return result;
-}
 
                 function useMemoPasteText() {
             const ta = document.getElementById('memoPasteText');
@@ -13596,22 +13589,21 @@ function onMemoTextInput() {
 }
 
 // عرض النص المطلوب (قبل البدء: عادي، أثناء: ملوّن)
-function renderMemoLessonTarget(colorize) {
-    const el = document.getElementById('memoTargetTextDisplay');
-    const text = memoGetLessonText();
-    if (!el) return;
-    if (!text) {
-        el.textContent = 'الصق نص الدرس للبدء';
-        el.style.fontSize = '1.1rem';
-        el.style.color = '#94a3b8';
-        return;
-    }
-    if (colorize) return; // التلوين يتكفّل به memoColorizeRecitation
-    el.textContent = text;
-    el.style.fontSize = '1.05rem';
-    el.style.color = 'white';
-    el.style.lineHeight = '2';
-}
+        function renderMemoLessonTarget(colorize) {
+        const el = document.getElementById('memoTargetTextDisplay');
+        const text = memoGetLessonText();
+        if (!el) return;
+        if (!text) {
+            el.textContent = 'الصق نص الدرس للبدء';
+            el.style.fontSize = '1.1rem';
+            el.style.color = '#94a3b8';
+            return;
+        }
+        if (colorize) return; // التلوين يتكفّل به memoColorizeRecitation
+        memoRenderNumberedText(text, memoDetectedLang);
+        el.style.fontSize = '0.95rem';
+        el.style.color = 'white';
+        }
 
 // بدء التسميع
 function startMemoRecitation() {
@@ -13622,7 +13614,7 @@ function startMemoRecitation() {
         return;
     }
     memoApplyDetectedLanguage(text);
-    renderMemoLessonTarget(false);
+    memoRenderNumberedText(text, memoDetectedLang);
     const stats = document.getElementById('memoTextStats');
     if (stats) stats.textContent = memoSplitWords(text).length + ' كلمة';
     const st = document.getElementById('memoActionStatus');
@@ -13743,13 +13735,14 @@ function memoCompareTyped(originalText, typedText, lang) {
     };
 }
 
-function memoTypingChip(word, ok, dir) {
+function memoTypingChip(word, ok, dir, idx) {
     const bg = ok
         ? 'background:#22c55e;color:#ffffff;border:1px solid #16a34a;'
-        : 'background:#ef4444;color:#ffffff;border:1px solid #dc2626;';
+        : 'background:#ef4444;color:#ffffff;border:2px solid #b91c1c;';
+    const number = (typeof idx === 'number') ? memoNumberBadge(idx) : '';
     return '<span dir="' + dir + '" style="' + bg +
         ' display:inline-block;padding:3px 9px;margin:3px;border-radius:9px;' +
-        'font-weight:800;font-size:0.92rem;">' + escapeMemoHtml(word) +
+        'font-weight:800;font-size:0.92rem;">' + number + escapeMemoHtml(word) +
         (ok ? ' ✓' : ' ✗') + '</span>';
 }
 
@@ -13770,11 +13763,11 @@ function memoRenderTypingFeedback(res) {
     let html = '';
     if (res.finished) {
         memoSplitWords(lesson).forEach(function (w, i) {
-            html += memoTypingChip(w, res.states[i] === 'correct', dir);
+            html += memoTypingChip(w, res.states[i] === 'correct', dir, i);
         });
     } else {
         typedWords.forEach(function (w, i) {
-            html += memoTypingChip(w, res.states[i] === 'correct', dir);
+            html += memoTypingChip(w, res.states[i] === 'correct', dir, i);
         });
     }
 
@@ -13864,6 +13857,8 @@ function setMemoTestMode(mode) {
 
 // Live comparison on every keystroke
 function onMemoTypingInput() {
+    const st0 = document.getElementById('memoActionStatus');
+    if (st0) st0.style.color = '#64748b';
     const lesson = memoGetLessonText();
     const ta = document.getElementById('memoTypingInput');
     const typed = ta ? ta.value : '';
@@ -13882,19 +13877,59 @@ function onMemoTypingInput() {
     const counter = document.getElementById('memoTypingCounter');
     if (counter) counter.textContent = res.typed_count + ' / ' + res.total_words + ' كلمة';
 
-    const st = document.getElementById('memoActionStatus');
-    if (st) {
-        if (!typed.trim()) st.textContent = 'النص مخفي الآن — اكتبه من الذاكرة';
-        else if (res.finished && res.success) st.textContent = 'ممتاز! كتبت النص كاملاً وبصواب';
-        else if (res.finished) st.textContent = 'توقفنا عند الكلمة رقم ' + (res.last_correct_word_index + 2) + ': "' + (res.error_word_in_original || '') + '"';
-        else if (res.states[res.typed_count - 1] === 'error') st.textContent = 'الكلمة الأخيرة لا تطابق النص الأصلي';
-        else st.textContent = 'صحيح حتى الكلمة ' + res.typed_count;
+    // كل كلمة تُحكم أمامه بالأخضر أو الأحمر. سطر الحالة يبقى صامتاً ما دام
+    // كل الكلمات خضراء، ويقول "هناك خطأ" في اللحظة التي تخطئ فيها كلمة،
+    // ثم "ممتاز" عند إتمام النص كله على ما فيه الخطأ.
+    if (res.finished) {
+        memoSetVerdict(res);
+        memoSaveTypingAttempt(res, lesson, typed, lang);
+    } else if (res.states.indexOf('error') !== -1) {
+        memoSetVerdict(res);
+    } else {
+        const st = document.getElementById('memoActionStatus');
+        if (st) { st.textContent = ''; st.style.color = '#64748b'; }
     }
-
-    if (res.finished) memoSaveTypingAttempt(res, lesson, typed, lang);
 }
 
-                function toggleMemoMic() {
+                // ===== ترقيم الكلمات =====
+// شارة الرقم داخل البطاقة، فتصبح كل كلمة قابلة للإشارة برقمها.
+function memoNumberBadge(idx) {
+    return '<span dir="ltr" style="display:inline-block;min-width:1.45em;padding:0 5px;margin-left:5px;border-radius:6px;' +
+        'background:rgba(255,255,255,0.22);font-size:0.7em;font-weight:800;opacity:0.95;">' +
+        (idx + 1) + '</span>';
+}
+
+function memoTextDirection(text, lang) {
+    return ((lang === 'ar-SA') || /[\u0600-\u06FF]/.test(text || '')) ? 'rtl' : 'ltr';
+}
+
+// عرض النص الأصلي مرقّماً قبل بدء الاختبار
+function memoRenderNumberedText(text, lang) {
+    const el = document.getElementById('memoTargetTextDisplay');
+    if (!el) return;
+    const words = memoSplitWords(text);
+    if (!words.length) {
+        el.textContent = 'الصق نص الدرس للبدء';
+        el.style.color = '#94a3b8';
+        return;
+    }
+    const dir = memoTextDirection(text, lang);
+    el.innerHTML = words.map(function (w, i) {
+        return '<span dir="' + dir + '" style="display:inline-block;padding:3px 8px;margin:3px;border-radius:9px;font-weight:800;font-size:0.95rem;">' +
+            memoNumberBadge(i) + escapeMemoHtml(w) + '</span>';
+    }).join('');
+    el.style.lineHeight = '2.2';
+}
+
+        // ===== حكم الاختبار: ممتاز أو هناك خطأ فقط =====
+// رقم الكلمة الخاطئة يظهر معها حمراء في النص نفسه، لا في سطر الحالة.
+function memoSetVerdict(result) {
+    const st = document.getElementById('memoActionStatus');
+    if (!st || !result) return;
+    st.textContent = result.success ? 'ممتاز' : 'هناك خطأ';
+    st.style.color = result.success ? '#059669' : '#dc2626';
+}
+        function toggleMemoMic() {
             if (memoTestMode === 'type') {
                 const st0 = document.getElementById('memoActionStatus');
                 if (st0) st0.textContent = 'في وضع الكتابة — الميكروفون غير مستخدم';
@@ -14720,12 +14755,7 @@ function onMemoTypingInput() {
                 memoLastRecitation = res;
                 memoColorizeRecitation(recitation, spokenText, lang, res.last_correct_word_index);
 
-                const status = document.getElementById('memoActionStatus');
-                if (status) {
-                    status.textContent = res.success
-                        ? 'أحسنت! قرأت الدرس كاملاً'
-                        : 'توقفنا عند: ' + (res.error_word_in_original || '') + ' — أكمل من هنا';
-                }
+                memoSetVerdict(res);
 
                 // نخزّن المحاولة في قاعدة البيانات
                 try {
