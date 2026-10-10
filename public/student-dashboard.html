@@ -13082,6 +13082,24 @@ function handleMemoQueueResult(ok) {
 }
 
 // زر الميكروفون: يبدأ/يوقف الاستماع (أحمر أثناء الاستماع)
+        // ===== إنهاء الاستماع تلقائياً بعد توقّف الطالب عن الكلام =====
+        let memoSilenceTimer = null;
+        let memoHeardAnything = false;
+
+        function clearMemoSilenceTimer() {
+            if (memoSilenceTimer) { clearTimeout(memoSilenceTimer); memoSilenceTimer = null; }
+        }
+
+        function scheduleMemoAutoStop() {
+            clearMemoSilenceTimer();
+            memoSilenceTimer = setTimeout(function () {
+                memoSilenceTimer = null;
+                if (isMemoRecording && memoHeardAnything && memoRecognition) {
+                    try { memoRecognition.stop(); } catch (e) {}
+                }
+            }, 1500);
+        }
+
 function toggleMemoMic() {
     if (isMemoRecording) {
         if (memoRecognition) { try { memoRecognition.stop(); } catch (e) {} }
@@ -13715,6 +13733,8 @@ function toggleMemoMic() {
                 recognition.continuous = true;   // نتابع الاستماع حتى لا تُقطع الجملة
                 recognition.maxAlternatives = 1;
 
+                memoHeardAnything = false;
+                clearMemoSilenceTimer();
                 isMemoRecording = true;
                 const btn = document.getElementById('memoRecordBtn');
                 const status = document.getElementById('memoActionStatus');
@@ -13746,6 +13766,9 @@ function toggleMemoMic() {
                         }
                     }
 
+                    // evidence热量: العميل نطق شيئاً — نراقب هل سيتوقف؟
+                    if ((finalSoFar || interimTrimmed)) { memoHeardAnything = true; scheduleMemoAutoStop(); }
+
                     const finalSoFar = finalTranscript.trim();
                     const interimTrimmed = interim.trim();
 
@@ -13773,7 +13796,8 @@ function toggleMemoMic() {
                 };
 
                 recognition.onend = () => {
-                    isMemoRecording = false;
+                    clearMemoSilenceTimer();
+                    memoHeardAnything = false;
                     if (btn) { btn.style.background = '#10b981'; btn.innerHTML = '<i class="fas fa-microphone"></i>'; }
                     setMemoListeningState(false);
                     if (liveTargetWrap && !isMemoRecording) liveTargetWrap.style.display = 'none';
@@ -13790,7 +13814,11 @@ function toggleMemoMic() {
                     isMemoRecording = false;
                     if (btn) { btn.style.background = '#10b981'; btn.innerHTML = '<i class="fas fa-microphone"></i>'; }
                     setMemoListeningState(false);
-                    if (status) status.textContent = getMemoSpeechErrorMessage(code);
+                    if (String(code) === 'no-speech' || String(code) === 'aborted') {
+                        if (status) status.textContent = 'انطق الكلمة';
+                    } else if (status) {
+                        status.textContent = getMemoSpeechErrorMessage(code);
+                    }
                     if (status) status.textContent = getMemoSpeechErrorMessage(code);
                 };
 
@@ -13823,36 +13851,36 @@ function toggleMemoMic() {
             if (recorder) recorder.style.display = 'block';
         }
 
-        function evaluateMemoSpeech(spokenText) {
-            const item = getCurrentMemoItem();
-            const target = getCurrentMemoTargetText();
-            const targetText = target.text;
-            const targetWordsRaw = targetText.split(/\s+/);
+                function evaluateMemoSpeech(spokenText) {
+            // نقيس student's ما قاله مقابل العنصر الحالي في الطابور
+            const queueItem = getMemoQueueTarget();
+            let targetText = queueItem ? queueItem.text : '';
+            if (!targetText) {
+                const t0 = getCurrentMemoTargetText();
+                targetText = t0.text || '';
+            }
             const targetClean = tokenizeText(targetText, currentMemoMode);
             const spokenClean = tokenizeText(spokenText, currentMemoMode);
 
+            if (!targetClean.length || !spokenClean.length) {
+                handleMemoQueueResult(false);
+                return;
+            }
+
+            // كم كلمة من الكلمات المطلوبة سمعناها
             let correctCount = 0;
-            const comparison = [];
-
-            targetWordsRaw.forEach((origWord) => {
-                const cleanOrig = tokenizeText(origWord, currentMemoMode)[0] || '';
-                if (!cleanOrig) return;
-
-                if (spokenClean.includes(cleanOrig)) {
-                    correctCount++;
-                    comparison.push({ word: origWord, status: 'correct' });
-                } else {
-                    comparison.push({ word: origWord, status: 'incorrect' });
-                }
+            const remaining = spokenClean.slice();
+            targetClean.forEach(function (w) {
+                const at = remaining.indexOf(w);
+                if (at !== -1) { correctCount++; remaining.splice(at, 1); }
             });
 
-            const accuracy = targetClean.length > 0 ? Math.round((correctCount / targetClean.length) * 100) : 0;
-            const finalAccuracy = Math.min(100, Math.max(0, accuracy));
+            const accuracy = Math.round((correctCount / targetClean.length) * 100);
 
-
-            // لا نعرض أي نسبة أو تفاصيل — ننتقل للكلمة التالية أو نطلب الإعادة
+            // كلمة واحدة: Success إن نطقها، أما الجملة: 80% success
+            const ok = targetClean.length === 1 ? accuracy >= 60 : accuracy >= 80;
             try {
-                handleMemoQueueResult(Math.min(100, Math.max(0, accuracy)) >= 80);
+                handleMemoQueueResult(ok);
             } catch (e) {
                 handleMemoQueueResult(false);
             }
