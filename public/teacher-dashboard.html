@@ -123,6 +123,76 @@ function chatTypingRender(isTyping) {
 
 // أوقف كل شيء عند مغادرة الصفحة
 window.addEventListener('beforeunload', function () { chatTypingStop(); });
+
+    // ================================================================
+// الرسائل المباشرة: إرسال بدون إعادة تحميل + وصول تلقائي
+// ================================================================
+let directChatPollTimer = null;
+let directChatLastTopId = 0;
+let directChatSending = false;
+
+function stopDirectChatPolling() {
+    if (directChatPollTimer) { clearInterval(directChatPollTimer); directChatPollTimer = null; }
+}
+
+function startDirectChatPolling() {
+    stopDirectChatPolling();
+    directChatLastTopId = 0;
+    directChatPollTimer = setInterval(pollDirectChatQuietly, 4000);
+}
+
+// تحديث صامت: لا يمسح المحتوى ولا يظهر مؤشر تحميل،
+// ويعيد الرسم فقط عند وصول رسالة جديدة فعلاً.
+async function pollDirectChatQuietly() {
+    const peer = (typeof currentChatTeacher !== 'undefined') ? currentChatTeacher : null;
+    if (!peer || !peer.id || directChatSending) return;
+    const view = document.getElementById('chatView');
+    if (view && view.style.display === 'none') return;
+    if (typeof directChatIsLoadingOlder !== 'undefined' && directChatIsLoadingOlder) return;
+    const container = document.getElementById('chatMessages');
+    if (!container) return;
+    try {
+        const typeParam = peer.type || 'teacher';
+        const myId = (typeof teacherId !== 'undefined' && teacherId) ? teacherId
+            : ((typeof studentId !== 'undefined' && studentId) ? studentId : null);
+        const myType = (typeof teacherId !== 'undefined' && teacherId) ? 'teacher' : 'student';
+        if (!myId) return;
+        const res = await fetchWithAuth(`/api/messages/${myId}/${myType}/${peer.id}/${typeParam}?limit=5`);
+        const msgs = await res.json();
+        if (!Array.isArray(msgs) || msgs.length === 0) return;
+        const topId = msgs[msgs.length - 1].id;
+        if (String(topId) === String(directChatLastTopId)) return;
+        directChatLastTopId = topId;
+        await loadConversationMessages(peer.id, typeParam, true);
+    } catch (e) { /* الشبكة قد تتذبذب - نتجاهل بصمت */ }
+}
+
+// فقاعة مؤقتة تظهر فور الضغط على إرسال، بلا انتظار الخادم
+function appendOptimisticMessage(text, reply) {
+    const container = document.getElementById('chatMessages');
+    if (!container) return;
+    const loading = container.querySelector('[data-chat-loading]');
+    if (loading) loading.remove();
+
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' });
+
+    let quote = '';
+    if (reply && reply.text) {
+        quote = '<div class="replied-quote-bubble">' +
+            '<div class="replied-quote-author"><i class="fas fa-reply"></i> ' + escapeHtml(reply.name || 'رسالة سابقة') + '</div>' +
+            '<div class="replied-quote-snippet">' + escapeHtml(String(reply.text).slice(0, 120)) + '</div>' +
+            '</div>';
+    }
+
+    const wrap = document.createElement('div');
+    wrap.className = 'message-bubble sent pending-send';
+    wrap.style.opacity = '0.75';
+    wrap.innerHTML = quote + '<div style="white-space:pre-wrap;overflow-wrap:break-word;">' + escapeHtml(text) + '</div>' +
+        '<span style="position:absolute;bottom:6px;left:10px;font-size:0.66rem;opacity:0.8;">' + timeStr + '</span>';
+    container.appendChild(wrap);
+    container.scrollTop = container.scrollHeight;
+}
     </script>
 
     <script>
@@ -250,6 +320,8 @@ window.addEventListener('beforeunload', function () { chatTypingStop(); });
         
         /* Chat Interface Improvements */
         .chat-messages {
+            align-content: flex-start;
+            align-items: flex-start;
             display: flex;
             flex-direction: column;
             gap: 12px;
@@ -258,13 +330,20 @@ window.addEventListener('beforeunload', function () { chatTypingStop(); });
             height: calc(100% - 100px);
         }
         .message-bubble {
-            max-width: 80%;
-            padding: 10px 16px;
+            max-width: min(78%, 620px);
+            width: fit-content;
+            box-sizing: border-box;
+            padding: 10px 14px 26px;
             border-radius: 18px;
             font-size: 0.95rem;
-            line-height: 1.5;
+            line-height: 1.6;
             position: relative;
-            word-wrap: break-word;
+            overflow-wrap: break-word;
+            word-break: normal;
+            min-width: 0;
+            max-width: 100%;
+            white-space: pre-wrap;
+            margin: 2px 0;
         }
         .message-bubble.sent {
             background: #1e40af;
@@ -1721,26 +1800,51 @@ window.addEventListener('beforeunload', function () { chatTypingStop(); });
         }
         .message-actions-bar {
             position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
+            top: 4px;
+            transform: none;
             display: flex;
             align-items: center;
-            gap: 4px;
-            opacity: 0;
-            transition: opacity 0.2s ease, transform 0.2s ease;
-            z-index: 20;
+            gap: 3px;
+            opacity: 1;
+            visibility: visible;
+            z-index: 5;
+            pointer-events: auto;
         }
+        /*Sent on the start side of the bubble, received on the end side,
+           both INSIDE the bubble so nothing is ever clipped or
+           pushed outside the conversation area. */
         .message-bubble.sent .message-actions-bar {
-            left: -68px;
+            left: 6px;
             right: auto;
         }
         .message-bubble.received .message-actions-bar {
-            right: -68px;
+            right: 6px;
             left: auto;
         }
         .message-bubble:hover .message-actions-bar,
         .message-bubble:focus-within .message-actions-bar {
             opacity: 1;
+        }
+        .message-action-btn {
+            width: 26px;
+            height: 26px;
+            font-size: 0.72rem;
+            opacity: 0.75;
+            transition: opacity 0.2s ease, transform 0.15s ease;
+        }
+        .message-bubble:hover .message-action-btn,
+        .message-bubble:focus-within .message-action-btn {
+            opacity: 1;
+        }
+        .message-bubble.sent .message-action-btn {
+            background: rgba(255, 255, 255, 0.22);
+            border-color: rgba(255, 255, 255, 0.35);
+            color: #ffffff;
+        }
+        .message-bubble.received .message-action-btn {
+            background: #ffffff;
+            border-color: #cbd5e1;
+            color: #64748b;
         }
         .message-action-btn {
             background: #ffffff;
@@ -1802,13 +1906,13 @@ window.addEventListener('beforeunload', function () { chatTypingStop(); });
                 transform: none;
             }
             .message-bubble.sent .message-actions-bar {
-                left: 4px;
-                top: -24px;
+                left: 6px;
+                top: 4px;
                 transform: none;
             }
             .message-bubble.received .message-actions-bar {
-                right: 4px;
-                top: -24px;
+                right: 6px;
+                top: 4px;
                 transform: none;
             }
             .message-actions-bar {
@@ -9530,6 +9634,7 @@ function updateUI() {
         if (checkGuestAction && checkGuestAction()) return;
         currentChatTeacher = { id: otherId, name: otherName, image: otherImage || '/images/default-avatar.svg', type: otherType };
         chatTypingWatch(otherId, otherType, otherName);
+        startDirectChatPolling();
         document.getElementById('conversationsList').style.display = 'none';
         document.getElementById('chatView').style.display = 'block';
 
@@ -9589,8 +9694,8 @@ function updateUI() {
             directChatIsLoadingOlder = false;
             activeDirectChatOtherId = otherId;
             activeDirectChatOtherType = otherType;
-            if (!silent) {
-                container.innerHTML = '<div class="loading" style="text-align:center; padding:20px; color:var(--gray-400);"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+            if (!silent && !container.querySelector('.message-bubble')) {
+                container.innerHTML = '<div class="loading" data-chat-loading="1" style="text-align:center; padding:20px; color:var(--gray-400);"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
             }
         }
 
@@ -9867,6 +9972,7 @@ function updateUI() {
             payload.reply_to_sender = currentChatReply.name;
         }
 
+        directChatSending = true;
         try {
             const res = await fetchWithAuth('/api/messages/send', {
                 method: 'POST',
@@ -9876,11 +9982,16 @@ function updateUI() {
             if (data.success) {
                 chatTypingStop();
                 document.getElementById('messageInput').value = '';
+                const sentReply = currentChatReply;
                 cancelChatReply();
-                await loadConversationMessages(currentChatTeacher.id, receiverType);
-                loadConversations();
+                appendOptimisticMessage(message, sentReply);
+                // لا إعادة تحميل ولا مؤشر تحميل: نترك الاستطلاع الصامت يتكفل بالتزامن
+                setTimeout(function () {
+                    if (typeof loadConversations === 'function') loadConversations(true);
+                }, 800);
             } else { showToast(data.error || 'حدث خطأ', 'error'); }
         } catch(e) { if (e.message !== 'انتهت صلاحية الجلسة') showToast('حدث خطأ في الإرسال', 'error'); }
+        finally { directChatSending = false; }
     }
 
     async function loadConversations(silent = false) {
@@ -9939,6 +10050,8 @@ function updateUI() {
 
     function backToConversations() {
         chatTypingWatch(null, null);
+        stopDirectChatPolling();
+        directChatLastTopId = 0;
         currentChatTeacher = null;
         document.getElementById('chatView').style.display = 'none';
         document.getElementById('conversationsList').style.display = 'block';

@@ -141,6 +141,7 @@ router.post('/send', authenticate, [
     body('receiver_type').isIn(['student', 'teacher']).withMessage('نوع المستقبل غير صالح'),
     body('message').custom((val, { req }) => {
         if (!val && !req.body.file_url) throw new Error('الرسالة أو المرفق مطلوب');
+        if (typeof val === 'string' && val.length > 5000) throw new Error('الرسالة طويلة جداً (الحد 5000 حرف)');
         return true;
     })
 ], async (req, res) => {
@@ -206,8 +207,8 @@ router.post('/send', authenticate, [
                 reply_to_sender: String(reply_to_sender || '').slice(0, 100)
             });
             newMessage.reply_to_id = parseInt(reply_to_id, 10);
-            newMessage.reply_to_text = String(reply_to_text || '');
-            newMessage.reply_to_sender = String(reply_to_sender || '');
+            newMessage.reply_to_text = String(reply_to_text || '').slice(0, 300);
+            newMessage.reply_to_sender = String(reply_to_sender || '').slice(0, 100);
         }
 
         res.json({ success: true, message: newMessage });
@@ -504,7 +505,9 @@ router.get('/:user_id/:user_type/:other_id/:other_type', authenticate, [
             return res.status(403).json({ success: false, error: 'غير مصرح لك بدرس هذه المحادثة' });
         }
 
-        const limitParam = req.query.limit !== undefined ? parseInt(req.query.limit, 10) : 20;
+        let limitParam = req.query.limit !== undefined ? parseInt(req.query.limit, 10) : 20;
+        if (!limitParam || isNaN(limitParam) || limitParam <= 0) limitParam = 20;
+        limitParam = Math.min(limitParam, 100);
         const beforeParam = req.query.before || null;
 
         let query = supabase
@@ -522,7 +525,11 @@ router.get('/:user_id/:user_type/:other_id/:other_type', authenticate, [
             query = query.order('created_at', { ascending: true });
         }
 
-        const { data } = await query;
+        const { data, error: queryError } = await query;
+        if (queryError) {
+            console.error('فشل جلب الرسائل:', queryError.message);
+            return res.status(503).json({ success: false, error: 'تعذّر تحميل الرسائل الآن، حاول بعد قليل.' });
+        }
         let messagesList = data || [];
         if (limitParam && !isNaN(limitParam) && limitParam > 0) {
             messagesList.reverse();
