@@ -4759,6 +4759,31 @@
         </div>
 
         <div id="memoPracticeArea">
+
+        <!-- ============ تبويب الوضع: صوت أو كتابة ============ -->
+            <div id="memoModeTabs" style="display: flex; gap: 8px; margin-bottom: 14px; background: #e2e8f0; padding: 4px; border-radius: 12px;">
+                <button type="button" id="memoTabSpeak" onclick="setMemoTestMode('speak')" style="flex: 1; padding: 11px 12px; border: none; border-radius: 9px; background: #0f172a; color: #ffffff; font-weight: 800; font-size: 0.85rem; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                    <i class="fas fa-microphone"></i> تسميع بالصوت
+                </button>
+                <button type="button" id="memoTabType" onclick="setMemoTestMode('type')" style="flex: 1; padding: 11px 12px; border: none; border-radius: 9px; background: #ffffff; color: #334155; font-weight: 800; font-size: 0.85rem; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                    <i class="fas fa-keyboard"></i> اختبار بالكتابة
+                </button>
+            </div>
+
+            <!-- ============ وضع الكتابة: النص الأصلي مخفي تماماً ============ -->
+            <div id="memoTypingBox" style="display: none; background: #f8fafc; border: 2px dashed #6366f1; border-radius: 16px; padding: 16px; margin-bottom: 14px;">
+                <div style="font-size: 0.8rem; font-weight: 800; color: #4338ca; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                    <span><i class="fas fa-eye-slash"></i> النص مخفي — اكتبه من ذاكرتك</span>
+                    <span id="memoTypingCounter" style="color: #64748b; font-weight: 700;"></span>
+                </div>
+                <textarea id="memoTypingInput" rows="7" oninput="onMemoTypingInput()" placeholder="اكتب نص الدرس هنا من الذاكرة…" style="width:100%; padding:12px; border-radius:12px; border:1.5px solid #c7d2fe; font-family: inherit; font-size:0.95rem; line-height:2; resize:vertical; background:#ffffff;"></textarea>
+                <div id="memoTypingFeedback" style="margin-top:12px; padding:12px; background:#ffffff; border:1.5px solid #e2e8f0; border-radius:12px; min-height:3.2em; text-align: right;"></div>
+                <div style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
+                    <button type="button" onclick="resetMemoTyping(); onMemoTypingInput();" style="background:#e0e7ff; color:#4338ca; border:1.5px solid #a5b4fc; padding:9px 18px; border-radius:10px; font-weight:800; font-size:0.82rem; cursor:pointer; font-family:inherit;">
+                        <i class="fas fa-eraser"></i> امسح وأعد
+                    </button>
+                </div>
+            </div>
             <!-- النص الذي لصقه الطالب -->
             <div id="memoTextInputBox" style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 16px; padding: 14px; margin-bottom: 14px;">
                 <div style="font-size: 0.78rem; font-weight: 800; color: #334155; margin-bottom: 8px;">
@@ -4781,7 +4806,7 @@
                 <div id="memoTargetTextDisplay" style="font-size: 1.2rem; font-weight: 700; line-height: 2; color: white; word-break: break-word;">الصق نص الدرس للبدء</div>
             </div>
 
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 6px 0 4px;">
+            <div id="memoMicRow" style="display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 6px 0 4px;">
                 <div id="memoRecordPulse" style="display: none; width: 78px; height: 78px; border-radius: 50%; background: radial-gradient(circle, #ef4444 0%, #fca5a5 70%, transparent 100%);"></div>
                 <button type="button" id="memoRecordBtn" onclick="toggleMemoMic()" style="background: #10b981; color: white; border: none; width: 76px; height: 76px; border-radius: 50%; font-size: 2rem; cursor: pointer; display: flex; align-items: center; justify-content: center;">
                     <i class="fas fa-microphone"></i>
@@ -13566,6 +13591,7 @@ function onMemoTextInput() {
     if (text) {
         memoApplyDetectedLanguage(text);
         renderMemoLessonTarget();
+        resetMemoTyping();
     }
 }
 
@@ -13617,7 +13643,263 @@ function speakMemoText() {
 }
 
 
-        function toggleMemoMic() {
+        // ============================================================================
+// TYPING TEST ENGINE - ikhtibar al-hifz bi-al-kitaba min al-dhihira
+// The student types the lesson without seeing it; every word is compared
+// with the one at the SAME position in the original, so a dropped word can
+// never shift the rest of the sentence and still be accepted.
+// ============================================================================
+
+// Prefixes that carry no meaning of their own: the definite article and the
+// attached conjunction. "الطالب" and "طالب" are the same word.
+const MEMO_ARTICLE_PREFIXES = ['وال', 'بال', 'كال', 'فال', 'لل', 'ال', 'و', 'ف', 'ك', 'ل'];
+
+// Common English inflections whose core meaning is unchanged.
+const MEMO_LATIN_SUFFIXES = ['ing', 'ed', 'es', 's'];
+
+function memoStripArabicPrefix(word) {
+    for (let i = 0; i < MEMO_ARTICLE_PREFIXES.length; i++) {
+        const p = MEMO_ARTICLE_PREFIXES[i];
+        if (word.length - p.length >= 3 && word.indexOf(p) === 0) {
+            return word.slice(p.length);
+        }
+    }
+    return word;
+}
+
+function memoStripLatinSuffix(word) {
+    for (let i = 0; i < MEMO_LATIN_SUFFIXES.length; i++) {
+        const s = MEMO_LATIN_SUFFIXES[i];
+        if (word.length - s.length >= 4 && word.slice(-s.length) === s) {
+            return word.slice(0, word.length - s.length);
+        }
+    }
+    return word;
+}
+
+/**
+ * Do the typed word and the original word carry the same meaning in the
+ * same slot?
+ *
+ * The base comparison already ignores punctuation, diacritics, hamza and
+ * alef/ya/waw variants and ta marbuta vs ha (memoNormalizeWord). On top of
+ * that only meaning-preserving variation is accepted, never a different
+ * word that merely looks similar.
+ */
+function memoWordsEquivalent(typedWord, originalWord, lang) {
+    const a = memoNormalizeWord(typedWord, lang);
+    const b = memoNormalizeWord(originalWord, lang);
+    if (!a || !b) return false;
+    if (a === b) return true;
+
+    const isArabic = (lang === 'ar-SA') || /[\u0600-\u06FF]/.test(b);
+    if (isArabic) {
+        const sa = memoStripArabicPrefix(a);
+        const sb = memoStripArabicPrefix(b);
+        return sa === sb && sa.length >= 3;
+    }
+    const sa = memoStripLatinSuffix(a);
+    const sb = memoStripLatinSuffix(b);
+    return sa === sb && sa.length >= 4;
+}
+
+/**
+ * Typing comparison - positional alignment, not sequential matching.
+ * What the student typed as word i must match word i of the original.
+ * Returns the same keys as the recitation engine, plus the per-word states.
+ */
+function memoCompareTyped(originalText, typedText, lang) {
+    const originalWords = memoSplitWords(originalText);
+    const typedWords = memoSplitWords(typedText);
+    const total = originalWords.length;
+    const states = [];
+    let lastCorrect = -1;
+    let broken = false;
+
+    for (let i = 0; i < total; i++) {
+        const t = typedWords[i];
+        if (t === undefined) { states.push('pending'); broken = true; continue; }
+        if (memoWordsEquivalent(t, originalWords[i], lang)) {
+            states.push('correct');
+            if (!broken) lastCorrect = i;
+        } else {
+            states.push('error');
+            broken = true;
+        }
+    }
+
+    const finished = typedWords.length >= total;
+    const success = total > 0 && finished && states.every(function (s) { return s === 'correct'; });
+
+    return {
+        success: success,
+        last_correct_word_index: success ? total - 1 : lastCorrect,
+        error_word_in_original: success ? '' : (originalWords[lastCorrect + 1] || ''),
+        user_wrong_pronunciation: success ? '' : (typedWords[lastCorrect + 1] || ''),
+        states: states,
+        typed_count: typedWords.length,
+        total_words: total,
+        finished: finished
+    };
+}
+
+function memoTypingChip(word, ok, dir) {
+    const bg = ok
+        ? 'background:#22c55e;color:#ffffff;border:1px solid #16a34a;'
+        : 'background:#ef4444;color:#ffffff;border:1px solid #dc2626;';
+    return '<span dir="' + dir + '" style="' + bg +
+        ' display:inline-block;padding:3px 9px;margin:3px;border-radius:9px;' +
+        'font-weight:800;font-size:0.92rem;">' + escapeMemoHtml(word) +
+        (ok ? ' ✓' : ' ✗') + '</span>';
+}
+
+/**
+ * While the student is typing only THEIR words are shown, so the rest of
+ * the lesson stays hidden. Once every word is written the original is
+ * revealed in full, coloured, so the slip can be reviewed.
+ */
+function memoRenderTypingFeedback(res) {
+    const box = document.getElementById('memoTypingFeedback');
+    if (!box) return;
+    const lesson = memoGetLessonText();
+    const lang = memoDetectedLang || memoDetectLanguage(lesson);
+    const dir = ((lang === 'ar-SA') || /[\u0600-\u06FF]/.test(lesson || '')) ? 'rtl' : 'ltr';
+    const ta = document.getElementById('memoTypingInput');
+    const typedWords = memoSplitWords(ta ? ta.value : '');
+
+    let html = '';
+    if (res.finished) {
+        memoSplitWords(lesson).forEach(function (w, i) {
+            html += memoTypingChip(w, res.states[i] === 'correct', dir);
+        });
+    } else {
+        typedWords.forEach(function (w, i) {
+            html += memoTypingChip(w, res.states[i] === 'correct', dir);
+        });
+    }
+
+    box.innerHTML = html ||
+        '<span style="color:#64748b;font-size:0.8rem;font-weight:700;">اكتب أول كلمة…</span>';
+}
+
+function memoSaveTypingAttempt(res, lesson, typed, lang) {
+    try {
+        if (typeof apiFetch !== 'function') return;
+        apiFetch('/api/student/memo-attempt', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                stage: 'type', itemType: 'sentence',
+                target: lesson, spoken: typed,
+                correct: res.success,
+                matched: res.last_correct_word_index + 1,
+                total: res.total_words,
+                wrongWords: res.error_word_in_original ? [res.error_word_in_original] : [],
+                lang: lang
+            })
+        }).catch(function () {});
+    } catch (e) {}
+}
+
+// ===== typing mode UI =====
+let memoTestMode = 'speak';
+
+function setMemoVisible(id, show) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = show ? '' : 'none';
+}
+
+function resetMemoTyping() {
+    const ta = document.getElementById('memoTypingInput');
+    if (ta) ta.value = '';
+    const fb = document.getElementById('memoTypingFeedback');
+    if (fb) fb.innerHTML = '';
+    const c = document.getElementById('memoTypingCounter');
+    if (c) c.textContent = '';
+}
+
+/**
+ * Switch between reciting out loud and the typing test.
+ * In typing mode the original text disappears completely - not in the paste
+ * box, not in the display - so it can only come from memory.
+ */
+function setMemoTestMode(mode) {
+    memoTestMode = (mode === 'type') ? 'type' : 'speak';
+    const isType = memoTestMode === 'type';
+
+    const speakTab = document.getElementById('memoTabSpeak');
+    const typeTab = document.getElementById('memoTabType');
+    if (speakTab) {
+        speakTab.style.background = isType ? '#ffffff' : '#0f172a';
+        speakTab.style.color = isType ? '#334155' : '#ffffff';
+    }
+    if (typeTab) {
+        typeTab.style.background = isType ? '#0f172a' : '#ffffff';
+        typeTab.style.color = isType ? '#ffffff' : '#334155';
+    }
+
+    setMemoVisible('memoTextInputBox', !isType);
+    setMemoVisible('memoTargetBox', !isType);
+    setMemoVisible('memoMicRow', !isType);
+    setMemoVisible('memoTypingBox', isType);
+
+    const st = document.getElementById('memoActionStatus');
+    if (isType) {
+        resetMemoTyping();
+        const n = memoSplitWords(memoGetLessonText()).length;
+        const c = document.getElementById('memoTypingCounter');
+        if (c) c.textContent = n ? ('0 / ' + n + ' كلمة') : '';
+        if (st) {
+            st.textContent = n
+                ? 'النص مخفي الآن — اكتبه من الذاكرة'
+                : 'الصق نص الدرس أولاً ثم عد إلى وضع الكتابة';
+        }
+        const ta = document.getElementById('memoTypingInput');
+        if (ta && n) try { ta.focus(); } catch (e) {}
+    } else {
+        renderMemoLessonTarget(false);
+        renderMemoQueueTarget();
+    }
+}
+
+// Live comparison on every keystroke
+function onMemoTypingInput() {
+    const lesson = memoGetLessonText();
+    const ta = document.getElementById('memoTypingInput');
+    const typed = ta ? ta.value : '';
+
+    if (!lesson) {
+        const st = document.getElementById('memoActionStatus');
+        if (st) st.textContent = 'لا يوجد نص أصلي — الصق درساً أولاً';
+        return;
+    }
+
+    const lang = memoDetectedLang || memoDetectLanguage(lesson);
+    const res = memoCompareTyped(lesson, typed, lang);
+    memoLastRecitation = res;
+    memoRenderTypingFeedback(res);
+
+    const counter = document.getElementById('memoTypingCounter');
+    if (counter) counter.textContent = res.typed_count + ' / ' + res.total_words + ' كلمة';
+
+    const st = document.getElementById('memoActionStatus');
+    if (st) {
+        if (!typed.trim()) st.textContent = 'النص مخفي الآن — اكتبه من الذاكرة';
+        else if (res.finished && res.success) st.textContent = 'ممتاز! كتبت النص كاملاً وبصواب';
+        else if (res.finished) st.textContent = 'توقفنا عند الكلمة رقم ' + (res.last_correct_word_index + 2) + ': "' + (res.error_word_in_original || '') + '"';
+        else if (res.states[res.typed_count - 1] === 'error') st.textContent = 'الكلمة الأخيرة لا تطابق النص الأصلي';
+        else st.textContent = 'صحيح حتى الكلمة ' + res.typed_count;
+    }
+
+    if (res.finished) memoSaveTypingAttempt(res, lesson, typed, lang);
+}
+
+                function toggleMemoMic() {
+            if (memoTestMode === 'type') {
+                const st0 = document.getElementById('memoActionStatus');
+                if (st0) st0.textContent = 'في وضع الكتابة — الميكروفون غير مستخدم';
+                return;
+            }
     if (isMemoRecording) {
         if (memoRecognition) { try { memoRecognition.stop(); } catch (e) {} }
         return;
@@ -13631,6 +13913,7 @@ function speakMemoText() {
 }
 
         function initMemorizationTool() {
+            setMemoTestMode('speak');
             try {
                 const savedCustom = localStorage.getItem('zoomdz_custom_memo_lessons');
                 if (savedCustom) customMemoLessons = JSON.parse(savedCustom);
